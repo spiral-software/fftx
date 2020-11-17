@@ -48,6 +48,7 @@ include ("${FFTX_CMAKE_INCLUDE_DIR}/create_generator_file.cmake")
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 14)
+set ( CMAKE_CXX_STANDARD 14)
 
 include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets )
 
