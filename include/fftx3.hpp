@@ -327,7 +327,7 @@ namespace fftx
     #include "fftx3.hpp"
 
     extern void init_PLAN_spiral(); 
-    extern void PLAN_spiral(double** X, double** Y, double** symvar); 
+    extern void PLAN_spiral(double** Y, double** X, double** symvar); 
     extern void destroy_PLAN_spiral();
 
    namespace PLAN
@@ -347,7 +347,7 @@ namespace fftx
         for(int i=0; i<OUT_DIM; i++) output[i] = (double*)(destination[i].m_data.local());
         for(int i=0; i<S_DIM; i++) sym[i] = (double*)(symvar[i].m_data.local());
 
-        PLAN_spiral(input, output, sym);
+        PLAN_spiral(output, input, sym);
    
     // dummy return handle for now
       fftx::handle_t rtn;
@@ -366,7 +366,7 @@ namespace fftx
         for(int i=0; i<OUT_DIM; i++) output[i] = (double*)(destination[i].m_data.local());
   
 
-        PLAN_spiral(input, output, sym);
+        PLAN_spiral(output, input, sym);
    
     // dummy return handle for now
       fftx::handle_t rtn;
@@ -414,7 +414,7 @@ namespace fftx
     #include "fftx3.hpp"
 
     extern void init_PLAN_spiral(); 
-    extern void PLAN_spiral(double* X, double* Y, double* symvar); 
+    extern void PLAN_spiral(double* Y, double* X, double* symvar); 
     extern void destroy_PLAN_spiral();
 
    namespace PLAN
@@ -433,7 +433,7 @@ namespace fftx
         output = (double*)(destination.m_data.local());
         sym = (double*)(symvar.m_data.local());
 
-        PLAN_spiral(input, output, sym);
+        PLAN_spiral(output, input, sym);
    
     // dummy return handle for now
       fftx::handle_t rtn;
@@ -451,7 +451,7 @@ namespace fftx
         output = (double*)(destination.m_data.local());
   
 
-        PLAN_spiral(input, output, sym);
+        PLAN_spiral(output, input, sym);
    
     // dummy return handle for now
       fftx::handle_t rtn;
