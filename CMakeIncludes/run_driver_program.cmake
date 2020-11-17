@@ -49,7 +49,7 @@ function ( run_driver_program prefix stem )
     else ()
 	include ( FindUnixCommands )
 	add_custom_command ( OUTPUT ${_plan} ${_header}
-	    COMMAND ${BASH} -c "rm -f ${_plan} ${_header} ; ${_driver} ${prefix} > ${_plan}"
+	    COMMAND ${BASH} -c "rm -f ${_plan} ${_header} ; ${CMAKE_CURRENT_BINARY_DIR}/${_driver} ${prefix} > ${_plan}"
 	    DEPENDS ${_driver}
 	    VERBATIM
 	    COMMENT "Generating ${_plan}" )
