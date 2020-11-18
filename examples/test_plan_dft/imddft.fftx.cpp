@@ -21,8 +21,7 @@ int main(int argc, char* argv[])
 	  printf("Usage: %s <prefix>\n<prefix> is a required argument\n", argv[0]);
 	  exit (-1);
   }
-  char * pref = argv[1];
-  printf("\nprefix := \"%s\";\n\n", pref);
+
   
   box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{nx,ny,nz}}));
   
