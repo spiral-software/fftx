@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[])
 {
-	printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
+  printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
 	
   mddft::init();
 
@@ -19,16 +19,16 @@ int main(int argc, char* argv[])
            v=std::complex<double>(2.0,0.0);
          },input);
 
-	printf("call mddft::transform()\n");
+  printf("call mddft::transform()\n");
   mddft::transform(input, output);
 
   mddft::destroy();
 
 
-	printf("call imddft::init()\n");
+  printf("call imddft::init()\n");
   imddft::init();
 
-	printf("call imddft::transform()\n");
+  printf("call imddft::transform()\n");
   imddft::transform(input, output);
 
   imddft::destroy();
