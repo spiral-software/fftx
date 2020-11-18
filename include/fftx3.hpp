@@ -207,6 +207,7 @@ namespace fftx
   {
     std::cout<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",-1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
+  
   template<int DIM>
   void IMDDFT(const point_t<DIM>& extents, int batch,
              array_t<DIM, std::complex<double>>& destination,
@@ -215,7 +216,7 @@ namespace fftx
     std::cout<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
     
-    template<int DIM>
+  template<int DIM>
   void MDPRDFT(const point_t<DIM>& extent, int batch,
                array_t<DIM+1, double>& destination,
                array_t<DIM+1, double>& source)
@@ -231,6 +232,32 @@ namespace fftx
     std::cout<<"    TDAGNode(TTensorI(IMDPRDFT("<<extent<<",1),"<<batch<<",APar,APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
+  template<int DIM>
+  void PRDFT(const point_t<DIM>& extent,
+             array_t<DIM, std::complex<double>>& destination,
+             array_t<DIM, double>& source)
+  {
+    std::cout<<"    TDAGNode(PRDFT("<<extent<<"1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM>
+  void IPRDFT(const point_t<DIM>& extent,
+              array_t<DIM, double>& destination,
+              array_t<DIM, std::complex<double>>& source)
+  {
+    std::cout<<"    TDAGNode(PRDFT("<<extent<<"-1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM>
+  void kernel(const array_t<DIM, double>& symbol,
+              array_t<DIM, std::complex<double>>& destination,
+              const array_t<DIM, std::complex<double>>& source)
+  {
+    std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+
+  
   std::string inputType = "double";
   int inputCount = 1;
   std::string outputType = "double";
