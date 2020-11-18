@@ -33,15 +33,11 @@
 namespace fftx
 {
 
-  bool tracing = false;
+  bool tracing = false; // when creating a trace program user sets this to 'true'
+  
+  uint64_t ID=1; // variable naming counter
   
   typedef int intrank_t; // just useful for self-documenting code.
-
-  //  This API has been shelved while I flesh out Phil's preferred design
-
-  // Currently I have a bit of an ugly hack for dynamic extents...   what C++20 does
-  // is set a dynamic range to std::numeric_limits<size_t> 
-  //template <size_t Begin, size_t End, size_t Stride> struct span_t;
 
   struct handle_implem_t;
 
@@ -75,26 +71,7 @@ namespace fftx
     operator global_ptr<void>(){ return global_ptr<void>(_ptr, _domain, _device);}
   };
 
-  ///  multi-dimensional span.  a non-owning view of a data layout
-  //  Can function as both the symbolic placeholder for a data structure
-  //  for planning and for intermediate plan stages, and as input/output
-  //  data placement when the gptr_t is not NULL.   It also allows
-  //  a user to make plans that map between non-local data structures.
-
-  // The evil part of this for our regular non-C++ users is that this is
-  // a variadic template.  You can have an arbitrary extent of span_t members.
-  // template <typename gptr_t, span_t... Span>
-  //class mdspan
-  // {
-  //  gptr_t _data = NULL;
-    
-  // public:
-  //  constexpr int dim();
-  //  mdpsan(gptr_t data, int domain=0, int device=0)
-  //    :_data(data),_domain(domain),_device(device){ };
-  //  inline constexpr span_t span(int dim) const;
-  //  inline gptr_t gptr(int dim);
-  //};
+ 
     
 
   template<int DIM>
@@ -129,7 +106,6 @@ namespace fftx
     }
   };
 
-  uint64_t ID=1;
 
   template<int DIM, typename T>
   struct array_t
@@ -154,13 +130,18 @@ namespace fftx
     uint64_t id() const { assert(tracing); return (uint64_t)m_data.local();}
   };
 
+  ///apply function f to each point in array
+  ///  void f(T& value, const point_t<DIM>& location)
   template<int DIM, typename T, typename Func>
   void forall(Func f, array_t<DIM, T>& array);
 
-  
+  ///apply function f to each point in array
+  ///  void f(T1& value, const T2&, const point_t<DIM>& location)
+  template<int DIM, typename T1, typename T2, typename Func>
+  void forall(Func f, array_t<DIM, T1>& array, const array_t<DIM, T2>& array2);
 
 
-
+  /// component alias  Subselects outer-most dimension (the not contiguous one)
   template<int DIM, typename T>
   array_t<DIM-1, T> nth(array_t<DIM, T>& array, int index)
   {
@@ -399,8 +380,9 @@ namespace fftx
         for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
       }
      std::cout<<"]\n),\n";
-     std::cout<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=prefix::\"_spiral\", params:= [symvar])\n"
+     std::cout<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
               <<").withTags(opts.tags);\n";
+     std::cout<<"prefix:=\""<<name<<"\";\n";
   }
   
   template<typename T, int DIM, unsigned long COUNT>
@@ -484,8 +466,9 @@ namespace fftx
         for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
       }
      std::cout<<"]\n),\n";
-     std::cout<<"rec(fname:=prefix::\"_spiral\", params:= [symvar])\n"
+     std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
               <<").withTags(opts.tags);\n";
+     std::cout<<"prefix:=\""<<name<<"\";\n";
   } 
  
  
