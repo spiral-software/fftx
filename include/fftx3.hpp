@@ -269,6 +269,29 @@ namespace fftx
     std::cout<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
   }
 
+  template<int DIM, typename T>
+  void zeroEmdedBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
+  {
+    std::cout<<"     TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<"[";
+    for(int i=0; i<DIM; i++)
+      {
+        std::cout<<"["<<source.m_domain.lo[i]<<".."<<source.m_domain.hi[i]<<"]";
+        if(i<DIM-1) std::cout<<",";
+      }
+    std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM, typename T>
+  void extractBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
+  {
+    std::cout<<"     TDAGNode(ExtractBox("<<source.m_domain.extents()<<"[";
+    for(int i=0; i<DIM; i++)
+      {
+        std::cout<<"["<<destination.m_domain.lo[i]<<".."<<destination.m_domain.hi[i]<<"]";
+        if(i<DIM-1) std::cout<<",";
+      }
+    std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
   
   std::string inputType = "double";
   int inputCount = 1;
