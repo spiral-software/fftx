@@ -26,7 +26,6 @@ function ( create_generator_file prefix stem )
     set     ( ${prefix}_gen ${prefix}.${stem}.generator.g PARENT_SCOPE )
     set     ( _gen ${prefix}.${stem}.generator.g )
     set     ( _plan   ${prefix}.${stem}.plan.g )
-    ##  message ( "define varible: {_gen} = ${_gen}" )
     
     if ( WIN32 )
 	add_custom_command ( OUTPUT ${_gen}
@@ -36,15 +35,16 @@ function ( create_generator_file prefix stem )
 	VERBATIM
 	COMMENT "Generating ${_gen}" )
     else ()
+	include ( FindUnixCommands )
 	add_custom_command ( OUTPUT ${_gen}
-	COMMAND ${BASH} -c "rm -f ${_gen} ; cat ${SPIRAL_BACKEND_PREAMBLE} ${_plan} ${SPIRAL_BACKEND_CODEGEN} >> ${_gen}"
+	COMMAND ${BASH} -c "rm -f ${_gen} ; cat ${SPIRAL_BACKEND_PREAMBLE} ${_plan} ${SPIRAL_BACKEND_CODEGEN} > ${_gen}"
 	DEPENDS ${_plan}
 	VERBATIM
 	COMMENT "Generating ${_gen}" )
     endif ()
 
     add_custom_target ( NAME.${_gen} ALL
-	DEPENDS ${_gen}
+	DEPENDS ${_plan}
 	VERBATIM )
 
 endfunction ()

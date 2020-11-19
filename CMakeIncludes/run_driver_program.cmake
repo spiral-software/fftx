@@ -21,6 +21,7 @@
 function ( run_driver_program prefix stem )
     message ( "build and run driver for ${prefix}.${stem}.cpp" )
     set     ( _driver ${prefix}.${stem}.driver )
+    set     ( ${prefix}_driver ${prefix}.${stem}.driver PARENT_SCOPE )
     add_executable ( ${_driver} ${prefix}.${stem}.cpp )
     set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 14 )
 
@@ -35,6 +36,7 @@ function ( run_driver_program prefix stem )
     ##  Run the driver program to create ~.codegen.hpp and ~.plan.g
 
     set ( _plan ${prefix}.${stem}.plan.g )
+    set ( ${prefix}_plan ${prefix}.${stem}.plan.g PARENT_SCOPE )
     set ( _header ${prefix}.${stem}.codegen.hpp )
     ##  message ( "define vars: plan = ${_plan}, header = ${_header}" )
     
@@ -56,7 +58,7 @@ function ( run_driver_program prefix stem )
     endif ()
 
     add_custom_target ( NAME.${_plan} ALL
-	DEPENDS ${_plan}
+	DEPENDS ${_driver}
 	VERBATIM )
     
 endfunction ()
