@@ -2,6 +2,7 @@
 
 #include "rconv.fftx.codegen.hpp"
 
+using namespace fftx;
 
 int main(int argc, char* argv[])
 {
@@ -21,8 +22,8 @@ int main(int argc, char* argv[])
   box_t<3> freq(point_t<3>({{1,1,1}}), point_t<3>({{fx, fy, fz}}));
   
   std::array<array_t<3,std::complex<double>>,2> intermediates {freq, freq};
-  array_t<3,double> inputs(rdomain);
-  array_t<3,double> outputs(rdomain);
+  array_t<3,double> input(rdomain);
+  array_t<3,double> output(rdomain);
   array_t<3,double> symbol(freq);
 
 

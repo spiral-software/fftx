@@ -207,6 +207,7 @@ namespace fftx
   {
     std::cout<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",-1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
+  
   template<int DIM>
   void IMDDFT(const point_t<DIM>& extents, int batch,
              array_t<DIM, std::complex<double>>& destination,
@@ -215,7 +216,7 @@ namespace fftx
     std::cout<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
     
-    template<int DIM>
+  template<int DIM>
   void MDPRDFT(const point_t<DIM>& extent, int batch,
                array_t<DIM+1, double>& destination,
                array_t<DIM+1, double>& source)
@@ -231,6 +232,67 @@ namespace fftx
     std::cout<<"    TDAGNode(TTensorI(IMDPRDFT("<<extent<<",1),"<<batch<<",APar,APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
+  template<int DIM>
+  void PRDFT(const point_t<DIM>& extent,
+             array_t<DIM, std::complex<double>>& destination,
+             array_t<DIM, double>& source)
+  {
+    std::cout<<"    TDAGNode(MDPRDFT("<<extent<<",1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM>
+  void IPRDFT(const point_t<DIM>& extent,
+              array_t<DIM, double>& destination,
+              array_t<DIM, std::complex<double>>& source)
+  {
+    std::cout<<"    TDAGNode(IMDPRDFT("<<extent<<",-1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM>
+  void kernel(const array_t<DIM, double>& symbol,
+              array_t<DIM, std::complex<double>>& destination,
+              const array_t<DIM, std::complex<double>>& source)
+  {
+    std::cout<<"    TDAGNode(Diag(diagTensor(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0),fConst(TReal, 2, 1))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM>
+  void kernel(const array_t<DIM, std::complex<double>>& symbol,
+              array_t<DIM, std::complex<double>>& destination,
+              const array_t<DIM, std::complex<double>>& source)
+  {
+    std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  void include(const char* includeFile)
+  {
+    std::cout<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
+  }
+
+  template<int DIM, typename T>
+  void zeroEmbedBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
+  {
+    std::cout<<"    TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<",[";
+    for(int i=0; i<DIM; i++)
+      {
+        std::cout<<"["<<source.m_domain.lo[i]<<".."<<source.m_domain.hi[i]<<"]";
+        if(i<DIM-1) std::cout<<",";
+      }
+    std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM, typename T>
+  void extractBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
+  {
+    std::cout<<"    TDAGNode(ExtractBox("<<source.m_domain.extents()<<",[";
+    for(int i=0; i<DIM; i++)
+      {
+        std::cout<<"["<<destination.m_domain.lo[i]<<".."<<destination.m_domain.hi[i]<<"]";
+        if(i<DIM-1) std::cout<<",";
+      }
+    std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+  
   std::string inputType = "double";
   int inputCount = 1;
   std::string outputType = "double";
