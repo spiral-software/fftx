@@ -264,6 +264,10 @@ namespace fftx
     std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
+  void include(const char* includeFile)
+  {
+    std::cout<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
+  }
 
   
   std::string inputType = "double";
