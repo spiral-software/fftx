@@ -272,7 +272,7 @@ namespace fftx
   template<int DIM, typename T>
   void zeroEmbedBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
   {
-    std::cout<<"     TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<"[";
+    std::cout<<"    TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<",[";
     for(int i=0; i<DIM; i++)
       {
         std::cout<<"["<<source.m_domain.lo[i]<<".."<<source.m_domain.hi[i]<<"]";
@@ -284,7 +284,7 @@ namespace fftx
   template<int DIM, typename T>
   void extractBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
   {
-    std::cout<<"     TDAGNode(ExtractBox("<<source.m_domain.extents()<<"[";
+    std::cout<<"    TDAGNode(ExtractBox("<<source.m_domain.extents()<<",[";
     for(int i=0; i<DIM; i++)
       {
         std::cout<<"["<<destination.m_domain.lo[i]<<".."<<destination.m_domain.hi[i]<<"]";

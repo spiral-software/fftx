@@ -41,6 +41,6 @@ int main(int argc, char* argv[])
   IPRDFT(rdomain.extents(), realIntermediates[1], intermediates[1]);
   extractBox(output, realIntermediates[1]);
   
-  closeScalarDAG(intermediates, "rconv");
+  closeScalarDAG(intermediates, "hockney");
   
 }
