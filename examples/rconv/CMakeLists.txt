@@ -34,6 +34,8 @@ create_source_file ( ${_gfile} ${_ccode1} )
 
 
 add_executable ( ${BUILD_PROGRAM} ${BUILD_PROGRAM}.cpp ${_ccode1}  )
+add_dependencies ( ${BUILD_PROGRAM} ${_driver1} NAME.${_plan1} NAME.${_gen1} NAME.${_ccode1} )
+
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${TEST_RCONV_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
 set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
