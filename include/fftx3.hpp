@@ -270,7 +270,7 @@ namespace fftx
   }
 
   template<int DIM, typename T>
-  void zeroEmdedBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
+  void zeroEmbedBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
   {
     std::cout<<"     TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<"[";
     for(int i=0; i<DIM; i++)

@@ -16,6 +16,9 @@ set ( _prefix1 rconv )
 set ( BUILD_PROGRAM test${_prefix1} )
 
 run_driver_program ( ${_prefix1} ${_stem} )
+set ( _driver1 ${${_prefix1}_driver} )
+set ( _plan1 ${${_prefix1}_plan} )
+set ( _hdr1  ${_prefix1}.${_stem}.codegen.hpp )
 
 ##  Create the generator scripts: ~.generator.g files
 

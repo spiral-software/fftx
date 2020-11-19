@@ -24,18 +24,18 @@ int main(int argc, char* argv[])
 
   std::array<array_t<3, double>,2>   realIntermediates {rdomain, rdomain};
   std::array<array_t<3,std::complex<double>>,2> intermediates {freq, freq};
-  array_t<3,double> inputs(sbox);
-  array_t<3,double> outputs(dbox);
+  array_t<3,double> input(sbox);
+  array_t<3,double> output(dbox);
   array_t<3,double> symbol(freq);
 
 
-  setInputs(inputs);
-  setOutputs(outputs);
+  setInputs(input);
+  setOutputs(output);
  
   
   openScalarDAG();
 
-  zeroEmbedBox(realIntermediates[0], inputs);
+  zeroEmbedBox(realIntermediates[0], input);
   PRDFT(rdomain.extents(), intermediates[0], realIntermediates[0]);
   kernel(symbol, intermediates[1], intermediates[0]);
   IPRDFT(rdomain.extents(), realIntermediates[1], intermediates[1]);
