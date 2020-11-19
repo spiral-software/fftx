@@ -253,7 +253,15 @@ namespace fftx
               array_t<DIM, std::complex<double>>& destination,
               const array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    std::cout<<"    TDAGNode(Diag(diagTensor(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0),fConst(TReal, 2, 1))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+  }
+
+  template<int DIM>
+  void kernel(const array_t<DIM, std::complex<double>>& symbol,
+              array_t<DIM, std::complex<double>>& destination,
+              const array_t<DIM, std::complex<double>>& source)
+  {
+    std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
 
