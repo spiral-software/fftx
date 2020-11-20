@@ -11,7 +11,15 @@ and check out the __develop__ branch.
 
 Set __SPIRAL_HOME__ to the directory where you have cloned __Spiral__.
 
-Now from the home directory in the current repo:
+In addition, you will need two __Spiral__ packages:
+- Clone __spiral-package-fftx__ from https://github.com/spiral-software/spiral-package-fftx
+into the directory
+$SPIRAL_HOME/namespaces/packages/fftx
+- Clone __spiral-package-simt__ from https://github.com/spiral-software/spiral-package-simt
+into the directory
+$SPIRAL_HOME/namespaces/packages/simt
+
+Now from the home directory for the current repository:
 
     mkdir build
     pushd build
