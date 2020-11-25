@@ -1,5 +1,5 @@
 
-
+#include <math.h> // Without this, abs is the wrong function!
 #include "rconv.fftx.codegen.hpp"
 
 using namespace fftx;
@@ -29,25 +29,43 @@ int main(int argc, char* argv[])
 
   forall([](double(&v), const fftx::point_t<3>& p)
          {
-           v=2.0;
+           v = p[0]; // FIXME but v=p[1] or v=[2] is OK.  WAS: v=2.0;
          },input);
 
-    forall([](double(&v), const fftx::point_t<3>& p)
+  double scaling = 1. / (nx*ny*nz*1.); // FIXME new
+    forall([scaling](double(&v), const fftx::point_t<3>& p)
            {
            if(p==point_t<3>::Unit())
              v=1;
            else
              v=0;         
+           v = scaling; // FIXME new, constant symbol
            },symbol);
 
   
   printf("call rconv::transform()\n");
   rconv::transform(input, output, symbol);
 
+  // BEGIN DEBUG with constant symbol
+  {
+    auto outPtr = output.m_data.local();
+    auto inPtr = input.m_data.local();
+    double diffMax = 0.;
+    for (int pt = 0; pt < nx*ny*nz; pt++)
+      {
+        double diff = outPtr[pt] - inPtr[pt];
+        double diffAbs = abs(diff);
+        if (diffAbs > diffMax)
+          {
+            diffMax = diffAbs;
+          }
+      }
+    std::cout << "diffMax = " << diffMax << std::endl;
+  }
+  // END DEBUG
+         
   rconv::destroy();
 
-
-  
   printf("%s: All done, exiting\n", argv[0]);
   return 0;
 }
