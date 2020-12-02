@@ -12,6 +12,7 @@ project ( rconv )
 
 ##  First create and run the driver program(s):  Creates the ~.plan.g and ~.codegen.hpp files
 ##  File nameing convention is: <prefix>.<stem>.xxxxx; set _stem and _prefix1
+##  Test program name is:  test<prefix>.cpp
 
 set ( _stem fftx )
 set ( _prefix1 rconv )
