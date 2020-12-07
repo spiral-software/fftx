@@ -43,7 +43,7 @@ function ( create_generator_file prefix stem )
 	COMMENT "Generating ${_gen}" )
     endif ()
 
-    add_custom_target ( NAME.${_gen} ALL
+    add_custom_target ( NAME.${PROJECT_NAME}.${_gen} ALL
 	DEPENDS ${_plan}
 	VERBATIM )
 

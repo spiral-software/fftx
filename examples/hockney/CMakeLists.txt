@@ -21,7 +21,7 @@ set ( BUILD_PROGRAM test${_prefix1} )
 ##  ===== For most examples you should not need to modify anything below this line =====
 
 run_driver_program ( ${_prefix1} ${_stem} )
-set ( _driver1 ${${_prefix1}_driver} )
+set ( _driver1 ${PROJECT_NAME}.${${_prefix1}_driver} )
 set ( _plan1 ${${_prefix1}_plan} )
 set ( _hdr1  ${_prefix1}.${_stem}.codegen.hpp )
 
@@ -38,7 +38,8 @@ file               ( TO_NATIVE_PATH ${${PROJECT_NAME}_BINARY_DIR}/${_gen1} _gfil
 create_source_file ( ${_gfile} ${_ccode1} )
 
 add_executable ( ${BUILD_PROGRAM} ${BUILD_PROGRAM}.cpp ${_ccode1} ${_hdr1} )
-add_dependencies ( ${BUILD_PROGRAM} ${_driver1} NAME.${_plan1} NAME.${_gen1} NAME.${_ccode1} )
+add_dependencies ( ${BUILD_PROGRAM} ${_driver1}
+                   NAME.${PROJECT_NAME}.${_plan1} NAME.${PROJECT_NAME}.${_gen1} NAME.${PROJECT_NAME}.${_ccode1} )
 
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
