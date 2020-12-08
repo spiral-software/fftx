@@ -20,7 +20,7 @@
 
 function ( run_driver_program prefix stem )
     message ( "build and run driver for ${prefix}.${stem}.cpp" )
-    set     ( _driver ${prefix}.${stem}.driver )
+    set     ( _driver ${PROJECT_NAME}.${prefix}.${stem}.driver )
     set     ( ${prefix}_driver ${prefix}.${stem}.driver PARENT_SCOPE )
     add_executable ( ${_driver} ${prefix}.${stem}.cpp )
     set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 14 )
@@ -57,7 +57,7 @@ function ( run_driver_program prefix stem )
 	    COMMENT "Generating ${_plan}" )
     endif ()
 
-    add_custom_target ( NAME.${_plan} ALL
+    add_custom_target ( NAME.${PROJECT_NAME}.${_plan} ALL
 	DEPENDS ${_driver}
 	VERBATIM )
     
