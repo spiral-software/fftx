@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
   setOutputs(outputs);
   
   openScalarDAG();
-  IMDDFT(FLIP(verify::domain3.extents()), 1, outputs, inputs);
+  IMDDFT(verify::domain3.extents().flipped(), 1, outputs, inputs);
 
   closeScalarDAG(intermediates, "imddft3");
 }

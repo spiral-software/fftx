@@ -10,17 +10,17 @@ int main(int argc, char* argv[])
 {
 
   tracing=true;
-  
+
   std::array<array_t<3,std::complex<double>>,1> intermediates {{verify::empty3}}; // in this case, empty
-  array_t<3,std::complex<double>> inputs(verify::domain3);
-  array_t<3,std::complex<double>> outputs(verify::domain3);
+  array_t<3, double> inputs(verify::domain3);
+  array_t<3, std::complex<double>> outputs(verify::fdomain3);
 
 
   setInputs(inputs);
   setOutputs(outputs);
   
   openScalarDAG();
-  MDDFT(verify::domain3.extents().flipped(), 1, outputs, inputs);
+  PRDFT(verify::domain3.extents().flipped(), outputs, inputs);
 
-  closeScalarDAG(intermediates, "mddft3");
+  closeScalarDAG(intermediates, "prdft3");
 }

@@ -12,15 +12,15 @@ int main(int argc, char* argv[])
   tracing=true;
 
   std::array<array_t<2,std::complex<double>>,1> intermediates {{verify::empty2}}; // in this case, empty
-  array_t<2,std::complex<double>> inputs(verify::domain2);
-  array_t<2,std::complex<double>> outputs(verify::domain2);
+  array_t<2, double> inputs(verify::domain2);
+  array_t<2, std::complex<double>> outputs(verify::fdomain2);
 
 
   setInputs(inputs);
   setOutputs(outputs);
   
   openScalarDAG();
-  MDDFT(verify::domain2.extents().flipped(), 1, outputs, inputs);
+  PRDFT(verify::domain2.extents().flipped(), outputs, inputs);
 
-  closeScalarDAG(intermediates, "mddft2");
+  closeScalarDAG(intermediates, "prdft2");
 }
