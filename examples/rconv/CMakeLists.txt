@@ -15,35 +15,48 @@ project ( rconv )
 ##  Test program name is:  test<prefix>.cpp
 
 set ( _stem fftx )
-set ( _prefix1 rconv )
-set ( BUILD_PROGRAM test${_prefix1} )
+set ( _prefixes rconv2 rconv3 )
+
+set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything below this line =====
 
-run_driver_program ( ${_prefix1} ${_stem} )
-set ( _driver1 ${PROJECT_NAME}.${${_prefix1}_driver} )
-set ( _plan1 ${${_prefix1}_plan} )
-set ( _hdr1  ${_prefix1}.${_stem}.codegen.hpp )
+##  build a running list of sources and dependencies...
 
-##  Create the generator scripts: ~.generator.g files
+set ( _all_build_srcs ${BUILD_PROGRAM}.cpp )
+set ( _all_build_deps )
 
-create_generator_file ( ${_prefix1} ${_stem} )
-    
-set ( _gen1 ${${_prefix1}_gen} )
+foreach ( _prefix ${_prefixes} ) 
+    run_driver_program ( ${_prefix} ${_stem} )
+    set ( _driver ${PROJECT_NAME}.${${_prefix}_driver} )
+    set ( _plan ${${_prefix}_plan} )
+    set ( _hdr  ${_prefix}.${_stem}.codegen.hpp )
 
-##  Create the C source code from the SPIRAL generator script(s)
+    ##  Create the generator scripts: ~.generator.g files
 
-set                ( _ccode1 ${_prefix1}.${_stem}.source.cpp )
-file               ( TO_NATIVE_PATH ${${PROJECT_NAME}_BINARY_DIR}/${_gen1} _gfile )
-create_source_file ( ${_gfile} ${_ccode1} )
+    create_generator_file ( ${_prefix} ${_stem} )
+    set ( _gen ${${_prefix}_gen} )
 
-add_executable ( ${BUILD_PROGRAM} ${BUILD_PROGRAM}.cpp ${_ccode1} ${_hdr1} )
-add_dependencies ( ${BUILD_PROGRAM} ${_driver1}
-                   NAME.${PROJECT_NAME}.${_plan1} NAME.${PROJECT_NAME}.${_gen1} NAME.${PROJECT_NAME}.${_ccode1} )
+    ##  Create the C source code from the SPIRAL generator script(s)
+
+    set                ( _ccode ${_prefix}.${_stem}.source.cpp )
+    file               ( TO_NATIVE_PATH ${${PROJECT_NAME}_BINARY_DIR}/${_gen} _gfile )
+    create_source_file ( ${_gfile} ${_ccode} )
+
+    ##  append to our running lists
+    list ( APPEND _all_build_srcs ${_hdr} ${_ccode} )
+    list ( APPEND _all_build_deps ${_driver}
+	   NAME.${PROJECT_NAME}.${_plan}
+           NAME.${PROJECT_NAME}.${_gen}
+	   NAME.${PROJECT_NAME}.${_ccode} )
+
+endforeach ()
+   
+add_executable   ( ${BUILD_PROGRAM} ${_all_build_srcs} )
+add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
 
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
 set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
 
 install ( TARGETS ${BUILD_PROGRAM} DESTINATION ${INSTALL_DIR_TARGET} )
-
