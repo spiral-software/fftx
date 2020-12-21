@@ -25,11 +25,13 @@ Now from the home directory for the current repository:
     pushd build
     cmake ..
     make
+    popd
 
 ## To run:
 
-The build process generates three examples, with these executables:
+The build process generates examples with these executables:
 
 - build/examples/hockney/testhockney
 - build/examples/rconv/testrconv
 - build/examples/test_plan_dft/testmddft
+- build/examples/verify/testverify
