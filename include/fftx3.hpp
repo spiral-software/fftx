@@ -86,6 +86,7 @@ namespace fftx
     void operator=(int a_default);
     point_t<DIM> operator*(int scale) const;
     static point_t<DIM> Unit();
+    point_t<DIM> flipped() const { point_t<DIM> rtn; for (int d=0; d<DIM; d++) { rtn[d] = x[DIM-1 - d]; } return rtn; }
   };
 
 
@@ -565,11 +566,10 @@ namespace fftx
   inline size_t positionInBox(point_t<DIM> a_pt, const box_t<DIM>& a_bx)
   {
     point_t<DIM> lo = a_bx.lo;
-    point_t<DIM> hi = a_bx.hi;
     point_t<DIM> lengths = lengthsBox(a_bx);
 
     /*
-    // Last dimension changes fastest.
+    // Row-major order: Last dimension changes fastest.
     size_t disp = a_pt[0] - lo[0];
     for (int d = 1; d < DIM; d++)
       {
@@ -578,7 +578,7 @@ namespace fftx
       }
     */
 
-    // First dimension changes fastest.
+    // Column-major order: First dimension changes fastest.
     size_t disp = a_pt[DIM-1] - lo[DIM-1];
     for (int d = DIM-2; d >= 0; d--)
       {
@@ -587,6 +587,36 @@ namespace fftx
       }
 
     return disp;
+  }
+
+  // inverse of positionInBox()
+  template<int DIM>
+  inline point_t<DIM> pointFromPositionBox(size_t a_ind, const box_t<DIM>& a_bx)
+  {
+    point_t<DIM> lo = a_bx.lo;
+    point_t<DIM> lengths = lengthsBox(a_bx);
+
+    point_t<DIM> pt;
+
+    /*
+    // Row-major order: Last dimension changes fastest.
+    size_t disp = a_ind;
+    for (int d = DIM-1; d >= 0; d--)
+       {
+          pt[d] = lo[d] + disp % lengths[d];
+          disp = (disp - (pt[d] - lo[d])) / lengths[d];
+       }
+    */
+
+    // Column-major order: First dimension changes fastest.
+    size_t disp = a_ind;
+    for (int d = 0; d < DIM; d++)
+       {
+          pt[d] = lo[d] + disp % lengths[d];
+          disp = (disp - (pt[d] - lo[d])) / lengths[d];
+       }
+
+    return pt;
   }
 
  

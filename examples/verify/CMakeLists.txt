@@ -8,14 +8,14 @@
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
 ##  Set the project name.  Preferred name is just the *name* of the example folder 
-project ( rconv )
+project ( verify )
 
 ##  First create and run the driver program(s):  Creates the ~.plan.g and ~.codegen.hpp files
 ##  File nameing convention is: <prefix>.<stem>.xxxxx; set _stem and _prefix1
 ##  Test program name is:  test<prefix>.cpp
 
 set ( _stem fftx )
-set ( _prefixes rconv2 rconv3 )
+set ( _prefixes mddft1 imddft1 mddft2 imddft2 mddft3 imddft3 prdft1 prdft2 prdft3 iprdft1 iprdft2 iprdft3 )
 
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
