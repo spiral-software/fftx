@@ -38,13 +38,38 @@ else ()
     set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
 endif ()
 
-include ("${SPIRAL_SOURCE_DIR}/config/CMakeIncludes/RunSpiral.cmake")
+##  Find python3 -- used to marshall/run examples
+
+find_package (Python3 COMPONENTS Interpreter)
+if (${Python3_FOUND})
+    ##  It exists, executable is ${Python3_EXECUTABLE}
+    message ( STATUS "Found Python3: Version = ${Python3_VERSION}, Executable = ${Python3_EXECUTABLE}")
+else ()
+    message ( SEND_ERROR "Python3 NOT FOUND: Python is required to build/run examples")
+endif ()
+
+set ( SPIRAL_INCLUDE_PATH ${SPIRAL_SOURCE_DIR}/config/CMakeIncludes )
+include ("${SPIRAL_INCLUDE_PATH}/RunSpiral.cmake")
 
 set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
 set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 
-include ("${FFTX_CMAKE_INCLUDE_DIR}/run_driver_program.cmake")
-include ("${FFTX_CMAKE_INCLUDE_DIR}/create_generator_file.cmake")
+include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
+
+if (WIN32)
+    set ( CUDA_COMPILE_FLAGS -rdc=false )
+    set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
+    set ( LIBS_FOR_CUDA cufft )
+    set ( ADDL_COMPILE_FLAGS -DWIN64 )
+else ()
+    set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
+    set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
+    set ( LIBS_FOR_CUDA cufft_static culibos )
+    set ( ADDL_COMPILE_FLAGS )
+endif ()
+
+set ( CMAKE_CUDA_ARCHITECTURES 52 )
+set ( GPU_EXTRAS _CUDAGEN )
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 14)

@@ -7,39 +7,30 @@
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
-##  Set the project name.  Preferred name is just the *name* of the example folder 
-project ( hockney )
+##  specify GPU for Cuda/GPU code generation, otherwise, leave as default CPU
+set ( _codegen CPU )
 
-##  First create and run the driver program(s):  Creates the ~.plan.g and ~.codegen.hpp files
-##  File nameing convention is: <prefix>.<stem>.xxxxx; set _stem and _prefix1
-##  Test program name is:  test<prefix>.cpp
+if ( ${_codegen} STREQUAL "GPU" )
+    set ( _lang_add LANGUAGES CUDA )
+endif ()
+
+##  Set the project name.  Preferred name is just the *name* of the example folder 
+project ( hockney ${_lang_add} )
+
+##  File nameing convention is: <prefix>.<stem>.xxxxx; set _stem and _prefix(es)
+##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefix1 hockney )
-set ( BUILD_PROGRAM test${_prefix1} )
+set ( _prefixes hockney )
+set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything below this line =====
 
-run_driver_program ( ${_prefix1} ${_stem} )
-set ( _driver1 ${PROJECT_NAME}.${${_prefix1}_driver} )
-set ( _plan1 ${${_prefix1}_plan} )
-set ( _hdr1  ${_prefix1}.${_stem}.codegen.hpp )
+manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
+list ( APPEND _all_build_srcs ${BUILD_PROGRAM}.${_suffix} )
 
-##  Create the generator scripts: ~.generator.g files
-
-create_generator_file ( ${_prefix1} ${_stem} )
-    
-set ( _gen1 ${${_prefix1}_gen} )
-
-##  Create the C source code from the SPIRAL generator script(s)
-
-set                ( _ccode1 ${_prefix1}.${_stem}.source.cpp )
-file               ( TO_NATIVE_PATH ${${PROJECT_NAME}_BINARY_DIR}/${_gen1} _gfile )
-create_source_file ( ${_gfile} ${_ccode1} )
-
-add_executable ( ${BUILD_PROGRAM} ${BUILD_PROGRAM}.cpp ${_ccode1} ${_hdr1} )
-add_dependencies ( ${BUILD_PROGRAM} ${_driver1}
-                   NAME.${PROJECT_NAME}.${_plan1} NAME.${PROJECT_NAME}.${_gen1} NAME.${PROJECT_NAME}.${_ccode1} )
+add_executable   ( ${BUILD_PROGRAM} ${_all_build_srcs} )
+add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
 
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
