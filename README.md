@@ -45,11 +45,13 @@ git clone https://www.github.com/spiral-software/fftx
 ```
 **NOTE:** Before attempting to build ensure you have set environment variable **SPIRAL_HOME** to point to your **spiral-software** instance.
 
-To build the software do the following:
+You can build the example for CPU or GPU (for those examples that support GPU).  By default they are built for CPU (this is your only option if your machine doesn't have a GPU or the NVIDIA nvcc compiler).  To build the software do the following:
 ```
 mkdir build
 cd build
-cmake ..
+cmake ..				# build for CPU, *OR*
+cmake -D_codegen=CPU ..			# build for CPU, *OR*
+cmake -D_codegen=GPU ..			# build for GPU
 ```
 If you are building on Linux or Linux like systems then do:
 ```
