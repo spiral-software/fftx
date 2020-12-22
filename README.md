@@ -94,12 +94,16 @@ Add (or copy and edit) a *cmake* file (instructions for editing below).
 
 ### Setting Up The CMakeLists.txt File
 
-The CMakeLists.txt file has a section in the beginning to specifiy a few names; most of the rules and targets are defined automatically and few, if any, changes should be required.  The following items must be defined:
+The CMakeLists.txt file has a section in the beginning to specifiy a few names; most of the rules and targets are defined automatically and few, if any, changes should be required.  The cmake file contains instructions to follow regarding the varaible **\_codegen**:
 
 &nbsp;&nbsp;**1.**&nbsp;&nbsp;
-Specify whether you want to build **CPU** (serial) or **GPU** (parallel) code<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-set ( \_codegen CPU )
+If both CPU & GPU code versions are supported *do not* define **\_codegen** (it'll be set in the parent).  If only CPU code is supported then *define* the variable **\_codegen** so it cannot be overridden by the parent.
+```
+##  _codegen specifies CPU or GPU (serial or CUDA) code generation.  Will be set
+##  in parent so don't change here, **unless** only CPU code generation is
+##  supported, in which case uncomment to follow line to set to CPU 
+##  set ( _codegen CPU )
+```
 
 &nbsp;&nbsp;**2.**&nbsp;&nbsp;
 Set the project name.  The preferred name is the same name as the example folder, e.g., **verify**<br>

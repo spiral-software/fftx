@@ -56,20 +56,31 @@ set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
 
-if (WIN32)
-    set ( CUDA_COMPILE_FLAGS -rdc=false )
-    set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
-    set ( LIBS_FOR_CUDA cufft )
-    set ( ADDL_COMPILE_FLAGS -DWIN64 )
+##  Check the code generation option ...
+
+if ( "X${_codegen}" STREQUAL "X" )
+    message ( STATUS "_codegen is undefined, CPU assumed" )
+    set ( _codegen CPU )
 else ()
-    set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
-    set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
-    set ( LIBS_FOR_CUDA cufft_static culibos )
-    set ( ADDL_COMPILE_FLAGS )
+    message ( STATUS "_codegen = ${_codegen}" )
 endif ()
 
-set ( CMAKE_CUDA_ARCHITECTURES 52 )
-set ( GPU_EXTRAS _CUDAGEN )
+if ( ${_codegen} STREQUAL "GPU" )
+    if (WIN32)
+	set ( CUDA_COMPILE_FLAGS -rdc=false )
+	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
+	set ( LIBS_FOR_CUDA cufft )
+	set ( ADDL_COMPILE_FLAGS -DWIN64 )
+    else ()
+	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
+	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
+	set ( LIBS_FOR_CUDA cufft_static culibos )
+	set ( ADDL_COMPILE_FLAGS )
+    endif ()
+
+    set ( CMAKE_CUDA_ARCHITECTURES 52 )
+    set ( GPU_EXTRAS _CUDAGEN )
+endif ()
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 14)
@@ -83,8 +94,6 @@ endif ()
 
 add_subdirectory ( src )
 add_subdirectory ( examples )
-
-##  add_subdirectory ( test )
 
 enable_testing()
 
