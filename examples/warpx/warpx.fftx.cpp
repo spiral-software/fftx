@@ -73,7 +73,8 @@ int main(int argc, char* argv[])
   int ydim = ny;
   int zdim = nz;
 
-
+  fftx::tracing = true;
+  
   std::array<array_t<3,double>,11> inputs;
   std::array<array_t<4, double>,4> bigBoxes;
   std::array<array_t<3,double>,6>  outputs;
