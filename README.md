@@ -62,7 +62,7 @@ or, if you are building on Windows (for Release configuration), do:
 cmake --build . --config Release --target install
 ```
 
-Currently, **FFTX** builds a number fo example programs; the programs will be installed in the *build/bin* folder and can be run from there; e.g.,
+Currently, **FFTX** builds a number of example programs; the programs will be installed in the *build/bin* folder and can be run from there; e.g.,
 ```
 cd build/bin
 ./testhockney
@@ -72,7 +72,7 @@ cd build/bin
 
 ## Examples Structure
 
-The **examples** tree holds several examples.  Each example is follows a structure and naming conventions (described below).  The process to follow when adding a new example is also described.
+The **examples** tree holds several examples.  Each example follows a structure and naming conventions (described below).  The process to follow when adding a new example is also described.
 
 ### Structure Of An Example Program
 
@@ -82,7 +82,7 @@ Each example is expected to reside in its own directory; the directory should be
 
 The folder containing the example should be named for the transform or problem being illustrated, e.g., **rconv**.  This name will be used as the *project* name in the *cmake* file (details below).
 
-Within each folder there should be one (or possible several) file(s) defining transforms to be tested.  These *driver* programs are named as *prefix*.*stem*.**cpp**, where *prefix* is the transform name, e.g., **mddft**; *stem* is the root or stem, currently always **fftx**.
+Within each folder there should be one (or possibly several) file(s) defining transforms to be tested.  These *driver* programs are named as *prefix*.*stem*.**cpp**, where *prefix* is the transform name, e.g., **mddft**; *stem* is the root or stem, currently always **fftx**.
 
 There should also be one test harness program used to exercise the transform(s) defined.  The naming convention for the test harness is **test**_project_.**cpp**.  There may be two flavours of the test harness: one named with a **.cpp** suffix used to exercise a CPU version of the transform(s) and one named with a **.cu** suffix used to exercise a GPU version of the transform(s).
 
@@ -103,7 +103,7 @@ If both CPU & GPU code versions are supported *do not* define **\_codegen** (it'
 ```
 ##  _codegen specifies CPU or GPU (serial or CUDA) code generation.  Will be set
 ##  in parent so don't change here, **unless** only CPU code generation is
-##  supported, in which case uncomment to follow line to set to CPU 
+##  supported, in which case uncomment the following line to set to CPU 
 ##  set ( _codegen CPU )
 ```
 

@@ -18,7 +18,7 @@ project (FFTX_PROJECT
 ##  Prevent building directly into the source tree
 string (COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" DISALLOW_COMPILE_INPLACE)
 if ( DISALLOW_COMPILE_INPLACE )
-    message (FATAL_ERROR, "Building ${PROJECT_NAME} with CMake requires an out-of-source tree.  To proceed:
+    message (FATAL_ERROR "Building ${PROJECT_NAME} with CMake requires an out-of-source tree.  To proceed:
                  rm -rf CMakeCache.txt CMakeFiles/   # delete files in ${CMAKE_SOURCE_DIR}
                  mkdir <build>
                  cd <build>
@@ -33,7 +33,7 @@ if ( DEFINED ENV{SPIRAL_HOME} )
     set ( SPIRAL_SOURCE_DIR $ENV{SPIRAL_HOME} )
 else ()
     if ( "x${SPIRAL_HOME}" STREQUAL "x" )
-        message ( FATAL "SPIRAL_HOME environment variable undefined and not specified on command line" )
+        message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
     endif ()
     set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
 endif ()
