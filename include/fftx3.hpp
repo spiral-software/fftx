@@ -28,13 +28,31 @@
 
 #include <cassert>
 #include <iomanip>
-
+/*! \mainpage FFTX Package
+ *
+ * \section intro_sec Introduction
+ *
+ * This is the introduction.
+ *
+ * \section install_sec Installation
+ *
+ * \subsection step1 Step 1: Opening the box
+ *
+ * etc...
+ */
 
 namespace fftx
 {
 
+  /**
+   Is this a FFTX codegen program, or is this application code using a generated transform.
+  */
   bool tracing = false; // when creating a trace program user sets this to 'true'
-  
+
+  /**
+    counter for genereated variable names duringn FFTX codegen tracing.  Not meant for FFTX users but can be
+    used when debugging codegen itself
+  */
   uint64_t ID=1; // variable naming counter
   
   typedef int intrank_t; // just useful for self-documenting code.
@@ -47,7 +65,14 @@ namespace fftx
     std::shared_ptr<handle_implem_t> m_implem;
   };
 
-  ///non-owning global ptr object.  Can be used in place of upcxx::global_ptr
+  /**
+   non-owning global ptr object.  Can be used in place of upcxx::global_ptr
+
+   Most of the FFTX API assumes that user application code owns their primary data structures.  This
+   class encapsulates a user space raw data pointer for use within our transforms.  The destructor
+   does not delete the pointer.  It is not reference-counting. It is not made to be unique.  They can be copied 
+   moved, etc like a basic C struct.
+  */
   template <typename T>
   class global_ptr
   {
@@ -58,27 +83,40 @@ namespace fftx
     using element_type = T;
     global_ptr():_ptr{nullptr},_domain{0}, _device{0}{}
     /// strong constructor
-    /** Franz would refer to this as the registration step */
+    /**  Real strong constructor */
     global_ptr(T* ptr, int domain=0, int device=0)
       :_ptr{ptr}, _domain{domain}, _device{device}{ }
 
     bool is_null() const;
+
+    /** Returns true is this local compute context can successfully call the local() function and expect
+        to get a pointer that is dereferencable */
     bool is_local() const;
+
+    /** what compute domain would answer "true" to "isLocal().  Currently this just tests if the MPI rank
+        matches my_rank */
     intrank_t where() const {return _domain;}
+    /** which GPU device is this pointer associated with */
     int device() const {return _device;}
+    /** returns the raw pointer.  This pointer can only be dereferences is isLocal() ==true */
     T* local() {return _ptr;}
+    /** returns the raw pointer.  This pointer can only be dereferences is isLocal() ==true */
     const T* local() const {return _ptr;}
+    /** type erasure cast */
     operator global_ptr<void>(){ return global_ptr<void>(_ptr, _domain, _device);}
   };
 
  
     
 
+  /** integer index into a Z^DIM space. */
   template<int DIM>
   struct point_t
   {
     int x[DIM];
+    /** returns a new point_t in one lower dimension, dropping the last value */
     point_t<DIM-1> project() const;
+       /** returns a new point_t in one lower dimension, dropping the first value */
     point_t<DIM-1> projectC() const;
     int operator[](unsigned char a_id) const {return x[a_id];}
     int& operator[](unsigned char a_id) {return x[a_id];}
@@ -86,11 +124,12 @@ namespace fftx
     void operator=(int a_default);
     point_t<DIM> operator*(int scale) const;
     static point_t<DIM> Unit();
+    /** reverse the odering of the tuple, reutrn by value */
     point_t<DIM> flipped() const { point_t<DIM> rtn; for (int d=0; d<DIM; d++) { rtn[d] = x[DIM-1 - d]; } return rtn; }
   };
 
 
-                                 
+  /** a pair of point_t objects representing a contiguous range of points in Z^DIM */                            
   template<int DIM>
   struct box_t
   {
@@ -101,18 +140,28 @@ namespace fftx
     std::size_t size() const;
     bool operator==(const box_t<DIM>& rhs) const {return lo==rhs.lo && hi == rhs.hi;}
     point_t<DIM> extents() const { point_t<DIM> rtn(hi); for(int i=0; i<DIM; i++) rtn[i]-=(lo[i]-1); return rtn;}
+    /** returns a box_t object in one lower dimension, dropping the first coordinate value in both lo and hi */
     box_t<DIM-1> projectC() const
     {
       return box_t<DIM-1>(lo.projectC(),hi.projectC());
     }
   };
 
+  /** non-owning view into a contiugous array of data.   This is a class that is foeshadowing a C++ class mdspan,
+      a multi-dimensional extention to std::span
+      
+      if fftx::tracing == true, then array_t::array_t(const box_t<DIM>& ) construction is 
+      a symbolic placeholder in a computational DAG that is translated into the code generator.
 
+      if fftx::tracing == false, then array_t::array_t(const box_t<DIM>&) will allocate a global_ptr sized 
+      to hold box_t::size elements of data.
+ */
   template<int DIM, typename T>
   struct array_t
   {
  
     array_t() = default;
+    /** string constructor from an aliased global_ptr object.  This constructor is an error when fftx::tracing==true*/
     array_t(global_ptr<T>&& p, const box_t<DIM>& a_box)
       :m_data(p), m_domain(a_box) {;}
     array_t(const box_t<DIM>& m_box):m_domain(m_box)
@@ -131,18 +180,35 @@ namespace fftx
     uint64_t id() const { assert(tracing); return (uint64_t)m_data.local();}
   };
 
-  ///apply function f to each point in array
-  ///  void f(T& value, const point_t<DIM>& location)
+  
+  /**
+   * \defGroup FFA  global free functions in fftx namespace used in application programs
+   */
+  /// @page page1 FFTX Free functions for Applications
+  /// @ingroup FFA
+  
+  /**
+   * \defGroup FFS global free functions in fftx namespace used in code generation programs
+   */
+  
+  /**apply function f to each point in array where Func has the signature
+   *  void f(T& value, const point_t<DIM>& location)
+   * \addToGroup FFA
+  */
   template<int DIM, typename T, typename Func>
   void forall(Func f, array_t<DIM, T>& array);
 
-  ///apply function f to each point in array
-  ///  void f(T1& value, const T2&, const point_t<DIM>& location)
+  /**apply function f to each point in two arrays where Func has the signature
+   * void f(T1& value, const T2&, const point_t<DIM>& location)
+   *  \ingroup FFA
+  */
   template<int DIM, typename T1, typename T2, typename Func>
   void forall(Func f, array_t<DIM, T1>& array, const array_t<DIM, T2>& array2);
 
 
-  /// component alias  Subselects outer-most dimension (the not contiguous one)
+  /** component alias  Subselects outer-most dimension (the not contiguous one) 
+   *   \ingroup FFS
+  */
   template<int DIM, typename T>
   array_t<DIM-1, T> nth(array_t<DIM, T>& array, int index)
   {
@@ -345,16 +411,14 @@ namespace fftx
   }
   void openDAG()
   {
-    std::cout<<"conf := FFTXGlobals.defaultWarpXConf();\n";
-    std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
+  //  std::cout<<"conf := FFTXGlobals.defaultWarpXConf();\n";
+  //  std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
     std::cout<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
 
   void openScalarDAG()
   {
-    std::cout<<"conf := FFTXGlobals.defaultConf();\n";
-    std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";            
     std::cout<<"symvar := var(\"sym\", TPtr(TReal));\n";
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
