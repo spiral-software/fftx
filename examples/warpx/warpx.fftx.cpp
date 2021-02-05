@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
   resample({{0.5,0,0.5}}, outputs[4], bigOut[4]);
   resample({{0,0.5,0.5}}, outputs[5], bigOut[5]);
 
-  closeDAG(bigBoxes, "psatd");
+  closeDAG(bigBoxes, "warpx");
 
   return 0;
   
