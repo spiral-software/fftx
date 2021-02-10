@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
   printf("call mddft::transform()\n");
   mddft::transform(input, output);
-
+  printf("mddft for size 32 32 32 took  %.7e milliseconds\n", mddft::CPU_milliseconds);
   mddft::destroy();
 
 
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 
   printf("call imddft::transform()\n");
   imddft::transform(input, output);
-
+  printf("imddft for size 32 32 32 took  %.7e milliseconds\n", imddft::CPU_milliseconds);
   imddft::destroy();
   
   printf("%s: All done, exiting\n", argv[0]);
