@@ -13,7 +13,7 @@ static const char* CONTRACTION = R"(
     iy := Ind(ydim);
     iz := Ind(zdim);
     #c:=1.0;
-    opts.includes := ["\"WarpXConst.H\"","<cstdlib>" ];
+    fftx_includes := ["\"WarpXConst.H\"","<cstdlib>" ];
     c:=var("PhysConst::c", TReal);
     c2:=c^2;
     #ep0 := 1.0;
@@ -81,6 +81,9 @@ int main(int argc, char* argv[])
   std::array<array_t<3,double>,8>  symvars;
   
   defineArrays(inputs, outputs, symvars);
+
+  setSymbol(symvars);
+  
   defineBigBoxes(bigBoxes);
   std::array<array_t<3,double>,11> bigIn;
   for(int i=0; i<11; i++)

@@ -397,6 +397,12 @@ namespace fftx
     outputType = TypeName<T>::Get();
     std::cout<<"var_"<<a_outputs.id()<<":= Y;\n";
   }
+
+  template<int DIM, typename T, std::size_t COUNT>
+  void setSymbol(const  std::array<array_t<DIM, T>, COUNT>& a_symbol)
+  {
+    std::cout<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
+  }
   
   template<int DIM, typename T>
   void resample(const std::array<double, DIM>& shift,
@@ -413,7 +419,7 @@ namespace fftx
   {
   //  std::cout<<"conf := FFTXGlobals.defaultWarpXConf();\n";
   //  std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
-    std::cout<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
+  //  std::cout<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
 
