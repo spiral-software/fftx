@@ -1,5 +1,8 @@
-##  Start of codegen
+##  Start of codegen -- for GPU
 
-c:=opts.fftxGen(transform);
+opts:=conf.getOpts(transform);
+tt:= opts.tagIt(transform);
+c:=opts.fftxGen(tt);
 
 PrintTo(prefix::".fftx.source.cu",opts.prettyPrint(c));
+

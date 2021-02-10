@@ -508,7 +508,7 @@ namespace fftx
       }
      std::cout<<"]\n),\n";
      std::cout<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
-              <<").withTags(opts.tags);\n";
+              <<");\n";
      std::cout<<"prefix:=\""<<name<<"\";\n";
   }
   
@@ -594,7 +594,7 @@ namespace fftx
       }
      std::cout<<"]\n),\n";
      std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
-              <<").withTags(opts.tags);\n";
+              <<");\n";
      std::cout<<"prefix:=\""<<name<<"\";\n";
   } 
  

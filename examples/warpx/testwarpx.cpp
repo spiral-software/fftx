@@ -1,12 +1,14 @@
 // make
 
-#include "fftx3.hpp"
-#include <cstdio>
-#include <cassert>
+//  #include "fftx3.hpp"
+//  #include <cstdio>
+//  #include <cassert>
+
+#include "warpx.fftx.codegen.hpp"
 
 using namespace fftx;
 
-#include "psatd.fftx.codegen.hpp"
+//  #include "warpx.fftx.source.cpp"
 
 #include "defineArrays.hpp"
 
@@ -26,8 +28,8 @@ int main(int argc, char* argv[])
          }, inputs[8]);
 
    
-  psatd::init();
-  psatd::transform(inputs, outputs, symvars);
+  warpx::init();
+  warpx::transform(inputs, outputs, symvars);
 
   // BEGIN DEBUG
   if (true)
@@ -36,13 +38,13 @@ int main(int argc, char* argv[])
       forall([fout](double& v, const point_t<3>& point)
              {
 
-               fprintf(fout, "%20.8e %20.8e\n", v);
+				 fprintf(fout, "%20.8e %20.8e\n", v, point);
              }, outputs[0]);
       fclose(fout);
     }
   // END DEBUG
 
 
-  psatd::destroy();
+  warpx::destroy();
   return 0;
 }
