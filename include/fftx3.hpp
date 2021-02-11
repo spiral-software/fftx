@@ -20,6 +20,7 @@
 #include <fstream>
 #include <utility>
 #include <vector>
+#include <chrono>
 
 #include <map>
 #include <string>
@@ -534,7 +535,29 @@ namespace fftx
 
    namespace PLAN
    {
-    inline void init(){ init_PLAN_spiral();}
+    double CPU_milliseconds=0;
+    float  GPU_milliseconds=0;
+#ifdef __CUDACC__
+    cudaEvent_t start, stop;
+    void cudaStart() {cudaEventRecord(start);}
+    void cudaStop()
+    {
+     cudaEventRecord(stop);
+     cudaDeviceSynchronize();
+     cudaEventSynchronize(stop);
+     cudaEventElapsedTime(&GPU_milliseconds, start, stop);
+    }
+#else
+    void cudaStart(){ }
+    void cudaStop(){ }
+#endif
+    inline void init(){ 
+          init_PLAN_spiral();
+#ifdef __CUDACC__
+         cudaEventCreate(&start);
+         cudaEventCreate(&stop);
+#endif
+           }
     inline void trace();
     inline fftx::handle_t transform(fftx::array_t<DD, S_TYPE>& source,
                                     fftx::array_t<DD, D_TYPE>& destination,
@@ -548,13 +571,19 @@ namespace fftx
         output = (double*)(destination.m_data.local());
         sym = (double*)(symvar.m_data.local());
 
-        PLAN_spiral(output, input, sym);
-   
+        cudaStart();
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+           PLAN_spiral(output, input, sym);
+        cudaStop();
+        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+        CPU_milliseconds = time_span.count()*1000;
     // dummy return handle for now
       fftx::handle_t rtn;
       return rtn;
     }
 
+ 
     inline fftx::handle_t transform(fftx::array_t<DD, S_TYPE>& source,
                                     fftx::array_t<DD, D_TYPE>& destination)
     {   // for the moment, the function signature is hard-coded.  trace will
@@ -565,9 +594,14 @@ namespace fftx
         input = (double*)(source.m_data.local());
         output = (double*)(destination.m_data.local());
   
+        cudaStart();
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+           PLAN_spiral(output, input, sym);
+        cudaStop();
+        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+        CPU_milliseconds = time_span.count()*1000;
 
-        PLAN_spiral(output, input, sym);
-   
     // dummy return handle for now
       fftx::handle_t rtn;
       return rtn;

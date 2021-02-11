@@ -3,6 +3,8 @@
 #include "mddft.fftx.codegen.hpp"
 #include "imddft.fftx.codegen.hpp"
 
+#include <chrono>
+
 int main(int argc, char* argv[])
 {
   printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
@@ -32,7 +34,13 @@ int main(int argc, char* argv[])
   //  end special code for GPU
   
   printf("call mddft::transform()\n");
+
   mddft::transform(input, output);
+
+  printf("mddft for size 32 32 32 took  %.7e milliseconds wrt CPU\n", mddft::CPU_milliseconds);
+  printf("mddft for size 32 32 32 took  %.7e milliseconds wrt GPU\n", mddft::GPU_milliseconds);
+  
+
 
   mddft::destroy();
 
@@ -42,6 +50,9 @@ int main(int argc, char* argv[])
 
   printf("call imddft::transform()\n");
   imddft::transform(input, output);
+  printf("imddft for size 32 32 32 took  %.7e milliseconds wrt CPU\n", imddft::CPU_milliseconds);
+  printf("imddft for size 32 32 32 took  %.7e milliseconds wrt GPU\n", imddft::GPU_milliseconds);
+  
 
   imddft::destroy();
   
