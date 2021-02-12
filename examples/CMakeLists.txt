@@ -16,8 +16,8 @@ project ( examples )
 
 ##                  subdir name   CPU       GPU
 
-manage_add_subdir ( hockney       TRUE      FALSE )
-manage_add_subdir ( rconv         TRUE      FALSE )
 manage_add_subdir ( test_plan_dft TRUE      TRUE )
+manage_add_subdir ( hockney       TRUE      TRUE )
+manage_add_subdir ( rconv         TRUE      FALSE )
 manage_add_subdir ( verify        TRUE      FALSE )
 manage_add_subdir ( warpx         TRUE      FALSE )

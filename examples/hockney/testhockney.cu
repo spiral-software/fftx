@@ -10,9 +10,9 @@ int main(int argc, char* argv[])
 	
   hockney::init();
  
-  const int n  =8;
-  const int ns =3;
-  const int nd =5;
+  const int n  =130;
+  const int ns =33;
+  const int nd =96;
 
   box_t<3> sbox({{0,0,0}}, {{ns-1, ns-1, ns-1}});
   box_t<3> dbox({{n-nd,n-nd,n-nd}}, {{n-1,n-1,n-1}});
