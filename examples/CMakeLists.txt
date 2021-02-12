@@ -9,8 +9,15 @@ cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
 project ( examples )
 
-add_subdirectory ( warpx )
-add_subdirectory ( test_plan_dft )
-add_subdirectory ( rconv )
-add_subdirectory ( hockney )
-add_subdirectory ( verify )
+##  All examples are expected to support CPU code generation, and ultimately
+##  most (if not all) will support GPU code generation also.  Call
+##  manage_add_subdir with the directory name and True/False for building for
+##  CPU and GPU
+
+##                  subdir name   CPU       GPU
+
+manage_add_subdir ( hockney       TRUE      FALSE )
+manage_add_subdir ( rconv         TRUE      FALSE )
+manage_add_subdir ( test_plan_dft TRUE      TRUE )
+manage_add_subdir ( verify        TRUE      FALSE )
+manage_add_subdir ( warpx         TRUE      FALSE )

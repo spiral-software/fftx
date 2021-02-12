@@ -8,9 +8,7 @@
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
 ##  _codegen specifies CPU or GPU (serial or CUDA) code generation.  Will be set
-##  in parent so don't change here, **unless** only CPU code generation is
-##  supported, in which case uncomment to follow line to set to CPU 
-##  set ( _codegen CPU )
+##  in parent so don't change here.
 
 if ( ${_codegen} STREQUAL "GPU" )
     set ( _lang_add LANGUAGES CUDA )

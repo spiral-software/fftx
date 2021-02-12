@@ -173,3 +173,30 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
     set ( _all_build_deps ${_all_build_deps} PARENT_SCOPE )
 
 endfunction ()
+
+
+##  manage_add_subdir() is a function to add a subdirectory to the list of
+##  examples invoked.  It requires three arguments: subdirectory, buildForCPU,
+##  buildForGpu; where subdirectory is the name of the subdirectory containing
+##  the example, buildForCpu and buildForGpu are logical (True or False) values
+##  indicating if the example should be built.
+##  NOTE: If buildForGpu is specified a CUDA toolkit is required.
+
+function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
+
+    if ( ${_buildForCpu} AND ${_codegen} STREQUAL "CPU" )
+	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
+	add_subdirectory ( ${_subdir} )
+    elseif ( NOT ${_buildForCpu} )
+	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
+    endif ()
+
+    if ( ${_buildForGpu} AND ${_codegen} STREQUAL "GPU" )
+	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
+	add_subdirectory ( ${_subdir} )
+    elseif ( NOT ${_buildForGpu} )
+	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
+    endif ()
+
+endfunction ()
+
