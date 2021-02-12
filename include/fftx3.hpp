@@ -125,6 +125,7 @@ namespace fftx
     void operator=(int a_default);
     point_t<DIM> operator*(int scale) const;
     static point_t<DIM> Unit();
+    static point_t<DIM> Zero();
     /** reverse the odering of the tuple, reutrn by value */
     point_t<DIM> flipped() const { point_t<DIM> rtn; for (int d=0; d<DIM; d++) { rtn[d] = x[DIM-1 - d]; } return rtn; }
   };
@@ -793,6 +794,14 @@ namespace fftx
   {
     point_t<DIM> rtn;
     for(int i=0; i<DIM; i++) rtn.x[i]=1;
+    return rtn;
+  }
+
+  template<int DIM>
+  inline point_t<DIM> point_t<DIM>::Zero()
+  {
+    point_t<DIM> rtn;
+    for(int i=0; i<DIM; i++) rtn.x[i]=0;
     return rtn;
   } 
   
