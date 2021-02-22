@@ -31,6 +31,11 @@ list ( APPEND _all_build_srcs ${BUILD_PROGRAM}.${_suffix} )
 
 add_executable   ( ${BUILD_PROGRAM} ${_all_build_srcs} )
 add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
+
+if ( ${_codegen} STREQUAL "GPU" AND NOT WIN32 )
+    target_compile_options ( ${BUILD_PROGRAM} PRIVATE -ccbin=${CMAKE_CXX_COMPILER} )
+endif ()
+
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} . )
 
 set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
