@@ -1,4 +1,3 @@
-#define _USE_MATH_DEFINES
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
 // #include "rconv2.fftx.codegen.hpp"

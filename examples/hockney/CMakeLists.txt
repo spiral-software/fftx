@@ -32,6 +32,8 @@ list ( APPEND _all_build_srcs ${BUILD_PROGRAM}.${_suffix} )
 add_executable   ( ${BUILD_PROGRAM} ${_all_build_srcs} )
 add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
 
+target_compile_options ( ${BUILD_PROGRAM} PRIVATE ${ADDL_COMPILE_FLAGS} )
+
 if ( ${_codegen} STREQUAL "GPU" AND NOT WIN32 )
     target_compile_options ( ${BUILD_PROGRAM} PRIVATE -ccbin=${CMAKE_CXX_COMPILER} )
 endif ()
