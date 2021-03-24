@@ -1,16 +1,20 @@
 #define _USE_MATH_DEFINES
 #include <cmath> // Without this, abs returns zero!
 #include <random>
+/*
 #include "mddft1.fftx.codegen.hpp"
 #include "imddft1.fftx.codegen.hpp"
 #include "mddft2.fftx.codegen.hpp"
 #include "imddft2.fftx.codegen.hpp"
+*/
 #include "mddft3.fftx.codegen.hpp"
 #include "imddft3.fftx.codegen.hpp"
+/*
 #include "prdft1.fftx.codegen.hpp"
 #include "iprdft1.fftx.codegen.hpp"
 #include "prdft2.fftx.codegen.hpp"
 #include "iprdft2.fftx.codegen.hpp"
+*/
 #include "prdft3.fftx.codegen.hpp"
 #include "iprdft3.fftx.codegen.hpp"
 #include "fftx3utilities.h"
@@ -710,11 +714,11 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
   
   std::cout << "***** test " << DIM << "D PRDFT from real "
             << a_domain << " to complex " << a_fdomain << std::endl;
-  verifyDFTfunction(a_prdft, a_domain, a_fdomain, fullextents, 1, a_rounds, a_verbosity);
+  verifyDFTfunction(a_prdft, a_domain, a_fdomain, fullextents, -1, a_rounds, a_verbosity);
 
   std::cout << "***** test " << DIM << "D IPRDFT from complex "
             << a_fdomain << " to real " << a_domain << std::endl;
-  verifyDFTfunction(a_iprdft, a_fdomain, a_domain, fullextents, -1, a_rounds, a_verbosity);
+  verifyDFTfunction(a_iprdft, a_fdomain, a_domain, fullextents, 1, a_rounds, a_verbosity);
 }
                     
 
@@ -745,7 +749,8 @@ int main(int argc, char* argv[])
       unifInt[d] = std::uniform_int_distribution<int>(verify::domain3.lo[d],
                                                       verify::domain3.hi[d]);
     }
-  
+
+  /*
   // printf("Call mddft1::init()\n");
   mddft1::init();
   // printf("Call imddft1::init()\n");
@@ -764,7 +769,9 @@ int main(int argc, char* argv[])
   imddft1::destroy();
   prdft1::destroy();
   iprdft1::destroy();
+  */
 
+  /*
   // printf("Call mddft2::init()\n");
   mddft2::init();
   // printf("Call imddft2::init()\n");
@@ -783,6 +790,7 @@ int main(int argc, char* argv[])
   imddft2::destroy();
   prdft2::destroy();
   iprdft2::destroy();
+  */
 
   // printf("Call mddft3::init()\n");
   mddft3::init();
