@@ -85,8 +85,8 @@ void MDDFT(const point_t<DIM>& extents, int batch,           //extents is the si
   cout<<"localBrick := TArrayND(TComplex, Nlocal, dimXYZ);"<<endl;
 
   cout<<"dataLayout := TGlobalArrayND(procGrid, localBrick);"<<endl;
-  //  cout<<"Xglobal := tcast(TPtr(dataLayout), X);"<<endl;
-  //  cout<<"Yglobal := tcast(TPtr(dataLayout), Y);"<<endl;
+  cout<<"Xglobal := tcast(TPtr(dataLayout), X);"<<endl;
+  cout<<"Yglobal := tcast(TPtr(dataLayout), Y);"<<endl;
   
   cout<<"mddft := TRC(MDDFT(N, -1));"<<endl;
 
