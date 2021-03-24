@@ -1,7 +1,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
-#include "rconv2.fftx.codegen.hpp"
+// #include "rconv2.fftx.codegen.hpp"
 #include "rconv3.fftx.codegen.hpp"
 #include "fftx3utilities.h"
 #include "rconv.h"
@@ -41,6 +41,7 @@ double testConstantSymbol(fftx::handle_t (a_transform)
                           int a_rounds,
                           int a_verbosity)
 {
+  printf("calling testConstantSymbol<%d>\n", DIM);
   array_t<DIM, double> input(a_domain);
   array_t<DIM, double> output(a_domain);
   array_t<DIM, double> symbol(a_fdomain);
@@ -76,6 +77,7 @@ double testDelta(fftx::handle_t (a_transform)
                  fftx::box_t<DIM> a_fdomain,
                  int a_verbosity)
 {
+  printf("calling testDelta<%d>\n", DIM);
   array_t<DIM, double> input(a_domain);
   array_t<DIM, double> output(a_domain);
   array_t<DIM, double> symbol(a_fdomain);
@@ -114,6 +116,7 @@ double testPoisson(fftx::handle_t (a_transform)
                    fftx::box_t<DIM> a_fdomain,
                    int a_verbosity)
 {
+  printf("calling testPoisson<%d>\n", DIM);
   array_t<DIM, double> input(a_domain);
   array_t<DIM, double> output(a_domain);
   array_t<DIM, double> symbol(a_fdomain);
@@ -201,7 +204,7 @@ void rconvDimension(fftx::handle_t (a_transform)
             << a_domain << std::endl;
 
   double err = 0.;
-  
+
   updateMax(err,
             testConstantSymbol(a_transform, a_domain, a_fdomain,
                                a_rounds, a_verbosity));
@@ -244,10 +247,10 @@ int main(int argc, char* argv[])
   /*
     2-dimensional tests.
   */
-  rconv2::init();
-  rconvDimension(rconv2::transform, rconv::domain2, rconv::fdomain2,
-                 rounds, verbosity);
-  rconv2::destroy();
+  //    rconv2::init();
+  //    rconvDimension(rconv2::transform, rconv::domain2, rconv::fdomain2,
+  //                   rounds, verbosity);
+  //    rconv2::destroy();
   
   /*
     3-dimensional tests.
