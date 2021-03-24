@@ -21,7 +21,7 @@ project ( verify ${_lang_add} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes mddft1 imddft1 mddft2 imddft2 mddft3 imddft3 prdft1 prdft2 prdft3 iprdft1 iprdft2 iprdft3 )
+set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything below this line =====

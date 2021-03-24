@@ -32,6 +32,54 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
 }
 
 template<int DIM>
+void convolutionDevice(fftx::handle_t (a_transform)
+                       (fftx::array_t<DIM, double>&,
+                        fftx::array_t<DIM, double>&,
+                        fftx::array_t<DIM, double>&),
+                       array_t<DIM, double>& a_input,
+                       array_t<DIM, double>& a_output,
+                       array_t<DIM, double>& a_symbol)
+{
+  auto inputDomain = a_input.m_domain;
+  auto outputDomain = a_output.m_domain;
+  auto symbolDomain = a_symbol.m_domain;
+  
+  auto input_size = inputDomain.size();
+  auto output_size = outputDomain.size();
+  auto symbol_size = symbolDomain.size();
+  
+  auto input_bytes = input_size * sizeof(double);
+  auto output_bytes = output_size * sizeof(double);
+  auto symbol_bytes = symbol_size * sizeof(double);
+  
+  double* bufferPtr;
+  cudaMalloc(&bufferPtr, input_bytes + output_bytes + symbol_bytes);
+  double* inputPtr = bufferPtr;
+  bufferPtr += input_size;
+  double* outputPtr = bufferPtr;
+  bufferPtr += output_size;
+  double* symbolPtr = bufferPtr;
+  
+  cudaMemcpy(inputPtr, a_input.m_data.local(), input_bytes,
+             cudaMemcpyHostToDevice);
+  cudaMemcpy(symbolPtr, a_symbol.m_data.local(), symbol_bytes,
+             cudaMemcpyHostToDevice);
+  
+  fftx::array_t<DIM, double> inputDevice(fftx::global_ptr<double>
+                                         (inputPtr, 0, 1), inputDomain);
+  fftx::array_t<DIM, double> outputDevice(fftx::global_ptr<double>
+                                          (outputPtr, 0, 1), outputDomain);
+  fftx::array_t<DIM, double> symbolDevice(fftx::global_ptr<double>
+                                          (symbolPtr, 0, 1), symbolDomain);
+
+  a_transform(inputDevice, outputDevice, symbolDevice);
+
+  cudaMemcpy(a_output.m_data.local(), outputPtr, output_bytes,
+             cudaMemcpyDeviceToHost);
+}
+
+
+template<int DIM>
 double testConstantSymbol(fftx::handle_t (a_transform)
                           (fftx::array_t<DIM, double>&,
                            fftx::array_t<DIM, double>&,
@@ -52,7 +100,7 @@ double testConstantSymbol(fftx::handle_t (a_transform)
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifRealArray(input);
-      a_transform(input, output, symbol);
+      convolutionDevice(a_transform, input, output, symbol);
       double err = absMaxDiffArray(input, output);
       updateMax(errConstantSymbol, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -97,8 +145,8 @@ double testDelta(fftx::handle_t (a_transform)
                  v = 0.;
                }
            }, symbol);
-  
-  a_transform(input, output, symbol);
+
+  convolutionDevice(a_transform, input, output, symbol);
   double errDelta = absMaxDiffArray(input, output);
   if (a_verbosity >= SHOW_CATEGORIES)
     {
@@ -177,7 +225,7 @@ double testPoisson(fftx::handle_t (a_transform)
              }
          }, symbol);
   
-  a_transform(input, output, symbol);
+  convolutionDevice(a_transform, input, output, symbol);
 
   array_t<DIM,double> lap2output(a_domain);
   laplacian2periodic(lap2output, output);

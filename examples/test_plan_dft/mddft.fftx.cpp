@@ -1,6 +1,7 @@
 // make
 
 #include "fftx3.hpp"
+#include "test_plan.h"
 #include <array>
 #include <cstdio>
 #include <cassert>
@@ -13,13 +14,8 @@ int main(int argc, char* argv[])
 
   tracing=true;
   
-  const int nx=32;
-  const int ny=32;
-  const int nz=32;
-
-  
   box_t<3> empty(point_t<3>({{1,1,1}}), point_t<3>({{0,0,0}}));
-  box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{nx,ny,nz}}));
+  box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{test_plan::nx,test_plan::ny,test_plan::nz}}));
   
   std::array<array_t<3,std::complex<double>>,1> intermediates {{empty}}; // in this case, empty
   array_t<3,std::complex<double>> inputs(domain);
@@ -33,7 +29,4 @@ int main(int argc, char* argv[])
   MDDFT(domain.extents(), 1, outputs, inputs);
 
   closeScalarDAG(intermediates, "mddft");
-
-
-  
 }

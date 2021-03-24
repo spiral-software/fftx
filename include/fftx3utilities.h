@@ -98,9 +98,8 @@ void sumArrays(fftx::array_t<DIM, T>& a_sum,
                T a_scaling2 = scalarVal<T>(1.))
                
 {
-  auto dom = a_sum.m_domain;
-  assert(dom == a_arr1.m_domain);
-  assert(dom == a_arr2.m_domain);
+  assert(a_sum.m_domain == a_arr1.m_domain);
+  assert(a_sum.m_domain == a_arr2.m_domain);
   copyArray(a_sum, a_arr1);
   addArray(a_sum, a_arr2, a_scaling2, a_scaling1);
 }
