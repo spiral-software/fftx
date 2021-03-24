@@ -1,4 +1,3 @@
-#define _USE_MATH_DEFINES
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 /*

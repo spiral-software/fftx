@@ -70,7 +70,7 @@ if ( ${_codegen} STREQUAL "GPU" )
 	set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft )
-	set ( ADDL_COMPILE_FLAGS -DWIN64 )
+	set ( ADDL_COMPILE_FLAGS -DWIN64 -D_USE_MATH_DEFINES )
     else ()
 	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
 	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
