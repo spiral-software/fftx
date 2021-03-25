@@ -307,7 +307,7 @@ namespace fftx
              array_t<DIM, std::complex<double>>& destination,
              array_t<DIM, double>& source)
   {
-    std::cout<<"    TDAGNode(MDPRDFT("<<extent<<",1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    std::cout<<"    TDAGNode(MDPRDFT("<<extent<<",-1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n"; // FIXME: was 1, not -1.
   }
 
   template<int DIM>
@@ -315,7 +315,7 @@ namespace fftx
               array_t<DIM, double>& destination,
               array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"    TDAGNode(IMDPRDFT("<<extent<<",-1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    std::cout<<"    TDAGNode(IMDPRDFT("<<extent<<",1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n"; // FIXME: was -1, not 1.
   }
 
   template<int DIM>

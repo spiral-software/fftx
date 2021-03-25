@@ -205,6 +205,43 @@ void setRotator(fftx::array_t<DIM, std::complex<double>>& a_arr,
 }
 
 template<int DIM, typename T_IN, typename T_OUT>
+void DFTfunctionDevice(fftx::handle_t (a_dftFunction)
+                       (fftx::array_t<DIM, T_IN>&,
+                        fftx::array_t<DIM, T_OUT>&),
+                       fftx::array_t<DIM, T_IN>& a_input, // make this const?
+                       fftx::array_t<DIM, T_OUT>& a_output)
+
+{
+  auto inputDomain = a_input.m_domain;
+  auto outputDomain = a_output.m_domain;
+
+  auto input_size = inputDomain.size();
+  auto output_size = outputDomain.size();
+
+  auto input_bytes = input_size * sizeof(T_IN);
+  auto output_bytes = output_size * sizeof(T_OUT);
+
+  char* bufferPtr;
+  cudaMalloc(&bufferPtr, input_bytes + output_bytes);
+  T_IN* inputPtr = (T_IN*) bufferPtr;
+  bufferPtr += input_bytes;
+  T_OUT* outputPtr = (T_OUT*) bufferPtr;
+
+  cudaMemcpy(inputPtr, a_input.m_data.local(), input_bytes,
+             cudaMemcpyHostToDevice);
+
+  fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
+                                       (inputPtr, 0, 1), inputDomain);
+  fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
+                                         (outputPtr, 0, 1), outputDomain);
+  
+  a_dftFunction(inputDevice, outputDevice);
+
+  cudaMemcpy(a_output.m_data.local(), outputPtr, output_bytes,
+             cudaMemcpyDeviceToHost);
+}
+
+template<int DIM, typename T_IN, typename T_OUT>
 double test1DFTfunction(fftx::handle_t (a_dftFunction)
                        (fftx::array_t<DIM, T_IN>&,
                         fftx::array_t<DIM, T_OUT>&),
@@ -233,10 +270,10 @@ double test1DFTfunction(fftx::handle_t (a_dftFunction)
       unifArray(inB);
       sumArrays(LCin, inA, inB, alphaIn, betaIn);
       
-      a_dftFunction(inA, outA);
-      a_dftFunction(inB, outB);
+      DFTfunctionDevice(a_dftFunction, inA, outA);
+      DFTfunctionDevice(a_dftFunction, inB, outB);
       sumArrays(LCout, outA, outB, alphaOut, betaOut);
-      a_dftFunction(LCin, outLCin);
+      DFTfunctionDevice(a_dftFunction, LCin, outLCin);
       double err = absMaxDiffArray(outLCin, LCout);
       updateMax(errtest1, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -265,7 +302,7 @@ double test2impulse1(fftx::handle_t (a_dftFunction)
   fftx::array_t<DIM, T_OUT> all1out(a_outDomain);
   setUnitImpulse(inImpulse, a_inDomain.lo);
   setConstant(all1out, scalarVal<T_OUT>(1.));
-  a_dftFunction(inImpulse, outImpulse);
+  DFTfunctionDevice(a_dftFunction, inImpulse, outImpulse);
   double errtest2impulse1 = absMaxDiffArray(outImpulse, all1out);
   if (a_verbosity >= SHOW_SUBTESTS)
     {
@@ -288,7 +325,7 @@ double test2impulsePlus(fftx::handle_t (a_dftFunction)
   fftx::array_t<DIM, T_OUT> all1out(a_outDomain);
   setUnitImpulse(inImpulse, a_inDomain.lo);
   setConstant(all1out, scalarVal<T_OUT>(1.));
-  a_dftFunction(inImpulse, outImpulse);
+  DFTfunctionDevice(a_dftFunction, inImpulse, outImpulse);
 
   fftx::array_t<DIM, T_IN> inRand(a_inDomain);
   fftx::array_t<DIM, T_IN> inImpulseMinusRand(a_inDomain);
@@ -303,9 +340,9 @@ double test2impulsePlus(fftx::handle_t (a_dftFunction)
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifArray(inRand);
-      a_dftFunction(inRand, outRand);
+      DFTfunctionDevice(a_dftFunction, inRand, outRand);
       diffArrays(inImpulseMinusRand, inImpulse, inRand);
-      a_dftFunction(inImpulseMinusRand, outImpulseMinusRand);
+      DFTfunctionDevice(a_dftFunction, inImpulseMinusRand, outImpulseMinusRand);
       sumArrays(mysum, outRand, outImpulseMinusRand);
       double err = absMaxDiffArray(mysum, all1out);
       updateMax(errtest2impulsePlus, err);
@@ -344,7 +381,7 @@ double test2constant(fftx::handle_t (a_dftFunction)
   setUnitImpulse(magImpulse, a_outDomain.lo, mag);
 
   fftx::array_t<DIM, T_OUT> outImpulse(a_outDomain);
-  a_dftFunction(all1in, outImpulse);
+  DFTfunctionDevice(a_dftFunction, all1in, outImpulse);
 
   double errtest2constant = absMaxDiffArray(outImpulse, magImpulse);
   if (a_verbosity >= SHOW_SUBTESTS)
@@ -389,10 +426,10 @@ double test2constantPlus(fftx::handle_t (a_dftFunction)
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifArray(inRand);
-      a_dftFunction(inRand, outRand);
+      DFTfunctionDevice(a_dftFunction, inRand, outRand);
 
       diffArrays(inConstantMinusRand, all1in, inRand);
-      a_dftFunction(inConstantMinusRand, outConstantMinusRand);
+      DFTfunctionDevice(a_dftFunction, inConstantMinusRand, outConstantMinusRand);
 
       sumArrays(outSum, outRand, outConstantMinusRand);
       
@@ -445,7 +482,7 @@ double test2impulseRandom(fftx::handle_t (a_dftFunction)
     {
       fftx::point_t<DIM> rpoint = unifPoint<DIM>();
       setUnitImpulse(inImpulse, rpoint);
-      a_dftFunction(inImpulse, outImpulse);
+      DFTfunctionDevice(a_dftFunction, inImpulse, outImpulse);
       // Recall a_inDomain is whole domain, but a_outDomain may be truncated;
       // waves defined on a_outDomain, but based on the full a_inDomain extents.
       setProductWaves(outCheck, fullExtents, rpoint,  a_sign);
@@ -541,8 +578,8 @@ double test3time(fftx::handle_t (a_dftFunction)
           
           // time-shift test in dimension d
           rotate(inRandRot, inRand, d, 1); // +1 for MDDFT, +1 for IMDDFT, +1 for PRDFT
-          a_dftFunction(inRand, outRand);
-          a_dftFunction(inRandRot, outRandRot);
+          DFTfunctionDevice(a_dftFunction, inRand, outRand);
+          DFTfunctionDevice(a_dftFunction, inRandRot, outRandRot);
           productArrays(outRandRotMult, outRandRot, rotator);
           double err = absMaxDiffArray(outRandRotMult, outRand);
           updateMax(errtest3timeDim[d], err);
@@ -603,8 +640,8 @@ double test3frequency(fftx::handle_t (a_dftFunction)
           unifComplexArray(inRand);
 
           productArrays(inRandMult, inRand, rotatorUp);
-          a_dftFunction(inRand, outRand);
-          a_dftFunction(inRandMult, outRandMult);
+          DFTfunctionDevice(a_dftFunction, inRand, outRand);
+          DFTfunctionDevice(a_dftFunction, inRandMult, outRandMult);
           rotate(outRandMultRot, outRandMult, d, a_sign);
           double err = absMaxDiffArray(outRandMultRot, outRand);
           updateMax(errtest3frequencyDim[d], err);

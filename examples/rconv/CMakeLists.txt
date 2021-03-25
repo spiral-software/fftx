@@ -21,7 +21,7 @@ project ( rconv ${_lang_add} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes rconv2 rconv3 )
+set ( _prefixes rconv3 )
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything below this line =====
@@ -31,6 +31,8 @@ list ( APPEND _all_build_srcs ${BUILD_PROGRAM}.${_suffix} )
 
 add_executable   ( ${BUILD_PROGRAM} ${_all_build_srcs} )
 add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
+
+target_compile_options ( ${BUILD_PROGRAM} PRIVATE ${ADDL_COMPILE_FLAGS} )
 
 if ( ${_codegen} STREQUAL "GPU" AND NOT WIN32 )
     target_compile_options ( ${BUILD_PROGRAM} PRIVATE -ccbin=${CMAKE_CXX_COMPILER} )
