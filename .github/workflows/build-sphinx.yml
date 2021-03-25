@@ -35,6 +35,7 @@ jobs:
     - name: install dependencies
       run: |
         set -x
+        echo `pwd` ${{ github.workspace }}
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get -qqq update
         sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
@@ -54,6 +55,7 @@ jobs:
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
       run: |
+        echo $SPIRAL_HOME
         cd spiral
         mkdir build && cd build
         cmake -D_codegen=CPU .. 
