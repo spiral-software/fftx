@@ -1,8 +1,8 @@
 name: build-sphinx-to-gh-pages
 
 env:
-  GITHUB_ACTOR: spiral-software
-  GITHUB_REPOSITORY: spiral-software/fftx
+  GITHUB_ACTOR: broderickpt
+  GITHUB_REPOSITORY: broderickpt/fftx
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 on:
@@ -20,16 +20,30 @@ jobs:
         repository: spiral-software/spiral-software
         ref: develop
         path: spiral
+      run: |
+        set -x
+        echo "working dir = ${{ github.workspace }}"
+        ls -l spiral
+        
     - name: Checkout repo spiral-package-fftx
       uses: actions/checkout@v2
       with:
         repository: spiral-software/spiral-package-fftx
         path: spiral/namespaces/packages/fftx
+      run: |
+        set -x
+        echo "working dir = ${{ github.workspace }}"
+        ls -l spiral/namespaces/packages
+        
     - name: Checkout repo spiral-package-simt
       uses: actions/checkout@v2
       with:
         repository: spiral-software/spiral-package-simt
         path: spiral/namespaces/packages/simt
+      run: |
+        set -x
+        echo "working dir = ${{ github.workspace }}"
+        ls -l spiral/namespaces/packages
 
     - uses: actions/checkout@v2
     - name: install dependencies
