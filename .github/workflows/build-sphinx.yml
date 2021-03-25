@@ -14,47 +14,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - name: install dependencies
-        run: |
-          set -x
-          export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get -qqq update
-          sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
-          sudo apt-get install -y python3.8
-          sudo apt-get install -y python3-pip
-          pip install -U Sphinx 
-          PATH=$PATH:/home/runner/.local/bin
-          echo $PATH
-          pip install sphinx_rtd_theme 
-          pip install breathe
-          sudo apt-get install -y doxygen
-          sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
-          sudo chmod a+x /usr/local/bin/cmake-easyinstall
-          export CEI_SUDO="sudo"
+    - name: Checkout spiral-software
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/spiral-software
+        ref: develop
+        path: spiral
+    - name: Checkout repo spiral-package-fftx
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/spiral-package-fftx
+        path: spiral/namespaces/packages/fftx
+    - name: Checkout repo spiral-package-simt
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/spiral-package-simt
+        path: spiral/namespaces/packages/simt
 
-      - name: Clone repository
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: actions/checkout@v2
-        with:
-          path: fftx
+    - uses: actions/checkout@v2
+    - name: install dependencies
+      run: |
+        set -x
+        export DEBIAN_FRONTEND=noninteractive
+        sudo apt-get -qqq update
+        sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
+        sudo apt-get install -y python3.8
+        sudo apt-get install -y python3-pip
+        pip install -U Sphinx 
+        PATH=$PATH:/home/runner/.local/bin
+        echo $PATH
+        pip install sphinx_rtd_theme 
+        pip install breathe
+        sudo apt-get install -y doxygen
+        sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
+        sudo chmod a+x /usr/local/bin/cmake-easyinstall
+        export CEI_SUDO="sudo"
 
-      - name: build the docs
-        run: |
-          set -x
-          PATH=$PATH:/home/runner/.local/bin
-          echo $PATH
-          cd fftx
-          mkdir build && cd build
-          cmake ..
-          make Sphinx
-        shell: bash
+    - name: build SPIRAL
+      env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
+      run: |
+        cd spiral
+        mkdir build && cd build
+        cmake -D_codegen=CPU .. 
+        make -j 2 install
 
-      - name: Run build script for Sphinx pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -x
-          "${{ github.workspace }}/fftx/docs/buildsite.sh"
-        shell: bash
+    - name: Clone repository
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/checkout@v2
+      with:
+        path: fftx
+
+    - name: build the docs
+      run: |
+        set -x
+        PATH=$PATH:/home/runner/.local/bin
+        echo $PATH
+        cd fftx
+        mkdir build && cd build
+        cmake ..
+        make Sphinx
+      shell: bash
+
+    - name: Run build script for Sphinx pages
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -x
+        "${{ github.workspace }}/fftx/docs/buildsite.sh"
+      shell: bash
