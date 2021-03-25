@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 
   MDDFT(domain.extents(), 1, outputs, inputs);   //polymorphic by type
 
-  closeScalarDAG(intermediates, "mddft", grid2D);       
+  closeScalarDAG(intermediates, "mddft3d_32x32x32_mpi", grid2D);       
 
   return 0;
 }

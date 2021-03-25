@@ -127,13 +127,26 @@ void closeScalarDAG(std::array<d_array_t<DIM,T>, COUNT>& localVars, const char* 
   cout<<"     []), "<<endl;
   cout<<"rec(fname := name, params := [ ]));"<<endl;
   
-  cout<<"name := \""<<name<<"\";"<<endl;
+  cout<<"t.params[2].fname := \""<<name<<"\";"<<endl;
   
   cout<<"opts := conf.getOpts(t);"<<endl;
   cout<<"tt := opts.tagIt(t);"<<endl;
   cout<<"c := opts.fftxGen(tt);"<<endl;
-  
-  cout<<"PrintTo(name::\".cu\", opts.prettyPrint(c));"<<endl;
+
+  //temporary infrastructure
+  cout<<endl;
+  cout<<"# Temporary infrastucture for end-to-end demo"<<endl;
+  cout<<"init_comm_fn_name := var(\"init_2d_comms\");"<<endl;
+  cout<<"lst := [init_comm_fn_name]::pg::N;"<<endl;
+  cout<<"init_comm := ApplyFunc(call, lst);"<<endl;
+  cout<<"cc := Collect(c, func);"<<endl;
+  cout<<"cc[1].cmd := chain(init_comm, cc[1].cmd);"<<endl;
+  cout<<endl;
+  cout<<"destroy_comm_fn_name := var(\"destroy_2d_comms\");"<<endl;
+  cout<<"destroy_comm := ApplyFunc(call, [destroy_comm_fn_name]);"<<endl;
+  cout<<"cc[3].cmd := chain(destroy_comm, cc[3].cmd);"<<endl;
+
+  cout<<"PrintTo(t.params[2].fname::\".cu\", opts.prettyPrint(c));"<<endl;
 
 }
 
@@ -146,12 +159,3 @@ void kernel(const d_array_t<DIM, double>& symbol,
   //std::cout<<"    TDAGNode(Diag(diagTensor(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0),fConst(TReal, 2, 1))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   
 }
-
-/*
-template<int DIM, typename T>
-void setOutputs(const d_array_t<DIM, T>& a_outputs)
-{
-  outputType = TypeName<T>::Get();
-  std::cout<<"var_"<<a_outputs.id()<<":= Y;\n";
-}
-*/

@@ -1,4 +1,4 @@
-//#include "rote.hpp"
+#include <mpi.h>
 #include <limits.h>
 #include <complex>
 #include <float.h>
@@ -10,9 +10,8 @@
 
 #include <stdlib.h>     /* srand, rand */
 
-#include "fftx_mpi_int.h"
+#include "include/fftx_mpi_int.h"
 
-using namespace rote;
 using namespace std;
 
 int main(int argc, char* argv[]) {
@@ -22,21 +21,13 @@ int main(int argc, char* argv[]) {
   int commRank;
   int p;
   
-  MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &p);
   MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
   
-  if (argc < 5) {
-    if (commRank == 0) {
-      printf("test.x <<M>> <<N>> <<K>>\n");
-    }
-    exit(-1);
-  }
-
   // 3d fft sizes
-  int M = atoi(argv[1]);
-  int N = atoi(argv[2]);
-  int K = atoi(argv[3]);
+  int M = 32;
+  int N = 32;
+  int K = 32;
 
   int check = 1;
 
@@ -70,7 +61,7 @@ int main(int argc, char* argv[]) {
   delete in_buff;
 
   MPI_Barrier(MPI_COMM_WORLD);
-  double start_time = MPI_WTime();
+  double start_time = MPI_Wtime();
 
   INIT_FN_NAME();
 
@@ -78,7 +69,7 @@ int main(int argc, char* argv[]) {
 
   DESTROY_FN_NAME();
 
-  double end_time = MPI_WTime();
+  double end_time = MPI_Wtime();
 
   double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
   double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
@@ -86,7 +77,7 @@ int main(int argc, char* argv[]) {
   if (commRank == 0)
     printf("%lf %lf\n", min_time, max_time);
   
-  destroy_2d_comms();
+  //  destroy_2d_comms();
   
   MPI_Finalize();
   
