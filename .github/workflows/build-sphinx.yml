@@ -56,9 +56,9 @@ jobs:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
       run: |
         echo $SPIRAL_HOME
-        cd spiral
+        cd $SPIRAL_HOME
         mkdir build && cd build
-        cmake -D_codegen=CPU .. 
+        cmake .. 
         make -j 2 install
 
     - name: Clone repository
@@ -69,11 +69,13 @@ jobs:
         path: fftx
 
     - name: build the docs
+      env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
       run: |
         set -x
         PATH=$PATH:/home/runner/.local/bin
         echo $PATH
-        cd fftx
+        cd $SPIRAL_HOME/../fftx
         mkdir build && cd build
         cmake ..
         make Sphinx
