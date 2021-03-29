@@ -34,12 +34,12 @@ jobs:
         repository: spiral-software/spiral-package-simt
         path: spiral/namespaces/packages/simt
         
-    - name: Checkout repo spiral-package-mpi
-      uses: actions/checkout@v2
-      with:
-      ##  spiral-package-mpi is still "private" in spiralgen; change to spiral-software when available
-        repository: spiralgen/spiral-package-mpi
-        path: spiral/namespaces/packages/mpi
+##  spiral-package-mpi is still "private" in spiralgen; enable checkout when available
+##    - name: Checkout repo spiral-package-mpi
+##      uses: actions/checkout@v2
+##      with:
+##        repository: spiral-software/spiral-package-mpi
+##        path: spiral/namespaces/packages/mpi
 
     - name: install dependencies
       ##  uses: actions/checkout@v2
