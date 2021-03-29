@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2018-2020, Carnegie Mellon University
+## Copyright (c) 2018-2021, Carnegie Mellon University
 ## All rights reserved.
 ##
 ## See LICENSE file for full information
@@ -56,6 +56,9 @@ set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
 
+##  Add the CMakeIncludes folder so the FindSphinx module is found
+set ( CMAKE_MODULE_PATH "${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes" ${CMAKE_MODULE_PATH} )
+
 ##  Check the code generation option ...
 
 if ( "X${_codegen}" STREQUAL "X" )
@@ -95,6 +98,8 @@ endif ()
 
 add_subdirectory ( src )
 add_subdirectory ( examples )
+
+add_subdirectory (docs)
 
 enable_testing()
 
