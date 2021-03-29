@@ -1,10 +1,11 @@
 name: build-sphinx-to-gh-pages
 
 env:
-  GITHUB_ACTOR: broderickpt
-  GITHUB_REPOSITORY: broderickpt/fftx
+  GITHUB_ACTOR: spiral-software
+  GITHUB_REPOSITORY: spiral-software/fftx
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+##  For now only re-gen docs when push to "patrick" branch; change to "main" when release is done
 on:
   push:
     branches: [patrick]
@@ -20,36 +21,33 @@ jobs:
         repository: spiral-software/spiral-software
         ref: develop
         path: spiral
-      run: |
-        set -x
-        echo "working dir = ${{ github.workspace }}"
-        ls -l spiral
         
     - name: Checkout repo spiral-package-fftx
       uses: actions/checkout@v2
       with:
         repository: spiral-software/spiral-package-fftx
         path: spiral/namespaces/packages/fftx
-      run: |
-        set -x
-        echo "working dir = ${{ github.workspace }}"
-        ls -l spiral/namespaces/packages
         
     - name: Checkout repo spiral-package-simt
       uses: actions/checkout@v2
       with:
         repository: spiral-software/spiral-package-simt
         path: spiral/namespaces/packages/simt
+        
+    - name: Checkout repo spiral-package-mpi
+      uses: actions/checkout@v2
+      with:
+      ##  spiral-package-mpi is still "private" in spiralgen; change to spiral-software when available
+        repository: spiralgen/spiral-package-mpi
+        path: spiral/namespaces/packages/mpi
+
+    - name: install dependencies
+      ##  uses: actions/checkout@v2
       run: |
         set -x
         echo "working dir = ${{ github.workspace }}"
+        ls -l spiral
         ls -l spiral/namespaces/packages
-
-    - uses: actions/checkout@v2
-    - name: install dependencies
-      run: |
-        set -x
-        echo `pwd` ${{ github.workspace }}
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get -qqq update
         sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
@@ -65,7 +63,7 @@ jobs:
         sudo chmod a+x /usr/local/bin/cmake-easyinstall
         export CEI_SUDO="sudo"
 
-    - name: build SPIRAL
+    - name: build SPIRAL executable
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
       run: |
@@ -85,6 +83,7 @@ jobs:
     - name: build the docs
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -x
         PATH=$PATH:/home/runner/.local/bin
@@ -93,12 +92,6 @@ jobs:
         mkdir build && cd build
         cmake ..
         make Sphinx
+        "../docs/buildsite.sh"
       shell: bash
 
-    - name: Run build script for Sphinx pages
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        set -x
-        "${{ github.workspace }}/fftx/docs/buildsite.sh"
-      shell: bash
