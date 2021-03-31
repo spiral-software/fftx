@@ -31,7 +31,7 @@ void init_2d_comms(int rr, int cc, int M, int N, int K)
   cudaDeviceSynchronize();
 
   int world_rank;
-  MPI_Comm_size(MPI_COMM_WORLD, &world_rank);
+  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   
   int row_color = world_rank / r;
   int col_color = world_rank % r;
