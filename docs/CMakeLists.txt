@@ -7,9 +7,6 @@
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
-find_package(Doxygen REQUIRED)
-find_package(Sphinx REQUIRED)
-
 set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel")
 
 ##  Find all the public headers

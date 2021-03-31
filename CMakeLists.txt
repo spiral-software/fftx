@@ -56,9 +56,6 @@ set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
 
-##  Add the CMakeIncludes folder so the FindSphinx module is found
-set ( CMAKE_MODULE_PATH "${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes" ${CMAKE_MODULE_PATH} )
-
 ##  Check the code generation option ...
 
 if ( "X${_codegen}" STREQUAL "X" )
@@ -99,7 +96,22 @@ endif ()
 add_subdirectory ( src )
 add_subdirectory ( examples )
 
-add_subdirectory (docs)
+##  Add the CMakeIncludes folder so the FindSphinx module is found
+set ( CMAKE_MODULE_PATH "${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes" ${CMAKE_MODULE_PATH} )
+
+find_package ( Sphinx )		##  don't make it REQUIRED; skip docs if not found
+if ( ${Sphinx_FOUND} )
+    ##  Check for Doxygen -- also required to build docs 
+    find_package ( Doxygen )	##  don't make it REQUIRED; skip docs if not found
+    if ( ${Doxygen_FOUND} )
+	message ( STATUS "Found Sphinx & Doxygen, add subdirectory 'docs' to build documentation" )
+	add_subdirectory (docs)
+    else ()
+	message ( STATUS "Sphinx found, Doxygen not found -- skipping 'docs'" )
+    endif ()
+else ()
+    message ( STATUS "Sphinx not found -- skipping 'docs', do NOT build documentation" )
+endif ()
 
 enable_testing()
 
