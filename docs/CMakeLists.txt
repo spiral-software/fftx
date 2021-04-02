@@ -68,9 +68,10 @@ add_custom_command ( OUTPUT ${SPHINX_INDEX_FILE}
 	COMMENT "Generating documentation with Sphinx")
 
 ##  Named target so we can run the job easily
-add_custom_target ( Sphinx ALL DEPENDS ${SPHINX_INDEX_FILE} )
+add_custom_target ( Sphinx ALL DEPENDS ${SPHINX_INDEX_FILE}
+                    COMMENT "Documentation is available in ${SPHINX_BUILD}" )
 
-include ( GNUInstallDirs )
-install ( DIRECTORY ${SPHINX_BUILD}
-	  DESTINATION ${CMAKE_INSTALL_DOCDIR} )
+##  include ( GNUInstallDirs )
+##  install ( DIRECTORY ${SPHINX_BUILD}
+##  	  DESTINATION ${CMAKE_INSTALL_DOCDIR} )
 

@@ -90,7 +90,7 @@ jobs:
         echo $PATH
         cd $SPIRAL_HOME/../fftx
         mkdir build && cd build
-        cmake ..
+        cmake -DFFTX_MAKE_DOCS=True ..
         make Sphinx
         "../docs/buildsite.sh"
       shell: bash
