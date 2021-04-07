@@ -8,7 +8,7 @@ env:
 ##  For now only re-gen docs when push to "patrick" branch; change to "main" when release is done
 on:
   push:
-    branches: [patrick]
+    branches: [main]
 
 jobs:
   build_sphinx_job:
