@@ -37,8 +37,8 @@ git clone https://www.github.com/spiral-software/spiral-package-simt simt
 **$SPIRAL_HOME/namespaces/packages** and must be placed in folders with the
 prefix *spiral-package* removed. 
 
-Follow the build instructions for **spiral-software** (see the **README.md**
-file in the **$SPIRAL_HOME** folder).
+Follow the build instructions for **spiral-software** (see the **README**
+[**here**](https://github.com/spiral-software/spiral-software/blob/master/README.md) ).
 
 ### Installing FFTX
 
@@ -117,7 +117,7 @@ The *cmake* file is named in the usual standard way as: **CMakeLists.txt**.
 To add a new example to **FFTX**, simply create a folder in **fftx/examples**,
 called *project*.  Then in the newly created folder add your transform
 definition(s), named *prefix*.**fftx.cpp**.  Add a test harness named
-**test**_project_; with eithor, or both, suffixes: **.cpp**, or **.cu**.
+**test**_project_; with either, or both, suffixes: **.cpp**, or **.cu**.
 
 Add (or copy and edit) a *cmake* file (instructions for editing below).
 

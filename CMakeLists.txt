@@ -11,7 +11,7 @@ cmake_minimum_required (VERSION 3.14)
 set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel")
 
 project (FFTX_PROJECT
-         VERSION 1.0.1
+         VERSION 0.9.1
                 DESCRIPTION "FFTX Project"
                 LANGUAGES C CXX )
 
