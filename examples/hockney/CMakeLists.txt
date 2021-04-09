@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
+## Copyright (c) 2018-2020, Carnegie Mellon University
 ## All rights reserved.
 ##
 ## See LICENSE file for full information
@@ -21,7 +21,7 @@ project ( hockney ${_lang_add} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes hockney )
+set ( _prefixes hockney gethat )
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything below this line =====

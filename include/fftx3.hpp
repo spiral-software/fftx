@@ -493,7 +493,7 @@ namespace fftx
   };
 
  #endif  )";
-
+   
    tracing = false;
    std::string headerName = std::string(name)+std::string(".fftx.codegen.hpp");
    std::ofstream headerFile(headerName);
@@ -506,22 +506,36 @@ namespace fftx
    
    headerFile<<header_text<<"\n";
    headerFile.close();
-
-    std::cout<<"\n]),\n   [";
-    if(COUNT==0){}
-    else
-      {
-        std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
-        for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
-      }
+   
+   std::cout<<"\n]),\n   [";
+   if(COUNT==0)
+     {}
+   else
+     {
+      std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
+      for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
+     }
      std::cout<<"]\n),\n";
      std::cout<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
               <<");\n";
      std::cout<<"prefix:=\""<<name<<"\";\n";
   }
-  
+
   template<typename T, int DIM, unsigned long COUNT>
-  void closeScalarDAG(std::array<array_t<DIM,T>, COUNT>& localVars, const char* name)
+  std::string varNames(const std::array<array_t<DIM,T>, COUNT>& a_vars)
+  {
+   std::string rtn;
+   for(int i=0; i<COUNT; i++)
+      {
+        rtn +="var_";
+        rtn += std::to_string((uint64_t)a_vars[i].m_data.local());
+        if(i+1<COUNT) rtn +=",";
+      }
+    return rtn;
+  }                                           
+
+template<int DIM>
+  void closeScalarDAG(std::string localVarNames, const char* name)
   {
     static const char* header_template = R"(
 
@@ -626,20 +640,33 @@ namespace fftx
    headerFile<<header_text<<"\n";
    headerFile.close();
 
-    std::cout<<"\n]),\n   [";
-    if(COUNT==0){}
-    else
-      {
-        std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
-        for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
-      }
-     std::cout<<"]\n),\n";
-     std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
-              <<");\n";
-     std::cout<<"prefix:=\""<<name<<"\";\n";
-  } 
+   std::cout<<"\n]),\n   [";
+    // if(COUNT==0){}
+    // else
+    //   {
+    //     std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
+    //     for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
+    //   }
+   std::cout <<localVarNames;
+   std::cout<<"]\n),\n";
+   std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
+            <<");\n";
+   std::cout<<"prefix:=\""<<name<<"\";\n";
+} 
  
  
+  template<typename T, int DIM, unsigned long COUNT>
+  void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars, const char* name)
+  {
+    closeScalarDAG<DIM>(varNames(a_vars), name);
+  }
+
+template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long COUNT2>
+  void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars,
+                      const std::array<array_t<DIM,T2>, COUNT2>& a_vars2, const char* name)
+  {
+    closeScalarDAG<DIM>(varNames(a_vars)+','+varNames(a_vars2), name);
+  }
   
   template<int DIM>
   inline point_t<DIM> lengthsBox(const box_t<DIM>& a_bx)
