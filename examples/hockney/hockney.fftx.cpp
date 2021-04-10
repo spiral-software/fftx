@@ -21,8 +21,8 @@ int main(int argc, char* argv[])
   //  box_t<3> rdomain({{0,0,0}}, {{n-1, n-1, n-1}});
   //  box_t<3> freq({{0,0,0}}, {{(n-1)/2+1, n-1, n-1}});
 
-  std::array<array_t<3, double>, 2>   realIntermediates {hockney::rdomain, hockney::rdomain};
-  std::array<array_t<3,std::complex<double>>, 2> complexIntermediates {hockney::freq, hockney::freq};
+  std::array<array_t<3, double>, 2>   realInter {hockney::rdomain, hockney::rdomain};
+  std::array<array_t<3,std::complex<double>>, 2> complexInter {hockney::freq, hockney::freq};
   array_t<3,double> input(hockney::sbox);
   array_t<3,double> output(hockney::dbox);
   array_t<3,double> symbol(hockney::freq);
@@ -33,17 +33,26 @@ int main(int argc, char* argv[])
  
   openScalarDAG();
 
-  // realIntermediates[0] := zeroEmbedBox(input);
-  zeroEmbedBox(realIntermediates[0], input);
-  // complexIntermediates[0] := PRDFT(realIntermediates[0]);
-  PRDFT(hockney::rdomain.extents().flipped(), complexIntermediates[0], realIntermediates[0]);
-  // complexIntermediates[1] := symbol .* complexIntermediates[0];
-  kernel(symbol, complexIntermediates[1], complexIntermediates[0]);
-  // realIntermediates[1] := IPRDFT(complexIntermediates[1]);
-  IPRDFT(hockney::rdomain.extents().flipped(), realIntermediates[1], complexIntermediates[1]);
-  // output := extractBox(realIntermediates[1]);
-  extractBox(output, realIntermediates[1]);
+  // on rdomain                   on sbox
+  // realInter[0] := zeroEmbedBox(input);
+  zeroEmbedBox(realInter[0], input);
+
+  // on freq                  on rdomain
+  // complexInter[0] := PRDFT(realInter[0]);
+  PRDFT(hockney::rdomain.extents().flipped(), complexInter[0], realInter[0]);
+
+  // on freq            on freq   on freq
+  // complexInter[1] := symbol .* complexInter[0];
+  kernel(symbol, complexInter[1], complexInter[0]);
+
+  // on rdomain             on freq
+  // realInter[1] := IPRDFT(complexInter[1]);
+  IPRDFT(hockney::rdomain.extents().flipped(), realInter[1], complexInter[1]);
+
+  // on dbox              on rdomain
+  // output := extractBox(realInter[1]);
+  extractBox(output, realInter[1]);
   
-  closeScalarDAG(complexIntermediates, realIntermediates, "hockney");
+  closeScalarDAG(complexInter, realInter, "hockney");
   
 }
