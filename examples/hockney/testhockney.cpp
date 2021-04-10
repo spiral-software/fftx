@@ -1,5 +1,6 @@
 #include "gethat.fftx.codegen.hpp"
 #include "hockney.fftx.codegen.hpp"
+#include "fftx3utilities.h"
 #include "hockney.h"
 
 using namespace fftx;
@@ -11,13 +12,13 @@ int main(int argc, char* argv[])
   array_t<3,double> G(hockney::rdomain);
 
   // G on (0:2*n-1)^3.
-  int Nall = hockney::n;
-  forall([Nall](double(&v), const fftx::point_t<3>& p)
+  int midG = hockney::n / 2;
+  forall([midG](double(&v), const fftx::point_t<3>& p)
          {
            int sqsum = 0.;
            for (int d = 0; d < 3; d++)
              {
-               int disp = p[d] - Nall;
+               int disp = p[d] - midG;
                sqsum += disp * disp;
              }
            if (sqsum > 0)
@@ -49,37 +50,40 @@ int main(int argc, char* argv[])
           totReal += std::abs(GhatHere.real());
           totImag += std::abs(GhatHere.imag());
         }
-      std::cout << "Ghat sum(|real|)=" << totReal
-                << " sum(|imag|)=" << totImag
+      std::cout << "sum(|real(Ghat)|)=" << totReal
+                << " sum(|imag(Ghat)|)=" << totImag
                 << std::endl;
   }
 
   array_t<3, double> GhatReal(hockney::freq);
-  { // This is an ugly hack.
+  {
     const std::complex<double>* GhatComplexPtr = GhatComplex.m_data.local();
     double* GhatRealPtr = GhatReal.m_data.local();
     for (int pt = 0; pt < hockney::freq.size(); pt++)
       {
-        GhatRealPtr[pt] = GhatComplexPtr[pt].real();
+        GhatRealPtr[pt] = GhatComplexPtr[pt].real() /
+          (hockney::rdomain.size()*1.);
       }
   }
   
   array_t<3,double> input(hockney::sbox);
   array_t<3,double> output(hockney::dbox);
 
-  // input has 1 inside sphere of radius 4
-  int Ninput = hockney::ns;
-  forall([Ninput](double(&v), const fftx::point_t<3>& p)
+  // input has 1 inside sphere with this midpoint and radius
+  int midinput = hockney::ns / 2;
+  int radius = hockney::ns / 3;
+  int radius2 = radius * radius;
+  forall([midinput, radius2](double(&v), const fftx::point_t<3>& p)
          {
            // if(p==point_t<3>({{2,2,2}}))  v=1.0;
            // else  v=0.0;
            int sqsum = 0;
            for (int d = 0; d < 3; d++)
              {
-               int disp = p[d] - Ninput;
+               int disp = p[d] - midinput;
                sqsum += disp * disp;
              }
-           if (sqsum < 16)
+           if (sqsum < radius2)
              { v = 1.; }
            else
              { v = 0.; }
@@ -98,68 +102,73 @@ int main(int argc, char* argv[])
   // BEGIN DEBUG
   if (true)
     {
+      // box_t<3> sbox({{0, 0, 0}}, {{ns-1, ns-1, ns-1}});
+      int smin = 0;
+      int smax = hockney::ns - 1;
+      // box_t<3> dbox({{n-1-nd, n-1-nd, n-1-nd}}, {{n-1, n-1, n-1}});
+      int dmin = hockney::n - 1 - hockney::nd;
+      int dmax = hockney::n - 1;
+      // box_t<3> rdomain({{0, 0, 0}}, {{n-1, n-1, n-1}});
+      int Gmin = 0;
+      int Gmax = hockney::n - 1;
+      
       double* outputData = output.m_data.local();
       double* inputData = input.m_data.local();
       double* GData = G.m_data.local();
-      double outputmax = 0.;
+
+      double outputMax = 0.;
       for (size_t pt = 0; pt < hockney::dbox.size(); pt++)
         {
-          double absval = std::abs(outputData[pt]);
-          if (absval > outputmax)
-            {
-              outputmax = absval;
-            }
+          updateMaxAbs(outputMax, outputData[pt]);
         }
       std::cout << "Max absolute value of output is "
-                << outputmax << std::endl;
-      // std::cout << "Checking max error in rows from "
-      // << (-hockney::nd) << " to " << hockney::nd << std::endl;
-      double diffabsmax = 0.;
-      size_t pt = 0;
-      for (int i = -hockney::nd; i <= hockney::nd; i++)
-        {
-          for (int j = -hockney::nd; j <= hockney::nd; j++)
-            for (int k = -hockney::nd; k <= hockney::nd; k++)
-              {
-                double Gr_ijk = 0.;
-                // We loop through ALL of G, which is on
-                // hockney::rdomain == (0:2*Nall-1)^3.
-                size_t ptpt = 0;
-                for (int ii = -Nall; ii < Nall; ii++)
-                  for (int jj = -Nall; jj < Nall; jj++)
-                    for (int kk = -Nall; kk < Nall; kk++)
-                      {
-                        int idiff = i - ii;
-                        int jdiff = j - jj;
-                        int kdiff = k - kk;
-                        if ( (std::abs(idiff) <= hockney::ns) &&
-                             (std::abs(jdiff) <= hockney::ns) &&
-                             (std::abs(kdiff) <= hockney::ns) )
-                          {
-                            // Taking input on inputBox == (0:2*hockney::ns)^3.
-                            point_t<3> p = point_t<3>({{idiff+hockney::ns, jdiff+hockney::ns, kdiff+hockney::ns}});
-                            // Adding input(i-ii, j-jj, k-kk) * G(ii, jj, kk).
-                            Gr_ijk += inputData[positionInBox(p, hockney::sbox)] *
-                              GData[ptpt];
-                          }
-                        ptpt++;
-                      }
-                double Gcalc_ijk = outputData[pt] / (Nall*Nall*Nall*8.);
-                double diff_ijk = Gcalc_ijk - Gr_ijk;
-                if (false)
-                  {
-                    printf("%3d%3d%3d exact=%15.7e calc=%15.7e diff=%15.7e\n",
-                           i, j, k, Gr_ijk, Gcalc_ijk, diff_ijk);
-                  }
-                if (std::abs(diff_ijk) > diffabsmax)
-                  {
-                    diffabsmax = std::abs(diff_ijk);
-                  }
-                pt++;
-              }
-          // std::cout << "row " << i << " |diff| <= " << diffabsmax << std::endl;
-        }
-      std::cout << "Max absolute difference is " << diffabsmax << std::endl;
+                << outputMax << std::endl;
+
+      double diffAbsMax = 0.;
+      size_t ptOut = 0;
+      for (int i = dmin; i <= dmax; i++)
+        for (int j = dmin; j <= dmax; j++)
+          for (int k = dmin; k <= dmax; k++)
+            {
+              // Set direct_ijk =
+              // sum_{ii,jj,kk} ( G[ii,jj,kk] * input([i-ii,j-jj,k-kk]) ).
+              // Note range [i,j,k] in [n-1-nd:n-1]^3,
+              // and range [ii,jj,kk] in [0:n-1]^3.
+              // Compare this exact answer with output of transform.
+              double direct_ijk = 0.;
+              // We loop through ALL of G, which is on
+              // hockney::rdomain == (0:hockney::n-1)^3.
+              size_t ptG = 0;
+              for (int ii = Gmin; ii <= Gmax; ii++)
+                for (int jj = Gmin; jj <= Gmax; jj++)
+                  for (int kk = Gmin; kk <= Gmax; kk++)
+                    {
+                      int idiff = i - ii;
+                      int jdiff = j - jj;
+                      int kdiff = k - kk;
+                      // The support of input is [0:ns-1]^3.
+                      if ( (idiff >= smin) && (idiff <= smax) &&
+                           (jdiff >= smin) && (jdiff <= smax) &&
+                           (kdiff >= smin) && (kdiff <= smax) )
+                        {
+                          point_t<3> p = point_t<3>({{idiff, jdiff, kdiff}});
+                          // Adding input(i-ii, j-jj, k-kk) * G(ii, jj, kk).
+                          direct_ijk += inputData[positionInBox(p, hockney::sbox)] *
+                            GData[ptG];
+                        }
+                      ptG++;
+                    }
+              double calc_ijk = outputData[ptOut];
+              double diff_ijk = calc_ijk - direct_ijk;
+              if (false)
+                {
+                  printf("%3d%3d%3d exact=%15.7e calc=%15.7e diff=%15.7e\n",
+                         i, j, k, direct_ijk, calc_ijk, diff_ijk);
+                }
+              updateMaxAbs(diffAbsMax, diff_ijk);
+              ptOut++;
+            }
+      std::cout << "Max absolute difference is " << diffAbsMax << std::endl;
     }
   // END DEBUG
   
