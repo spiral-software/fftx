@@ -26,36 +26,6 @@ if ( DISALLOW_COMPILE_INPLACE )
                  make | make install")
 endif ()
 
-##  Get SPIRAL home...
-
-if ( DEFINED ENV{SPIRAL_HOME} )
-    message ( STATUS "SPIRAL_HOME = $ENV{SPIRAL_HOME}" )
-    set ( SPIRAL_SOURCE_DIR $ENV{SPIRAL_HOME} )
-else ()
-    if ( "x${SPIRAL_HOME}" STREQUAL "x" )
-        message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
-    endif ()
-    set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
-endif ()
-
-##  Find python3 -- used to marshall/run examples
-
-find_package (Python3 COMPONENTS Interpreter)
-if (${Python3_FOUND})
-    ##  It exists, executable is ${Python3_EXECUTABLE}
-    message ( STATUS "Found Python3: Version = ${Python3_VERSION}, Executable = ${Python3_EXECUTABLE}")
-else ()
-    message ( SEND_ERROR "Python3 NOT FOUND: Python is required to build/run examples")
-endif ()
-
-set ( SPIRAL_INCLUDE_PATH ${SPIRAL_SOURCE_DIR}/config/CMakeIncludes )
-include ("${SPIRAL_INCLUDE_PATH}/RunSpiral.cmake")
-
-set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
-set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
-
-include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
-
 ##  Check the code generation option ...
 
 if ( "X${_codegen}" STREQUAL "X" )
@@ -65,40 +35,18 @@ else ()
     message ( STATUS "_codegen = ${_codegen}" )
 endif ()
 
-set ( ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
-if ( ${_codegen} STREQUAL "GPU" )
-    if (WIN32)
-	set ( CUDA_COMPILE_FLAGS -rdc=false )
-	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
-	set ( LIBS_FOR_CUDA cufft )
-	set ( ADDL_COMPILE_FLAGS -DWIN64 -D_USE_MATH_DEFINES )
-    else ()
-	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
-	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
-	set ( LIBS_FOR_CUDA cufft_static culibos )
-	set ( ADDL_COMPILE_FLAGS )
-    endif ()
+##  Define CMake include directory and include the setup information
+set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
+include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )
 
-    set ( CMAKE_CUDA_ARCHITECTURES 52 )
-    set ( GPU_EXTRAS _CUDAGEN )
-endif ()
-
-set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
-set ( CMAKE_C_STANDARD 14)
-set ( CMAKE_CXX_STANDARD 14)
-
-include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets )
-
-if ( (NOT DEFINED CMAKE_BUILD_TYPE) OR (NOT CMAKE_BUILD_TYPE) )
-    set ( CMAKE_BUILD_TYPE Release )
-endif ()
+##  Walk the following subdirectories...
 
 add_subdirectory ( src )
 add_subdirectory ( examples )
 
 ##  We will only build the documentation if the following conditions are satisfied:
 ##    FFTX_MAKE_DOCS is defined when cmake is invoked (e.g., cmake -DFFTX_MAKE_DOCS=True ..)
-##    Sphinx is installed (also breathe & sp[hinx_rtd_theme)
+##    Sphinx is installed (also breathe & sphinx_rtd_theme)
 ##    Doxygen is installed
 
 if ( "X${FFTX_MAKE_DOCS}X" STREQUAL "XX" OR NOT FFTX_MAKE_DOCS )
