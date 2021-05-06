@@ -104,7 +104,7 @@ namespace fftx
     /** returns the raw pointer.  This pointer can only be dereferences is isLocal() ==true */
     const T* local() const {return _ptr;}
     /** type erasure cast */
-    operator global_ptr<void>(){ return global_ptr<void>(_ptr, _domain, _device);}
+    //operator global_ptr<void>(){ return global_ptr<void>(_ptr, _domain, _device);}
   };
 
  
@@ -431,7 +431,8 @@ namespace fftx
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
   
-  
+ 
+ 
   template<typename T, int DIM, unsigned long COUNT>
   void closeDAG(std::array<array_t<DIM,T>, COUNT>& localVars, const char* name)
   {
@@ -499,7 +500,8 @@ namespace fftx
    std::ofstream headerFile(headerName);
    //DataTypeT<SOURCE> s;
    //DataTypeT<DEST> d;
-   std::string header_text = std::regex_replace(header_template,std::regex("PLAN"),name);
+   std::string header_text(header_template);
+   header_text = std::regex_replace(header_text, std::regex("PLAN"),std::string(name));
    header_text = std::regex_replace(header_text, std::regex("S_TYPE"), inputType);
    header_text = std::regex_replace(header_text, std::regex("D_TYPE"), outputType);
    header_text = std::regex_replace(header_text, std::regex("DD"), std::to_string(DIM-1));
@@ -540,8 +542,8 @@ namespace fftx
     float  GPU_milliseconds=0;
 #ifdef __CUDACC__
     cudaEvent_t start, stop;
-    void cudaStart() {cudaEventRecord(start);}
-    void cudaStop()
+    void kernelStart() {cudaEventRecord(start);}
+    void kernelStop()
     {
      cudaEventRecord(stop);
      cudaDeviceSynchronize();
@@ -549,8 +551,8 @@ namespace fftx
      cudaEventElapsedTime(&GPU_milliseconds, start, stop);
     }
 #else
-    void cudaStart(){ }
-    void cudaStop(){ }
+    void kernelStart(){ }
+    void kernelStop(){ }
 #endif
     inline void init(){ 
           init_PLAN_spiral();
@@ -572,10 +574,10 @@ namespace fftx
         output = (double*)(destination.m_data.local());
         sym = (double*)(symvar.m_data.local());
 
-        cudaStart();
+        kernelStart();
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
            PLAN_spiral(output, input, sym);
-        cudaStop();
+        kernelStop();
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
         CPU_milliseconds = time_span.count()*1000;
@@ -595,10 +597,10 @@ namespace fftx
         input = (double*)(source.m_data.local());
         output = (double*)(destination.m_data.local());
   
-        cudaStart();
+        kernelStart();
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
            PLAN_spiral(output, input, sym);
-        cudaStop();
+        kernelStop();
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
         CPU_milliseconds = time_span.count()*1000;
@@ -618,7 +620,8 @@ namespace fftx
    std::ofstream headerFile(headerName);
    //DataTypeT<SOURCE> s;
    //DataTypeT<DEST> d;
-   std::string header_text = std::regex_replace(header_template,std::regex("PLAN"),name);
+   std::string header_text(header_template);
+   header_text = std::regex_replace(header_text,std::regex("PLAN"),std::string(name));
    header_text = std::regex_replace(header_text, std::regex("S_TYPE"), inputType);
    header_text = std::regex_replace(header_text, std::regex("D_TYPE"), outputType);
    header_text = std::regex_replace(header_text, std::regex("DD"), std::to_string(DIM));
