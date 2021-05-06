@@ -81,7 +81,7 @@ endif ()
 ##  Set include paths and require C++ 14 standard
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
-set ( CMAKE_C_STANDARD 14)
+set ( CMAKE_C_STANDARD 11)
 set ( CMAKE_CXX_STANDARD 14)
 
 include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets )

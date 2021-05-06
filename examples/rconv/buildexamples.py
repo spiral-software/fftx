@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 ##  Run cmake and build to build the code.  CMake isn't being called from the top
 ##  level FFTX folder, so it won't know the FFTX Project source directory -- we'll
@@ -92,6 +93,7 @@ with open ( 'process-sizes.txt', 'r' ) as fil:
         shutil.copy2 ( _target, _newloc )
 
         os.chdir ( '..' )
+        time.sleep(1)
 
 
 sys.exit (0)
