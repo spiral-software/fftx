@@ -23,7 +23,9 @@ function ( run_driver_program prefix stem )
     set     ( _driver ${PROJECT_NAME}.${prefix}.${stem}.driver )
     set     ( ${prefix}_driver ${prefix}.${stem}.driver PARENT_SCOPE )
     add_executable ( ${_driver} ${prefix}.${stem}.cpp )
+    target_compile_options ( ${_driver} PRIVATE ${ADDL_COMPILE_FLAGS} )
     set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 14 )
+    message ( STATUS "Added ${ADDL_COMPILE_FLAGS} to target: ${_driver}" )
 
     if ( ${ARGC} GREATER 2 )
 	##  received optional include directories -- add to target
