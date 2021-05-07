@@ -7,7 +7,19 @@ using namespace fftx;
 
 int main(int argc, char* argv[])
 {
-  printf("%s: Entered test program.\n", argv[0]);
+  int verbosity = 0;
+  if (argc > 1)
+    {
+      verbosity = atoi(argv[1]);
+    }
+  else
+    {
+      printf("Usage:  %s [verbosity=0]\n", argv[0]);
+    }
+  printf("Running with verbosity %d\n", verbosity);
+  printf("Set verbosity to 1 to check results, 2 to write all results.\n");
+  
+  // printf("%s: Entered test program.\n", argv[0]);
 	
   array_t<3,double> G(hockney::rdomain);
 
@@ -99,8 +111,7 @@ int main(int argc, char* argv[])
          hockney::n, hockney::ns, hockney::nd, hockney::CPU_milliseconds);
   hockney::destroy();
 
-  // BEGIN DEBUG
-  if (true)
+  if (verbosity >= 1)
     {
       // box_t<3> sbox({{0, 0, 0}}, {{ns-1, ns-1, ns-1}});
       int smin = 0;
@@ -126,51 +137,39 @@ int main(int argc, char* argv[])
 
       double diffAbsMax = 0.;
       size_t ptOut = 0;
-      for (int i = dmin; i <= dmax; i++)
-        for (int j = dmin; j <= dmax; j++)
-          for (int k = dmin; k <= dmax; k++)
+      for (int id = dmin; id <= dmax; id++)
+        for (int jd = dmin; jd <= dmax; jd++)
+          for (int kd = dmin; kd <= dmax; kd++)
             {
-              // Set direct_ijk =
-              // sum_{ii,jj,kk} ( G[ii,jj,kk] * input([i-ii,j-jj,k-kk]) ).
-              // Note range [i,j,k] in [n-1-nd:n-1]^3,
-              // and range [ii,jj,kk] in [0:n-1]^3.
+              // Set direct_{id,jd,kd} =
+              // sum_{is,js,ks} ( input([is,js,ks]) * G([id-is,jd-js,kd-ks]) )
+              // Note dest range [id,jd,kd] is [n-1-nd:n-1]^3,
+              // and source range [is,js,ks] is [0:ns-1]^3,
+              // so diff range [id-is,jd-js,kd-ks] is [n-nd-ns:n-1]^3.
               // Compare this exact answer with output of transform.
-              double direct_ijk = 0.;
-              // We loop through ALL of G, which is on
-              // hockney::rdomain == (0:hockney::n-1)^3.
-              size_t ptG = 0;
-              for (int ii = Gmin; ii <= Gmax; ii++)
-                for (int jj = Gmin; jj <= Gmax; jj++)
-                  for (int kk = Gmin; kk <= Gmax; kk++)
+              double directAns = 0.;
+              for (int is = smin; is <= smax; is++)
+                for (int js = smin; js <= smax; js++)
+                  for (int ks = smin; ks <= smax; ks++)
                     {
-                      int idiff = i - ii;
-                      int jdiff = j - jj;
-                      int kdiff = k - kk;
-                      // The support of input is [0:ns-1]^3.
-                      if ( (idiff >= smin) && (idiff <= smax) &&
-                           (jdiff >= smin) && (jdiff <= smax) &&
-                           (kdiff >= smin) && (kdiff <= smax) )
-                        {
-                          point_t<3> p = point_t<3>({{idiff, jdiff, kdiff}});
-                          // Adding input(i-ii, j-jj, k-kk) * G(ii, jj, kk).
-                          direct_ijk += inputData[positionInBox(p, hockney::sbox)] *
-                            GData[ptG];
-                        }
-                      ptG++;
+                      point_t<3> ps = point_t<3>({{is, js, ks}});
+                      point_t<3> pdiff = point_t<3>({{id-is, jd-js, kd-ks}});
+                      directAns +=
+                        inputData[positionInBox(ps, hockney::sbox)] *
+                        GData[positionInBox(pdiff, hockney::rdomain)];
                     }
-              double calc_ijk = outputData[ptOut];
-              double diff_ijk = calc_ijk - direct_ijk;
-              if (false)
+              double calcAns = outputData[ptOut];
+              double diffAns = calcAns - directAns;
+              if (verbosity >= 2)
                 {
                   printf("%3d%3d%3d exact=%15.7e calc=%15.7e diff=%15.7e\n",
-                         i, j, k, direct_ijk, calc_ijk, diff_ijk);
+                         id, jd, kd, directAns, calcAns, diffAns);
                 }
-              updateMaxAbs(diffAbsMax, diff_ijk);
+              updateMaxAbs(diffAbsMax, diffAns);
               ptOut++;
             }
       std::cout << "Max absolute difference is " << diffAbsMax << std::endl;
     }
-  // END DEBUG
   
   printf("%s: All done, exiting\n", argv[0]);
   return 0;
