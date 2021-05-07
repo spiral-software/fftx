@@ -6,9 +6,9 @@ namespace rconv
   const int offy = 5;
   const int offz = 11;
   
-  const int nx = 24;
-  const int ny = 32;
-  const int nz = 40;
+  const int nx = 64;
+  const int ny = 48;
+  const int nz = 48;
 
   const int fx = nx/2 + 1;
   const int fy = ny;
