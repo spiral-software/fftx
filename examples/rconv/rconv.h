@@ -5,11 +5,25 @@ namespace rconv
   const int offx = 3;
   const int offy = 5;
   const int offz = 11;
-  
-  const int nx = 64;
-  const int ny = 48;
-  const int nz = 48;
 
+  //  The following constants define the cube/problem size.  The values here are defaults
+  //  and will be used if not over-ridden during the build process
+  //  const int nx = 24;
+  //  const int ny = 32;
+  //  const int nz = 40;
+
+  #ifndef nx
+  #define nx 24
+  #endif
+
+  #ifndef ny
+  #define ny 32
+  #endif
+
+  #ifndef nz
+  #define nz 40
+  #endif
+  
   const int fx = nx/2 + 1;
   const int fy = ny;
   const int fz = nz;
