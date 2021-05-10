@@ -2,10 +2,18 @@ using namespace fftx;
 
 namespace test_plan
 {
-  const int nx = 4;
-  const int ny = 4;
-  const int nz = 4;
+  #ifndef fftx_nx
+  #define fftx_nx 24
+  #endif
+
+  #ifndef fftx_ny
+  #define fftx_ny 32
+  #endif
+
+  #ifndef fftx_nz
+  #define fftx_nz 40
+  #endif
 
   box_t<3> domain(point_t<3>({{1, 1, 1}}),
-                  point_t<3>({{nx, ny, nz}}));
+                  point_t<3>({{fftx_nx, fftx_ny, fftx_nz}}));
 }

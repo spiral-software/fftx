@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
   cufftHandle plan;
   {
     auto result =
-      cufftPlan3d(&plan, test_comp::nx, test_comp::ny, test_comp::nz, CUFFT_Z2Z);
+      cufftPlan3d(&plan, fftx_nx, fftx_ny, fftx_nz, CUFFT_Z2Z);
     if (result != CUFFT_SUCCESS)
       {
         exit(-1);
@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
   delete[] outputCufftHostPtr;
   if (match)
     {
-      printf("YES, results match.\n");
+      printf("YES, results match.  Max difference %11.5e\n", maxDiff);
     }
   else
     {
@@ -257,7 +257,7 @@ int main(int argc, char* argv[])
   auto cufftAvg = avgSubarray(cufft_gpu, 1, iterations-1);
 
   printf("Size %d %d %d, over %d iterations\n",
-         test_comp::nx, test_comp::ny, test_comp::nz, iterations);
+         fftx_nx, fftx_ny, fftx_nz, iterations);
   if (verbosity >= 2)
     {
       printf("itn    Spiral CPU     Spiral GPU     cufft\n");
