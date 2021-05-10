@@ -12,40 +12,40 @@ namespace rconv
   //  const int ny = 32;
   //  const int nz = 40;
 
-  #ifndef nx
-  #define nx 24
+  #ifndef fftx_nx
+  #define fftx_nx 24
   #endif
 
-  #ifndef ny
-  #define ny 32
+  #ifndef fftx_ny
+  #define fftx_ny 32
   #endif
 
-  #ifndef nz
-  #define nz 40
+  #ifndef fftx_nz
+  #define fftx_nz 40
   #endif
   
-  const int fx = nx/2 + 1;
-  const int fy = ny;
-  const int fz = nz;
+  const int fx = fftx_nx/2 + 1;
+  const int fy = fftx_ny;
+  const int fz = fftx_nz;
 
   box_t<1> empty1(point_t<1>({{1}}),
                   point_t<1>({{0}}));
   box_t<1> domain1(point_t<1>({{offx+1}}),
-                   point_t<1>({{offx+nx}}));
+                   point_t<1>({{offx+fftx_nx}}));
   box_t<1> fdomain1(point_t<1>({{offx+1}}),
                     point_t<1>({{offx+fx}}));
 
   box_t<2> empty2(point_t<2>({{1, 1}}),
                   point_t<2>({{0, 0}}));
   box_t<2> domain2(point_t<2>({{offx+1, offy+1}}),
-                   point_t<2>({{offx+nx, offy+ny}}));
+                   point_t<2>({{offx+fftx_nx, offy+fftx_ny}}));
   box_t<2> fdomain2(point_t<2>({{offx+1, offy+1}}),
                     point_t<2>({{offx+fx, offy+fy}}));
 
   box_t<3> empty3(point_t<3>({{1, 1, 1}}),
                   point_t<3>({{0, 0, 0}}));
   box_t<3> domain3(point_t<3>({{offx+1, offy+1, offz+1}}),
-                   point_t<3>({{offx+nx, offy+ny, offz+nz}}));
+                   point_t<3>({{offx+fftx_nx, offy+fftx_ny, offz+fftx_nz}}));
   box_t<3> fdomain3(point_t<3>({{offx+1, offy+1, offz+1}}),
                     point_t<3>({{offx+fx, offy+fy, offz+fz}}));
 }
