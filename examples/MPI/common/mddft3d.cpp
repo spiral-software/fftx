@@ -63,7 +63,10 @@ void destroy_2d_comms()
 void fftx_mpi_rcperm(double* Y, double *X, int sizes, int stage, int dim, int M, int N, int K)
 {
   if (stage == 2) {
-    {  //pre communicate packing
+
+#ifdef NOTCUFFT    
+    {
+      //pre communicate packing
         size_t cp_size = 1;
         size_t a_dim   = shape[1] * shape[0];
         size_t b_dim   = shape[2] * shape[4];
@@ -87,6 +90,7 @@ void fftx_mpi_rcperm(double* Y, double *X, int sizes, int stage, int dim, int M,
           exit(-1);
         }
     }
+#endif  
 
     int sendSize = (shape[0]*shape[1]/r) * shape[2] * shape[4];
     int recvSize = (shape[0]*shape[1]/r) * shape[2] * shape[4];    
@@ -123,6 +127,8 @@ void fftx_mpi_rcperm(double* Y, double *X, int sizes, int stage, int dim, int M,
       }
   } // end if stage 2.
   if (stage == 1) {
+
+#ifdef NOTCUFFT    
     {  //pre communicate packing
       size_t cp_size = 1;
       size_t a_dim   = shape[2] * shape[3];
@@ -147,7 +153,8 @@ void fftx_mpi_rcperm(double* Y, double *X, int sizes, int stage, int dim, int M,
         exit(-1);
       }
     }
-
+#endif
+    
     int sendSize = (shape[2]*shape[3])/r * shape[0] * shape[4];
     int recvSize = (shape[2]*shape[3])/r * shape[0] * shape[4];
       
