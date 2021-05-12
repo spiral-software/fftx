@@ -43,7 +43,7 @@ endif ()
 ##  ===== For most examples you should not need to modify anything ABOVE this line =====
 
 ##  Set the project name.  Preferred name is just the *name* of the example folder 
-project ( test_plan_dft ${_lang_add} ${_lang_base} )
+project ( mddft ${_lang_add} ${_lang_base} )
 
 ##  File nameing convention is: <prefix>.<stem>.xxxxx; set _stem and _prefix(es)
 ##  Test program name is:  test<project name>.{cpp|cu}
