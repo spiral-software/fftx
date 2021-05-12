@@ -146,7 +146,7 @@ void closeScalarDAG(std::array<d_array_t<DIM,T>, COUNT>& localVars, const char* 
   cout<<"destroy_comm := ApplyFunc(call, [destroy_comm_fn_name]);"<<endl;
   cout<<"cc[3].cmd := chain(destroy_comm, cc[3].cmd);"<<endl;
 
-  cout<<"PrintTo(t.params[2].fname::\".cu\", opts.prettyPrint(c));"<<endl;
+  cout<<"PrintTo(t.params[2].fname::\".fftx.source.cu\", opts.prettyPrint(c));"<<endl;
 
 }
 
