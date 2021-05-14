@@ -62,10 +62,6 @@ add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
 
 target_compile_options ( ${BUILD_PROGRAM} PRIVATE ${ADDL_COMPILE_FLAGS} )
 
-if ( ${_codegen} STREQUAL "GPU" AND NOT WIN32 )
-    target_compile_options ( ${BUILD_PROGRAM} PRIVATE -ccbin=${CMAKE_CXX_COMPILER} )
-endif ()
-
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
 target_link_libraries      ( ${BUILD_PROGRAM} ${LIBS_FOR_CUDA} )
