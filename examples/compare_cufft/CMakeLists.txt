@@ -43,13 +43,13 @@ endif ()
 ##  ===== For most examples you should not need to modify anything ABOVE this line =====
 
 ##  Set the project name.  Preferred name is just the *name* of the example folder 
-project ( verify ${_lang_add} ${_lang_base} )
+project ( compare_cufft ${_lang_add} ${_lang_base} )
 
 ##  File nameing convention is: <prefix>.<stem>.xxxxx; set _stem and _prefix(es)
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
+set ( _prefixes spiralmddft )
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
@@ -68,6 +68,9 @@ endif ()
 
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
+target_link_libraries      ( ${BUILD_PROGRAM} ${LIBS_FOR_CUDA} )
+
 set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
 
 install ( TARGETS ${BUILD_PROGRAM} DESTINATION ${INSTALL_DIR_TARGET} )
+

@@ -104,7 +104,7 @@ namespace fftx
     /** returns the raw pointer.  This pointer can only be dereferences is isLocal() ==true */
     const T* local() const {return _ptr;}
     /** type erasure cast */
-    operator global_ptr<void>(){ return global_ptr<void>(_ptr, _domain, _device);}
+    //operator global_ptr<void>(){ return global_ptr<void>(_ptr, _domain, _device);}
   };
 
  
@@ -431,7 +431,8 @@ namespace fftx
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
   
-  
+ 
+ 
   template<typename T, int DIM, unsigned long COUNT>
   void closeDAG(std::array<array_t<DIM,T>, COUNT>& localVars, const char* name)
   {
@@ -493,35 +494,50 @@ namespace fftx
   };
 
  #endif  )";
-
+   
    tracing = false;
    std::string headerName = std::string(name)+std::string(".fftx.codegen.hpp");
    std::ofstream headerFile(headerName);
    //DataTypeT<SOURCE> s;
    //DataTypeT<DEST> d;
-   std::string header_text = std::regex_replace(header_template,std::regex("PLAN"),name);
+   std::string header_text(header_template);
+   header_text = std::regex_replace(header_text, std::regex("PLAN"),std::string(name));
    header_text = std::regex_replace(header_text, std::regex("S_TYPE"), inputType);
    header_text = std::regex_replace(header_text, std::regex("D_TYPE"), outputType);
    header_text = std::regex_replace(header_text, std::regex("DD"), std::to_string(DIM-1));
    
    headerFile<<header_text<<"\n";
    headerFile.close();
-
-    std::cout<<"\n]),\n   [";
-    if(COUNT==0){}
-    else
-      {
-        std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
-        for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
-      }
+   
+   std::cout<<"\n]),\n   [";
+   if(COUNT==0)
+     {}
+   else
+     {
+      std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
+      for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
+     }
      std::cout<<"]\n),\n";
      std::cout<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
               <<");\n";
      std::cout<<"prefix:=\""<<name<<"\";\n";
   }
-  
+
   template<typename T, int DIM, unsigned long COUNT>
-  void closeScalarDAG(std::array<array_t<DIM,T>, COUNT>& localVars, const char* name)
+  std::string varNames(const std::array<array_t<DIM,T>, COUNT>& a_vars)
+  {
+   std::string rtn;
+   for(int i=0; i<COUNT; i++)
+      {
+        rtn +="var_";
+        rtn += std::to_string((uint64_t)a_vars[i].m_data.local());
+        if(i+1<COUNT) rtn +=",";
+      }
+    return rtn;
+  }                                           
+
+template<int DIM>
+  void closeScalarDAG(std::string localVarNames, const char* name)
   {
     static const char* header_template = R"(
 
@@ -540,8 +556,8 @@ namespace fftx
     float  GPU_milliseconds=0;
 #ifdef __CUDACC__
     cudaEvent_t start, stop;
-    void cudaStart() {cudaEventRecord(start);}
-    void cudaStop()
+    void kernelStart() {cudaEventRecord(start);}
+    void kernelStop()
     {
      cudaEventRecord(stop);
      cudaDeviceSynchronize();
@@ -549,8 +565,8 @@ namespace fftx
      cudaEventElapsedTime(&GPU_milliseconds, start, stop);
     }
 #else
-    void cudaStart(){ }
-    void cudaStop(){ }
+    void kernelStart(){ }
+    void kernelStop(){ }
 #endif
     inline void init(){ 
           init_PLAN_spiral();
@@ -572,10 +588,10 @@ namespace fftx
         output = (double*)(destination.m_data.local());
         sym = (double*)(symvar.m_data.local());
 
-        cudaStart();
+        kernelStart();
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
            PLAN_spiral(output, input, sym);
-        cudaStop();
+        kernelStop();
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
         CPU_milliseconds = time_span.count()*1000;
@@ -595,10 +611,10 @@ namespace fftx
         input = (double*)(source.m_data.local());
         output = (double*)(destination.m_data.local());
   
-        cudaStart();
+        kernelStart();
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
            PLAN_spiral(output, input, sym);
-        cudaStop();
+        kernelStop();
         std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
         CPU_milliseconds = time_span.count()*1000;
@@ -618,7 +634,8 @@ namespace fftx
    std::ofstream headerFile(headerName);
    //DataTypeT<SOURCE> s;
    //DataTypeT<DEST> d;
-   std::string header_text = std::regex_replace(header_template,std::regex("PLAN"),name);
+   std::string header_text(header_template);
+   header_text = std::regex_replace(header_text,std::regex("PLAN"),std::string(name));
    header_text = std::regex_replace(header_text, std::regex("S_TYPE"), inputType);
    header_text = std::regex_replace(header_text, std::regex("D_TYPE"), outputType);
    header_text = std::regex_replace(header_text, std::regex("DD"), std::to_string(DIM));
@@ -626,20 +643,33 @@ namespace fftx
    headerFile<<header_text<<"\n";
    headerFile.close();
 
-    std::cout<<"\n]),\n   [";
-    if(COUNT==0){}
-    else
-      {
-        std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
-        for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
-      }
-     std::cout<<"]\n),\n";
-     std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
-              <<");\n";
-     std::cout<<"prefix:=\""<<name<<"\";\n";
-  } 
+   std::cout<<"\n]),\n   [";
+    // if(COUNT==0){}
+    // else
+    //   {
+    //     std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
+    //     for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
+    //   }
+   std::cout <<localVarNames;
+   std::cout<<"]\n),\n";
+   std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
+            <<");\n";
+   std::cout<<"prefix:=\""<<name<<"\";\n";
+} 
  
  
+  template<typename T, int DIM, unsigned long COUNT>
+  void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars, const char* name)
+  {
+    closeScalarDAG<DIM>(varNames(a_vars), name);
+  }
+
+template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long COUNT2>
+  void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars,
+                      const std::array<array_t<DIM,T2>, COUNT2>& a_vars2, const char* name)
+  {
+    closeScalarDAG<DIM>(varNames(a_vars)+','+varNames(a_vars2), name);
+  }
   
   template<int DIM>
   inline point_t<DIM> lengthsBox(const box_t<DIM>& a_bx)

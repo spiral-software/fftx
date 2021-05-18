@@ -1,7 +1,6 @@
-
-
 #include "mddft.fftx.codegen.hpp"
 #include "imddft.fftx.codegen.hpp"
+#include "test_plan.h"
 
 int main(int argc, char* argv[])
 {
@@ -9,10 +8,8 @@ int main(int argc, char* argv[])
 	
   mddft::init();
 
-  fftx::box_t<3> domain(fftx::point_t<3>({{1,1,1}}),fftx::point_t<3>({{32,32,32}}));
-  
-  fftx::array_t<3,std::complex<double>> input(domain);
-  fftx::array_t<3,std::complex<double>> output(domain);
+  fftx::array_t<3,std::complex<double>> input(test_plan::domain);
+  fftx::array_t<3,std::complex<double>> output(test_plan::domain);
 
   forall([](std::complex<double>(&v), const fftx::point_t<3>& p)
          {
@@ -21,7 +18,8 @@ int main(int argc, char* argv[])
 
   printf("call mddft::transform()\n");
   mddft::transform(input, output);
-  printf("mddft for size 32 32 32 took  %.7e milliseconds\n", mddft::CPU_milliseconds);
+  printf("mddft for size %d %d %d took  %.7e milliseconds\n",
+         fftx_nx, fftx_ny, fftx_nz, mddft::CPU_milliseconds);
   mddft::destroy();
 
 
@@ -30,7 +28,8 @@ int main(int argc, char* argv[])
 
   printf("call imddft::transform()\n");
   imddft::transform(input, output);
-  printf("imddft for size 32 32 32 took  %.7e milliseconds\n", imddft::CPU_milliseconds);
+  printf("imddft for size %d %d %d took  %.7e milliseconds\n",
+         fftx_nx, fftx_ny, fftx_nz, imddft::CPU_milliseconds);
   imddft::destroy();
   
   printf("%s: All done, exiting\n", argv[0]);

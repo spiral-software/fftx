@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
   imddft::destroy();
 
   printf("Times in milliseconds for CPU and GPU on mddft on %d trials of size %d %d %d:\n",
-         iterations, test_plan::nx, test_plan::ny, test_plan::nz);
+         iterations, fftx_nx, fftx_ny, fftx_nz);
   for (int itn = 0; itn < iterations; itn++)
     {
       printf("%.7e  %.7e\n", mddft_cpu[itn], mddft_gpu[itn]);
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
   delete[] mddft_gpu;
 
   printf("Times in milliseconds for CPU and GPU on imddft on %d trials of size %d %d %d:\n",
-         iterations, test_plan::nx, test_plan::ny, test_plan::nz);
+         iterations, fftx_nx, fftx_ny, fftx_nz);
   for (int itn = 0; itn < iterations; itn++)
     {
       printf("%.7e  %.7e\n", imddft_cpu[itn], imddft_gpu[itn]);
