@@ -74,7 +74,7 @@ if ( "x${DIM_X}" STREQUAL "x" )
     message ( STATUS "Building for default size example only" )
 else ()
     ## DIM_X is defined (presumably DIM_Y & DIM_Z also since they come form a script)
-    list ( APPEND ADDL_COMPILE_FLAGS -Dnx=${DIM_X} -Dny=${DIM_Y} -Dnz=${DIM_Z} )
+    list ( APPEND ADDL_COMPILE_FLAGS -Dfftx_nx=${DIM_X} -Dfftx_ny=${DIM_Y} -Dfftx_nz=${DIM_Z} )
     message ( STATUS "Building for size [ ${DIM_X}, ${DIM_Y}, ${DIM_Z} ]" )
 endif ()
 

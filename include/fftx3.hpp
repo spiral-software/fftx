@@ -668,7 +668,9 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
   void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars,
                       const std::array<array_t<DIM,T2>, COUNT2>& a_vars2, const char* name)
   {
-    closeScalarDAG<DIM>(varNames(a_vars)+varNames(a_vars2), name);
+
+    closeScalarDAG<DIM>(varNames(a_vars)+','+varNames(a_vars2), name);
+
   }
   
   template<int DIM>
