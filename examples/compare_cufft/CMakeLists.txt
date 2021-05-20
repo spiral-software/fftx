@@ -8,9 +8,6 @@
 if ( "x${CMAKE_MINIMUM_REQUIRED_VERSION}" STREQUAL "x" )
     ##  CMake minimum version is not defined -- which means this cmake was invoked
     ##  standalone (i.e., via the buildexamples script).
-    ##  For now assume we want GPU...
-    set ( _codegen GPU )
-
     ##  FFTX_PROJECT_SOURCE_DIR must be set, get it from FFTX_PROJ_DIR which must be
     ##  (either environment or command line)
     if ( DEFINED ENV{FFTX_PROJ_DIR} )
@@ -22,13 +19,16 @@ if ( "x${CMAKE_MINIMUM_REQUIRED_VERSION}" STREQUAL "x" )
 	endif ()
 	set ( FFTX_PROJECT_SOURCE_DIR ${FFTX_PROJ_DIR} )
     endif ()
-    
-    ##  Setup / determine the necessary paths and variable to continue)
-    set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
-    include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )
 
     ##  Languages aren't defined yet so add c & c++
     set ( _lang_base C CXX )
+
+    ##  _codegen will be passed on the cmake command line: will be one of CPU | GPU | HIP
+    ##  set ( _codegen GPU )
+
+    ##  Setup / determine the necessary paths and variable to continue)
+    set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
+    include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )
 endif ()
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )

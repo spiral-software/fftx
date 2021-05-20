@@ -25,6 +25,22 @@ _fftx = os.path.join ( _cdir, '../..' )
 _fftx = os.path.abspath (_fftx )
 ##  print ( 'CWD: ' + _cdir + '; Basename: ' + _base + '; FFTX Project dir: ' + _fftx )
 
+##  CMake will normally run with ${_codegen} defined (if undefined it defaults to CPU)
+##  Check for a command line parameter specifying ${_codegen}, defaul to CPU if missing
+
+_mode = "CPU"                     ## define mode as CPU [default]
+if len ( sys.argv ) < 2:
+    print ( 'Usage: ' + sys.argv[0] + ' [ CPU | GPU | HIP ]; defaulting to CPU' )
+else:
+    _mode = sys.argv[1]
+    if _mode != "CPU" and _mode != "GPU":
+        if _mode == "HIP":
+            print ( sys.argv[0] + ': HIP mode requested - support coming soon, defaulting to CPU' )
+            _mode = "CPU"
+        else:
+            print ( sys.argv[0] + ': unknown mode: ' + _mode + ' exiting...' )
+            sys.exit (-1)
+
 with open ( 'process-sizes.txt', 'r' ) as fil:
     for line in fil.readlines():
         ##  print ( 'Line read = ' + line )
@@ -58,7 +74,7 @@ with open ( 'process-sizes.txt', 'r' ) as fil:
             os.mkdir ( exec_dir )
         
         ##  Build the commnd line for CMake...
-        cmdstr = 'rm -rf * && cmake -DFFTX_PROJ_DIR=' + _fftx
+        cmdstr = 'rm -rf * && cmake -DFFTX_PROJ_DIR=' + _fftx + ' -D_codegen=' + _mode
         cmdstr = cmdstr + ' -DDIM_X=' + _dimx + ' -DDIM_Y=' + _dimy + ' -DDIM_Z=' + _dimz
 
         os.chdir ( build_dir )
