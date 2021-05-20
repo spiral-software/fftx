@@ -639,7 +639,11 @@ template<int DIM>
    header_text = std::regex_replace(header_text, std::regex("S_TYPE"), inputType);
    header_text = std::regex_replace(header_text, std::regex("D_TYPE"), outputType);
    header_text = std::regex_replace(header_text, std::regex("DD"), std::to_string(DIM));
-   
+#ifdef FFTX_HIP
+   header_text = std::regex_replace(header_text,std::regex("cuda"),std::string("hip"));
+   header_text = std::regex_replace(header_text,std::regex("__CUDACC__"),std::string("__HIPCC__"));
+   header_text = std::string("#include <hip/hip_runtime.h>\n\n") + header_text;
+#endif
    headerFile<<header_text<<"\n";
    headerFile.close();
 
