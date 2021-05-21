@@ -13,6 +13,7 @@
 ## specify this only here, lower levels use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
 cmake_minimum_required (VERSION 3.14)
 
+##  Start by finding things -- the list varies by what we're building for...
 ##  Get SPIRAL home...
 
 if ( DEFINED ENV{SPIRAL_HOME} )
@@ -49,24 +50,53 @@ set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
 ##  message ( STATUS "FFTX_CMAKE_INCLUDE_DIR set to: ${FFTX_CMAKE_INCLUDE_DIR}" )
 
-##  Set flags and options for use when building code
+##  Get hip/rocm stuff if _codegen == HIP
 
-set ( ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
+if ( ${_codegen} STREQUAL "HIP" )
+    ##  Setup what we need to build for HIP/ROCm
+    list ( APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm )
+    find_package ( hip REQUIRED )
+    if ( ${hip_FOUND} )
+	##  HIP/ROCm support found
+	message ( STATUS "Found HIP: Version = ${hip_VERSION}" )
+    else ()
+	message ( SEND_ERROR "HIP NOT FOUND: HIP is required to build")
+    endif ()
+
+    ##  Set the compiler/linker
+    if ( NOT WIN32 )
+	set (  CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE} )
+	set ( CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE} )
+    endif ()
+
+    ##  Adjust include and library directories
+    ##  Need to add $ROCM_PATH for includes and libraries
+    if ( DEFINED ENV{ROCM_PATH} )
+	message ( STATUS "ROCM_PATH is defined: $ENV{ROCM_PATH}" )
+	include_directories ( $ENV{ROCM_PATH}/hipfft/include $ENV{ROCM_PATH}/include )
+    endif ()
+    list ( APPEND LIBS_FOR_HIP hipfft rocfft )
+    list ( APPEND ADD_COMPILE_FLAGS -DFFTX_HIP )
+endif ()
+
+##  Set flags and options for use when building code
+if ( WIN32 )
+    list ( APPEND ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
+endif ()
+
 if ( ${_codegen} STREQUAL "GPU" )
     if (WIN32)
 	set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft )
-	set ( ADDL_COMPILE_FLAGS -DWIN64 -D_USE_MATH_DEFINES )
+	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
     else ()
 	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
 	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft culibos )
-	set ( ADDL_COMPILE_FLAGS )
     endif ()
 
     set ( CMAKE_CUDA_ARCHITECTURES 52 )
-    set ( GPU_EXTRAS _CUDAGEN )
 endif ()
 
 if ( "x${DIM_X}" STREQUAL "x" )

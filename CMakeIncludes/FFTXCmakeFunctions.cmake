@@ -81,10 +81,14 @@ endfunction ()
 
 set ( BACKEND_SPIRAL_CPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_cpu_serial )
 set ( BACKEND_SPIRAL_GPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_gpu )
+set ( BACKEND_SPIRAL_HIP_DIR      ${BACKEND_SOURCE_DIR}/spiral_hip )
+
 set ( SPIRAL_BACKEND_CPU_PREAMBLE ${BACKEND_SPIRAL_CPU_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_GPU_PREAMBLE ${BACKEND_SPIRAL_GPU_DIR}/preamble.g )
+set ( SPIRAL_BACKEND_HIP_PREAMBLE ${BACKEND_SPIRAL_HIP_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_CPU_CODEGEN  ${BACKEND_SPIRAL_CPU_DIR}/codegen.g  )
 set ( SPIRAL_BACKEND_GPU_CODEGEN  ${BACKEND_SPIRAL_GPU_DIR}/codegen.g  )
+set ( SPIRAL_BACKEND_HIP_CODEGEN  ${BACKEND_SPIRAL_HIP_DIR}/codegen.g  )
 
 function ( create_generator_file _codefor prefix stem )
     message ( "create generator SPIRAL script ${prefix}.${stem}.generator.g" )
@@ -92,23 +96,27 @@ function ( create_generator_file _codefor prefix stem )
     set     ( _gen ${prefix}.${stem}.generator.g )
     set     ( _plan   ${prefix}.${stem}.plan.g )
     
+    if ( ${_generator_script} STREQUAL "COMPLETE" )
+	##  Don't add preamble and codegen pieces
+	set ( _preamble )
+	set ( _postfix  )
+    else ()
+	set ( _preamble ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} )
+	set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN} )
+    endif ()
+
     if ( WIN32 )
 	add_custom_command ( OUTPUT ${_gen}
-            ##  COMMAND IF EXIST ${_gen} ( DEL /F ${_gen} )
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
-	        ${_gen} ${SPIRAL_BACKEND_${_codefor}_PREAMBLE}
-		${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN}
-	    ##  COMMAND TYPE ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} ${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN} > ${_gen}
-	    DEPENDS ${_plan}
+	            ${_gen} ${_preamble} ${_plan} ${_postfix}
+            DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
     else ()
 	include ( FindUnixCommands )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
-	        ${_gen} ${SPIRAL_BACKEND_${_codefor}_PREAMBLE}
-		${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN}
-	    ##  COMMAND ${BASH} -c "rm -f ${_gen} ; cat ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} ${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN} > ${_gen}"
+	            ${_gen} ${_preamble} ${_plan} ${_postfix}
 	    DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -125,7 +133,7 @@ endfunction ()
 ##  intermediate files (targets) for codegen and build the list of dependencies
 ##  for a test program.  The following conventions are assumed:
 ##  File nameing convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
-##  The function is passed a codegen flag (create CPU/GPU code), a stem, a list
+##  The function is passed a codegen flag (create CPU/GPU/HIP code), a stem, a list
 ##  of prefixes (1 or more) and builds lists of all source code files for the
 ##  test program and a list of dependency names (to ensure cmake builds all
 ##  targets in the right order).
@@ -137,7 +145,7 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	message ( FATAL_ERROR "manage_deps_codegen() requires at least 1 prefix" )
     endif ()
     
-    if ( ${_codefor} STREQUAL "GPU" ) 
+    if ( ( ${_codefor} STREQUAL "GPU" ) OR ( ${_codefor} STREQUAL "HIP" ) )
 	set ( _suffix cu PARENT_SCOPE )
 	set ( _suffix cu )
     else ()
@@ -193,10 +201,10 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
-    if ( ${_buildForGpu} AND ${_codegen} STREQUAL "GPU" )
+    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "GPU" ) )
 	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
 	add_subdirectory ( ${_subdir} )
-    elseif ( NOT ${_buildForGpu} AND ${_codegen} STREQUAL "GPU" )
+    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "GPU" ) )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
