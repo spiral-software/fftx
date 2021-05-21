@@ -7,7 +7,7 @@
 ##  specifications for the 3D DFT.  The script will run the FFTX generation process for
 ##  each size, using CMake; the final executable will be renamed to append the size spec.
 
-import os
+import os, stat
 import re
 import shutil
 import subprocess
@@ -24,6 +24,32 @@ _base = os.path.basename ( _cdir )
 _fftx = os.path.join ( _cdir, '../..' )
 _fftx = os.path.abspath (_fftx )
 ##  print ( 'CWD: ' + _cdir + '; Basename: ' + _base + '; FFTX Project dir: ' + _fftx )
+
+##  CMake will normally run with ${_codegen} defined (if undefined it defaults to CPU)
+##  Check for a command line parameter specifying ${_codegen}, default to CPU if missing
+
+_mode = "CPU"                     ## define mode as CPU [default]
+if len ( sys.argv ) < 2:
+    print ( 'Usage: ' + sys.argv[0] + ' [ CPU | GPU | HIP ]; defaulting to CPU' )
+else:
+    _mode = sys.argv[1]
+    if _mode != "CPU" and _mode != "GPU":
+        if _mode == "HIP":
+            print ( sys.argv[0] + ': HIP mode requested - support coming soon, defaulting to CPU' )
+            _mode = "CPU"
+        else:
+            print ( sys.argv[0] + ': unknown mode: ' + _mode + ' exiting...' )
+            sys.exit (-1)
+
+##  Setup 'empty' timing script (would need bash or cygwin or similar to run on Windows)
+_timescript = _mode + '-timescript.sh'
+timefd = open ( _timescript, 'w' )
+timefd.write ( '#! /bin/bash \n\n' )
+timefd.write ( '##  Timing script to run the various transform sizes \n\n' )
+timefd.close()
+
+_filmode = stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+os.chmod ( _timescript, _filmode )
 
 with open ( 'process-sizes.txt', 'r' ) as fil:
     for line in fil.readlines():
@@ -52,13 +78,13 @@ with open ( 'process-sizes.txt', 'r' ) as fil:
             os.mkdir ( build_dir )
 
         ##  We'll keep executables we build in an 'executables' folder, create if necessary
-        exec_dir = 'executables'
+        exec_dir = _mode + '-executables'
         isdir = os.path.isdir ( exec_dir )
         if not isdir:
             os.mkdir ( exec_dir )
         
         ##  Build the commnd line for CMake...
-        cmdstr = 'rm -rf * && cmake -DFFTX_PROJ_DIR=' + _fftx
+        cmdstr = 'rm -rf * && cmake -DFFTX_PROJ_DIR=' + _fftx + ' -D_codegen=' + _mode
         cmdstr = cmdstr + ' -DDIM_X=' + _dimx + ' -DDIM_Y=' + _dimy + ' -DDIM_Z=' + _dimz
 
         os.chdir ( build_dir )
@@ -84,17 +110,22 @@ with open ( 'process-sizes.txt', 'r' ) as fil:
         
         _suffix = '-' + _dimx + 'x' + _dimy + 'x' + _dimz
         _target = 'bin/test' + _base
-        _newloc = '../' + exec_dir + '/test' + _base + _suffix
+        _newloc = exec_dir + '/test' + _base + _suffix
         if sys.platform == 'win32':
             _target = _target + '.exe'
             _newloc = _newloc + '.exe'
 
         ##  print ( 'Target built: ' + _target + ' Move to: ' + _newloc )
-        shutil.copy2 ( _target, _newloc )
+        shutil.copy2 ( _target, '../' + _newloc )
 
         os.chdir ( '..' )
-        time.sleep(1)
 
+        timefd = open ( _timescript, 'a' )
+        timefd.write ( '##  Cube = [' + _dimx + ', ' + _dimy + ', ' + _dimz + ' ]\n' )
+        timefd.write ( './' + _newloc +  '\n\n' )
+        timefd.close()
+
+        time.sleep(1)
 
 sys.exit (0)
 
