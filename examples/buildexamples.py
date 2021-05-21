@@ -7,7 +7,7 @@
 ##  specifications for the 3D DFT.  The script will run the FFTX generation process for
 ##  each size, using CMake; the final executable will be renamed to append the size spec.
 
-import os
+import os, stat
 import re
 import shutil
 import subprocess
@@ -47,9 +47,9 @@ timefd = open ( _timescript, 'w' )
 timefd.write ( '#! /bin/bash \n\n' )
 timefd.write ( '##  Timing script to run the various transform sizes \n\n' )
 timefd.close()
-if sys.platform != 'win32':
-    _filmode = stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
-    os.chmod ( _timescript, _filmode )
+##  if sys.platform != 'win32':
+_filmode = stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+os.chmod ( _timescript, _filmode )
 
 with open ( 'process-sizes.txt', 'r' ) as fil:
     for line in fil.readlines():
