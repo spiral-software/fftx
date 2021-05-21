@@ -47,7 +47,7 @@ timefd = open ( _timescript, 'w' )
 timefd.write ( '#! /bin/bash \n\n' )
 timefd.write ( '##  Timing script to run the various transform sizes \n\n' )
 timefd.close()
-##  if sys.platform != 'win32':
+
 _filmode = stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
 os.chmod ( _timescript, _filmode )
 
