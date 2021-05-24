@@ -7,6 +7,13 @@
 #include <device_launch_parameters.h>
 #include <cufft.h>
 
+#include "DFT_80.fftx.codegen.hpp"
+#include "IDFT_80.fftx.codegen.hpp"
+#include "DFT_100.fftx.codegen.hpp"
+#include "IDFT_100.fftx.codegen.hpp"
+#include "DFT_224_224_100.fftx.codegen.hpp"
+#include "IDFT_224_224_100.fftx.codegen.hpp"
+
 #define THREADS 128
 #define THREAD_BLOCKS 320
 #define C_SPEED 1
