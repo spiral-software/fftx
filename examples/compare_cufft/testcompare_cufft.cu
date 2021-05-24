@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
     }
   else
     {
-      printf("NO, results do not match.\n");
+      printf("NO, results do not match.  Max difference %11.5e\n", maxDiff);
     }
 
   /*
