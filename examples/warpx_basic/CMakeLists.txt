@@ -64,6 +64,8 @@ target_compile_options ( ${BUILD_PROGRAM} PRIVATE ${ADDL_COMPILE_FLAGS} )
 
 target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
 
+target_link_libraries      ( ${BUILD_PROGRAM} ${LIBS_FOR_CUDA} )
+
 set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
 
 install ( TARGETS ${BUILD_PROGRAM} DESTINATION ${INSTALL_DIR_TARGET} )
