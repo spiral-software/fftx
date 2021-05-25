@@ -59,7 +59,7 @@ if ( ${_codegen} STREQUAL "GPU" )
 	set ( LIBS_FOR_CUDA cufft )
 	set ( ADDL_COMPILE_FLAGS -DWIN64 -D_USE_MATH_DEFINES )
     else ()
-	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
+	set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
 	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft culibos )
 	set ( ADDL_COMPILE_FLAGS )
@@ -78,11 +78,11 @@ else ()
     message ( STATUS "Building for size [ ${DIM_X}, ${DIM_Y}, ${DIM_Z} ]" )
 endif ()
 
-##  Set include paths and require C++ 14 standard
+##  Set include paths and require C++ 11 standard
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 11)
-set ( CMAKE_CXX_STANDARD 14)
+set ( CMAKE_CXX_STANDARD 11)
 
 include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets )
 
