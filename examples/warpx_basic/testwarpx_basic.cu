@@ -6,6 +6,8 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cufft.h>
+#include <iostream>
+#include <algorithm>
 
 #include "DFT_80.fftx.codegen.hpp"
 #include "IDFT_80.fftx.codegen.hpp"
@@ -611,13 +613,38 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   ishift_k);
 }
 
+void reportDifferences(const char* name, double* cufft_out, double* fftx_out, int ll, int mm, int nn)
+{
+  double diff=0,cufft_max=0, fftx_max=0;
+  int imax=-1, jmax=-1, kmax=-1;
+  for(int k=0; k<nn; k++)
+    for(int j=0; j<mm; j++)
+      for(int i=0; i<ll; i++)
+        { 
+          int idx = i + j*ll + k*(ll*mm);
+          double c = cufft_out[idx];
+          double f = fftx_out[idx];
+          double d = std::abs(c-f);
+          if(d>diff)
+            {
+              diff=d;
+              imax=i;jmax=j; kmax=k;
+            }
+          if(std::abs(c)>cufft_max) cufft_max=c;
+          if(std::abs(f)>fftx_max) fftx_max=f;
+          
+        }
+ 
+  std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  cufft_max="<<cufft_max<<"  fftx_max="<<fftx_max<<"\n";
+}
+
 float execute_code(int l,
 		   int m,
 		   int n,
 		   double **fields_in,
 		   cufftDoubleComplex **shift_in,
 		   double **contractions,
-		   double **fields_out,
+		   double **fields_out, double **fields_out_fftx,
 		   cufftDoubleComplex **shift_out) {
   // the fields
   double *dev_Ex_in, *dev_Ey_in, *dev_Ez_in, *dev_Bx_in, *dev_By_in, *dev_Bz_in, *dev_Jx, *dev_Jy, *dev_Jz, *dev_rho_0, *dev_rho_1;
@@ -1155,6 +1182,7 @@ float execute_code(int l,
     fprintf(stderr, "dev_By_out cudaMemcpy failed!");
     exit(-1);
   }
+  
 
   cudaStatus = cudaMemcpy((void*) fields_out[5], dev_Bz_out, l * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
@@ -1162,6 +1190,52 @@ float execute_code(int l,
     exit(-1);
   }
 
+
+    cudaStatus = cudaMemcpy((void*) fields_out_fftx[0], dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Ex_out cudaMemcpy failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMemcpy((void*) fields_out_fftx[1], dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Ey_out cudaMemcpy failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMemcpy((void*) fields_out_fftx[2], dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Ez_out cudaMemcpy failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMemcpy((void*) fields_out_fftx[3], dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Bx_out cudaMemcpy failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMemcpy((void*) fields_out_fftx[4], dev_By_out_fftx, l * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_By_out cudaMemcpy failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMemcpy((void*) fields_out_fftx[5], dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Bz_out cudaMemcpy failed!");
+    exit(-1);
+  }
+
+  // compare answers between cufft and fftx
+  reportDifferences("Ex",fields_out[0],fields_out_fftx[0],l, m+1, n+1);
+  reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
+  reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
+  reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
+  reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
+  reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
+  
+ 
   // destroy cufftPlans
   cufftDestroy(plan_forward);
   cufftDestroy(plan_inverse);
@@ -1240,6 +1314,7 @@ int main(int argc, char **argv) {
 
   // input and output fields
   double **fields_in, **fields_out;
+  double *fields_out_fftx[6];
 
   // shifting arrays
   cufftDoubleComplex **shift_in, **shift_out;
@@ -1273,6 +1348,14 @@ int main(int argc, char **argv) {
   fields_out[3] = (double*) malloc((l + 1) * m * n * sizeof(double));
   fields_out[4] = (double*) malloc(l * (m + 1) * n * sizeof(double));
   fields_out[5] = (double*) malloc(l * m * (n + 1) * sizeof(double));
+  
+  fields_out_fftx[0] = (double*) malloc(l * (m + 1) * (n + 1) * sizeof(double));
+  fields_out_fftx[1] = (double*) malloc((l + 1) * m * (n + 1) * sizeof(double));
+  fields_out_fftx[2] = (double*) malloc((l + 1) * (m + 1) * n * sizeof(double));
+
+  fields_out_fftx[3] = (double*) malloc((l + 1) * m * n * sizeof(double));
+  fields_out_fftx[4] = (double*) malloc(l * (m + 1) * n * sizeof(double));
+  fields_out_fftx[5] = (double*) malloc(l * m * (n + 1) * sizeof(double));
 
   for(int i = 0; i < l * (m + 1) * (n + 1); ++i) {
     fields_in[0][i] = rand() / ((double) (INT_MAX * 1.0));
@@ -1384,7 +1467,7 @@ int main(int argc, char **argv) {
 				    fields_in,
 				    shift_in,
 				    contractions,
-				    fields_out,
+				    fields_out,fields_out_fftx,
 				    shift_out);
 
   printf("Execution time:\t%f\n", milliseconds);
@@ -1407,6 +1490,12 @@ int main(int argc, char **argv) {
   free(fields_out[3]);
   free(fields_out[4]);
   free(fields_out[5]);
+  free(fields_out_fftx[0]);
+  free(fields_out_fftx[1]);
+  free(fields_out_fftx[2]);
+  free(fields_out_fftx[3]);
+  free(fields_out_fftx[4]);
+  free(fields_out_fftx[5]);
 
   free(fields_in);
   free(fields_out);
