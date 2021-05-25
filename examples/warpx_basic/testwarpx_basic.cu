@@ -177,6 +177,7 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
 								    int n_is,
 								    double *temp,
 								    cufftDoubleComplex *output,
+                                                                    cufftDoubleComplex *output_fftx,
 								    int do_shift_i,
 								    cufftDoubleComplex *shift_i,
 								    int do_shift_j,
@@ -189,8 +190,29 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
 					temp,
 					l, m, n);
   cufftExecD2Z(plan, temp, output);
+  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+					input,
+					l_is, m_is, n_is,
+					temp,
+					l, m, n);
+  fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
+  fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
+  fftx::array_t<3,double> in(fftx::global_ptr<double>(input), inputBox);
+  fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
+  if(l==m==n==80) DFT_80::transform(in, out, in);
+  if(l==m==n==100) DFT_100::transform(in, out, in);
+  if(l==m==224 && n==100) DFT_224_224_100::transform(in, out, in);
+  
   shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
 					 output,
+					 do_shift_i,
+					 shift_i,
+					 do_shift_j,
+					 shift_j,
+					 do_shift_k,
+					 shift_k);
+    shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+					 output_fftx,
 					 do_shift_i,
 					 shift_i,
 					 do_shift_j,
@@ -204,8 +226,9 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 								    int m,
 								    int n,
 								    cufftDoubleComplex *input,
+                                                                    cufftDoubleComplex *input_fftx,
 								    double *temp,
-								    double *output,
+								    double *output, double *output_fftx,
 								    int l_os,
 								    int m_os,
 								    int n_os,
@@ -229,6 +252,28 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 					l, m, n,
 					output,
 					l_os, m_os, n_os);
+
+  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+					 input_fftx,
+					 do_shift_i,
+					 shift_i,
+					 do_shift_j,
+					 shift_j,
+					 do_shift_k,
+					 shift_k);
+  fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
+  fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
+  fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
+  fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx),inputBox);
+  if(l==m==n==80) IDFT_80::transform(in, out, out);
+  if(l==m==n==100) IDFT_100::transform(in, out, out);
+  if(l==m==224 && n==100) IDFT_224_224_100::transform(in, out, out);
+  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+					temp,
+					l, m, n,
+					output_fftx,
+					l_os, m_os, n_os);
+  
 }
 
 // compute Spectral Solve
@@ -253,6 +298,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  cufftDoubleComplex *fshift_k,
 								  double *temp0,
 								  cufftDoubleComplex *temp1,
+                                                                  cufftDoubleComplex *temp1_fftx,
 								  double *modified_ki_arr,
 								  double *modified_kj_arr,
 								  double *modified_kk_arr,
@@ -267,6 +313,12 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  double *Bx_out,
 								  double *By_out,
 								  double *Bz_out,
+                                                                  double *Ex_out_fftx,
+								  double *Ey_out_fftx,
+								  double *Ez_out_fftx,
+								  double *Bx_out_fftx,
+								  double *By_out_fftx,
+								  double *Bz_out_fftx,
 								  cufftDoubleComplex *ishift_i,
 								  cufftDoubleComplex *ishift_j,
 								  cufftDoubleComplex *ishift_k) {
@@ -279,6 +331,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, (m + 1), (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 0 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 0 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   1,
@@ -293,6 +346,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), m, (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 1 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 1 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   0,
@@ -307,6 +361,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), (m + 1), n,
 			   (temp0 + 0),
 			   (temp1 + 2 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 2 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   1,
@@ -322,6 +377,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), m, n,
 			   (temp0 + 0),
 			   (temp1 + 3 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 3 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   0,
@@ -336,6 +392,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, (m + 1), n,
 			   (temp0 + 0),
 			   (temp1 + 4 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 4 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   1,
@@ -350,6 +407,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, m, (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 5 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 5 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   0,
@@ -365,6 +423,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, (m + 1), (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 6 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 6 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   1,
@@ -379,6 +438,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), m, (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 7 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 7 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   0,
@@ -393,6 +453,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), (m + 1), n,
 			   (temp0 + 0),
 			   (temp1 + 8 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 8 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   1,
@@ -408,6 +469,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, m, n,
 			   (temp0 + 0),
 			   (temp1 + 9 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 9 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   0,
@@ -422,6 +484,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, m, n,
 			   (temp0 + 0),
 			   (temp1 + 10 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 10 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   0,
@@ -441,14 +504,28 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 						   X1_arr,
 						   X2_arr,
 						   X3_arr);
+    compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
+						   m,
+						   n,
+						   temp1_fftx,
+						   modified_ki_arr,
+						   modified_kj_arr,
+						   modified_kk_arr,
+						   C_arr,
+						   S_arr,
+						   X1_arr,
+						   X2_arr,
+						   X3_arr);
+  
   // Ex, Ey, Ez fields
   compute_warp_inverse_dft(plan_inverse,
 			   l,
 			   m,
 			   n,
 			   (temp1 + 0 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 0 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Ex_out,
+			   Ex_out, Ex_out_fftx,
 			   l, (m + 1), (n + 1),
 			   0,
 			   ishift_i,
@@ -461,8 +538,9 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 1 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 1 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Ey_out,
+			   Ey_out, Ey_out_fftx,
 			   (l + 1), m, (n + 1),
 			   1,
 			   ishift_i,
@@ -475,8 +553,9 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 2 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 2 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Ez_out,
+			   Ez_out, Ez_out_fftx,
 			   (l + 1), (m + 1), n,
 			   1,
 			   ishift_i,
@@ -490,8 +569,9 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 3 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 3 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Bx_out,
+			   Bx_out, Bx_out_fftx,
 			   (l + 1), m, n,
 			   1,
 			   ishift_i,
@@ -504,8 +584,9 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 4 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 4 * (l / 2 + 1) * m * n),
 			   temp0,
-			   By_out,
+			   By_out, By_out_fftx,
 			   l, (m + 1), n,
 			   0,
 			   ishift_i,
@@ -518,8 +599,9 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 5 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 5 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Bz_out,
+			   Bz_out, Bx_out_fftx,
 			   l, m, (n + 1),
 			   0,
 			   ishift_i,
@@ -538,14 +620,16 @@ float execute_code(int l,
 		   double **fields_out,
 		   cufftDoubleComplex **shift_out) {
   // the fields
-  double *dev_Ex_in, *dev_Ey_in, *dev_Ez_in, *dev_Bx_in, *dev_By_in, *dev_Bz_in, *dev_Jx, *dev_Jy, *dev_Jz, *dev_rho_0, *dev_rho_1, *dev_Ex_out, *dev_Ey_out, *dev_Ez_out, *dev_Bx_out, *dev_By_out, *dev_Bz_out;
+  double *dev_Ex_in, *dev_Ey_in, *dev_Ez_in, *dev_Bx_in, *dev_By_in, *dev_Bz_in, *dev_Jx, *dev_Jy, *dev_Jz, *dev_rho_0, *dev_rho_1;
+  double *dev_Ex_out, *dev_Ey_out, *dev_Ez_out, *dev_Bx_out, *dev_By_out, *dev_Bz_out;
+  double *dev_Ex_out_fftx, *dev_Ey_out_fftx, *dev_Ez_out_fftx, *dev_Bx_out_fftx, *dev_By_out_fftx, *dev_Bz_out_fftx;
 
   // the shifts
   cufftDoubleComplex *dev_fshift_i, *dev_fshift_j, *dev_fshift_k, *dev_ishift_i, *dev_ishift_j, *dev_ishift_k;
 
   // the temporaries
   double *dev_temp0;
-  cufftDoubleComplex *dev_temp1;
+  cufftDoubleComplex *dev_temp1, *dev_temp1_fftx;
 
   // the contraction arrays;
   double *dev_modified_ki_arr, *dev_modified_kj_arr, *dev_modified_kk_arr;
@@ -662,6 +746,44 @@ float execute_code(int l,
     exit(-1);
   }
 
+    // allocate Ex, Ey, Ez, Bx, By, Bz for the FFTX version of the algorithm.
+  
+  cudaStatus = cudaMalloc((void**)&dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Ex_out cudaMalloc failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMalloc((void**)&dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Ey_out cudaMalloc failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMalloc((void**)&dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Ey_out cudaMalloc failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMalloc((void**)&dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_Bx_out cudaMalloc failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMalloc((void**)&dev_By_out_fftx, l * (m + 1) * n * sizeof(double));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_By_out cudaMalloc failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMalloc((void**)&dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_By_out cudaMalloc failed!");
+    exit(-1);
+  }
+  
   // allocate the shifts
   cudaStatus = cudaMalloc((void**)&dev_fshift_i, (l / 2 + 1) * sizeof(cufftDoubleComplex));
   if (cudaStatus != cudaSuccess) {
@@ -707,6 +829,12 @@ float execute_code(int l,
   }
 
   cudaStatus = cudaMalloc((void**)&dev_temp1, 11 * (l / 2 + 1) * m * n * sizeof(cufftDoubleComplex));
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "dev_temp1 cudaMalloc failed!");
+    exit(-1);
+  }
+
+  cudaStatus = cudaMalloc((void**)&dev_temp1_fftx, 11 * (l / 2 + 1) * m * n * sizeof(cufftDoubleComplex));
   if (cudaStatus != cudaSuccess) {
     fprintf(stderr, "dev_temp1 cudaMalloc failed!");
     exit(-1);
@@ -919,6 +1047,21 @@ float execute_code(int l,
   cufftHandle plan_forward, plan_inverse;
   cufftPlan3d(&plan_forward, l, m, n, CUFFT_D2Z);
   cufftPlan3d(&plan_inverse, l, m, n, CUFFT_Z2D);
+  if(l==m==n==80)
+    {
+      DFT_80::init();
+      IDFT_80::init();
+    }
+  if(l==m==n==100)
+    {
+      DFT_100::init();
+      IDFT_100::init();
+    }
+  if(l==m==224 && n==100)
+    {
+      DFT_224_224_100::init();
+      IDFT_224_224_100::init();
+    }
 
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
@@ -946,6 +1089,7 @@ float execute_code(int l,
 			 dev_fshift_k,
 			 dev_temp0,
 			 dev_temp1,
+                         dev_temp1_fftx,
 			 dev_modified_ki_arr,
 			 dev_modified_kj_arr,
 			 dev_modified_kk_arr,
@@ -960,6 +1104,12 @@ float execute_code(int l,
 			 dev_Bx_out,
 			 dev_By_out,
 			 dev_Bz_out,
+                         dev_Ex_out_fftx,
+			 dev_Ey_out_fftx,
+			 dev_Ez_out_fftx,
+			 dev_Bx_out_fftx,
+			 dev_By_out_fftx,
+			 dev_Bz_out_fftx,
 			 dev_ishift_i,
 			 dev_ishift_j,
 			 dev_ishift_k);
@@ -1015,7 +1165,21 @@ float execute_code(int l,
   // destroy cufftPlans
   cufftDestroy(plan_forward);
   cufftDestroy(plan_inverse);
-  
+    if(l==m==n==80)
+    {
+      DFT_80::destroy();
+      IDFT_80::destroy();
+    }
+  if(l==m==n==100)
+    {
+      DFT_100::destroy();
+      IDFT_100::destroy();
+    }
+  if(l==m==224 && n==100)
+    {
+      DFT_224_224_100::destroy();
+      IDFT_224_224_100::destroy();
+    }
   // deallocate device memory
   cudaFree(dev_Ex_in);
   cudaFree(dev_Ey_in);
@@ -1038,6 +1202,8 @@ float execute_code(int l,
 
   cudaFree(dev_temp0);
   cudaFree(dev_temp1);
+  cudaFree(dev_temp1_fftx);
+  
 
   cudaFree(dev_modified_ki_arr);
   cudaFree(dev_modified_kj_arr);
@@ -1056,6 +1222,13 @@ float execute_code(int l,
   cudaFree(dev_Bx_out);
   cudaFree(dev_By_out);
   cudaFree(dev_Bz_out);
+
+  cudaFree(dev_Ex_out_fftx);
+  cudaFree(dev_Ey_out_fftx);
+  cudaFree(dev_Ez_out_fftx);
+  cudaFree(dev_Bx_out_fftx);
+  cudaFree(dev_By_out_fftx);
+  cudaFree(dev_Bz_out_fftx);
 
   return milliseconds;
 }
