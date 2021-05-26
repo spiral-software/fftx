@@ -25,7 +25,7 @@ __global__ void pack_data(int l,
 			  int n_os) {
   int id = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += hipBlockDim_x * hipGridDim_x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -48,10 +48,10 @@ __global__ void shift_data(int l,
   int id = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
 
   double2 Z;
-  Z.x = 0.0;
+  Z.x = 1.0;
   Z.y = 0.0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += hipBlockDim_x * hipGridDim_x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -94,7 +94,7 @@ __global__ void compute_contraction(int l,
   double c2 = C_SPEED * C_SPEED;
   double inv_ep0 = 1.0 / EP0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += hipBlockDim_x * hipGridDim_x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
