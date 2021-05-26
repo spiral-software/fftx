@@ -35,7 +35,7 @@ __global__ void pack_data(int l,
 			  int n_os) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -58,10 +58,10 @@ __global__ void shift_data(int l,
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
   cufftDoubleComplex Z;
-  Z.x = 0.0;
+  Z.x = 1.0;
   Z.y = 0.0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -104,7 +104,7 @@ __global__ void compute_contraction(int l,
   double c2 = C_SPEED * C_SPEED;
   double inv_ep0 = 1.0 / EP0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -625,10 +625,10 @@ void reportDifferences(const char* name, double* cufft_out, double* fftx_out, in
           double c = cufft_out[idx];
           double f = fftx_out[idx];
           double d = std::abs(c-f);
-          if(d>diff)
-            {
-              diff=d;
-              imax=i;jmax=j; kmax=k;
+	  
+          if(d > 1e-9) {
+	    diff=d;
+	    imax=i;jmax=j; kmax=k;
             }
           if(std::abs(c)>cufft_max) cufft_max=c;
           if(std::abs(f)>fftx_max) fftx_max=f;
@@ -1524,4 +1524,3 @@ int main(int argc, char **argv) {
   
   return 0;
 }
-
