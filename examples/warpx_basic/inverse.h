@@ -1,9 +1,5 @@
 // make
 
-#include "fftx3.hpp"
-#include <array>
-#include <cstdio>
-#include <cassert>
 
 
 using namespace fftx;
