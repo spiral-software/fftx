@@ -621,7 +621,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
                            (temp1_fftx + 5 * (l / 2 + 1) * m * n),
 			   temp0,
 			   Bz_out,
-			   Bx_out_fftx,
+			   Bz_out_fftx,
 			   l, m, (n + 1),
 			   0,
 			   ishift_i,
@@ -643,8 +643,9 @@ void reportDifferences(const char* name, double* cufft_out, double* fftx_out, in
 	double f = fftx_out[idx];
 	double d = std::abs(c-f);
 	  
-	if(d > 1e-9) {
+	if(d > 1e-8) {
 	  diff=d;
+	  //std::cout << i << ", " << j << ", " << k << std::endl;
 	  imax=i;
 	  jmax=j;
 	  kmax=k;
@@ -1331,7 +1332,7 @@ int main(int argc, char **argv) {
 
   // input and output fields
   double **fields_in, **fields_out;
-  double *fields_out_fftx[6];
+  double **fields_out_fftx;
 
   // shifting arrays
   cufftDoubleComplex **shift_in, **shift_out;
@@ -1342,6 +1343,7 @@ int main(int argc, char **argv) {
   // allocate memory for the fields
   fields_in = (double**) malloc(11 * sizeof(double*));
   fields_out = (double**) malloc(6 * sizeof(double*));
+  fields_out_fftx = (double**) malloc(6 * sizeof(double*));
 
   fields_in[0] = (double*) malloc(l * (m + 1) * (n + 1) * sizeof(double));
   fields_in[1] = (double*) malloc((l + 1) * m * (n + 1) * sizeof(double));
@@ -1523,6 +1525,7 @@ int main(int argc, char **argv) {
 
   free(fields_in);
   free(fields_out);
+  free(fields_out_fftx);
 
   free(shift_in[0]);
   free(shift_in[1]);
