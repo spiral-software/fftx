@@ -35,7 +35,7 @@ __global__ void pack_data(int l,
 			  int n_os) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -61,7 +61,7 @@ __global__ void shift_data(int l,
   Z.x = 1.0;
   Z.y = 0.0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -104,7 +104,7 @@ __global__ void compute_contraction(int l,
   double c2 = C_SPEED * C_SPEED;
   double inv_ep0 = 1.0 / EP0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -625,10 +625,10 @@ void reportDifferences(const char* name, double* cufft_out, double* fftx_out, in
           double c = cufft_out[idx];
           double f = fftx_out[idx];
           double d = std::abs(c-f);
-          if(d>diff)
-            {
-              diff=d;
-              imax=i;jmax=j; kmax=k;
+	  
+          if(d > 1e-9) {
+	    diff=d;
+	    imax=i;jmax=j; kmax=k;
             }
           if(std::abs(c)>cufft_max) cufft_max=c;
           if(std::abs(f)>fftx_max) fftx_max=f;
@@ -1229,11 +1229,11 @@ float execute_code(int l,
 
   // compare answers between cufft and fftx
   reportDifferences("Ex",fields_out[0],fields_out_fftx[0],l, m+1, n+1);
-  reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
-  reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
-  reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
-  reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
-  reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
+  //reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
+  //reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
+  //reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
+  //reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
+  //reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
   
  
   // destroy cufftPlans
