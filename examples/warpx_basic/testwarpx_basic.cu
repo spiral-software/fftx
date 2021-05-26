@@ -1229,11 +1229,11 @@ float execute_code(int l,
 
   // compare answers between cufft and fftx
   reportDifferences("Ex",fields_out[0],fields_out_fftx[0],l, m+1, n+1);
-  //reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
-  //reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
-  //reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
-  //reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
-  //reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
+  reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
+  reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
+  reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
+  reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
+  reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
   
  
   // destroy cufftPlans
