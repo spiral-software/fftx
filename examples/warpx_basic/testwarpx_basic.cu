@@ -58,7 +58,7 @@ __global__ void shift_data(int l,
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
   cufftDoubleComplex Z;
-  Z.x = 0.0;
+  Z.x = 1.0;
   Z.y = 0.0;
   
   for(int iter = id; iter < (l * m * n); ++iter) {
