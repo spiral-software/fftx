@@ -185,7 +185,7 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
 								    int do_shift_j,
 								    cufftDoubleComplex *shift_j,
 								    int do_shift_k,
-								    cufftDoubleCompelex *shift_k) {
+								    cufftDoubleComplex *shift_k) {
   // cufft implementation
   pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
 					input,
