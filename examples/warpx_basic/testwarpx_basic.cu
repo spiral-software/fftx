@@ -13,8 +13,8 @@
 #include "IDFT_80.fftx.codegen.hpp"
 #include "DFT_100.fftx.codegen.hpp"
 #include "IDFT_100.fftx.codegen.hpp"
-#include "DFT_224_224_100.fftx.codegen.hpp"
-#include "IDFT_224_224_100.fftx.codegen.hpp"
+#include "DFT_100_224_224.fftx.codegen.hpp"
+#include "IDFT_100_224_224.fftx.codegen.hpp"
 
 #define THREADS 128
 #define THREAD_BLOCKS 320
@@ -223,9 +223,9 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
     {
       DFT_100::transform(in, out, in);
     }
-  else if(l==224 && m==224 && n==100)
+  else if(l==100 && m==224 && n==224)
     {
-      DFT_224_224_100::transform(in, out, in);
+      DFT_100_224_224::transform(in, out, in);
     }
   else
     {
@@ -299,9 +299,9 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
     {
       IDFT_100::transform(in, out, out);
     }
-  else if(l==224 && m==224 && n==100)
+  else if(l==100 && m==224 && n==224)
     {
-      IDFT_224_224_100::transform(in, out, out);
+      IDFT_100_224_224::transform(in, out, out);
     }
   else
     {
@@ -1121,19 +1121,19 @@ float execute_code(int l,
   cufftHandle plan_forward, plan_inverse;
   cufftPlan3d(&plan_forward, l, m, n, CUFFT_D2Z);
   cufftPlan3d(&plan_inverse, l, m, n, CUFFT_Z2D);
-  if(l==m==n==80) {
+  if(l==80 && m==80 && n==80) {
     DFT_80::init();
     IDFT_80::init();
   }
   
-  if(l==m==n==100) {
+  if(l==100 &&m==100 && n==100) {
     DFT_100::init();
     IDFT_100::init();
   }
   
-  if(l==m==224 && n==100) {
-    DFT_224_224_100::init();
-    IDFT_224_224_100::init();
+  if(l==100 && m==224 && n==224) {
+    DFT_100_224_224::init();
+    IDFT_100_224_224::init();
   }
 
   cudaEvent_t start, stop;
@@ -1285,19 +1285,19 @@ float execute_code(int l,
   cufftDestroy(plan_forward);
   cufftDestroy(plan_inverse);
   
-  if(l==m==n==80) {
+  if(l==80 && m==80 && n==80) {
     DFT_80::destroy();
     IDFT_80::destroy();
   }
   
-  if(l==m==n==100) {
+  if(l==100 && m==100 && n==100) {
     DFT_100::destroy();
     IDFT_100::destroy();
   }
   
-  if(l==m==224 && n==100) {
-    DFT_224_224_100::destroy();
-    IDFT_224_224_100::destroy();
+  if(l==100 && m==224 && n==224) {
+    DFT_100_224_224::destroy();
+    IDFT_100_224_224::destroy();
   }
   
   // deallocate device memory
