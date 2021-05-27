@@ -1,13 +1,18 @@
+#include "hip/hip_runtime.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
 #include <float.h>
-#include <hip/hip_runtime_api.h>
-#include <hip/hip_vector_types.h>
-#include <hip/hcc_detail/host_defines.h>
-#include <hip/hcc_detail/math_functions.h>
-#include <hip/hcc_detail/device_functions.h>
-#include <rocfft.h>
+#include <hipfft.h>
+#include <iostream>
+#include <algorithm>
+
+#include "DFT_80.fftx.codegen.hpp"
+#include "IDFT_80.fftx.codegen.hpp"
+#include "DFT_100.fftx.codegen.hpp"
+#include "IDFT_100.fftx.codegen.hpp"
+#include "DFT_100_224_224.fftx.codegen.hpp"
+#include "IDFT_100_224_224.fftx.codegen.hpp"
 
 #define THREADS 128
 #define THREAD_BLOCKS 320
@@ -26,9 +31,9 @@ __global__ void pack_data(int l,
 			  int l_os,
 			  int m_os,
 			  int n_os) {
-  int id = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  int id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  for(int iter = id; iter < (l * m * n); iter += hipBlockDim_x * hipGridDim_x) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -41,30 +46,30 @@ __global__ void pack_data(int l,
 __global__ void shift_data(int l,
 			   int m,
 			   int n,
-			   double2 *io,
+			   hipfftDoubleComplex *io,
 			   int do_shift_i,
-			   double2 *shift_i,
+			   hipfftDoubleComplex *shift_i,
 			   int do_shift_j,
-			   double2 *shift_j,
+			   hipfftDoubleComplex *shift_j,
 			   int do_shift_k,
-			   double2 *shift_k) {
-  int id = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+			   hipfftDoubleComplex *shift_k) {
+  int id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  double2 Z;
+  hipfftDoubleComplex Z;
   Z.x = 1.0;
   Z.y = 0.0;
   
-  for(int iter = id; iter < (l * m * n); iter += hipBlockDim_x * hipGridDim_x) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
 
-    double2 v_shift_i = (do_shift_i == 0) ? Z : *(shift_i + i);
-    double2 v_shift_j = (do_shift_j == 0) ? Z : *(shift_j + j);
-    double2 v_shift_k = (do_shift_k == 0) ? Z : *(shift_k + k);
+    hipfftDoubleComplex v_shift_i = (do_shift_i == 0) ? Z : *(shift_i + i);
+    hipfftDoubleComplex v_shift_j = (do_shift_j == 0) ? Z : *(shift_j + j);
+    hipfftDoubleComplex v_shift_k = (do_shift_k == 0) ? Z : *(shift_k + k);
     
-    double2 value = *(io + iter);
-    double2 result;
+    hipfftDoubleComplex value = *(io + iter);
+    hipfftDoubleComplex result;
 
     result.x = value.x * v_shift_i.x - value.y * v_shift_i.y;
     result.y = value.x * v_shift_i.y + value.y * v_shift_i.x;
@@ -83,7 +88,7 @@ __global__ void shift_data(int l,
 __global__ void compute_contraction(int l,
 				    int m,
 				    int n,
-				    double2 *io,
+				    hipfftDoubleComplex *io,
 				    double *modified_ki_arr,
 				    double *modified_kj_arr,
 				    double *modified_kk_arr,
@@ -92,30 +97,30 @@ __global__ void compute_contraction(int l,
 				    double *X1_arr,
 				    double *X2_arr,
 				    double *X3_arr) {
-  int id = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  int id = blockDim.x * blockIdx.x + threadIdx.x;
 
   double c2 = C_SPEED * C_SPEED;
   double inv_ep0 = 1.0 / EP0;
   
-  for(int iter = id; iter < (l * m * n); iter += hipBlockDim_x * hipGridDim_x) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
 
     // E and B fields
-    double2 Ex = *(io + 0 * l * m * n + iter);
-    double2 Ey = *(io + 1 * l * m * n + iter);
-    double2 Ez = *(io + 2 * l * m * n + iter);
-    double2 Bx = *(io + 3 * l * m * n + iter);
-    double2 By = *(io + 4 * l * m * n + iter);
-    double2 Bz = *(io + 5 * l * m * n + iter);
+    hipfftDoubleComplex Ex = *(io + 0 * l * m * n + iter);
+    hipfftDoubleComplex Ey = *(io + 1 * l * m * n + iter);
+    hipfftDoubleComplex Ez = *(io + 2 * l * m * n + iter);
+    hipfftDoubleComplex Bx = *(io + 3 * l * m * n + iter);
+    hipfftDoubleComplex By = *(io + 4 * l * m * n + iter);
+    hipfftDoubleComplex Bz = *(io + 5 * l * m * n + iter);
 
     // Shortcut for the values of J and rho
-    double2 Jx = *(io + 6 * l * m * n + iter);
-    double2 Jy = *(io + 7 * l * m * n + iter);
-    double2 Jz = *(io + 8 * l * m * n + iter);
-    double2 rho_old = *(io + 9 * l * m * n + iter);
-    double2 rho_new = *(io + 10 * l * m * n + iter);
+    hipfftDoubleComplex Jx = *(io + 6 * l * m * n + iter);
+    hipfftDoubleComplex Jy = *(io + 7 * l * m * n + iter);
+    hipfftDoubleComplex Jz = *(io + 8 * l * m * n + iter);
+    hipfftDoubleComplex rho_old = *(io + 9 * l * m * n + iter);
+    hipfftDoubleComplex rho_new = *(io + 10 * l * m * n + iter);
     
     // k vector values, and coefficients
     double kx = *(modified_ki_arr + i);
@@ -128,7 +133,7 @@ __global__ void compute_contraction(int l,
     double X2 = *(X2_arr + iter);
     double X3 = *(X3_arr + iter);
 
-    double2 ex, ey, ez, bx, by, bz;
+    hipfftDoubleComplex ex, ey, ez, bx, by, bz;
 
     ex.x = C * Ex.x + S_ck * (-1.0 * c2 * (ky * Bz.y - kz * By.y) - inv_ep0 * Jx.x) + (X2 * rho_new.y - X3 * rho_old.y) * kx;
     ex.y = C * Ex.y + S_ck * (       c2 * (ky * Bz.x - kz * By.x) - inv_ep0 * Jx.y) - (X2 * rho_new.x - X3 * rho_old.x) * kx; 
@@ -162,7 +167,7 @@ __global__ void compute_contraction(int l,
 
 
 // compute forward and inverse Fourier transforms
-inline void __attribute__((always_inline)) compute_warp_forward_dft(rocfft_plan plan,
+inline void __attribute__((always_inline)) compute_warp_forward_dft(hipfftHandle plan,
 								    int l,
 								    int m,
 								    int n,
@@ -171,51 +176,149 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(rocfft_plan 
 								    int m_is,
 								    int n_is,
 								    double *temp,
-								    double2 *output,
+								    hipfftDoubleComplex *output,
+                                                                    hipfftDoubleComplex *output_fftx,
 								    int do_shift_i,
-								    double2 *shift_i,
+								    hipfftDoubleComplex *shift_i,
 								    int do_shift_j,
-								    double2 *shift_j,
+								    hipfftDoubleComplex *shift_j,
 								    int do_shift_k,
-								    double2 *shift_k) {
-  dim3 shapeB(THREAD_BLOCKS, 1);
-  dim3 shapeT(THREADS, 1);
+								    hipfftDoubleComplex *shift_k) {
+  // cufft implementation
+  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+					input,
+					l_is, m_is, n_is,
+					temp,
+					l, m, n);
+  hipfftExecD2Z(plan, temp, output);
+  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+					 output,
+					 do_shift_i,
+					 shift_i,
+					 do_shift_j,
+					 shift_j,
+					 do_shift_k,
+					 shift_k);
+
+  // fftx implementation
+  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+					input,
+					l_is, m_is, n_is,
+					temp,
+					l, m, n);
   
-  hipLaunchKernelGGL(pack_data, shapeB, shapeT, 0, 0, l, m, n, input, l_is, m_is, n_is, temp, l, m, n);
-  rocfft_execute(plan, (void**) &input, (void**) &temp, NULL);
-  hipLaunchKernelGGL(shift_data, shapeB, shapeT, 0, 0, l / 2 + 1, m, n, output, do_shift_i, shift_i, do_shift_j, shift_j, do_shift_k, shift_k);
+  fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
+  fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
+  
+  fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
+  fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
+
+  if(l==80 && m==80 && n==80)
+    {
+      DFT_80::transform(in, out, in);
+    }
+  else if(l==100 && m==100 && n==100)
+    {
+      DFT_100::transform(in, out, in);
+    }
+  else if(l==100 && m==224 && n==224)
+    {
+      DFT_100_224_224::transform(in, out, in);
+    }
+  else
+    {
+      std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+    }
+  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+					 output_fftx,
+					 do_shift_i,
+					 shift_i,
+					 do_shift_j,
+					 shift_j,
+					 do_shift_k,
+					 shift_k);
 }
 
-inline void __attribute__((always_inline)) compute_warp_inverse_dft(rocfft_plan plan,
+inline void __attribute__((always_inline)) compute_warp_inverse_dft(hipfftHandle plan,
 								    int l,
 								    int m,
 								    int n,
-								    double2 *input,
+								    hipfftDoubleComplex *input,
+                                                                    hipfftDoubleComplex *input_fftx,
 								    double *temp,
 								    double *output,
+								    double *output_fftx,
 								    int l_os,
 								    int m_os,
 								    int n_os,
 								    int do_shift_i,
-								    double2 *shift_i,
+								    hipfftDoubleComplex *shift_i,
 								    int do_shift_j,
-								    double2 *shift_j,
+								    hipfftDoubleComplex *shift_j,
 								    int do_shift_k,
-								    double2 *shift_k) {
-  dim3 shapeB(THREAD_BLOCKS, 1);
-  dim3 shapeT(THREADS, 1);
+								    hipfftDoubleComplex *shift_k) {
+  // cufft implementation
+  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+					 input,
+					 do_shift_i,
+					 shift_i,
+					 do_shift_j,
+					 shift_j,
+					 do_shift_k,
+					 shift_k);
+  hipfftExecZ2D(plan, input, temp);
+  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+					temp,
+					l, m, n,
+					output,
+					l_os, m_os, n_os);
 
-  hipLaunchKernelGGL(shift_data, shapeB, shapeT, 0, 0, l / 2 + 1, m, n, input, do_shift_i, shift_i, do_shift_j, shift_j, do_shift_k, shift_k);
-  rocfft_execute(plan, (void**) &input, (void**) &temp, NULL);
-  hipLaunchKernelGGL(pack_data, shapeB, shapeT, 0, 0, l, m, n, temp, l, m, n, output, l_os, m_os, n_os);
+  // fftx implementation
+  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+					 input_fftx,
+					 do_shift_i,
+					 shift_i,
+					 do_shift_j,
+					 shift_j,
+					 do_shift_k,
+					 shift_k);
+
+  fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
+  fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
+
+  fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
+  fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
+  
+  if(l==80  && m==80 && n==80)
+    {
+      IDFT_80::transform(in, out, out);
+    }
+  else if(l==100 && m==100 && n==100)
+    {
+      IDFT_100::transform(in, out, out);
+    }
+  else if(l==100 && m==224 && n==224)
+    {
+      IDFT_100_224_224::transform(in, out, out);
+    }
+  else
+    {
+      std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+    }
+      
+  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+					temp,
+					l, m, n,
+					output_fftx,
+					l_os, m_os, n_os); 
 }
 
 // compute Spectral Solve
 inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  int m,
 								  int n,
-								  rocfft_plan plan_forward,
-								  rocfft_plan plan_inverse,
+								  hipfftHandle plan_forward,
+								  hipfftHandle plan_inverse,
 								  double *Ex_in,
 								  double *Ey_in,
 								  double *Ez_in,
@@ -227,11 +330,12 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  double *Jz,
 								  double *rho_0,
 								  double *rho_1,
-								  double2 *fshift_i,
-								  double2 *fshift_j,
-								  double2 *fshift_k,
+								  hipfftDoubleComplex *fshift_i,
+								  hipfftDoubleComplex *fshift_j,
+								  hipfftDoubleComplex *fshift_k,
 								  double *temp0,
-								  double2 *temp1,
+								  hipfftDoubleComplex *temp1,
+                                                                  hipfftDoubleComplex *temp1_fftx,
 								  double *modified_ki_arr,
 								  double *modified_kj_arr,
 								  double *modified_kk_arr,
@@ -246,9 +350,15 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  double *Bx_out,
 								  double *By_out,
 								  double *Bz_out,
-								  double2 *ishift_i,
-								  double2 *ishift_j,
-								  double2 *ishift_k) {
+                                                                  double *Ex_out_fftx,
+								  double *Ey_out_fftx,
+								  double *Ez_out_fftx,
+								  double *Bx_out_fftx,
+								  double *By_out_fftx,
+								  double *Bz_out_fftx,
+								  hipfftDoubleComplex *ishift_i,
+								  hipfftDoubleComplex *ishift_j,
+								  hipfftDoubleComplex *ishift_k) {
   // Ex, Ey, Ez fields
   compute_warp_forward_dft(plan_forward,
 			   l,
@@ -258,6 +368,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, (m + 1), (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 0 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 0 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   1,
@@ -272,6 +383,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), m, (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 1 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 1 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   0,
@@ -286,6 +398,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), (m + 1), n,
 			   (temp0 + 0),
 			   (temp1 + 2 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 2 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   1,
@@ -301,6 +414,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), m, n,
 			   (temp0 + 0),
 			   (temp1 + 3 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 3 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   0,
@@ -315,6 +429,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, (m + 1), n,
 			   (temp0 + 0),
 			   (temp1 + 4 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 4 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   1,
@@ -329,6 +444,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, m, (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 5 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 5 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   0,
@@ -344,6 +460,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, (m + 1), (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 6 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 6 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   1,
@@ -358,6 +475,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), m, (n + 1),
 			   (temp0 + 0),
 			   (temp1 + 7 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 7 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   0,
@@ -372,6 +490,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (l + 1), (m + 1), n,
 			   (temp0 + 0),
 			   (temp1 + 8 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 8 * (l / 2 + 1) * m * n),
 			   1,
 			   fshift_i,
 			   1,
@@ -387,6 +506,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, m, n,
 			   (temp0 + 0),
 			   (temp1 + 9 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 9 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   0,
@@ -401,6 +521,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   l, m, n,
 			   (temp0 + 0),
 			   (temp1 + 10 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 10 * (l / 2 + 1) * m * n),
 			   0,
 			   fshift_i,
 			   0,
@@ -408,10 +529,30 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   0,
 			   fshift_k);
   // contraction
-  dim3 shapeB(THREAD_BLOCKS, 1);
-  dim3 shapeT(THREADS, 1);
-
-  hipLaunchKernelGGL(compute_contraction, shapeB, shapeT, 0, 0, (l / 2 + 1), m, n, temp1, modified_ki_arr, modified_kj_arr, modified_kk_arr, C_arr, S_arr, X1_arr, X2_arr, X3_arr);
+  hipLaunchKernelGGL(compute_contraction, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, (l / 2 + 1),
+						  m,
+						  n,
+						  temp1,
+						  modified_ki_arr,
+						  modified_kj_arr,
+						  modified_kk_arr,
+						  C_arr,
+						  S_arr,
+						  X1_arr,
+						  X2_arr,
+						  X3_arr);
+  hipLaunchKernelGGL(compute_contraction, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, (l / 2 + 1),
+						  m,
+						  n,
+						  temp1_fftx,
+						  modified_ki_arr,
+						  modified_kj_arr,
+						  modified_kk_arr,
+						  C_arr,
+						  S_arr,
+						  X1_arr,
+						  X2_arr,
+						  X3_arr);
   
   // Ex, Ey, Ez fields
   compute_warp_inverse_dft(plan_inverse,
@@ -419,8 +560,10 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 0 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 0 * (l / 2 + 1) * m * n),
 			   temp0,
 			   Ex_out,
+			   Ex_out_fftx,
 			   l, (m + 1), (n + 1),
 			   0,
 			   ishift_i,
@@ -433,8 +576,10 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 1 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 1 * (l / 2 + 1) * m * n),
 			   temp0,
 			   Ey_out,
+			   Ey_out_fftx,
 			   (l + 1), m, (n + 1),
 			   1,
 			   ishift_i,
@@ -447,8 +592,10 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 2 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 2 * (l / 2 + 1) * m * n),
 			   temp0,
 			   Ez_out,
+			   Ez_out_fftx,
 			   (l + 1), (m + 1), n,
 			   1,
 			   ishift_i,
@@ -462,8 +609,10 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 3 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 3 * (l / 2 + 1) * m * n),
 			   temp0,
 			   Bx_out,
+			   Bx_out_fftx,
 			   (l + 1), m, n,
 			   1,
 			   ishift_i,
@@ -476,8 +625,10 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 4 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 4 * (l / 2 + 1) * m * n),
 			   temp0,
 			   By_out,
+			   By_out_fftx,
 			   l, (m + 1), n,
 			   0,
 			   ishift_i,
@@ -490,8 +641,10 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   m,
 			   n,
 			   (temp1 + 5 * (l / 2 + 1) * m * n),
+                           (temp1_fftx + 5 * (l / 2 + 1) * m * n),
 			   temp0,
 			   Bz_out,
+			   Bz_out_fftx,
 			   l, m, (n + 1),
 			   0,
 			   ishift_i,
@@ -501,153 +654,486 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   ishift_k);
 }
 
+void reportDifferences(const char* name, double* cufft_out, double* fftx_out, int ll, int mm, int nn) {
+  double diff=0, cufft_max=0, fftx_max=0;
+  int imax=-1, jmax=-1, kmax=-1;
+  
+  for(int k = 0; k < nn; k++)
+    for(int j = 0; j < mm; j++)
+      for(int i = 0; i < ll; i++) { 
+	int idx = i + j * ll + k * (ll * mm);
+	double c = cufft_out[idx];
+	double f = fftx_out[idx];
+	double d = std::abs(c-f);
+	  
+
+	if(d> diff)
+          {
+            diff=d;
+	  //std::cout << i << ", " << j << ", " << k << std::endl;
+            imax=i;
+            jmax=j;
+            kmax=k;
+          }
+	
+	if(std::abs(c)>cufft_max) cufft_max=c;
+	if(std::abs(f)>fftx_max) fftx_max=f;   
+      }
+
+  std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  cufft_max="<<cufft_max<<"  fftx_max="<<fftx_max<<"\n";
+}
+
 float execute_code(int l,
 		   int m,
 		   int n,
 		   double **fields_in,
-		   double2 **shift_in,
-		   double **contraction,
-		   double **fields_out,
-		   double2 **shift_out) {
+		   hipfftDoubleComplex **shift_in,
+		   double **contractions,
+		   double **fields_out, double **fields_out_fftx,
+		   hipfftDoubleComplex **shift_out) {
   // the fields
-  double *dev_Ex_in, *dev_Ey_in, *dev_Ez_in, *dev_Bx_in, *dev_By_in, *dev_Bz_in, *dev_Jx, *dev_Jy, *dev_Jz, *dev_rho_0, *dev_rho_1, *dev_Ex_out, *dev_Ey_out, *dev_Ez_out, *dev_Bx_out, *dev_By_out, *dev_Bz_out;
+  double *dev_Ex_in, *dev_Ey_in, *dev_Ez_in, *dev_Bx_in, *dev_By_in, *dev_Bz_in, *dev_Jx, *dev_Jy, *dev_Jz, *dev_rho_0, *dev_rho_1;
+  double *dev_Ex_out, *dev_Ey_out, *dev_Ez_out, *dev_Bx_out, *dev_By_out, *dev_Bz_out;
+  double *dev_Ex_out_fftx, *dev_Ey_out_fftx, *dev_Ez_out_fftx, *dev_Bx_out_fftx, *dev_By_out_fftx, *dev_Bz_out_fftx;
 
   // the shifts
-  double2 *dev_fshift_i, *dev_fshift_j, *dev_fshift_k, *dev_ishift_i, *dev_ishift_j, *dev_ishift_k;
+  hipfftDoubleComplex *dev_fshift_i, *dev_fshift_j, *dev_fshift_k, *dev_ishift_i, *dev_ishift_j, *dev_ishift_k;
 
   // the temporaries
   double *dev_temp0;
-  double2 *dev_temp1;
+  hipfftDoubleComplex *dev_temp1, *dev_temp1_fftx;
 
   // the contraction arrays;
   double *dev_modified_ki_arr, *dev_modified_kj_arr, *dev_modified_kk_arr;
   double *dev_C_arr, *dev_S_arr, *dev_X1_arr, *dev_X2_arr, *dev_X3_arr;
 
+  int hipStatus = hipSetDevice(0);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "hipSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+    exit(-1);
+  }
+
   // device memory allocation
   // allocate Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz, rho_0, rho_1
-  hipMalloc((void**)&dev_Ex_in, l * (m + 1) * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Ey_in, (l + 1) * m * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Ez_in, (l + 1) * (m + 1) * n * sizeof(double));
-  hipMalloc((void**)&dev_Bx_in, (l + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_By_in, l * (m + 1) * n * sizeof(double));
-  hipMalloc((void**)&dev_Bz_in, l * m * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Jx, l * (m + 1) * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Jy, (l + 1) * m * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Jz, (l + 1) * (m + 1) * n * sizeof(double));
-  hipMalloc((void**)&dev_rho_0, l * m * n * sizeof(double));
-  hipMalloc((void**)&dev_rho_1, l * m * n * sizeof(double));
+  hipStatus = hipMalloc((void**)&dev_Ex_in, l * (m + 1) * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ex_in hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Ey_in, (l + 1) * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_in hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Ez_in, (l + 1) * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_in hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Bx_in, (l + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bx_in hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_By_in, l * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_in hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Bz_in, l * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_in hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Jx, l * (m + 1) * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Jx hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Jy, (l + 1) * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Jy hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Jz, (l + 1) * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Jz hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_rho_0, l * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_rho_0 hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_rho_1, l * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_rho_1 hipMalloc failed!");
+    exit(-1);
+  }
 
   // allocate Ex, Ey, Ez, Bx, By, Bz
-  hipMalloc((void**)&dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double));
-  hipMalloc((void**)&dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double));
-  hipMalloc((void**)&dev_Bx_out, (l + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_By_out, l * (m + 1) * n * sizeof(double));
-  hipMalloc((void**)&dev_Bz_out, l * m * (n + 1) * sizeof(double));
+  hipStatus = hipMalloc((void**)&dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ex_out hipMalloc failed!");
+    exit(-1);
+  }
 
+  hipStatus = hipMalloc((void**)&dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Bx_out, (l + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bx_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_By_out, l * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Bz_out, l * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_out hipMalloc failed!");
+    exit(-1);
+  }
+
+    // allocate Ex, Ey, Ez, Bx, By, Bz for the FFTX version of the algorithm.
+  
+  hipStatus = hipMalloc((void**)&dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ex_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bx_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_By_out_fftx, l * (m + 1) * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_out hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_out hipMalloc failed!");
+    exit(-1);
+  }
+  
   // allocate the shifts
-  hipMalloc((void**)&dev_fshift_i, (l / 2 + 1) * sizeof(double2));
-  hipMalloc((void**)&dev_fshift_j, m * sizeof(double2));
-  hipMalloc((void**)&dev_fshift_k, n * sizeof(double2));
-  hipMalloc((void**)&dev_ishift_i, (l / 2 + 1) * sizeof(double2));
-  hipMalloc((void**)&dev_ishift_j, m * sizeof(double2));
-  hipMalloc((void**)&dev_ishift_k, n * sizeof(double2));
+  hipStatus = hipMalloc((void**)&dev_fshift_i, (l / 2 + 1) * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_fshift_i hipMalloc failed!");
+    exit(-1);
+  }
 
+  hipStatus = hipMalloc((void**)&dev_fshift_j, m * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_fshift_j hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_fshift_k, n * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_fshift_n hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_ishift_i, (l / 2 + 1) * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_ishift_i hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_ishift_j, m * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_ishift_j hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_ishift_k, n * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_ishift_n hipMalloc failed!");
+    exit(-1);
+  }
+  
   // allocate temporary arrays
-  hipMalloc((void**)&dev_temp0, l * m * n * sizeof(double));
-  hipMalloc((void**)&dev_temp1, 11 * (l / 2 + 1) * m * n * sizeof(double2));
+  hipStatus = hipMalloc((void**)&dev_temp0, l * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_temp0 hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_temp1, 11 * (l / 2 + 1) * m * n * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_temp1 hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_temp1_fftx, 11 * (l / 2 + 1) * m * n * sizeof(hipfftDoubleComplex));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_temp1 hipMalloc failed!");
+    exit(-1);
+  }
   
   // allocate the contraction arrays
-  hipMalloc((void**)&dev_modified_ki_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_modified_kj_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_modified_kk_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_C_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_S_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_X1_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_X2_arr, (l / 2 + 1) * m * n * sizeof(double));
-  hipMalloc((void**)&dev_X3_arr, (l / 2 + 1) * m * n * sizeof(double));
+  hipStatus = hipMalloc((void**)&dev_modified_ki_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_modified_ki_arr hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_modified_kj_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_modified_kj_arr hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_modified_kk_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_modified_kk_arr hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_C_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_C_arr hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_S_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_S_arr hipMalloc failed!");
+    exit(-1);
+  }
+  
+  hipStatus = hipMalloc((void**)&dev_X1_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_X1_arr hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_X2_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_X2_arr hipMalloc failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMalloc((void**)&dev_X3_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_X3_arr hipMalloc failed!");
+    exit(-1);
+  }
 
   // copy the data to the device
   // copy Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz, rho_0, rho_1
-  hipMemcpy((void*) dev_Ex_in, fields_in[0], l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Ey_in, fields_in[1], (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Ez_in, fields_in[2], (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Bx_in, fields_in[3], (l + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_By_in, fields_in[4], l * (m + 1) * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Bz_in, fields_in[5], l * m * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Jx, fields_in[6], l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Jy, fields_in[7], (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_Jz, fields_in[8], (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_rho_0, fields_in[9], l * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_rho_1, fields_in[10], l * m * n * sizeof(double), hipMemcpyHostToDevice);
+  hipStatus = hipMemcpy((void*) dev_Ex_in, fields_in[0], l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ex_in hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Ey_in, fields_in[1], (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_in hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Ez_in, fields_in[2], (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ez_in hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Bx_in, fields_in[3], (l + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bx_in hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_By_in, fields_in[4], l * (m + 1) * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_in hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Bz_in, fields_in[5], l * m * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bz_in hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Jx, fields_in[6], l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Jx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Jy, fields_in[7], (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Jy hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_Jz, fields_in[8], (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Jz hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_rho_0, fields_in[9], l * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_rho_0 hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_rho_1, fields_in[10], l * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_rho_1 hipMemcpy failed!");
+    exit(-1);
+  }
 
   // copy the shift arrays
-  hipMemcpy((void*) dev_fshift_i, shift_in[0], (l / 2 + 1) * sizeof(double2), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_fshift_j, shift_in[1], m * sizeof(double2), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_fshift_k, shift_in[2], n * sizeof(double2), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_ishift_i, shift_out[0], (l / 2 + 1) * sizeof(double2), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_ishift_j, shift_out[1], m * sizeof(double2), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_ishift_k, shift_out[2], n * sizeof(double2), hipMemcpyHostToDevice);
+  hipStatus = hipMemcpy((void*) dev_fshift_i, shift_in[0], (l / 2 + 1) * sizeof(hipfftDoubleComplex), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_fshift_i hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_fshift_j, shift_in[1], m * sizeof(hipfftDoubleComplex), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_fshift_j hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_fshift_k, shift_in[2], n * sizeof(hipfftDoubleComplex), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_fshift_k hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_ishift_i, shift_out[0], (l / 2 + 1) * sizeof(hipfftDoubleComplex), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_ishift_i hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_ishift_j, shift_out[1], m * sizeof(hipfftDoubleComplex), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_ishift_j hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_ishift_k, shift_out[2], n * sizeof(hipfftDoubleComplex), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_ishift_k hipMemcpy failed!");
+    exit(-1);
+  }
 
   // copy the contraction arrays
-  hipMemcpy((void*) dev_modified_ki_arr, contraction[0], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_modified_kj_arr, contraction[1], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_modified_kk_arr, contraction[2], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_C_arr, contraction[3], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_S_arr, contraction[4], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_X1_arr, contraction[5], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_X2_arr, contraction[6], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy((void*) dev_X3_arr, contraction[7], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
-
-
-  rocfft_plan plan_forward = nullptr, plan_inverse = nullptr;
-  size_t length[3];
-  length[0] = l;
-  length[1] = m;
-  length[2] = n;
-  
-  rocfft_plan_create(&plan_forward,
-		     rocfft_placement_outplace,
-		     rocfft_transform_type_real_forward,
-		     rocfft_precision_double,
-		     3,
-		     length,
-		     1,
-		     nullptr);
-
-  rocfft_plan_create(&plan_inverse,
-		     rocfft_placement_outplace,
-		     rocfft_transform_type_real_inverse,
-		     rocfft_precision_double,
-		     3,
-		     length,
-		     1,
-		     nullptr);
-  
-  // Check if the plan requires a work buffer
-  size_t work_buf_forward_size = 0;
-  size_t work_buf_inverse_size = 0;
-  rocfft_plan_get_work_buffer_size(plan_forward, &work_buf_forward_size);
-  rocfft_plan_get_work_buffer_size(plan_inverse, &work_buf_inverse_size);
-  
-  void* work_buf_forward = nullptr;
-  void* work_buf_inverse = nullptr;
-  
-  rocfft_execution_info info_forward = nullptr;
-  rocfft_execution_info info_inverse = nullptr;
-  
-  if(work_buf_forward_size) {
-    rocfft_execution_info_create(&info_forward);
-    hipMalloc(&work_buf_forward, work_buf_forward_size);
-    rocfft_execution_info_set_work_buffer(info_forward, work_buf_forward, work_buf_forward_size);
+  hipStatus = hipMemcpy((void*) dev_modified_ki_arr, contractions[0], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_modified_ki_arr hipMemcpy failed!");
+    exit(-1);
   }
 
-  if(work_buf_inverse_size) {
-    rocfft_execution_info_create(&info_inverse);
-    hipMalloc(&work_buf_inverse, work_buf_inverse_size);
-    rocfft_execution_info_set_work_buffer(info_inverse, work_buf_inverse, work_buf_inverse_size);
+  hipStatus = hipMemcpy((void*) dev_modified_kj_arr, contractions[1], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_modified_kj_arr hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_modified_kk_arr, contractions[2], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_modified_kk_arr hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_C_arr, contractions[3], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_C_arr hipMemcpy failed!");
+    exit(-1);
   }
   
+  hipStatus = hipMemcpy((void*) dev_S_arr, contractions[4], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_S_arr hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_X1_arr, contractions[5], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_X1_arr hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_X2_arr, contractions[6], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_X2_arr hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) dev_X3_arr, contractions[7], (l / 2 + 1) * m * n * sizeof(double), hipMemcpyHostToDevice);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_X3_arr hipMemcpy failed!");
+    exit(-1);
+  }
+
+  // create Fourier plans
+  hipfftHandle plan_forward, plan_inverse;
+  hipfftPlan3d(&plan_forward, l, m, n, HIPFFT_D2Z);
+  hipfftPlan3d(&plan_inverse, l, m, n, HIPFFT_Z2D);
+  if(l==80 && m==80 && n==80) {
+    DFT_80::init();
+    IDFT_80::init();
+  }
+  
+  if(l==100 &&m==100 && n==100) {
+    DFT_100::init();
+    IDFT_100::init();
+  }
+  
+  if(l==100 && m==224 && n==224) {
+    DFT_100_224_224::init();
+    IDFT_100_224_224::init();
+  }
+
   hipEvent_t start, stop;
   hipEventCreate(&start);
   hipEventCreate(&stop);
@@ -674,6 +1160,7 @@ float execute_code(int l,
 			 dev_fshift_k,
 			 dev_temp0,
 			 dev_temp1,
+                         dev_temp1_fftx,
 			 dev_modified_ki_arr,
 			 dev_modified_kj_arr,
 			 dev_modified_kk_arr,
@@ -688,28 +1175,128 @@ float execute_code(int l,
 			 dev_Bx_out,
 			 dev_By_out,
 			 dev_Bz_out,
+                         dev_Ex_out_fftx,
+			 dev_Ey_out_fftx,
+			 dev_Ez_out_fftx,
+			 dev_Bx_out_fftx,
+			 dev_By_out_fftx,
+			 dev_Bz_out_fftx,
 			 dev_ishift_i,
 			 dev_ishift_j,
 			 dev_ishift_k);
   hipEventRecord(stop);
   
   // synchronize the device
-  hipDeviceSynchronize();
+  hipStatus = hipDeviceSynchronize();
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "hipDeviceSynchronize returned error code %d after launching addKernel!\n", hipStatus);
+    exit(-1);
+  }
 
   float milliseconds = 0;
   hipEventElapsedTime(&milliseconds, start, stop);
   
   // copy the data from the device
-  hipMemcpy((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy((void*) fields_out[1], dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy((void*) fields_out[2], dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy((void*) fields_out[3], dev_Bx_out, (l + 1) * m * n * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy((void*) fields_out[4], dev_By_out, l * (m + 1) * n * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy((void*) fields_out[5], dev_Bz_out, l * m * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  hipStatus = hipMemcpy((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ex_out hipMemcpy failed!");
+    exit(-1);
+  }
 
+  hipStatus = hipMemcpy((void*) fields_out[1], dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_out hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out[2], dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ez_out hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out[3], dev_Bx_out, (l + 1) * m * n * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bx_out hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out[4], dev_By_out, l * (m + 1) * n * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_out hipMemcpy failed!");
+    exit(-1);
+  }
+  
+
+  hipStatus = hipMemcpy((void*) fields_out[5], dev_Bz_out, l * m * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bz_out hipMemcpy failed!");
+    exit(-1);
+  }
+
+
+    hipStatus = hipMemcpy((void*) fields_out_fftx[0], dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ex_out_fftx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out_fftx[1], dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ey_out_fftx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out_fftx[2], dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Ez_out_fftx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out_fftx[3], dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bx_out_fftx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out_fftx[4], dev_By_out_fftx, l * (m + 1) * n * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_By_out_fftx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  hipStatus = hipMemcpy((void*) fields_out_fftx[5], dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
+  if (hipStatus != hipSuccess) {
+    fprintf(stderr, "dev_Bz_out_fftx hipMemcpy failed!");
+    exit(-1);
+  }
+
+  // compare answers between cufft and fftx
+  reportDifferences("Ex",fields_out[0],fields_out_fftx[0],l, m+1, n+1);
+  reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
+  reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
+  reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
+  reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
+  reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
+ 
   // destroy cufftPlans
-  rocfft_plan_destroy(plan_forward);
-  rocfft_plan_destroy(plan_inverse);
+  hipfftDestroy(plan_forward);
+  hipfftDestroy(plan_inverse);
+  
+  if(l==80 && m==80 && n==80) {
+    DFT_80::destroy();
+    IDFT_80::destroy();
+  }
+  
+  if(l==100 && m==100 && n==100) {
+    DFT_100::destroy();
+    IDFT_100::destroy();
+  }
+  
+  if(l==100 && m==224 && n==224) {
+    DFT_100_224_224::destroy();
+    IDFT_100_224_224::destroy();
+  }
   
   // deallocate device memory
   hipFree(dev_Ex_in);
@@ -733,7 +1320,8 @@ float execute_code(int l,
 
   hipFree(dev_temp0);
   hipFree(dev_temp1);
-
+  hipFree(dev_temp1_fftx);
+  
   hipFree(dev_modified_ki_arr);
   hipFree(dev_modified_kj_arr);
   hipFree(dev_modified_kk_arr);
@@ -752,6 +1340,13 @@ float execute_code(int l,
   hipFree(dev_By_out);
   hipFree(dev_Bz_out);
 
+  hipFree(dev_Ex_out_fftx);
+  hipFree(dev_Ey_out_fftx);
+  hipFree(dev_Ez_out_fftx);
+  hipFree(dev_Bx_out_fftx);
+  hipFree(dev_By_out_fftx);
+  hipFree(dev_Bz_out_fftx);
+
   return milliseconds;
 }
 
@@ -762,9 +1357,10 @@ int main(int argc, char **argv) {
 
   // input and output fields
   double **fields_in, **fields_out;
+  double **fields_out_fftx;
 
   // shifting arrays
-  double2 **shift_in, **shift_out;
+  hipfftDoubleComplex **shift_in, **shift_out;
 
   // contraction arrays
   double **contractions;
@@ -772,6 +1368,7 @@ int main(int argc, char **argv) {
   // allocate memory for the fields
   fields_in = (double**) malloc(11 * sizeof(double*));
   fields_out = (double**) malloc(6 * sizeof(double*));
+  fields_out_fftx = (double**) malloc(6 * sizeof(double*));
 
   fields_in[0] = (double*) malloc(l * (m + 1) * (n + 1) * sizeof(double));
   fields_in[1] = (double*) malloc((l + 1) * m * (n + 1) * sizeof(double));
@@ -795,38 +1392,52 @@ int main(int argc, char **argv) {
   fields_out[3] = (double*) malloc((l + 1) * m * n * sizeof(double));
   fields_out[4] = (double*) malloc(l * (m + 1) * n * sizeof(double));
   fields_out[5] = (double*) malloc(l * m * (n + 1) * sizeof(double));
+  
+  fields_out_fftx[0] = (double*) malloc(l * (m + 1) * (n + 1) * sizeof(double));
+  fields_out_fftx[1] = (double*) malloc((l + 1) * m * (n + 1) * sizeof(double));
+  fields_out_fftx[2] = (double*) malloc((l + 1) * (m + 1) * n * sizeof(double));
+
+  fields_out_fftx[3] = (double*) malloc((l + 1) * m * n * sizeof(double));
+  fields_out_fftx[4] = (double*) malloc(l * (m + 1) * n * sizeof(double));
+  fields_out_fftx[5] = (double*) malloc(l * m * (n + 1) * sizeof(double));
 
   for(int i = 0; i < l * (m + 1) * (n + 1); ++i) {
     fields_in[0][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_in[6][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[0][i] = 0.0;
+    fields_out_fftx[0][i] = 0.0;
   }
 
   for(int i = 0; i < (l + 1) * m * (n + 1); ++i) {
     fields_in[1][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_in[7][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[1][i] = 0.0;
+    fields_out_fftx[1][i] = 0.0;
   }
 
   for(int i = 0; i < (l + 1) * (m + 1) * n; ++i) {
     fields_in[2][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_in[8][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[2][i] = 0.0;
+    fields_out_fftx[2][i] = 0.0;
   }
 
   for(int i = 0; i < (l + 1) * m * n; ++i) {
     fields_in[3][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[3][i] = 0.0;
+    fields_out_fftx[3][i] = 0.0;
   }
 
   for(int i = 0; i < l * (m + 1) * n; ++i) {
     fields_in[4][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[4][i] = 0.0;
+    fields_out_fftx[4][i] = 0.0;
   }
 
   for(int i = 0; i < l * m * (n + 1); ++i) {
     fields_in[5][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[5][i] = 0.0;
+    fields_out_fftx[5][i] = 0.0;
   }
 
   for(int i = 0; i < l * m * n; ++i) {
@@ -835,16 +1446,16 @@ int main(int argc, char **argv) {
   }
 
   // allocate the shifting arrays
-  shift_in = (double2**) malloc(3 * sizeof(double2*));
-  shift_out = (double2**) malloc(3 * sizeof(double2*));
+  shift_in = (hipfftDoubleComplex**) malloc(3 * sizeof(hipfftDoubleComplex*));
+  shift_out = (hipfftDoubleComplex**) malloc(3 * sizeof(hipfftDoubleComplex*));
 
-  shift_in[0] = (double2*) malloc((l / 2 + 1) * sizeof(double2));
-  shift_in[1] = (double2*) malloc(m * sizeof(double2));
-  shift_in[2] = (double2*) malloc(n * sizeof(double2));
+  shift_in[0] = (hipfftDoubleComplex*) malloc((l / 2 + 1) * sizeof(hipfftDoubleComplex));
+  shift_in[1] = (hipfftDoubleComplex*) malloc(m * sizeof(hipfftDoubleComplex));
+  shift_in[2] = (hipfftDoubleComplex*) malloc(n * sizeof(hipfftDoubleComplex));
 
-  shift_out[0] = (double2*) malloc((l / 2 + 1) * sizeof(double2));
-  shift_out[1] = (double2*) malloc(m * sizeof(double2));
-  shift_out[2] = (double2*) malloc(n * sizeof(double2));
+  shift_out[0] = (hipfftDoubleComplex*) malloc((l / 2 + 1) * sizeof(hipfftDoubleComplex));
+  shift_out[1] = (hipfftDoubleComplex*) malloc(m * sizeof(hipfftDoubleComplex));
+  shift_out[2] = (hipfftDoubleComplex*) malloc(n * sizeof(hipfftDoubleComplex));
 
   for(int i = 0; i < (l / 2 + 1); ++i) {
     double re = rand() / ((double) (INT_MAX * 1.0));
@@ -907,6 +1518,7 @@ int main(int argc, char **argv) {
 				    shift_in,
 				    contractions,
 				    fields_out,
+				    fields_out_fftx,
 				    shift_out);
 
   printf("Execution time:\t%f\n", milliseconds);
@@ -929,9 +1541,16 @@ int main(int argc, char **argv) {
   free(fields_out[3]);
   free(fields_out[4]);
   free(fields_out[5]);
+  free(fields_out_fftx[0]);
+  free(fields_out_fftx[1]);
+  free(fields_out_fftx[2]);
+  free(fields_out_fftx[3]);
+  free(fields_out_fftx[4]);
+  free(fields_out_fftx[5]);
 
   free(fields_in);
   free(fields_out);
+  free(fields_out_fftx);
 
   free(shift_in[0]);
   free(shift_in[1]);
@@ -957,4 +1576,3 @@ int main(int argc, char **argv) {
   
   return 0;
 }
-
