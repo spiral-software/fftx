@@ -223,7 +223,7 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
     {
       DFT_100::transform(in, out, in);
     }
-  else if(l==224 && m==224 && n==100)
+  else if(l==100 && m==224 && n==224)
     {
       DFT_224_224_100::transform(in, out, in);
     }
@@ -299,7 +299,7 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
     {
       IDFT_100::transform(in, out, out);
     }
-  else if(l==224 && m==224 && n==100)
+  else if(l==100 && m==224 && n==224)
     {
       IDFT_224_224_100::transform(in, out, out);
     }
