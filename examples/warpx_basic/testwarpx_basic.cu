@@ -215,10 +215,22 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
   fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
   fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
 
-  if(l==m==n==80) DFT_80::transform(in, out, in);
-  if(l==m==n==100) DFT_100::transform(in, out, in);
-  if(l==m==224 && n==100) DFT_224_224_100::transform(in, out, in);
-  
+  if(l==80 && m==80 && n==80)
+    {
+      DFT_80::transform(in, out, in);
+    }
+  else if(l==100 && m==100 && n==100)
+    {
+      DFT_100::transform(in, out, in);
+    }
+  else if(l==224 && m==224 && n==100)
+    {
+      DFT_224_224_100::transform(in, out, in);
+    }
+  else
+    {
+      std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+    }
   shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
 					 output_fftx,
 					 do_shift_i,
@@ -279,10 +291,23 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
   fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
   fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
   
-  if(l==m==n==80) IDFT_80::transform(in, out, out);
-  if(l==m==n==100) IDFT_100::transform(in, out, out);
-  if(l==m==224 && n==100) IDFT_224_224_100::transform(in, out, out);
-
+  if(l==80  && m==80 && n==80)
+    {
+      IDFT_80::transform(in, out, out);
+    }
+  else if(l==100 && m==100 && n==100)
+    {
+      IDFT_100::transform(in, out, out);
+    }
+  else if(l==224 && m==224 && n==100)
+    {
+      IDFT_224_224_100::transform(in, out, out);
+    }
+  else
+    {
+      std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+    }
+      
   pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
 					temp,
 					l, m, n,
@@ -643,13 +668,15 @@ void reportDifferences(const char* name, double* cufft_out, double* fftx_out, in
 	double f = fftx_out[idx];
 	double d = std::abs(c-f);
 	  
-	if(d > 1e-8) {
-	  diff=d;
+
+	if(d> diff)
+          {
+            diff=d;
 	  //std::cout << i << ", " << j << ", " << k << std::endl;
-	  imax=i;
-	  jmax=j;
-	  kmax=k;
-	}
+            imax=i;
+            jmax=j;
+            kmax=k;
+          }
 	
 	if(std::abs(c)>cufft_max) cufft_max=c;
 	if(std::abs(f)>fftx_max) fftx_max=f;   
@@ -1212,37 +1239,37 @@ float execute_code(int l,
 
     cudaStatus = cudaMemcpy((void*) fields_out_fftx[0], dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Ex_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[1], dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Ey_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[2], dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ez_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Ez_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[3], dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Bx_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[4], dev_By_out_fftx, l * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_By_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[5], dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bz_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Bz_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
