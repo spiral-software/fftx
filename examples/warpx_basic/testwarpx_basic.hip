@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include <limits.h>
 #include <float.h>
-#include "hip/hip_runtime_api.h"
-#include "hip/hip_vector_types.h"
-#include "rocfft.h"
+#include <hip/hip_runtime_api.h>
+#include <hip/hip_vector_types.h>
+#include <hip/hcc_detail/host_defines.h>
+#include <hip/hcc_detail/math_functions.h>
+#include <hip/hcc_detail/device_functions.h>
+#include <rocfft.h>
 
 #define THREADS 128
 #define THREAD_BLOCKS 320
@@ -204,7 +207,7 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(rocfft_plan 
 
   hipLaunchKernelGGL(shift_data, shapeB, shapeT, 0, 0, l / 2 + 1, m, n, input, do_shift_i, shift_i, do_shift_j, shift_j, do_shift_k, shift_k);
   rocfft_execute(plan, (void**) &input, (void**) &temp, NULL);
-  hipLaunchKernelGGL(pack_data, shapeB, shapeT, 0, 0, l, m, n, input, l, m, n, temp, l_os, m_os, n_os);
+  hipLaunchKernelGGL(pack_data, shapeB, shapeT, 0, 0, l, m, n, temp, l, m, n, output, l_os, m_os, n_os);
 }
 
 // compute Spectral Solve
@@ -503,7 +506,7 @@ float execute_code(int l,
 		   int n,
 		   double **fields_in,
 		   double2 **shift_in,
-		   double **contractions,
+		   double **contraction,
 		   double **fields_out,
 		   double2 **shift_out) {
   // the fields
