@@ -19,5 +19,6 @@ setInputs(inputs);
 setOutputs(outputs);
 
 openScalarDAG();
-PRDFT(domain3.extents().flipped(), outputs, inputs);
+//PRDFT(domain3.extents().flipped(), outputs, inputs);
+PRDFT(domain3.extents(), outputs, inputs);
 closeScalarDAG(intermediates, name);
