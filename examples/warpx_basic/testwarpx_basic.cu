@@ -1281,7 +1281,7 @@ float execute_code(int l,
         }
       if(md==FFTX)
         {
-          std::cout<<"FFTX implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+          std::cout<<"FFTX  implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
         }
       milliseconds += tmilliseconds;
     }
