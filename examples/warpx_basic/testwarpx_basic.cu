@@ -4,7 +4,7 @@
 #include <float.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <device_launch_parameters.h>
+//#include <device_launch_parameters.h>
 #include <cufft.h>
 #include <iostream>
 #include <algorithm>
@@ -20,6 +20,10 @@
 #define THREAD_BLOCKS 320
 #define C_SPEED 1
 #define EP0 1
+
+enum MODE:int {CUFFT=1, FFTX=2, BOTH=3};
+
+MODE mode = CUFFT;
 
 // pack the data
 __global__ void pack_data(int l,
@@ -187,58 +191,64 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
 								    int do_shift_k,
 								    cufftDoubleComplex *shift_k) {
   // cufft implementation
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					input,
-					l_is, m_is, n_is,
-					temp,
-					l, m, n);
-  cufftExecD2Z(plan, temp, output);
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 output,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
+  if(mode == CUFFT || mode==BOTH)
+    {
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            input,
+                                            l_is, m_is, n_is,
+                                            temp,
+                                            l, m, n);
+      cufftExecD2Z(plan, temp, output);
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             output,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+    }
 
-  // fftx implementation
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					input,
-					l_is, m_is, n_is,
-					temp,
-					l, m, n);
-  
-  fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
-  fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
-  
-  fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
-  fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
-
-  if(l==80 && m==80 && n==80)
+  if(mode == FFTX || mode == BOTH)
     {
-      DFT_80::transform(in, out, in);
+      // fftx implementation
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            input,
+                                            l_is, m_is, n_is,
+                                            temp,
+                                            l, m, n);
+      
+      fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
+      fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
+      
+      fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
+      fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
+      
+      if(l==80 && m==80 && n==80)
+        {
+          DFT_80::transform(in, out, in);
+        }
+      else if(l==100 && m==100 && n==100)
+        {
+          DFT_100::transform(in, out, in);
+        }
+      else if(l==100 && m==224 && n==224)
+        {
+          DFT_100_224_224::transform(in, out, in);
+        }
+      else
+        {
+          std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+        }
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             output_fftx,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
     }
-  else if(l==100 && m==100 && n==100)
-    {
-      DFT_100::transform(in, out, in);
-    }
-  else if(l==100 && m==224 && n==224)
-    {
-      DFT_100_224_224::transform(in, out, in);
-    }
-  else
-    {
-      std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
-    }
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 output_fftx,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
 }
 
 inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle plan,
@@ -259,60 +269,68 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 								    cufftDoubleComplex *shift_j,
 								    int do_shift_k,
 								    cufftDoubleComplex *shift_k) {
+
   // cufft implementation
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 input,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
-  cufftExecZ2D(plan, input, temp);
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					temp,
-					l, m, n,
-					output,
-					l_os, m_os, n_os);
+  if(mode == CUFFT || mode==BOTH)
+    {
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             input,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+      cufftExecZ2D(plan, input, temp);
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            temp,
+                                            l, m, n,
+                                            output,
+                                            l_os, m_os, n_os);
 
-  // fftx implementation
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 input_fftx,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
-
-  fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
-  fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
-
-  fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
-  fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
-  
-  if(l==80  && m==80 && n==80)
-    {
-      IDFT_80::transform(in, out, out);
+ 
     }
-  else if(l==100 && m==100 && n==100)
+  if(mode == FFTX || mode==BOTH)
     {
-      IDFT_100::transform(in, out, out);
-    }
-  else if(l==100 && m==224 && n==224)
-    {
-      IDFT_100_224_224::transform(in, out, out);
-    }
-  else
-    {
-      std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
-    }
+           // fftx implementation
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             input_fftx,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
       
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					temp,
-					l, m, n,
-					output_fftx,
-					l_os, m_os, n_os); 
+      fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
+      fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
+      
+      fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
+      fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
+      
+      if(l==80  && m==80 && n==80)
+        {
+          IDFT_80::transform(in, out, out);
+        }
+      else if(l==100 && m==100 && n==100)
+        {
+          IDFT_100::transform(in, out, out);
+        }
+      else if(l==100 && m==224 && n==224)
+        {
+          IDFT_100_224_224::transform(in, out, out);
+        }
+      else
+        {
+          std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+        }
+      
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            temp,
+                                            l, m, n,
+                                            output_fftx,
+                                            l_os, m_os, n_os);
+    }
 }
 
 // compute Spectral Solve
@@ -531,30 +549,36 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   0,
 			   fshift_k);
   // contraction
-  compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
-						  m,
-						  n,
-						  temp1,
-						  modified_ki_arr,
-						  modified_kj_arr,
-						  modified_kk_arr,
-						  C_arr,
-						  S_arr,
-						  X1_arr,
-						  X2_arr,
-						  X3_arr);
-  compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
-						  m,
-						  n,
-						  temp1_fftx,
-						  modified_ki_arr,
-						  modified_kj_arr,
-						  modified_kk_arr,
-						  C_arr,
-						  S_arr,
-						  X1_arr,
-						  X2_arr,
-						  X3_arr);
+  if(mode==CUFFT || mode==BOTH)
+    {
+      compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
+                                                      m,
+                                                      n,
+                                                      temp1,
+                                                      modified_ki_arr,
+                                                      modified_kj_arr,
+                                                      modified_kk_arr,
+                                                      C_arr,
+                                                      S_arr,
+                                                      X1_arr,
+                                                      X2_arr,
+                                                      X3_arr);
+    }
+  if(mode==FFTX || mode == BOTH)
+    {
+      compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
+                                                      m,
+                                                      n,
+                                                      temp1_fftx,
+                                                      modified_ki_arr,
+                                                      modified_kj_arr,
+                                                      modified_kk_arr,
+                                                      C_arr,
+                                                      S_arr,
+                                                      X1_arr,
+                                                      X2_arr,
+                                                      X3_arr);
+    }
   
   // Ex, Ey, Ez fields
   compute_warp_inverse_dft(plan_inverse,
@@ -1136,12 +1160,9 @@ float execute_code(int l,
     IDFT_100_224_224::init();
   }
 
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-
-  cudaEventRecord(start);
-  compute_spectral_solve(l,
+  // first, do a a throw away transform to warm things up and make sure all kernels have been hit at least once
+  mode = BOTH;
+      compute_spectral_solve(l,
 			 m,
 			 n,
 			 plan_forward,
@@ -1186,18 +1207,84 @@ float execute_code(int l,
 			 dev_ishift_i,
 			 dev_ishift_j,
 			 dev_ishift_k);
-  cudaEventRecord(stop);
-  
-  // synchronize the device
-  cudaStatus = cudaDeviceSynchronize();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-    exit(-1);
-  }
+      
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
 
   float milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
+  for(int md = CUFFT; md< BOTH; md++)
+    {
+      mode = (MODE)md;
+      cudaEventRecord(start);
+      compute_spectral_solve(l,
+			 m,
+			 n,
+			 plan_forward,
+			 plan_inverse,
+			 dev_Ex_in,
+			 dev_Ey_in,
+			 dev_Ez_in,
+			 dev_Bx_in,
+			 dev_By_in,
+			 dev_Bz_in,
+			 dev_Jx,
+			 dev_Jy,
+			 dev_Jz,
+			 dev_rho_0,
+			 dev_rho_1,
+			 dev_fshift_i,
+			 dev_fshift_j,
+			 dev_fshift_k,
+			 dev_temp0,
+			 dev_temp1,
+                         dev_temp1_fftx,
+			 dev_modified_ki_arr,
+			 dev_modified_kj_arr,
+			 dev_modified_kk_arr,
+			 dev_C_arr,
+			 dev_S_arr,
+			 dev_X1_arr,
+			 dev_X2_arr,
+			 dev_X3_arr,
+			 dev_Ex_out,
+			 dev_Ey_out,
+			 dev_Ez_out,
+			 dev_Bx_out,
+			 dev_By_out,
+			 dev_Bz_out,
+                         dev_Ex_out_fftx,
+			 dev_Ey_out_fftx,
+			 dev_Ez_out_fftx,
+			 dev_Bx_out_fftx,
+			 dev_By_out_fftx,
+			 dev_Bz_out_fftx,
+			 dev_ishift_i,
+			 dev_ishift_j,
+			 dev_ishift_k);
+      cudaEventRecord(stop);
   
+      // synchronize the device
+      cudaStatus = cudaDeviceSynchronize();
+      if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+        exit(-1);
+      }
+      
+      float tmilliseconds = 0;
+      cudaEventElapsedTime(&tmilliseconds, start, stop);
+
+      if(md==CUFFT)
+        {
+          std::cout<<"cuFFT implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+         
+        }
+      if(md==FFTX)
+        {
+          std::cout<<"FFTX implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+        }
+      milliseconds += tmilliseconds;
+    }
   // copy the data from the device
   cudaStatus = cudaMemcpy((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
