@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <limits.h>
 #include <float.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime.h>
+//#include <device_launch_parameters.h>
 #include <hipfft.h>
 #include <iostream>
 #include <algorithm>
@@ -18,6 +21,10 @@
 #define THREAD_BLOCKS 320
 #define C_SPEED 1
 #define EP0 1
+
+enum MODE:int {HIPFFT=1, FFTX=2, BOTH=3};
+
+MODE mode = HIPFFT;
 
 // pack the data
 __global__ void pack_data(int l,
@@ -184,59 +191,65 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(hipfftHandle
 								    hipfftDoubleComplex *shift_j,
 								    int do_shift_k,
 								    hipfftDoubleComplex *shift_k) {
-  // cufft implementation
-  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
-					input,
-					l_is, m_is, n_is,
-					temp,
-					l, m, n);
-  hipfftExecD2Z(plan, temp, output);
-  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
-					 output,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
+  // hipfft implementation
+  if(mode == HIPFFT || mode==BOTH)
+    {
+      hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+                                            input,
+                                            l_is, m_is, n_is,
+                                            temp,
+                                            l, m, n);
+      hipfftExecD2Z(plan, temp, output);
+      hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+                                             output,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+    }
 
-  // fftx implementation
-  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
-					input,
-					l_is, m_is, n_is,
-					temp,
-					l, m, n);
-  
-  fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
-  fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
-  
-  fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
-  fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
-
-  if(l==80 && m==80 && n==80)
+  if(mode == FFTX || mode == BOTH)
     {
-      DFT_80::transform(in, out, in);
+      // fftx implementation
+      hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+                                            input,
+                                            l_is, m_is, n_is,
+                                            temp,
+                                            l, m, n);
+      
+      fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
+      fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
+      
+      fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
+      fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
+      
+      if(l==80 && m==80 && n==80)
+        {
+          DFT_80::transform(in, out, in);
+        }
+      else if(l==100 && m==100 && n==100)
+        {
+          DFT_100::transform(in, out, in);
+        }
+      else if(l==100 && m==224 && n==224)
+        {
+          DFT_100_224_224::transform(in, out, in);
+        }
+      else
+        {
+          std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+        }
+      hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+                                             output_fftx,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
     }
-  else if(l==100 && m==100 && n==100)
-    {
-      DFT_100::transform(in, out, in);
-    }
-  else if(l==100 && m==224 && n==224)
-    {
-      DFT_100_224_224::transform(in, out, in);
-    }
-  else
-    {
-      std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
-    }
-  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
-					 output_fftx,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
 }
 
 inline void __attribute__((always_inline)) compute_warp_inverse_dft(hipfftHandle plan,
@@ -257,60 +270,68 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(hipfftHandle
 								    hipfftDoubleComplex *shift_j,
 								    int do_shift_k,
 								    hipfftDoubleComplex *shift_k) {
-  // cufft implementation
-  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
-					 input,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
-  hipfftExecZ2D(plan, input, temp);
-  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
-					temp,
-					l, m, n,
-					output,
-					l_os, m_os, n_os);
 
-  // fftx implementation
-  hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
-					 input_fftx,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
+  // hipfft implementation
+  if(mode == HIPFFT || mode==BOTH)
+    {
+      hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+                                             input,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+      hipfftExecZ2D(plan, input, temp);
+      hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+                                            temp,
+                                            l, m, n,
+                                            output,
+                                            l_os, m_os, n_os);
 
-  fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
-  fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
-
-  fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
-  fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
-  
-  if(l==80  && m==80 && n==80)
-    {
-      IDFT_80::transform(in, out, out);
+ 
     }
-  else if(l==100 && m==100 && n==100)
+  if(mode == FFTX || mode==BOTH)
     {
-      IDFT_100::transform(in, out, out);
-    }
-  else if(l==100 && m==224 && n==224)
-    {
-      IDFT_100_224_224::transform(in, out, out);
-    }
-  else
-    {
-      std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
-    }
+           // fftx implementation
+      hipLaunchKernelGGL(shift_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l / 2 + 1, m, n,
+                                             input_fftx,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
       
-  hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
-					temp,
-					l, m, n,
-					output_fftx,
-					l_os, m_os, n_os); 
+      fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
+      fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
+      
+      fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
+      fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
+      
+      if(l==80  && m==80 && n==80)
+        {
+          IDFT_80::transform(in, out, out);
+        }
+      else if(l==100 && m==100 && n==100)
+        {
+          IDFT_100::transform(in, out, out);
+        }
+      else if(l==100 && m==224 && n==224)
+        {
+          IDFT_100_224_224::transform(in, out, out);
+        }
+      else
+        {
+          std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+        }
+      
+      hipLaunchKernelGGL(pack_data, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, l, m, n,
+                                            temp,
+                                            l, m, n,
+                                            output_fftx,
+                                            l_os, m_os, n_os);
+    }
 }
 
 // compute Spectral Solve
@@ -529,30 +550,36 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   0,
 			   fshift_k);
   // contraction
-  hipLaunchKernelGGL(compute_contraction, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, (l / 2 + 1),
-						  m,
-						  n,
-						  temp1,
-						  modified_ki_arr,
-						  modified_kj_arr,
-						  modified_kk_arr,
-						  C_arr,
-						  S_arr,
-						  X1_arr,
-						  X2_arr,
-						  X3_arr);
-  hipLaunchKernelGGL(compute_contraction, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, (l / 2 + 1),
-						  m,
-						  n,
-						  temp1_fftx,
-						  modified_ki_arr,
-						  modified_kj_arr,
-						  modified_kk_arr,
-						  C_arr,
-						  S_arr,
-						  X1_arr,
-						  X2_arr,
-						  X3_arr);
+  if(mode==HIPFFT || mode==BOTH)
+    {
+      hipLaunchKernelGGL(compute_contraction, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, (l / 2 + 1),
+                                                      m,
+                                                      n,
+                                                      temp1,
+                                                      modified_ki_arr,
+                                                      modified_kj_arr,
+                                                      modified_kk_arr,
+                                                      C_arr,
+                                                      S_arr,
+                                                      X1_arr,
+                                                      X2_arr,
+                                                      X3_arr);
+    }
+  if(mode==FFTX || mode == BOTH)
+    {
+      hipLaunchKernelGGL(compute_contraction, dim3(THREAD_BLOCKS), dim3(THREADS), 0, 0, (l / 2 + 1),
+                                                      m,
+                                                      n,
+                                                      temp1_fftx,
+                                                      modified_ki_arr,
+                                                      modified_kj_arr,
+                                                      modified_kk_arr,
+                                                      C_arr,
+                                                      S_arr,
+                                                      X1_arr,
+                                                      X2_arr,
+                                                      X3_arr);
+    }
   
   // Ex, Ey, Ez fields
   compute_warp_inverse_dft(plan_inverse,
@@ -654,15 +681,15 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   ishift_k);
 }
 
-void reportDifferences(const char* name, double* cufft_out, double* fftx_out, int ll, int mm, int nn) {
-  double diff=0, cufft_max=0, fftx_max=0;
+void reportDifferences(const char* name, double* hipfft_out, double* fftx_out, int ll, int mm, int nn) {
+  double diff=0, hipfft_max=0, fftx_max=0;
   int imax=-1, jmax=-1, kmax=-1;
   
   for(int k = 0; k < nn; k++)
     for(int j = 0; j < mm; j++)
       for(int i = 0; i < ll; i++) { 
 	int idx = i + j * ll + k * (ll * mm);
-	double c = cufft_out[idx];
+	double c = hipfft_out[idx];
 	double f = fftx_out[idx];
 	double d = std::abs(c-f);
 	  
@@ -676,11 +703,11 @@ void reportDifferences(const char* name, double* cufft_out, double* fftx_out, in
             kmax=k;
           }
 	
-	if(std::abs(c)>cufft_max) cufft_max=c;
+	if(std::abs(c)>hipfft_max) hipfft_max=c;
 	if(std::abs(f)>fftx_max) fftx_max=f;   
       }
 
-  std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  cufft_max="<<cufft_max<<"  fftx_max="<<fftx_max<<"\n";
+  std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  hipfft_max="<<hipfft_max<<"  fftx_max="<<fftx_max<<"\n";
 }
 
 float execute_code(int l,
@@ -709,7 +736,7 @@ float execute_code(int l,
 
   int hipStatus = hipSetDevice(0);
   if (hipStatus != hipSuccess) {
-    fprintf(stderr, "hipSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+    fprintf(stderr, "hipSetDevice failed!  Do you have a HIP-capable GPU installed?");
     exit(-1);
   }
 
@@ -1134,12 +1161,9 @@ float execute_code(int l,
     IDFT_100_224_224::init();
   }
 
-  hipEvent_t start, stop;
-  hipEventCreate(&start);
-  hipEventCreate(&stop);
-
-  hipEventRecord(start);
-  compute_spectral_solve(l,
+  // first, do a a throw away transform to warm things up and make sure all kernels have been hit at least once
+  mode = BOTH;
+      compute_spectral_solve(l,
 			 m,
 			 n,
 			 plan_forward,
@@ -1184,18 +1208,84 @@ float execute_code(int l,
 			 dev_ishift_i,
 			 dev_ishift_j,
 			 dev_ishift_k);
-  hipEventRecord(stop);
-  
-  // synchronize the device
-  hipStatus = hipDeviceSynchronize();
-  if (hipStatus != hipSuccess) {
-    fprintf(stderr, "hipDeviceSynchronize returned error code %d after launching addKernel!\n", hipStatus);
-    exit(-1);
-  }
+      
+  hipEvent_t start, stop;
+  hipEventCreate(&start);
+  hipEventCreate(&stop);
 
   float milliseconds = 0;
-  hipEventElapsedTime(&milliseconds, start, stop);
+  for(int md = HIPFFT; md< BOTH; md++)
+    {
+      mode = (MODE)md;
+      hipEventRecord(start);
+      compute_spectral_solve(l,
+			 m,
+			 n,
+			 plan_forward,
+			 plan_inverse,
+			 dev_Ex_in,
+			 dev_Ey_in,
+			 dev_Ez_in,
+			 dev_Bx_in,
+			 dev_By_in,
+			 dev_Bz_in,
+			 dev_Jx,
+			 dev_Jy,
+			 dev_Jz,
+			 dev_rho_0,
+			 dev_rho_1,
+			 dev_fshift_i,
+			 dev_fshift_j,
+			 dev_fshift_k,
+			 dev_temp0,
+			 dev_temp1,
+                         dev_temp1_fftx,
+			 dev_modified_ki_arr,
+			 dev_modified_kj_arr,
+			 dev_modified_kk_arr,
+			 dev_C_arr,
+			 dev_S_arr,
+			 dev_X1_arr,
+			 dev_X2_arr,
+			 dev_X3_arr,
+			 dev_Ex_out,
+			 dev_Ey_out,
+			 dev_Ez_out,
+			 dev_Bx_out,
+			 dev_By_out,
+			 dev_Bz_out,
+                         dev_Ex_out_fftx,
+			 dev_Ey_out_fftx,
+			 dev_Ez_out_fftx,
+			 dev_Bx_out_fftx,
+			 dev_By_out_fftx,
+			 dev_Bz_out_fftx,
+			 dev_ishift_i,
+			 dev_ishift_j,
+			 dev_ishift_k);
+      hipEventRecord(stop);
   
+      // synchronize the device
+      hipStatus = hipDeviceSynchronize();
+      if (hipStatus != hipSuccess) {
+        fprintf(stderr, "hipDeviceSynchronize returned error code %d after launching addKernel!\n", hipStatus);
+        exit(-1);
+      }
+      
+      float tmilliseconds = 0;
+      hipEventElapsedTime(&tmilliseconds, start, stop);
+
+      if(md==HIPFFT)
+        {
+          std::cout<<"hipFFT implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+         
+        }
+      if(md==FFTX)
+        {
+          std::cout<<"FFTX   implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+        }
+      milliseconds += tmilliseconds;
+    }
   // copy the data from the device
   hipStatus = hipMemcpy((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), hipMemcpyDeviceToHost);
   if (hipStatus != hipSuccess) {
@@ -1271,7 +1361,7 @@ float execute_code(int l,
     exit(-1);
   }
 
-  // compare answers between cufft and fftx
+  // compare answers between hipfft and fftx
   reportDifferences("Ex",fields_out[0],fields_out_fftx[0],l, m+1, n+1);
   reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
   reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
@@ -1279,7 +1369,7 @@ float execute_code(int l,
   reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
   reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
  
-  // destroy cufftPlans
+  // destroy hipfftPlans
   hipfftDestroy(plan_forward);
   hipfftDestroy(plan_inverse);
   
