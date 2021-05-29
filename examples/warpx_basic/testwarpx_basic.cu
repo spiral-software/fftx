@@ -2,10 +2,18 @@
 #include <stdio.h>
 #include <limits.h>
 #include <float.h>
+
+#ifdef FFTX_HIP
+#include <hip/hip_runtime.h>
+#include <hipfft.h>
+#include "rocfft.h"
+#else
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cufft.h>
+#endif
+
 #include <iostream>
 #include <algorithm>
 
