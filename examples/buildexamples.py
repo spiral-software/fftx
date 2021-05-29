@@ -33,13 +33,9 @@ if len ( sys.argv ) < 2:
     print ( 'Usage: ' + sys.argv[0] + ' [ CPU | GPU | HIP ]; defaulting to CPU' )
 else:
     _mode = sys.argv[1]
-    if _mode != "CPU" and _mode != "GPU":
-        if _mode == "HIP":
-            print ( sys.argv[0] + ': HIP mode requested - support coming soon, defaulting to CPU' )
-            _mode = "CPU"
-        else:
-            print ( sys.argv[0] + ': unknown mode: ' + _mode + ' exiting...' )
-            sys.exit (-1)
+    if _mode != "CPU" and _mode != "GPU" and _mode != "HIP":
+        print ( sys.argv[0] + ': unknown mode: ' + _mode + ' exiting...' )
+        sys.exit (-1)
 
 ##  Setup 'empty' timing script (would need bash or cygwin or similar to run on Windows)
 _timescript = _mode + '-timescript.sh'
@@ -86,6 +82,8 @@ with open ( 'process-sizes.txt', 'r' ) as fil:
         ##  Build the commnd line for CMake...
         cmdstr = 'rm -rf * && cmake -DFFTX_PROJ_DIR=' + _fftx + ' -D_codegen=' + _mode
         cmdstr = cmdstr + ' -DDIM_X=' + _dimx + ' -DDIM_Y=' + _dimy + ' -DDIM_Z=' + _dimz
+        if _mode == "HIP":
+            cmdstr = cmdstr + ' -DCMAKE_CXX_COMPILER=hipcc -DCMAKE_CXX_LINKER=hipcc'
 
         os.chdir ( build_dir )
 

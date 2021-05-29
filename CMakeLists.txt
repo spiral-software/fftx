@@ -8,6 +8,15 @@
 ## specify this only here, lower levels use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
 cmake_minimum_required (VERSION 3.14)
 
+##  Check the code generation option ...
+
+if ( "X${_codegen}" STREQUAL "X" )
+    message ( STATUS "_codegen is undefined, CPU assumed" )
+    set ( _codegen CPU )
+else ()
+    message ( STATUS "_codegen = ${_codegen}" )
+endif ()
+
 set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel")
 
 project (FFTX_PROJECT
@@ -24,15 +33,6 @@ if ( DISALLOW_COMPILE_INPLACE )
                  cd <build>
                  cmake ..
                  make | make install")
-endif ()
-
-##  Check the code generation option ...
-
-if ( "X${_codegen}" STREQUAL "X" )
-    message ( STATUS "_codegen is undefined, CPU assumed" )
-    set ( _codegen CPU )
-else ()
-    message ( STATUS "_codegen = ${_codegen}" )
 endif ()
 
 ##  Define CMake include directory and include the setup information
