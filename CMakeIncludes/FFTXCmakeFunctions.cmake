@@ -95,14 +95,15 @@ function ( create_generator_file _codefor prefix stem )
     set     ( ${prefix}_gen ${prefix}.${stem}.generator.g PARENT_SCOPE )
     set     ( _gen ${prefix}.${stem}.generator.g )
     set     ( _plan   ${prefix}.${stem}.plan.g )
-    
-    if ( ${_generator_script} STREQUAL "COMPLETE" )
+
+    set ( _preamble ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} )
+    set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN} )
+    if ( "X${_generator_script}" STREQUAL "X" )
+	##  The complete script is not defined -- bo action required
+    elseif ( ${_generator_script} STREQUAL "COMPLETE" )
 	##  Don't add preamble and codegen pieces
 	set ( _preamble )
 	set ( _postfix  )
-    else ()
-	set ( _preamble ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} )
-	set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN} )
     endif ()
 
     if ( WIN32 )
@@ -129,10 +130,71 @@ function ( create_generator_file _codefor prefix stem )
 endfunction ()
 
 
+##  run_hipify_perl() is a simple function called to run hipify-perl on a CUDA
+##  source code file.  The two arguments are the file name root (_program) and
+##  suffix (_suffix).  The resulting converted file will be written to
+##  ${_program}-hip.${_suffix}.
+
+function ( run_hipify_perl _program _suffix )
+    if ( WIN32 )
+	## TBD
+    else ()
+	include ( FindUnixCommands )
+	add_custom_command ( OUTPUT ${_program}-hip.${_suffix}
+	    COMMAND ${BASH} -c "rm -f ${_program}-hip.${_suffix} && hipify-perl ${CMAKE_CURRENT_SOURCE_DIR}/${_program}.${_suffix} > ${_program}-hip.${_suffix}"
+	    DEPENDS ${_program}.${_suffix}
+	    VERBATIM
+	    COMMENT "Generating ${_program}-hip.${_suffix}" )
+    endif ()
+
+endfunction ()
+
+
+##  add_includes_libs_to_target() is a function called to add include
+##  directories, library paths, and libraries to an executable target.  Its
+##  purpose is to encapsulate all the information in one place and let each
+##  example cmake simply call this to get the appropriate qualifier for each
+##  build.
+
+function ( add_includes_libs_to_target _target _stem _prefixes )
+    ##  Test _codegen and setup accordingly
+    if ( ${_codegen} STREQUAL "HIP" )
+	## run hipify-perl on the test driver
+	run_hipify_perl ( ${_target} ${_suffix} )
+	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
+	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
+	foreach ( _pref ${_prefixes} )
+	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
+	endforeach ()
+    else ()
+	list ( APPEND _all_build_srcs ${_target}.${_suffix} )
+    endif ()
+
+    add_executable   ( ${_target} ${_all_build_srcs} )
+    add_dependencies ( ${_target} ${_all_build_deps} )
+ 
+    target_compile_options ( ${_target} PRIVATE ${ADDL_COMPILE_FLAGS} )
+ 
+    target_include_directories ( ${_target} PRIVATE
+	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )
+
+    if ( ${_codegen} STREQUAL "HIP" )
+	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
+	target_link_libraries      ( ${_target} ${LIBS_FOR_HIP} )
+    elseif ( ${_codegen} STREQUAL "GPU" )
+	target_link_libraries      ( ${_target} ${LIBS_FOR_CUDA} )
+    endif ()
+
+    set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
+    install ( TARGETS ${_target} DESTINATION ${INSTALL_DIR_TARGET} )
+
+endfunction ()
+    
+
 ##  manage_deps_codegen() is a function called to orchestrate creating the
 ##  intermediate files (targets) for codegen and build the list of dependencies
 ##  for a test program.  The following conventions are assumed:
-##  File nameing convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
+##  File naming convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
 ##  The function is passed a codegen flag (create CPU/GPU/HIP code), a stem, a list
 ##  of prefixes (1 or more) and builds lists of all source code files for the
 ##  test program and a list of dependency names (to ensure cmake builds all
@@ -190,7 +252,7 @@ endfunction ()
 ##  buildForGpu; where subdirectory is the name of the subdirectory containing
 ##  the example, buildForCpu and buildForGpu are logical (True or False) values
 ##  indicating if the example should be built.
-##  NOTE: If buildForGpu is specified a CUDA toolkit is required.
+##  NOTE: If buildForGpu is specified a CUDA (Nvidia) or Hip/rocm (AMD) toolkit is required.
 
 function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 
@@ -201,10 +263,10 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
-    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "GPU" ) )
+    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
 	add_subdirectory ( ${_subdir} )
-    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "GPU" ) )
+    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 

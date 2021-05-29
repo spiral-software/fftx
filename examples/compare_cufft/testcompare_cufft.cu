@@ -1,4 +1,11 @@
 #include <stdio.h>
+
+#ifdef FFTX_HIP
+#include <hip/hip_runtime.h>
+#include <hipfft.h>
+#include "rocfft.h"
+#endif
+
 #include <cufft.h>
 #include "spiralmddft.fftx.codegen.hpp"
 #include "test_comp.h"

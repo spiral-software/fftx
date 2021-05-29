@@ -44,11 +44,7 @@ include ("${SPIRAL_INCLUDE_PATH}/RunSpiral.cmake")
 set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
 set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 
-##  message ( STATUS "FFTX_PROJECT_SOURCE_DIR set to: ${FFTX_PROJECT_SOURCE_DIR}" )
-##  message ( STATUS "BACKEND_SOURCE_DIR set to: ${BACKEND_SOURCE_DIR}" )
-
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
-##  message ( STATUS "FFTX_CMAKE_INCLUDE_DIR set to: ${FFTX_CMAKE_INCLUDE_DIR}" )
 
 ##  Get hip/rocm stuff if _codegen == HIP
 
@@ -63,11 +59,12 @@ if ( ${_codegen} STREQUAL "HIP" )
 	message ( SEND_ERROR "HIP NOT FOUND: HIP is required to build")
     endif ()
 
-    ##  Set the compiler/linker
-    if ( NOT WIN32 )
-	set (  CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE} )
-	set ( CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE} )
-    endif ()
+    # ##  Set the compiler/linker
+    ##  Specify these on command line -- if done here cmake re-evaluates (reruns) and loses the _codegen value
+    # if ( NOT WIN32 )
+    # 	set (  CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE} )
+    # 	set ( CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE} )
+    # endif ()
 
     ##  Adjust include and library directories
     ##  Need to add $ROCM_PATH for includes and libraries
@@ -76,7 +73,7 @@ if ( ${_codegen} STREQUAL "HIP" )
 	include_directories ( $ENV{ROCM_PATH}/hipfft/include $ENV{ROCM_PATH}/include )
     endif ()
     list ( APPEND LIBS_FOR_HIP hipfft rocfft )
-    list ( APPEND ADD_COMPILE_FLAGS -DFFTX_HIP )
+    list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_HIP )
 endif ()
 
 ##  Set flags and options for use when building code
@@ -84,14 +81,17 @@ if ( WIN32 )
     list ( APPEND ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
 endif ()
 
+##  relocatable code doesn't work if multiple spiral files are included (name collisions)
+##  Default setting is false; only running on 64 bit machines.
+
 if ( ${_codegen} STREQUAL "GPU" )
     if (WIN32)
-	set ( CUDA_COMPILE_FLAGS -rdc=false )
+	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft )
 	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
     else ()
-	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
+	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
 	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft culibos )
     endif ()
@@ -108,11 +108,11 @@ else ()
     message ( STATUS "Building for size [ ${DIM_X}, ${DIM_Y}, ${DIM_Z} ]" )
 endif ()
 
-##  Set include paths and require C++ 14 standard
+##  Set include paths and require C++ 11 standard
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 11)
-set ( CMAKE_CXX_STANDARD 14)
+set ( CMAKE_CXX_STANDARD 11)
 
 include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets )
 

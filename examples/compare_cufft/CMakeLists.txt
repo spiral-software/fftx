@@ -22,10 +22,8 @@ if ( "x${CMAKE_MINIMUM_REQUIRED_VERSION}" STREQUAL "x" )
 
     ##  Languages aren't defined yet so add c & c++
     set ( _lang_base C CXX )
-
-    ##  _codegen will be passed on the cmake command line: will be one of CPU | GPU | HIP
-    ##  set ( _codegen GPU )
-
+    project ( FFTX_DUMMY LANGUAGES ${_lang_base} )
+    
     ##  Setup / determine the necessary paths and variable to continue)
     set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
     include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )
@@ -33,8 +31,7 @@ endif ()
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
-##  _codegen specifies CPU or GPU (serial or CUDA) code generation.  Will be set
-##  in parent so don't change here.
+##  _codegen specifies CPU | GPU | HIP code generation.  Will be set in parent.
 
 if ( ${_codegen} STREQUAL "GPU" )
     set ( _lang_add LANGUAGES CUDA )
@@ -55,18 +52,4 @@ set ( BUILD_PROGRAM test${PROJECT_NAME} )
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
 manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
-list ( APPEND _all_build_srcs ${BUILD_PROGRAM}.${_suffix} )
-
-add_executable   ( ${BUILD_PROGRAM} ${_all_build_srcs} )
-add_dependencies ( ${BUILD_PROGRAM} ${_all_build_deps} )
-
-target_compile_options ( ${BUILD_PROGRAM} PRIVATE ${ADDL_COMPILE_FLAGS} )
-
-target_include_directories ( ${BUILD_PROGRAM} PRIVATE ${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} )
-
-target_link_libraries      ( ${BUILD_PROGRAM} ${LIBS_FOR_CUDA} )
-
-set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
-
-install ( TARGETS ${BUILD_PROGRAM} DESTINATION ${INSTALL_DIR_TARGET} )
-
+add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
