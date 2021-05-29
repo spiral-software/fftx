@@ -91,7 +91,7 @@ if ( ${_codegen} STREQUAL "GPU" )
 	set ( LIBS_FOR_CUDA cufft )
 	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
     else ()
-	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
+	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
 	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft culibos )
     endif ()
