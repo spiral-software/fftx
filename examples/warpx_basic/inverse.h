@@ -1,3 +1,8 @@
+// make
+
+
+
+using namespace fftx;
 
 
 tracing=true;
@@ -15,5 +20,6 @@ setInputs(inputs);
 setOutputs(outputs);
 
 openScalarDAG();
-IPRDFT(domain3.extents().flipped(), outputs, inputs);
+//IPRDFT(domain3.extents().flipped(), outputs, inputs);
+IPRDFT(domain3.extents(), outputs, inputs);
 closeScalarDAG(intermediates, name);

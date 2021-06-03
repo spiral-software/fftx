@@ -13,7 +13,6 @@
 #define FFTX_HEADER
 
 
-#include <complex>
 #include <regex>
 #include <memory>
 #include <iostream>
@@ -28,6 +27,7 @@
 #include <array>
 
 #include <cassert>
+#include <complex>
 #include <iomanip>
 /*! \mainpage FFTX Package
  *
