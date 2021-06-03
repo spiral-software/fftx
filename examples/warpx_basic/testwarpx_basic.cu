@@ -10,7 +10,7 @@
 #else
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <device_launch_parameters.h>
+//#include <device_launch_parameters.h>
 #include <cufft.h>
 #endif
 
@@ -21,13 +21,17 @@
 #include "IDFT_80.fftx.codegen.hpp"
 #include "DFT_100.fftx.codegen.hpp"
 #include "IDFT_100.fftx.codegen.hpp"
-#include "DFT_224_224_100.fftx.codegen.hpp"
-#include "IDFT_224_224_100.fftx.codegen.hpp"
+#include "DFT_100_224_224.fftx.codegen.hpp"
+#include "IDFT_100_224_224.fftx.codegen.hpp"
 
 #define THREADS 128
 #define THREAD_BLOCKS 320
 #define C_SPEED 1
 #define EP0 1
+
+enum MODE:int {CUFFT=1, FFTX=2, BOTH=3};
+
+MODE mode = CUFFT;
 
 // pack the data
 __global__ void pack_data(int l,
@@ -43,7 +47,7 @@ __global__ void pack_data(int l,
 			  int n_os) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -66,10 +70,10 @@ __global__ void shift_data(int l,
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
   cufftDoubleComplex Z;
-  Z.x = 0.0;
+  Z.x = 1.0;
   Z.y = 0.0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -112,7 +116,7 @@ __global__ void compute_contraction(int l,
   double c2 = C_SPEED * C_SPEED;
   double inv_ep0 = 1.0 / EP0;
   
-  for(int iter = id; iter < (l * m * n); ++iter) {
+  for(int iter = id; iter < (l * m * n); iter += blockDim.x * gridDim.x) {
     int i = (iter % l);
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
@@ -194,41 +198,65 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
 								    cufftDoubleComplex *shift_j,
 								    int do_shift_k,
 								    cufftDoubleComplex *shift_k) {
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					input,
-					l_is, m_is, n_is,
-					temp,
-					l, m, n);
-  cufftExecD2Z(plan, temp, output);
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					input,
-					l_is, m_is, n_is,
-					temp,
-					l, m, n);
-  fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
-  fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
-  fftx::array_t<3,double> in(fftx::global_ptr<double>(input), inputBox);
-  fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
-  if(l==m==n==80) DFT_80::transform(in, out, in);
-  if(l==m==n==100) DFT_100::transform(in, out, in);
-  if(l==m==224 && n==100) DFT_224_224_100::transform(in, out, in);
-  
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 output,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
-    shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 output_fftx,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
+  // cufft implementation
+  if(mode == CUFFT || mode==BOTH)
+    {
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            input,
+                                            l_is, m_is, n_is,
+                                            temp,
+                                            l, m, n);
+      cufftExecD2Z(plan, temp, output);
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             output,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+    }
+
+  if(mode == FFTX || mode == BOTH)
+    {
+      // fftx implementation
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            input,
+                                            l_is, m_is, n_is,
+                                            temp,
+                                            l, m, n);
+      
+      fftx::box_t<3> inputBox({{1,1,1}},{{l,m,n}});
+      fftx::box_t<3> outputBox({{1,1,1}},{{l/2+1,m,n}});
+      
+      fftx::array_t<3,double> in(fftx::global_ptr<double>(temp), inputBox);
+      fftx::array_t<3,std::complex<double>> out(fftx::global_ptr<std::complex<double>>((std::complex<double>*)output_fftx),outputBox);
+      
+      if(l==80 && m==80 && n==80)
+        {
+          DFT_80::transform(in, out, in);
+        }
+      else if(l==100 && m==100 && n==100)
+        {
+          DFT_100::transform(in, out, in);
+        }
+      else if(l==100 && m==224 && n==224)
+        {
+          DFT_100_224_224::transform(in, out, in);
+        }
+      else
+        {
+          std::cout<<"transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+        }
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             output_fftx,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+    }
 }
 
 inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle plan,
@@ -238,7 +266,8 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 								    cufftDoubleComplex *input,
                                                                     cufftDoubleComplex *input_fftx,
 								    double *temp,
-								    double *output, double *output_fftx,
+								    double *output,
+								    double *output_fftx,
 								    int l_os,
 								    int m_os,
 								    int n_os,
@@ -248,42 +277,68 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 								    cufftDoubleComplex *shift_j,
 								    int do_shift_k,
 								    cufftDoubleComplex *shift_k) {
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 input,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
-  cufftExecZ2D(plan, input, temp);
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					temp,
-					l, m, n,
-					output,
-					l_os, m_os, n_os);
 
-  shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
-					 input_fftx,
-					 do_shift_i,
-					 shift_i,
-					 do_shift_j,
-					 shift_j,
-					 do_shift_k,
-					 shift_k);
-  fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
-  fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
-  fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
-  fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx),inputBox);
-  if(l==m==n==80) IDFT_80::transform(in, out, out);
-  if(l==m==n==100) IDFT_100::transform(in, out, out);
-  if(l==m==224 && n==100) IDFT_224_224_100::transform(in, out, out);
-  pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
-					temp,
-					l, m, n,
-					output_fftx,
-					l_os, m_os, n_os);
-  
+  // cufft implementation
+  if(mode == CUFFT || mode==BOTH)
+    {
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             input,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+      cufftExecZ2D(plan, input, temp);
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            temp,
+                                            l, m, n,
+                                            output,
+                                            l_os, m_os, n_os);
+
+ 
+    }
+  if(mode == FFTX || mode==BOTH)
+    {
+           // fftx implementation
+      shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
+                                             input_fftx,
+                                             do_shift_i,
+                                             shift_i,
+                                             do_shift_j,
+                                             shift_j,
+                                             do_shift_k,
+                                             shift_k);
+      
+      fftx::box_t<3> inputBox({{1,1,1}},{{l/2+1,m,n}});
+      fftx::box_t<3> outputBox({{1,1,1}},{{l,m,n}});
+      
+      fftx::array_t<3,std::complex<double>> in(fftx::global_ptr<std::complex<double>>((std::complex<double>*)input_fftx), inputBox);
+      fftx::array_t<3,double> out(fftx::global_ptr<double>(temp), outputBox);
+      
+      if(l==80  && m==80 && n==80)
+        {
+          IDFT_80::transform(in, out, out);
+        }
+      else if(l==100 && m==100 && n==100)
+        {
+          IDFT_100::transform(in, out, out);
+        }
+      else if(l==100 && m==224 && n==224)
+        {
+          IDFT_100_224_224::transform(in, out, out);
+        }
+      else
+        {
+          std::cout<<"inverse transform not found for FFTX "<<l<<" "<<m<<" "<<n<<"\n";
+        }
+      
+      pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
+                                            temp,
+                                            l, m, n,
+                                            output_fftx,
+                                            l_os, m_os, n_os);
+    }
 }
 
 // compute Spectral Solve
@@ -502,30 +557,36 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   0,
 			   fshift_k);
   // contraction
-  compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
-						   m,
-						   n,
-						   temp1,
-						   modified_ki_arr,
-						   modified_kj_arr,
-						   modified_kk_arr,
-						   C_arr,
-						   S_arr,
-						   X1_arr,
-						   X2_arr,
-						   X3_arr);
-    compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
-						   m,
-						   n,
-						   temp1_fftx,
-						   modified_ki_arr,
-						   modified_kj_arr,
-						   modified_kk_arr,
-						   C_arr,
-						   S_arr,
-						   X1_arr,
-						   X2_arr,
-						   X3_arr);
+  if(mode==CUFFT || mode==BOTH)
+    {
+      compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
+                                                      m,
+                                                      n,
+                                                      temp1,
+                                                      modified_ki_arr,
+                                                      modified_kj_arr,
+                                                      modified_kk_arr,
+                                                      C_arr,
+                                                      S_arr,
+                                                      X1_arr,
+                                                      X2_arr,
+                                                      X3_arr);
+    }
+  if(mode==FFTX || mode == BOTH)
+    {
+      compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
+                                                      m,
+                                                      n,
+                                                      temp1_fftx,
+                                                      modified_ki_arr,
+                                                      modified_kj_arr,
+                                                      modified_kk_arr,
+                                                      C_arr,
+                                                      S_arr,
+                                                      X1_arr,
+                                                      X2_arr,
+                                                      X3_arr);
+    }
   
   // Ex, Ey, Ez fields
   compute_warp_inverse_dft(plan_inverse,
@@ -535,7 +596,8 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (temp1 + 0 * (l / 2 + 1) * m * n),
                            (temp1_fftx + 0 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Ex_out, Ex_out_fftx,
+			   Ex_out,
+			   Ex_out_fftx,
 			   l, (m + 1), (n + 1),
 			   0,
 			   ishift_i,
@@ -550,7 +612,8 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (temp1 + 1 * (l / 2 + 1) * m * n),
                            (temp1_fftx + 1 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Ey_out, Ey_out_fftx,
+			   Ey_out,
+			   Ey_out_fftx,
 			   (l + 1), m, (n + 1),
 			   1,
 			   ishift_i,
@@ -565,7 +628,8 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (temp1 + 2 * (l / 2 + 1) * m * n),
                            (temp1_fftx + 2 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Ez_out, Ez_out_fftx,
+			   Ez_out,
+			   Ez_out_fftx,
 			   (l + 1), (m + 1), n,
 			   1,
 			   ishift_i,
@@ -581,7 +645,8 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (temp1 + 3 * (l / 2 + 1) * m * n),
                            (temp1_fftx + 3 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Bx_out, Bx_out_fftx,
+			   Bx_out,
+			   Bx_out_fftx,
 			   (l + 1), m, n,
 			   1,
 			   ishift_i,
@@ -596,7 +661,8 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (temp1 + 4 * (l / 2 + 1) * m * n),
                            (temp1_fftx + 4 * (l / 2 + 1) * m * n),
 			   temp0,
-			   By_out, By_out_fftx,
+			   By_out,
+			   By_out_fftx,
 			   l, (m + 1), n,
 			   0,
 			   ishift_i,
@@ -611,7 +677,8 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   (temp1 + 5 * (l / 2 + 1) * m * n),
                            (temp1_fftx + 5 * (l / 2 + 1) * m * n),
 			   temp0,
-			   Bz_out, Bx_out_fftx,
+			   Bz_out,
+			   Bz_out_fftx,
 			   l, m, (n + 1),
 			   0,
 			   ishift_i,
@@ -621,28 +688,32 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   ishift_k);
 }
 
-void reportDifferences(const char* name, double* cufft_out, double* fftx_out, int ll, int mm, int nn)
-{
-  double diff=0,cufft_max=0, fftx_max=0;
+void reportDifferences(const char* name, double* cufft_out, double* fftx_out, int ll, int mm, int nn) {
+  double diff=0, cufft_max=0, fftx_max=0;
   int imax=-1, jmax=-1, kmax=-1;
-  for(int k=0; k<nn; k++)
-    for(int j=0; j<mm; j++)
-      for(int i=0; i<ll; i++)
-        { 
-          int idx = i + j*ll + k*(ll*mm);
-          double c = cufft_out[idx];
-          double f = fftx_out[idx];
-          double d = std::abs(c-f);
-          if(d>diff)
-            {
-              diff=d;
-              imax=i;jmax=j; kmax=k;
-            }
-          if(std::abs(c)>cufft_max) cufft_max=c;
-          if(std::abs(f)>fftx_max) fftx_max=f;
-          
-        }
- 
+  
+  for(int k = 0; k < nn; k++)
+    for(int j = 0; j < mm; j++)
+      for(int i = 0; i < ll; i++) { 
+	int idx = i + j * ll + k * (ll * mm);
+	double c = cufft_out[idx];
+	double f = fftx_out[idx];
+	double d = std::abs(c-f);
+	  
+
+	if(d> diff)
+          {
+            diff=d;
+	  //std::cout << i << ", " << j << ", " << k << std::endl;
+            imax=i;
+            jmax=j;
+            kmax=k;
+          }
+	
+	if(std::abs(c)>cufft_max) cufft_max=c;
+	if(std::abs(f)>fftx_max) fftx_max=f;   
+      }
+
   std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  cufft_max="<<cufft_max<<"  fftx_max="<<fftx_max<<"\n";
 }
 
@@ -1082,28 +1153,24 @@ float execute_code(int l,
   cufftHandle plan_forward, plan_inverse;
   cufftPlan3d(&plan_forward, l, m, n, CUFFT_D2Z);
   cufftPlan3d(&plan_inverse, l, m, n, CUFFT_Z2D);
-  if(l==m==n==80)
-    {
-      DFT_80::init();
-      IDFT_80::init();
-    }
-  if(l==m==n==100)
-    {
-      DFT_100::init();
-      IDFT_100::init();
-    }
-  if(l==m==224 && n==100)
-    {
-      DFT_224_224_100::init();
-      IDFT_224_224_100::init();
-    }
+  if(l==80 && m==80 && n==80) {
+    DFT_80::init();
+    IDFT_80::init();
+  }
+  
+  if(l==100 &&m==100 && n==100) {
+    DFT_100::init();
+    IDFT_100::init();
+  }
+  
+  if(l==100 && m==224 && n==224) {
+    DFT_100_224_224::init();
+    IDFT_100_224_224::init();
+  }
 
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-
-  cudaEventRecord(start);
-  compute_spectral_solve(l,
+  // first, do a a throw away transform to warm things up and make sure all kernels have been hit at least once
+  mode = BOTH;
+      compute_spectral_solve(l,
 			 m,
 			 n,
 			 plan_forward,
@@ -1148,18 +1215,84 @@ float execute_code(int l,
 			 dev_ishift_i,
 			 dev_ishift_j,
 			 dev_ishift_k);
-  cudaEventRecord(stop);
-  
-  // synchronize the device
-  cudaStatus = cudaDeviceSynchronize();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-    exit(-1);
-  }
+      
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
 
   float milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
+  for(int md = CUFFT; md< BOTH; md++)
+    {
+      mode = (MODE)md;
+      cudaEventRecord(start);
+      compute_spectral_solve(l,
+			 m,
+			 n,
+			 plan_forward,
+			 plan_inverse,
+			 dev_Ex_in,
+			 dev_Ey_in,
+			 dev_Ez_in,
+			 dev_Bx_in,
+			 dev_By_in,
+			 dev_Bz_in,
+			 dev_Jx,
+			 dev_Jy,
+			 dev_Jz,
+			 dev_rho_0,
+			 dev_rho_1,
+			 dev_fshift_i,
+			 dev_fshift_j,
+			 dev_fshift_k,
+			 dev_temp0,
+			 dev_temp1,
+                         dev_temp1_fftx,
+			 dev_modified_ki_arr,
+			 dev_modified_kj_arr,
+			 dev_modified_kk_arr,
+			 dev_C_arr,
+			 dev_S_arr,
+			 dev_X1_arr,
+			 dev_X2_arr,
+			 dev_X3_arr,
+			 dev_Ex_out,
+			 dev_Ey_out,
+			 dev_Ez_out,
+			 dev_Bx_out,
+			 dev_By_out,
+			 dev_Bz_out,
+                         dev_Ex_out_fftx,
+			 dev_Ey_out_fftx,
+			 dev_Ez_out_fftx,
+			 dev_Bx_out_fftx,
+			 dev_By_out_fftx,
+			 dev_Bz_out_fftx,
+			 dev_ishift_i,
+			 dev_ishift_j,
+			 dev_ishift_k);
+      cudaEventRecord(stop);
   
+      // synchronize the device
+      cudaStatus = cudaDeviceSynchronize();
+      if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+        exit(-1);
+      }
+      
+      float tmilliseconds = 0;
+      cudaEventElapsedTime(&tmilliseconds, start, stop);
+
+      if(md==CUFFT)
+        {
+          std::cout<<"cuFFT implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+         
+        }
+      if(md==FFTX)
+        {
+          std::cout<<"FFTX  implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+        }
+      milliseconds += tmilliseconds;
+    }
   // copy the data from the device
   cudaStatus = cudaMemcpy((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
@@ -1201,37 +1334,37 @@ float execute_code(int l,
 
     cudaStatus = cudaMemcpy((void*) fields_out_fftx[0], dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Ex_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[1], dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Ey_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[2], dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ez_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Ez_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[3], dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Bx_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[4], dev_By_out_fftx, l * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_By_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
   cudaStatus = cudaMemcpy((void*) fields_out_fftx[5], dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
   if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bz_out cudaMemcpy failed!");
+    fprintf(stderr, "dev_Bz_out_fftx cudaMemcpy failed!");
     exit(-1);
   }
 
@@ -1242,26 +1375,26 @@ float execute_code(int l,
   reportDifferences("Bx",fields_out[3],fields_out_fftx[3],l+1, m, n);
   reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
   reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
-  
  
   // destroy cufftPlans
   cufftDestroy(plan_forward);
   cufftDestroy(plan_inverse);
-    if(l==m==n==80)
-    {
-      DFT_80::destroy();
-      IDFT_80::destroy();
-    }
-  if(l==m==n==100)
-    {
-      DFT_100::destroy();
-      IDFT_100::destroy();
-    }
-  if(l==m==224 && n==100)
-    {
-      DFT_224_224_100::destroy();
-      IDFT_224_224_100::destroy();
-    }
+  
+  if(l==80 && m==80 && n==80) {
+    DFT_80::destroy();
+    IDFT_80::destroy();
+  }
+  
+  if(l==100 && m==100 && n==100) {
+    DFT_100::destroy();
+    IDFT_100::destroy();
+  }
+  
+  if(l==100 && m==224 && n==224) {
+    DFT_100_224_224::destroy();
+    IDFT_100_224_224::destroy();
+  }
+  
   // deallocate device memory
   cudaFree(dev_Ex_in);
   cudaFree(dev_Ey_in);
@@ -1286,7 +1419,6 @@ float execute_code(int l,
   cudaFree(dev_temp1);
   cudaFree(dev_temp1_fftx);
   
-
   cudaFree(dev_modified_ki_arr);
   cudaFree(dev_modified_kj_arr);
   cudaFree(dev_modified_kk_arr);
@@ -1322,7 +1454,7 @@ int main(int argc, char **argv) {
 
   // input and output fields
   double **fields_in, **fields_out;
-  double *fields_out_fftx[6];
+  double **fields_out_fftx;
 
   // shifting arrays
   cufftDoubleComplex **shift_in, **shift_out;
@@ -1333,6 +1465,7 @@ int main(int argc, char **argv) {
   // allocate memory for the fields
   fields_in = (double**) malloc(11 * sizeof(double*));
   fields_out = (double**) malloc(6 * sizeof(double*));
+  fields_out_fftx = (double**) malloc(6 * sizeof(double*));
 
   fields_in[0] = (double*) malloc(l * (m + 1) * (n + 1) * sizeof(double));
   fields_in[1] = (double*) malloc((l + 1) * m * (n + 1) * sizeof(double));
@@ -1369,33 +1502,39 @@ int main(int argc, char **argv) {
     fields_in[0][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_in[6][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[0][i] = 0.0;
+    fields_out_fftx[0][i] = 0.0;
   }
 
   for(int i = 0; i < (l + 1) * m * (n + 1); ++i) {
     fields_in[1][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_in[7][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[1][i] = 0.0;
+    fields_out_fftx[1][i] = 0.0;
   }
 
   for(int i = 0; i < (l + 1) * (m + 1) * n; ++i) {
     fields_in[2][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_in[8][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[2][i] = 0.0;
+    fields_out_fftx[2][i] = 0.0;
   }
 
   for(int i = 0; i < (l + 1) * m * n; ++i) {
     fields_in[3][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[3][i] = 0.0;
+    fields_out_fftx[3][i] = 0.0;
   }
 
   for(int i = 0; i < l * (m + 1) * n; ++i) {
     fields_in[4][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[4][i] = 0.0;
+    fields_out_fftx[4][i] = 0.0;
   }
 
   for(int i = 0; i < l * m * (n + 1); ++i) {
     fields_in[5][i] = rand() / ((double) (INT_MAX * 1.0));
     fields_out[5][i] = 0.0;
+    fields_out_fftx[5][i] = 0.0;
   }
 
   for(int i = 0; i < l * m * n; ++i) {
@@ -1475,7 +1614,8 @@ int main(int argc, char **argv) {
 				    fields_in,
 				    shift_in,
 				    contractions,
-				    fields_out,fields_out_fftx,
+				    fields_out,
+				    fields_out_fftx,
 				    shift_out);
 
   printf("Execution time:\t%f\n", milliseconds);
@@ -1507,6 +1647,7 @@ int main(int argc, char **argv) {
 
   free(fields_in);
   free(fields_out);
+  free(fields_out_fftx);
 
   free(shift_in[0]);
   free(shift_in[1]);
@@ -1532,4 +1673,3 @@ int main(int argc, char **argv) {
   
   return 0;
 }
-
