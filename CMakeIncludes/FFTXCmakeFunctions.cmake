@@ -24,7 +24,7 @@ function ( run_driver_program prefix stem )
     set     ( ${prefix}_driver ${prefix}.${stem}.driver PARENT_SCOPE )
     add_executable ( ${_driver} ${prefix}.${stem}.cpp )
     target_compile_options ( ${_driver} PRIVATE ${ADDL_COMPILE_FLAGS} )
-    set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 14 )
+    set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 11 )
     message ( STATUS "Added ${ADDL_COMPILE_FLAGS} to target: ${_driver}" )
 
     if ( ${ARGC} GREATER 2 )
@@ -272,3 +272,28 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 
 endfunction ()
 
+
+##  setup_mpi_variables() is a function to perform variable setup so that MPI
+##  examples can be built.  It should only be called if MPI is successfully
+##  found.  No arguments are required.
+
+function ( setup_mpi_variables )
+    ##  We assume MPI installation found
+    message ( STATUS "Found MPI: mpicxx = ${MPI_MPICXX_FOUND}, Version = ${MPI_CXX_VERSION}" )
+    ##  message ( STATUS "MPI_CXX_COMPILER = ${MPI_CXX_COMPILER}" )
+    ##  message ( STATUS "MPI_CXX_COMPILE_OPTIONS = ${MPI_CXX_COMPILE_OPTIONS}" )
+    ##  message ( STATUS "MPI_CXX_COMPILE_DEFINITIONS = ${MPI_CXX_COMPILE_DEFINITIONS}" )
+    ##  message ( STATUS "MPI_CXX_INCLUDE_DIRS = ${MPI_CXX_INCLUDE_DIRS}" )
+    ##  message ( STATUS "MPI_CXX_LINK_FLAGS = ${MPI_CXX_LINK_FLAGS}" )
+    ##  message ( STATUS "MPI_CXX_LIBRARIES = ${MPI_CXX_LIBRARIES}" )
+
+    set ( _index 0 )
+    foreach ( _mpilib ${MPI_CXX_LIBRARIES} )
+	set ( MPI_CXX_LIB${_index} ${_mpilib} PARENT_SCOPE )
+        message ( STATUS "MPI_CXX_LIB${_index} = ${_mpilib}" )
+	math ( EXPR _index "${_index} + 1" )
+    endforeach ()
+    set ( _num_MPI_libs ${_index} )
+    ##  message ( STATUS "Number of MPI Libraries = ${_num_MPI_libs}" )
+
+endfunction ()
