@@ -24,7 +24,7 @@ function ( run_driver_program prefix stem )
     set     ( ${prefix}_driver ${prefix}.${stem}.driver PARENT_SCOPE )
     add_executable ( ${_driver} ${prefix}.${stem}.cpp )
     target_compile_options ( ${_driver} PRIVATE ${ADDL_COMPILE_FLAGS} )
-    set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 14 )
+    set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 11 )
     message ( STATUS "Added ${ADDL_COMPILE_FLAGS} to target: ${_driver}" )
 
     if ( ${ARGC} GREATER 2 )
