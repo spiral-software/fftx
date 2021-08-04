@@ -13,7 +13,6 @@
 #define FFTX_HEADER
 
 
-#include <complex>
 #include <regex>
 #include <memory>
 #include <iostream>
@@ -28,6 +27,7 @@
 #include <array>
 
 #include <cassert>
+#include <complex>
 #include <iomanip>
 /*! \mainpage FFTX Package
  *
@@ -126,6 +126,7 @@ namespace fftx
     point_t<DIM> operator*(int scale) const;
     static point_t<DIM> Unit();
     static point_t<DIM> Zero();
+    static int dim() {return DIM;};
     /** reverse the odering of the tuple, reutrn by value */
     point_t<DIM> flipped() const { point_t<DIM> rtn; for (int d=0; d<DIM; d++) { rtn[d] = x[DIM-1 - d]; } return rtn; }
   };

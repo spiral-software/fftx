@@ -24,7 +24,7 @@ namespace MathConst
 // https://physics.nist.gov/cuu/Constants/index.html
 namespace PhysConst
 {
-    static constexpr T c     = 299'792'458.;
+    static constexpr T c     = 299792458.;
     static constexpr T ep0   = 8.8541878128e-12;
     static constexpr T mu0   = 1.25663706212e-06;
     static constexpr T q_e   = 1.602176634e-19;

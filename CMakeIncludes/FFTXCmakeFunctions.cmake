@@ -24,7 +24,7 @@ function ( run_driver_program prefix stem )
     set     ( ${prefix}_driver ${prefix}.${stem}.driver PARENT_SCOPE )
     add_executable ( ${_driver} ${prefix}.${stem}.cpp )
     target_compile_options ( ${_driver} PRIVATE ${ADDL_COMPILE_FLAGS} )
-    set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 14 )
+    set_property ( TARGET ${_driver} PROPERTY CXX_STANDARD 11 )
     message ( STATUS "Added ${ADDL_COMPILE_FLAGS} to target: ${_driver}" )
 
     if ( ${ARGC} GREATER 2 )
@@ -81,34 +81,43 @@ endfunction ()
 
 set ( BACKEND_SPIRAL_CPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_cpu_serial )
 set ( BACKEND_SPIRAL_GPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_gpu )
+set ( BACKEND_SPIRAL_HIP_DIR      ${BACKEND_SOURCE_DIR}/spiral_hip )
+
 set ( SPIRAL_BACKEND_CPU_PREAMBLE ${BACKEND_SPIRAL_CPU_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_GPU_PREAMBLE ${BACKEND_SPIRAL_GPU_DIR}/preamble.g )
+set ( SPIRAL_BACKEND_HIP_PREAMBLE ${BACKEND_SPIRAL_HIP_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_CPU_CODEGEN  ${BACKEND_SPIRAL_CPU_DIR}/codegen.g  )
 set ( SPIRAL_BACKEND_GPU_CODEGEN  ${BACKEND_SPIRAL_GPU_DIR}/codegen.g  )
+set ( SPIRAL_BACKEND_HIP_CODEGEN  ${BACKEND_SPIRAL_HIP_DIR}/codegen.g  )
 
 function ( create_generator_file _codefor prefix stem )
     message ( "create generator SPIRAL script ${prefix}.${stem}.generator.g" )
     set     ( ${prefix}_gen ${prefix}.${stem}.generator.g PARENT_SCOPE )
     set     ( _gen ${prefix}.${stem}.generator.g )
     set     ( _plan   ${prefix}.${stem}.plan.g )
-    
+
+    set ( _preamble ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} )
+    set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN} )
+    if ( "X${_generator_script}" STREQUAL "X" )
+	##  The complete script is not defined -- bo action required
+    elseif ( ${_generator_script} STREQUAL "COMPLETE" )
+	##  Don't add preamble and codegen pieces
+	set ( _preamble )
+	set ( _postfix  )
+    endif ()
+
     if ( WIN32 )
 	add_custom_command ( OUTPUT ${_gen}
-            ##  COMMAND IF EXIST ${_gen} ( DEL /F ${_gen} )
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
-	        ${_gen} ${SPIRAL_BACKEND_${_codefor}_PREAMBLE}
-		${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN}
-	    ##  COMMAND TYPE ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} ${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN} > ${_gen}
-	    DEPENDS ${_plan}
+	            ${_gen} ${_preamble} ${_plan} ${_postfix}
+            DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
     else ()
 	include ( FindUnixCommands )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
-	        ${_gen} ${SPIRAL_BACKEND_${_codefor}_PREAMBLE}
-		${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN}
-	    ##  COMMAND ${BASH} -c "rm -f ${_gen} ; cat ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} ${_plan} ${SPIRAL_BACKEND_${_codefor}_CODEGEN} > ${_gen}"
+	            ${_gen} ${_preamble} ${_plan} ${_postfix}
 	    DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -121,11 +130,72 @@ function ( create_generator_file _codefor prefix stem )
 endfunction ()
 
 
+##  run_hipify_perl() is a simple function called to run hipify-perl on a CUDA
+##  source code file.  The two arguments are the file name root (_program) and
+##  suffix (_suffix).  The resulting converted file will be written to
+##  ${_program}-hip.${_suffix}.
+
+function ( run_hipify_perl _program _suffix )
+    if ( WIN32 )
+	## TBD
+    else ()
+	include ( FindUnixCommands )
+	add_custom_command ( OUTPUT ${_program}-hip.${_suffix}
+	    COMMAND ${BASH} -c "rm -f ${_program}-hip.${_suffix} && hipify-perl ${CMAKE_CURRENT_SOURCE_DIR}/${_program}.${_suffix} > ${_program}-hip.${_suffix}"
+	    DEPENDS ${_program}.${_suffix}
+	    VERBATIM
+	    COMMENT "Generating ${_program}-hip.${_suffix}" )
+    endif ()
+
+endfunction ()
+
+
+##  add_includes_libs_to_target() is a function called to add include
+##  directories, library paths, and libraries to an executable target.  Its
+##  purpose is to encapsulate all the information in one place and let each
+##  example cmake simply call this to get the appropriate qualifier for each
+##  build.
+
+function ( add_includes_libs_to_target _target _stem _prefixes )
+    ##  Test _codegen and setup accordingly
+    if ( ${_codegen} STREQUAL "HIP" )
+	## run hipify-perl on the test driver
+	run_hipify_perl ( ${_target} ${_suffix} )
+	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
+	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
+	foreach ( _pref ${_prefixes} )
+	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
+	endforeach ()
+    else ()
+	list ( APPEND _all_build_srcs ${_target}.${_suffix} )
+    endif ()
+
+    add_executable   ( ${_target} ${_all_build_srcs} )
+    add_dependencies ( ${_target} ${_all_build_deps} )
+ 
+    target_compile_options ( ${_target} PRIVATE ${ADDL_COMPILE_FLAGS} )
+ 
+    target_include_directories ( ${_target} PRIVATE
+	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )
+
+    if ( ${_codegen} STREQUAL "HIP" )
+	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
+	target_link_libraries      ( ${_target} ${LIBS_FOR_HIP} )
+    elseif ( ${_codegen} STREQUAL "GPU" )
+	target_link_libraries      ( ${_target} ${LIBS_FOR_CUDA} )
+    endif ()
+
+    set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
+    install ( TARGETS ${_target} DESTINATION ${INSTALL_DIR_TARGET} )
+
+endfunction ()
+    
+
 ##  manage_deps_codegen() is a function called to orchestrate creating the
 ##  intermediate files (targets) for codegen and build the list of dependencies
 ##  for a test program.  The following conventions are assumed:
-##  File nameing convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
-##  The function is passed a codegen flag (create CPU/GPU code), a stem, a list
+##  File naming convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
+##  The function is passed a codegen flag (create CPU/GPU/HIP code), a stem, a list
 ##  of prefixes (1 or more) and builds lists of all source code files for the
 ##  test program and a list of dependency names (to ensure cmake builds all
 ##  targets in the right order).
@@ -137,7 +207,7 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	message ( FATAL_ERROR "manage_deps_codegen() requires at least 1 prefix" )
     endif ()
     
-    if ( ${_codefor} STREQUAL "GPU" ) 
+    if ( ( ${_codefor} STREQUAL "GPU" ) OR ( ${_codefor} STREQUAL "HIP" ) )
 	set ( _suffix cu PARENT_SCOPE )
 	set ( _suffix cu )
     else ()
@@ -182,7 +252,7 @@ endfunction ()
 ##  buildForGpu; where subdirectory is the name of the subdirectory containing
 ##  the example, buildForCpu and buildForGpu are logical (True or False) values
 ##  indicating if the example should be built.
-##  NOTE: If buildForGpu is specified a CUDA toolkit is required.
+##  NOTE: If buildForGpu is specified a CUDA (Nvidia) or Hip/rocm (AMD) toolkit is required.
 
 function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 
@@ -193,12 +263,37 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
-    if ( ${_buildForGpu} AND ${_codegen} STREQUAL "GPU" )
+    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
 	add_subdirectory ( ${_subdir} )
-    elseif ( NOT ${_buildForGpu} AND ${_codegen} STREQUAL "GPU" )
+    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
 endfunction ()
 
+
+##  setup_mpi_variables() is a function to perform variable setup so that MPI
+##  examples can be built.  It should only be called if MPI is successfully
+##  found.  No arguments are required.
+
+function ( setup_mpi_variables )
+    ##  We assume MPI installation found
+    message ( STATUS "Found MPI: mpicxx = ${MPI_MPICXX_FOUND}, Version = ${MPI_CXX_VERSION}" )
+    ##  message ( STATUS "MPI_CXX_COMPILER = ${MPI_CXX_COMPILER}" )
+    ##  message ( STATUS "MPI_CXX_COMPILE_OPTIONS = ${MPI_CXX_COMPILE_OPTIONS}" )
+    ##  message ( STATUS "MPI_CXX_COMPILE_DEFINITIONS = ${MPI_CXX_COMPILE_DEFINITIONS}" )
+    ##  message ( STATUS "MPI_CXX_INCLUDE_DIRS = ${MPI_CXX_INCLUDE_DIRS}" )
+    ##  message ( STATUS "MPI_CXX_LINK_FLAGS = ${MPI_CXX_LINK_FLAGS}" )
+    ##  message ( STATUS "MPI_CXX_LIBRARIES = ${MPI_CXX_LIBRARIES}" )
+
+    set ( _index 0 )
+    foreach ( _mpilib ${MPI_CXX_LIBRARIES} )
+	set ( MPI_CXX_LIB${_index} ${_mpilib} PARENT_SCOPE )
+        message ( STATUS "MPI_CXX_LIB${_index} = ${_mpilib}" )
+	math ( EXPR _index "${_index} + 1" )
+    endforeach ()
+    set ( _num_MPI_libs ${_index} )
+    ##  message ( STATUS "Number of MPI Libraries = ${_num_MPI_libs}" )
+
+endfunction ()
