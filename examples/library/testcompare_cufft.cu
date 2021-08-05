@@ -181,10 +181,8 @@ int main(int argc, char* argv[])
       printf("call spiralmddft::transform() %d times\n", iterations);
     }
 
-  printf("Defining fftx::mddft<%d,%d,%d>\n", fftx_nx, fftx_ny, fftx_nz);
-  // fftx::mddft<fftx_nx, fftx_ny, fftx_nz> tfm; // does initialization
-  fftx::mddft<3> tfm(point_t<3>({{fftx_nx, fftx_ny, fftx_nz}})); // does initialization
-  printf("Defined fftx::mddft<%d,%d,%d>\n", fftx_nx, fftx_ny, fftx_nz);
+  fftx::point_t<3> extents = test_comp::domain.extents();
+  fftx::mddft<3> tfm(extents); // does initialization
 
   /*
     Time iterations of complex-to-complex MDDFT with SPIRAL-generated code.

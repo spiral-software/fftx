@@ -302,10 +302,8 @@ int main(int argc, char* argv[])
   /*
     3-dimensional tests.
   */
-  printf("Defining fftx::rconv<3> on %d,%d,%d\n", fftx_nx, fftx_ny, fftx_nz);
-  // fftx::rconv<fftx_nx, fftx_ny, fftx_nz> tfm; // does initialization
-  fftx::rconv<3> tfm(point_t<3>({{fftx_nx, fftx_ny, fftx_nz}})); // does initialization
-  printf("Defined fftx::rconv<3> on %d,%d,%d\n", fftx_nx, fftx_ny, fftx_nz);
+  fftx::point_t<3> extents = rconv_dims::domain3.extents();
+  fftx::rconv<3> tfm(extents); // does initialization
 
   rconvDimension(tfm, rconv_dims::domain3, rconv_dims::fdomain3,
                  rounds, verbosity);
