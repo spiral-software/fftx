@@ -19,8 +19,9 @@ namespace fftx {
     {
       m_size = a_size;
       m_cubesize = getSize(a_size);
-      printf("Defining transformer on [%d,%d,%d]\n",
-             m_cubesize.dimx, m_cubesize.dimy, m_cubesize.dimz);
+      std::cout << "Defining transformer<" << DIM << ">" << m_size
+                << std::endl;
+      // Do this in the derived class:
       // transformTuple_t* tupl = fftx_transformer_Tuple ( m_cubesize );
       // setInit(tuple);
     }
