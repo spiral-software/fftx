@@ -78,14 +78,11 @@ namespace fftx {
       else
         {
           printf("transformer: this size is in the library. Initializing.\n");
+          // Still need to set transform_spiral in the derived class.
           init_spiral = *a_tupl->initfp;
+          destroy_spiral = *a_tupl->destroyfp;
         }
 
-      callInit(a_tupl);
-    }
-
-    void callInit(transformTuple_t* a_tupl)
-    {
       if (init_spiral != nullptr)
         {
           printf("calling init_spiral()\n");
@@ -97,7 +94,7 @@ namespace fftx {
 #endif
         }
     }
-    
+
     // private:
     void (*init_spiral)() = nullptr;
     // void (*transform_spiral)(double*, double*, double*) = nullptr;

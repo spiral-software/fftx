@@ -20,41 +20,14 @@ namespace fftx {
     rconv(const point_t<DIM>& a_size) : transformer<DIM>(a_size)
     {
       // m_cubesize = getSize();
-      m_sizeHalf = transformer<DIM>::m_size;
-      m_sizeHalf[0] = transformer<DIM>::m_size[0]/2 + 1;
+      m_sizeHalf = this->m_size;
+      m_sizeHalf[0] = this->m_size[0]/2 + 1;
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
       // The type cubesize_t is fixed to 3D.
-      transformTuple_t* tupl = fftx_rconv_Tuple ( transformer<DIM>::m_cubesize );
-      // I get segfault if I do this in base class, so repeat here.
-      // transformer<DIM>::setInit(tupl);
-      if (tupl == NULL)
-        {
-          printf("This size is not in the library.\n");
-        }
-      else
-        {
-          printf("This size is in the library. Initializing.\n");
-          transformer<DIM>::init_spiral = *tupl->initfp;
-          transform_spiral = *tupl->runfp;
-          transformer<DIM>::destroy_spiral = *tupl->destroyfp;
-        }
-
-      transformer<DIM>::callInit(tupl);
-      /*
-      if (transformer<DIM>::init_spiral != nullptr)
-        {
-          transformer<DIM>::init_spiral();
-#ifdef __CUDACC__
-
-          cudaEvent_t& mystart = transformer<DIM>::m_start;
-          cudaEvent_t& mystop = transformer<DIM>::m_stop;
-
-          cudaEventCreate(&mystart);
-          cudaEventCreate(&mystop);
-#endif
-        }
-      */
+      transformTuple_t* tupl = fftx_rconv_Tuple ( this->m_cubesize );
+      this->setInit(tupl);
+      if (tupl != NULL) transform_spiral = *tupl->runfp;
     }
 
     ~rconv()
@@ -62,26 +35,6 @@ namespace fftx {
       // in base class
       // if (destroy_spiral != nullptr) destroy_spiral();
     }
-
-    /*
-    double m_CPU_milliseconds = 0.;
-    float  m_GPU_milliseconds = 0.;
-#ifdef __CUDACC__
-    cudaEvent_t m_start, m_stop;
-    void kernelStart() {cudaEventRecord(m_start);}
-    void kernelStop()
-    {
-      cudaEventRecord(m_stop);
-      cudaDeviceSynchronize();
-      cudaEventSynchronize(m_stop);
-      cudaEventElapsedTime(&m_GPU_milliseconds, m_start, m_stop);
-    }
-#else
-    void kernelStart(){ }
-    void kernelStop(){ }
-#endif
-    */
- 
 
     inline fftx::handle_t transform(array_t<DIM, double>& a_src,
                                     array_t<DIM, double>& a_dst,
@@ -100,20 +53,27 @@ namespace fftx {
       point_t<DIM> dstExtents = dstDomain.extents();
       point_t<DIM> symExtents = symDomain.extents();
 
-      bool srcSame = (srcExtents == transformer<DIM>::m_size);
-      bool dstSame = (dstExtents == transformer<DIM>::m_size);
+      bool srcSame = (srcExtents == this->m_size);
+      bool dstSame = (dstExtents == this->m_size);
       bool symSame = (symExtents == m_sizeHalf);
       if (!srcSame)
         {
-          printf("rconv::transform wrong input array size\n");
+          std::cout << "error: rconv<" << DIM << ">"  << (this->m_size) << "::transform"
+                    << " called with input array size " << srcExtents
+                    << std::endl;
         }
       if (!dstSame)
         {
-          printf("rconv::transform wrong output array size\n");
+          std::cout << "error: rconv<" << DIM << ">"  << (this->m_size) << "::transform"
+                    << " called with output array size " << dstExtents
+                    << std::endl;
         }
       if (!symSame)
         {
-          printf("rconv::transform wrong symbol array size\n");
+          std::cout << "error: rconv<" << DIM << ">"  << (this->m_size) << "::transform"
+                    << " needs symbol array size " << m_sizeHalf
+                    << " but called with size " << symExtents
+                    << std::endl;
         }
       if (srcSame && dstSame && symSame)
         {
@@ -121,16 +81,16 @@ namespace fftx {
           double* outputLocal = (double*) (a_dst.m_data.local());
           double* symLocal = (double*) (a_sym.m_data.local());
 
-          transformer<DIM>::kernelStart();
+          this->kernelStart();
           std::chrono::high_resolution_clock::time_point t1 =
             std::chrono::high_resolution_clock::now();
           transform_spiral(outputLocal, inputLocal, symLocal);
-          transformer<DIM>::kernelStop();
+          this->kernelStop();
           std::chrono::high_resolution_clock::time_point t2 =
             std::chrono::high_resolution_clock::now();
           std::chrono::duration<double> time_span =
             std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
-          transformer<DIM>::m_CPU_milliseconds = time_span.count()*1000;
+          this->m_CPU_milliseconds = time_span.count()*1000;
         }
 
       // dummy return handle for now

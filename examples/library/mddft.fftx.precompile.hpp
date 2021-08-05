@@ -21,56 +21,16 @@ namespace fftx {
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
       // The type cubesize_t is fixed to 3D.
-      transformTuple_t* tupl = fftx_mddft_Tuple ( transformer<DIM>::m_cubesize );
-      // transformer<DIMS...>::setInit(tupl);
-      if (tupl == NULL)
-        {
-          printf("This size is not in the library.\n");
-        }
-      else
-        {
-          printf("This size is in the library. Initializing.\n");
-          transformer<DIM>::init_spiral = *tupl->initfp;
-          transform_spiral = *tupl->runfp;
-          transformer<DIM>::destroy_spiral = *tupl->destroyfp;
-        }
-
-      transformer<DIM>::callInit(tupl);
-      /*
-      if (transformer<DIM>::init_spiral != nullptr)
-        {
-          transformer<DIM>::init_spiral();
-#ifdef __CUDACC__
-          cudaEventCreate(&start);
-          cudaEventCreate(&stop);
-#endif
-        }
-      */
+      transformTuple_t* tupl = fftx_mddft_Tuple ( this->m_cubesize );
+      this->setInit(tupl);
+      if (tupl != NULL) transform_spiral = *tupl->runfp;
     }
+    
     ~mddft()
     {
       // in base class
       // if (destroy_spiral != nullptr) destroy_spiral();
     }
-
-    /*
-    double CPU_milliseconds = 0.;
-    float  GPU_milliseconds = 0.;
-#ifdef __CUDACC__
-    cudaEvent_t start, stop;
-    void kernelStart() {cudaEventRecord(start);}
-    void kernelStop()
-    {
-      cudaEventRecord(stop);
-      cudaDeviceSynchronize();
-      cudaEventSynchronize(stop);
-      cudaEventElapsedTime(&GPU_milliseconds, start, stop);
-    }
-#else
-    void kernelStart(){ }
-    void kernelStop(){ }
-#endif
-    */
 
     inline fftx::handle_t transform(array_t<DIM, std::complex<double>>& a_src,
                                     array_t<DIM, std::complex<double>>& a_dst)
@@ -85,15 +45,19 @@ namespace fftx {
       point_t<DIM> srcExtents = srcDomain.extents();
       point_t<DIM> dstExtents = dstDomain.extents();
 
-      bool srcSame = (srcExtents == transformer<DIM>::m_size);
-      bool dstSame = (dstExtents == transformer<DIM>::m_size);
+      bool srcSame = (srcExtents == this->m_size);
+      bool dstSame = (dstExtents == this->m_size);
       if (!srcSame)
         {
-          printf("mddft::transform wrong input array size\n");
+          std::cout << "error: mddft<" << DIM << ">"  << (this->m_size) << "::transform"
+                    << " called with input array size " << srcExtents
+                    << std::endl;
         }
       if (!dstSame)
         {
-          printf("mddft::transform wrong output array size\n");
+          std::cout << "error: mddft<" << DIM << ">"  << (this->m_size) << "::transform"
+                    << " called with output array size " << dstExtents
+                    << std::endl;
         }
 
       if (srcSame && dstSame)
@@ -102,16 +66,16 @@ namespace fftx {
           double* outputLocal = (double*) (a_dst.m_data.local());
           double* symLocal = NULL;
 
-          transformer<DIM>::kernelStart();
+          this->kernelStart();
           std::chrono::high_resolution_clock::time_point t1 =
             std::chrono::high_resolution_clock::now();
           transform_spiral(outputLocal, inputLocal, symLocal);
-          transformer<DIM>::kernelStop();
+          this->kernelStop();
           std::chrono::high_resolution_clock::time_point t2 =
             std::chrono::high_resolution_clock::now();
           std::chrono::duration<double> time_span =
             std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
-          transformer<DIM>::m_CPU_milliseconds = time_span.count()*1000;
+          this->m_CPU_milliseconds = time_span.count()*1000;
         }
 
       // dummy return handle for now
