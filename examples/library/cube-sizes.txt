@@ -1,0 +1,11 @@
+##
+##  Sizes of examples to build
+##  Hash (#) as first non-white space indicates a comment
+##  Lines containing white space only are ignored
+##  All other lines must be valid size specs in the form:
+##  szcube := [ x, y, z ]
+##
+
+szcube := [  16,  16,  16 ];
+szcube := [  32,  32,  32 ];
+szcube := [  64,  64,  64 ];
