@@ -8,15 +8,15 @@
 ##
 ## First set cube-sizes.txt with list of domain sizes.
 ## 
+## Thse environment variables need to be set:
+## SPIRAL_HOME for root Spiral directory
+## FFTX_HOME for root FFTX directory
+##
 ## Then do:
 ## python gen_files_sym.py fftx_mddft CUDA
 ## python gen_files_sym.py fftx_imddft CUDA
 ## python gen_files_sym.py fftx_rconv CUDA
 ## 
-## Then, thse environment variables need to be set:
-## SPIRAL_HOME for root Spiral directory
-## FFTX_HOME for root FFTX directory
-##
 ## mkdir build ; pushd build
 ## Then, for just the libraries:
 ## cmake .. -DPROJECT=dummy
