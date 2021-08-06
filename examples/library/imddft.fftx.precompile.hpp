@@ -22,8 +22,7 @@ namespace fftx {
                 << std::endl;
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
-      // The type cubesize_t is fixed to 3D.
-      transformTuple_t* tupl = fftx_imddft_Tuple ( this->m_cubesize );
+      transformTuple_t* tupl = fftx_imddft_Tuple ( this->m_size );
       this->setInit(tupl);
       if (tupl != NULL) transform_spiral = *tupl->runfp;
     }

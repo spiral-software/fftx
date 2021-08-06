@@ -18,11 +18,10 @@ namespace fftx {
     transformer(const point_t<DIM>& a_size)
     {
       m_size = a_size;
-      m_cubesize = getSize(a_size);
       std::cout << "Defining transformer<" << DIM << ">" << m_size
                 << std::endl;
       // Do this in the derived class:
-      // transformTuple_t* tupl = fftx_transformer_Tuple ( m_cubesize );
+      // transformTuple_t* tupl = fftx_transformer_Tuple ( m_size );
       // setInit(tuple);
     }
     
@@ -51,27 +50,16 @@ namespace fftx {
  
   protected:
 
-    cubesize_t m_cubesize;
-
     point_t<DIM> m_size;
 
     double m_CPU_milliseconds = 0.;
     float  m_GPU_milliseconds = 0.;
 
-    cubesize_t getSize(const point_t<DIM> a_size)
-    {
-      cubesize_t returnsize;
-      returnsize.dimx = a_size[0];
-      returnsize.dimy = a_size[1];
-      returnsize.dimz = a_size[2];
-      return returnsize;
-    }
-
     void setInit(transformTuple_t* a_tupl)
     {
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
-      // a_tupl = fftx_transformer_Tuple ( m_cubesize );
+      // a_tupl = fftx_transformer_Tuple ( m_size );
       if (a_tupl == NULL)
         {
           printf("transformer: this size is not in the library.\n");

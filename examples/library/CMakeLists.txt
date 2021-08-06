@@ -13,9 +13,9 @@
 ## FFTX_HOME for root FFTX directory
 ##
 ## Then do:
-## python gen_files_sym.py fftx_mddft CUDA
-## python gen_files_sym.py fftx_imddft CUDA
-## python gen_files_sym.py fftx_rconv CUDA
+## python gen_files_point.py fftx_mddft CUDA
+## python gen_files_point.py fftx_imddft CUDA
+## python gen_files_point.py fftx_rconv CUDA
 ## 
 ## mkdir build ; pushd build
 ## Then, for just the libraries:
