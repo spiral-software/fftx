@@ -41,8 +41,20 @@ namespace fftx {
       cudaEventElapsedTime(&m_GPU_milliseconds, m_start, m_stop);
     }
 #else
+#ifdef FFTX_HIP
+    hipEvent_t m_start, m_stop;
+    void kernelStart() {hipEventRecord(m_start);}
+    void kernelStop()
+    {
+      hipEventRecord(m_stop);
+      hipDeviceSynchronize();
+      hipEventSynchronize(m_stop);
+      hipEventElapsedTime(&m_GPU_milliseconds, m_start, m_stop);
+    }
+#else
     void kernelStart(){ }
     void kernelStop(){ }
+#endif
 #endif
 
     double CPU_milliseconds() { return m_CPU_milliseconds; }
@@ -74,12 +86,15 @@ namespace fftx {
 
       if (init_spiral != nullptr)
         {
-          printf("calling init_spiral()\n");
           init_spiral();
-          printf("called init_spiral()\n");
 #ifdef __CUDACC__
           cudaEventCreate(&m_start);
           cudaEventCreate(&m_stop);
+#else
+#ifdef FFTX_HIP
+          hipEventCreate(&m_start);
+          hipEventCreate(&m_stop);
+#endif
 #endif
         }
     }

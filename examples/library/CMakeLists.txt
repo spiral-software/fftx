@@ -12,18 +12,19 @@
 ## SPIRAL_HOME for root Spiral directory
 ## FFTX_HOME for root FFTX directory
 ##
-## Then do:
+## Then do (with HIP instead of CUDA for HIP):
 ## python gen_files_point.py fftx_mddft CUDA
 ## python gen_files_point.py fftx_imddft CUDA
 ## python gen_files_point.py fftx_rconv CUDA
 ## 
 ## mkdir build ; pushd build
-## Then, for just the libraries:
+## Then, for just the libraries, adding for HIP, -DCMAKE_CXX_COMPILER=hipcc
 ## cmake .. -DPROJECT=dummy
 ## Or these applications:
-## cmake .. -DPROJECT=testcompare_cufft
 ## cmake .. -DPROJECT=testrconv
-##
+## cmake .. -DPROJECT=testcompare_cufft
+## cmake .. -DPROJECT=testcompare_hipfft -DCMAKE_CXX_COMPILER=hipcc
+## 
 ## Then:
 ## make install
 ##
@@ -110,16 +111,16 @@ include_directories ( ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR}
 
 if (WIN32)
     if ( ${_be_hip} )
-	set ( HIP_COMPILE_FLAGS )
+	set ( HIP_COMPILE_FLAGS -DFFTX_HIP )
 	set ( LIBS_FOR_HIP hipfft rocfft )
     else ()
-	set ( GPU_COMPILE_DEFNS -Xptxas -v -maxrregcount=64 )			## -Xptxas -v
+	set ( GPU_COMPILE_DEFNS -Xptxas -v -maxrregcount=64 )  ## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft )
     endif ()
     list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
 else ()
     if ( ${_be_hip} )
-	set ( HIP_COMPILE_FLAGS )
+	set ( HIP_COMPILE_FLAGS -DFFTX_HIP )
 	set ( LIBS_FOR_HIP hipfft rocfft )
     else ()
 	set ( GPU_COMPILE_DEFNS -Xptxas -v -maxrregcount=64 )

@@ -284,7 +284,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _frame_file = re.sub ( '_$', '', _file_stem ) + '-frame-' + _code_type.lower() + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = 'python ' + _catfils + ' myscript.g testscript.g ' + _frame_file
+        cmdstr = 'python3 ' + _catfils + ' myscript.g testscript.g ' + _frame_file
         result = subprocess.run ( cmdstr, shell=True, check=True )
         res = result.returncode
 
