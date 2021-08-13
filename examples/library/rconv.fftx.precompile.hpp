@@ -11,18 +11,20 @@
 */
 
 namespace fftx {
-  
+
   template <int DIM>
-  class rconv : public transformer<DIM>
+  class rconv : public transformer<DIM, double, double>
   {
   public:
 
-    rconv(const point_t<DIM>& a_size) : transformer<DIM>(a_size)
+    rconv(const point_t<DIM>& a_size) :
+      transformer<DIM, double, double>(a_size)
     {
       std::cout << "Defining rconv<" << DIM << ">" << this->m_size
                 << std::endl;
-      m_sizeHalf = this->m_size;
-      m_sizeHalf[0] = this->m_size[0]/2 + 1;
+      m_sizeHalf = this->sizeHalf();
+      this->m_inputSize = this->m_size;
+      this->m_outputSize = this->m_size;
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
       transformTuple_t* tupl = fftx_rconv_Tuple ( this->m_size );
@@ -42,7 +44,7 @@ namespace fftx {
     { // for the moment, the function signature is hard-coded.  trace will
       // generate this in our better world
 
-      // Check that a_src and a_dst are of size m_size,
+      // Check that a_src and a_dst are the right sizes,
       // and that a_sym is of size m_sizeHalf.
 
       box_t<DIM> srcDomain = a_src.m_domain;
@@ -53,8 +55,8 @@ namespace fftx {
       point_t<DIM> dstExtents = dstDomain.extents();
       point_t<DIM> symExtents = symDomain.extents();
 
-      bool srcSame = (srcExtents == this->m_size);
-      bool dstSame = (dstExtents == this->m_size);
+      bool srcSame = (srcExtents == this->m_inputSize);
+      bool dstSame = (dstExtents == this->m_inputSize);
       bool symSame = (symExtents == m_sizeHalf);
       if (!srcSame)
         {
@@ -97,7 +99,13 @@ namespace fftx {
       fftx::handle_t rtn;
       return rtn;
     }
- 
+
+    
+    std::string shortname()
+    {
+      return "rconv";
+    }
+
   protected:
     point_t<DIM> m_sizeHalf;
     

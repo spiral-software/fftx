@@ -2,6 +2,7 @@
 #define transformer_PRECOMPILE_H
 
 #include "fftx3.hpp"
+// #include <string>
 
 /*
  Real 3D convolution class for precompiled transforms
@@ -11,15 +12,18 @@
 
 namespace fftx {
   
-  template <int DIM>
+  template <int DIM, typename T_IN, typename T_OUT>
   class transformer
   {
   public:
     transformer(const point_t<DIM>& a_size)
     {
       m_size = a_size;
-      std::cout << "Defining transformer<" << DIM << ">" << m_size
-                << std::endl;
+      // May change these in derived class.
+      m_inputSize = m_size;
+      m_outputSize = m_size;
+      //      std::cout << "Defining transformer<" << DIM << ">" << m_size
+      //                << std::endl;
       // Do this in the derived class:
       // transformTuple_t* tupl = fftx_transformer_Tuple ( m_size );
       // setInit(tuple);
@@ -57,12 +61,99 @@ namespace fftx {
 #endif
 #endif
 
+    // virtual fftx::handle_t transform(fftx::array_t<DIM, T_IN>& a_src,
+    // fftx::array_t<DIM, T_OUT>& a_dst) = 0;
+    inline fftx::handle_t transform2(array_t<DIM, T_IN>& a_src,
+                                     array_t<DIM, T_OUT>& a_dst)
+    { // for the moment, the function signature is hard-coded.  trace will
+      // generate this in our better world
+
+      // Check that a_src and a_dst are the right sizes.
+
+      box_t<DIM> srcDomain = a_src.m_domain;
+      box_t<DIM> dstDomain = a_dst.m_domain;
+
+      point_t<DIM> srcExtents = srcDomain.extents();
+      point_t<DIM> dstExtents = dstDomain.extents();
+
+      bool srcSame = (srcExtents == m_inputSize);
+      bool dstSame = (dstExtents == m_outputSize);
+      if (!srcSame)
+        {
+          std::cout << "error: transformer<" << DIM << ">"
+                    << m_size << "::transform"
+                    << " called with input array size " << srcExtents
+                    << std::endl;
+        }
+      if (!dstSame)
+        {
+          std::cout << "error: transformer<" << DIM << ">"
+                    << m_size << "::transform"
+                    << " called with output array size " << dstExtents
+                    << std::endl;
+        }
+
+      if (srcSame && dstSame)
+        {
+          double* inputLocal = (double*) (a_src.m_data.local());
+          double* outputLocal = (double*) (a_dst.m_data.local());
+          double* symLocal = NULL;
+
+          kernelStart();
+          std::chrono::high_resolution_clock::time_point t1 =
+            std::chrono::high_resolution_clock::now();
+          transform_spiral(outputLocal, inputLocal, symLocal);
+          kernelStop();
+          std::chrono::high_resolution_clock::time_point t2 =
+            std::chrono::high_resolution_clock::now();
+          std::chrono::duration<double> time_span =
+            std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+          m_CPU_milliseconds = time_span.count()*1000;
+        }
+
+      // dummy return handle for now
+      fftx::handle_t rtn;
+      return rtn;
+    }
+    
     double CPU_milliseconds() { return m_CPU_milliseconds; }
     double GPU_milliseconds() { return m_GPU_milliseconds; }
- 
+
+    point_t<DIM> size() { return m_size; }
+    point_t<DIM> inputSize() { return m_inputSize; }
+    point_t<DIM> outputSize() { return m_outputSize; }
+
+    point_t<DIM> sizeHalf()
+    {
+      point_t<DIM> ret = m_size;
+      ret[0] = m_size[0]/2 + 1;
+      return ret;
+    }
+
+    virtual std::string shortname() = 0;
+    
+    /*
+    virtual std::string shortname()
+    {
+      return "transformer";
+    }
+    */
+
+    virtual std::string name()
+    {
+      char buffer[50];
+      sprintf(buffer, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
+              this->m_size[0], this->m_size[1], this->m_size[2]);
+      std::string str(buffer);
+      return str;
+    }
+      
   protected:
 
     point_t<DIM> m_size;
+
+    point_t<DIM> m_inputSize;
+    point_t<DIM> m_outputSize;
 
     double m_CPU_milliseconds = 0.;
     float  m_GPU_milliseconds = 0.;
@@ -101,7 +192,7 @@ namespace fftx {
 
     // private:
     void (*init_spiral)() = nullptr;
-    // void (*transform_spiral)(double*, double*, double*) = nullptr;
+    void (*transform_spiral)(double*, double*, double*) = nullptr;
     void (*destroy_spiral)() = nullptr;
   };
 };
