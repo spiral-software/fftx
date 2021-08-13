@@ -1,6 +1,10 @@
 #ifndef transformer_PRECOMPILE_H
 #define transformer_PRECOMPILE_H
 
+#ifdef FFTX_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include "fftx3.hpp"
 // #include <string>
 
@@ -132,13 +136,6 @@ namespace fftx {
 
     virtual std::string shortname() = 0;
     
-    /*
-    virtual std::string shortname()
-    {
-      return "transformer";
-    }
-    */
-
     virtual std::string name()
     {
       char buffer[50];
@@ -165,11 +162,13 @@ namespace fftx {
       // a_tupl = fftx_transformer_Tuple ( m_size );
       if (a_tupl == NULL)
         {
-          printf("transformer: this size is not in the library.\n");
+          // printf("transformer: this size is not in the library.\n");
+          printf("%s is not in the library.\n", name().c_str());
         }
       else
         {
-          printf("transformer: this size is in the library. Initializing.\n");
+          // printf("transformer: this size is in the library. Initializing.\n");
+          printf("%s is in the library. Initializing.\n", name().c_str());
           // Still need to set transform_spiral in the derived class.
           init_spiral = *a_tupl->initfp;
           destroy_spiral = *a_tupl->destroyfp;

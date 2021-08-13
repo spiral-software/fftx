@@ -20,8 +20,8 @@ namespace fftx {
     rconv(const point_t<DIM>& a_size) :
       transformer<DIM, double, double>(a_size)
     {
-      std::cout << "Defining rconv<" << DIM << ">" << this->m_size
-                << std::endl;
+      // std::cout << "Defining rconv<" << DIM << ">" << this->m_size
+      // << std::endl;
       m_sizeHalf = this->sizeHalf();
       this->m_inputSize = this->m_size;
       this->m_outputSize = this->m_size;

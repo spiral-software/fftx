@@ -19,8 +19,8 @@ namespace fftx {
     imdprdft(const point_t<DIM>& a_size) :
       transformer<DIM, std::complex<double>, double>(a_size)
     {
-      std::cout << "Defining imdprdft<" << DIM << ">" << this->m_size
-                << std::endl;
+      // std::cout << "Defining imdprdft<" << DIM << ">" << this->m_size
+      // << std::endl;
       this->m_inputSize = this->sizeHalf();
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
