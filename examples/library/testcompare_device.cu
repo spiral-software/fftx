@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
 
   // last entry is { 0, 0, 0 }
   int numentries = sizeof ( AllSizes3 ) / sizeof ( fftx::point_t<3> ) - 1;
-  
+
   for ( int ind = 0; ind < numentries; ind++ )
     {
       fftx::point_t<3> sz = AllSizes3[ind];
@@ -505,9 +505,6 @@ int main(int argc, char* argv[])
         compareSize(tfm, imdprdftDevice, iterations, verbosity);
       }
     }
-  // compareSize(fftx::point_t<3>({{ 32, 32, 32 }}), iterations, verbosity);
-
-  // compareSize(fftx::point_t<3>({{ 320, 320, 320 }}), iterations, verbosity);
   
   printf("%s: All done, exiting\n", argv[0]);
   return 0;
