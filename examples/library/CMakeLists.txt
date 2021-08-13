@@ -15,6 +15,8 @@
 ## Then do (with HIP instead of CUDA for HIP):
 ## python gen_files_point.py fftx_mddft CUDA
 ## python gen_files_point.py fftx_imddft CUDA
+## python gen_files_point.py fftx_mdprdft CUDA
+## python gen_files_point.py fftx_imdprdft CUDA
 ## python gen_files_point.py fftx_rconv CUDA
 ## 
 ## mkdir build ; pushd build
@@ -22,8 +24,9 @@
 ## cmake .. -DPROJECT=dummy
 ## Or these applications:
 ## cmake .. -DPROJECT=testrconv
-## cmake .. -DPROJECT=testcompare_cufft
-## cmake .. -DPROJECT=testcompare_hipfft -DCMAKE_CXX_COMPILER=hipcc
+## cmake .. -DPROJECT=testcompare_device
+## cmake .. -DPROJECT=testcompare_device -DCMAKE_CXX_COMPILER=hipcc
+## cmake .. -DPROJECT=testverify
 ## 
 ## Then:
 ## make install
@@ -103,6 +106,8 @@ endif ()
 include_directories ( ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR}
                       ${CMAKE_SOURCE_DIR}/lib_fftx_mddft_srcs
                       ${CMAKE_SOURCE_DIR}/lib_fftx_imddft_srcs
+                      ${CMAKE_SOURCE_DIR}/lib_fftx_mdprdft_srcs
+                      ${CMAKE_SOURCE_DIR}/lib_fftx_imdprdft_srcs
                       ${CMAKE_SOURCE_DIR}/lib_fftx_rconv_srcs
                       ${SPIRAL_SOURCE_DIR}/profiler/targets/include
                       ${FFTX_SOURCE_DIR}/include )
@@ -138,25 +143,31 @@ endif ()
 ##  Walk the following subdirectory for the source files to add to the library
 add_subdirectory ( lib_fftx_mddft_srcs )   ## lib-srcs
 add_subdirectory ( lib_fftx_imddft_srcs )
+add_subdirectory ( lib_fftx_mdprdft_srcs )
+add_subdirectory ( lib_fftx_imdprdft_srcs )
 add_subdirectory ( lib_fftx_rconv_srcs )
 
 ## set                        ( _lib_precomp mddft3d_precomp )
-set                        ( _lib_precomp fftx_mddft_precomp fftx_imddft_precomp fftx_rconv_precomp )
+set                        ( _lib_precomp fftx_mddft_precomp fftx_imddft_precomp fftx_mdprdft_precomp fftx_imdprdft_precomp fftx_rconv_precomp )
 set                        (   EXE_TARGET  ${PROJECT} )
 add_executable		   ( ${EXE_TARGET} ${PROJECT}${_suffix} )
 if (WIN32)
     target_link_directories    ( ${EXE_TARGET} PRIVATE
                                  ${CMAKE_BINARY_DIR}/lib_fftx_mddft_srcs/${CMAKE_BUILD_TYPE}
                                  ${CMAKE_BINARY_DIR}/lib_fftx_imddft_srcs/${CMAKE_BUILD_TYPE}
+                                 ${CMAKE_BINARY_DIR}/lib_fftx_mdprdft_srcs/${CMAKE_BUILD_TYPE}
+                                 ${CMAKE_BINARY_DIR}/lib_fftx_imdprdft_srcs/${CMAKE_BUILD_TYPE}
                                  ${CMAKE_BINARY_DIR}/lib_fftx_rconv_srcs/${CMAKE_BUILD_TYPE} )
 else ()
     target_link_directories    ( ${EXE_TARGET} PRIVATE
                                  ${CMAKE_BINARY_DIR}/lib_fftx_mddft_srcs
                                  ${CMAKE_BINARY_DIR}/lib_fftx_imddft_srcs
+                                 ${CMAKE_BINARY_DIR}/lib_fftx_mdprdft_srcs
+                                 ${CMAKE_BINARY_DIR}/lib_fftx_imdprdft_srcs
                                  ${CMAKE_BINARY_DIR}/lib_fftx_rconv_srcs )
 endif ()
 add_dependencies           ( ${EXE_TARGET} ${_lib_precomp} )
-## add_dependencies           ( ${EXE_TARGET} fftx_mddft_precomp fftx_imddft_precomp fftx_rconv_precomp )
+## add_dependencies           ( ${EXE_TARGET} fftx_mddft_precomp fftx_imddft_precomp fftx_mdprdft_precomp fftx_imdprdft_precomp fftx_rconv_precomp )
 
 if ( ${_be_hip} )
     target_compile_options     ( ${EXE_TARGET} PRIVATE
