@@ -8,15 +8,15 @@ namespace rconv_dims
   const int offz = 11;
 
   #ifndef fftx_nx
-  #define fftx_nx 32
+  #define fftx_nx 96
   #endif
 
   #ifndef fftx_ny
-  #define fftx_ny 32
+  #define fftx_ny 96
   #endif
 
   #ifndef fftx_nz
-  #define fftx_nz 32
+  #define fftx_nz 96
   #endif
   
   const int fx = fftx_nx/2 + 1;
