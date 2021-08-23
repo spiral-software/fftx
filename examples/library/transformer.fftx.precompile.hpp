@@ -65,12 +65,21 @@ namespace fftx {
 #endif
 #endif
 
+    virtual inline bool defined() = 0;
+
     // virtual fftx::handle_t transform(fftx::array_t<DIM, T_IN>& a_src,
     // fftx::array_t<DIM, T_OUT>& a_dst) = 0;
     inline fftx::handle_t transform2(array_t<DIM, T_IN>& a_src,
                                      array_t<DIM, T_OUT>& a_dst)
     { // for the moment, the function signature is hard-coded.  trace will
       // generate this in our better world
+
+      if (transform_spiral == NULL)
+        {
+          // dummy return handle for now
+          fftx::handle_t rtn;
+          return rtn;
+        }
 
       // Check that a_src and a_dst are the right sizes.
 

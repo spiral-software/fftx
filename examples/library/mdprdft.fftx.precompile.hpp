@@ -35,6 +35,12 @@ namespace fftx {
       // if (destroy_spiral != nullptr) destroy_spiral();
     }
 
+    inline bool defined()
+    {
+      transformTuple_t* tupl = fftx_mdprdft_Tuple ( this->m_size );
+      return (tupl != NULL);
+    }
+
     inline fftx::handle_t transform(array_t<DIM, double>& a_src,
                                     array_t<DIM, std::complex<double>>& a_dst)
     { // for the moment, the function signature is hard-coded.  trace will
