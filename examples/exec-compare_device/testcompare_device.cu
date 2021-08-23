@@ -488,22 +488,34 @@ int main(int argc, char* argv[])
 
       {
         fftx::mddft<3> tfm(sz);
-        compareSize(tfm, mddftDevice, iterations, verbosity);
+        if (tfm.defined())
+          {
+            compareSize(tfm, mddftDevice, iterations, verbosity);
+          }
        }
 
       {
         fftx::imddft<3> tfm(sz);
-        compareSize(tfm, imddftDevice, iterations, verbosity);
+        if (tfm.defined())
+          {
+            compareSize(tfm, imddftDevice, iterations, verbosity);
+          }
        }
 
       {
         fftx::mdprdft<3> tfm(sz);
-        compareSize(tfm, mdprdftDevice, iterations, verbosity);
+        if (tfm.defined())
+          {
+            compareSize(tfm, mdprdftDevice, iterations, verbosity);
+          }
       }
 
       {
         fftx::imdprdft<3> tfm(sz);
-        compareSize(tfm, imdprdftDevice, iterations, verbosity);
+        if (tfm.defined())
+          {
+            compareSize(tfm, imdprdftDevice, iterations, verbosity);
+          }
       }
     }
   
