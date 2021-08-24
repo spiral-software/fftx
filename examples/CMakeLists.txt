@@ -41,7 +41,7 @@ if ( ${MPI_FOUND} )
     ##  MPI installation found
     setup_mpi_variables ()
 
-##    manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
+    manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()

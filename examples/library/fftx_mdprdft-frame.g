@@ -38,7 +38,7 @@ if 1 = 1 then
     ## This line from mddft-frame-cuda.g :
     ##    t := TFCall(TRC(MDDFT(szcube, 1)), 
     ##                rec(fname := name, params := []));
-    szrevcube := Reversed(szcube);
+    ##  szrevcube := Reversed(szcube);
     szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
     ##  szhalfcube := [szcube[1]/2+1]::Drop(szcube,1);
     var_1:= var("var_1", BoxND([0,0,0], TReal));
