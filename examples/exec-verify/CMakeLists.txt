@@ -6,8 +6,9 @@
 ##
 
 ## cmake -S . -B builddir
+## For HIP, add: -DCMAKE_CXX_COMPILER=hipcc
+## 
 ## cmake --build builddir --target install
-## For HIP, to that last line, add: -DCMAKE_CXX_COMPILER=hipcc
 ##
 ## When running, LD_LIBRARY_PATH needs to include $FFTX_HOME/examples/library
 
@@ -45,6 +46,10 @@ project ( ${PROJECT}
 set ( CMAKE_C_STANDARD 11 )
 set ( CMAKE_CXX_STANDARD 11 )
 
+set                        (   EXE_TARGET  ${PROJECT} )
+
+add_executable		   ( ${EXE_TARGET} ${PROJECT}${_suffix} )
+
 ##  Get SPIRAL home...
 if ( DEFINED ENV{SPIRAL_HOME} )
     message ( STATUS "SPIRAL_HOME = $ENV{SPIRAL_HOME}" )
@@ -81,7 +86,7 @@ if ( ${_be_hip} )
     ##  Need to add $ROCM_PATH for includes and libraries
     if ( DEFINED ENV{ROCM_PATH} )
 	message ( STATUS "ROCM_PATH is defined: $ENV{ROCM_PATH}" )
-	target_include_directories ( ${PROJECT}
+	target_include_directories ( ${PROJECT} PUBLIC
                                      $ENV{ROCM_PATH}/hipfft/include
                                      $ENV{ROCM_PATH}/include )
     endif ()
@@ -114,10 +119,6 @@ if ( NOT ${_be_hip} )
     ##  set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 )
     set ( CMAKE_CUDA_ARCHITECTURES 70 )
 endif ()
-
-set                        (   EXE_TARGET  ${PROJECT} )
-
-add_executable		   ( ${EXE_TARGET} ${PROJECT}${_suffix} )
 
 set ( FFTX_LIBRARY_SOURCE_DIR ${FFTX_SOURCE_DIR}/examples/library )
 
