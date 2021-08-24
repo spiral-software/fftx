@@ -20,8 +20,9 @@
 ## python gen_files.py fftx_rconv CUDA
 ##
 ## cmake -S . -B builddir
+## For HIP, add: -DCMAKE_CXX_COMPILER=hipcc
+## 
 ## cmake --build builddir --target install
-## For HIP, to that last line, add: -DCMAKE_CXX_COMPILER=hipcc
 ##
 
 ## specify this only here, lower levels use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
