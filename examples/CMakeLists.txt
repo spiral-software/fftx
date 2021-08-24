@@ -16,12 +16,22 @@ project ( examples )
 
 ##                  subdir name   CPU       GPU
 
+set ( _library_includes )
+manage_add_subdir ( library       FALSE     TRUE )
+
+message ( STATUS "Library include dirs = ${_library_includes}" )
+message ( STATUS "Library names = ${_library_names}" )
+
+include_directories ( ${_library_includes} )
+
+manage_add_subdir ( compare_device FALSE     TRUE )
+
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
 manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
 manage_add_subdir ( warpx         TRUE      FALSE )
-manage_add_subdir ( warpx_basic   FALSE     TRUE )
+##  manage_add_subdir ( warpx_basic   FALSE     TRUE )
 manage_add_subdir ( compare_cufft FALSE     TRUE )
 
 ##  MPI examples depend on MPI being installed & accessable
@@ -31,7 +41,7 @@ if ( ${MPI_FOUND} )
     ##  MPI installation found
     setup_mpi_variables ()
 
-    manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
+##    manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()
