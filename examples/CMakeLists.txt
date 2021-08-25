@@ -24,7 +24,7 @@ message ( STATUS "Library names = ${_library_names}" )
 
 include_directories ( ${_library_includes} )
 
-manage_add_subdir ( compare_device FALSE     TRUE )
+manage_add_subdir ( compare       FALSE     TRUE )
 
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
