@@ -19,9 +19,17 @@ import time
 ##  assume its 2 levels up from this [current] directory, define it as a variable
 ##  to pass to CMake
 
-_cdir = os.getcwd()
-_base = os.path.basename ( _cdir )
-_fftx = os.path.join ( _cdir, '../..' )
+_fftx = os.getcwd()
+_cdir = _fftx
+_base = os.path.basename ( _fftx )
+_goup = _base
+while _goup != 'examples':
+    _fftx = os.path.join ( _fftx, '../' )
+    _fftx = os.path.abspath (_fftx )
+    _goup = os.path.basename ( _fftx )
+
+## go up 1 more level to get root of tree
+_fftx = os.path.join ( _fftx, '../' )
 _fftx = os.path.abspath (_fftx )
 ##  print ( 'CWD: ' + _cdir + '; Basename: ' + _base + '; FFTX Project dir: ' + _fftx )
 
