@@ -248,7 +248,7 @@ def cmake_library ( type ):
     _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
 
     _str = _str + 'set ( _lib_root ' + _file_stem + ' )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root}precomp )\n\n'
+    _str = _str + 'set ( _lib_name ${_lib_root}precomp )\n'
     _str = _str + 'set ( _lib_name ${_lib_root}precomp PARENT_SCOPE )\n\n'
 
     if type == 'CUDA':
@@ -320,8 +320,8 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
         
         ##  TODO: Allow a way to specify different gap file(s)
-        ##  Assume gap file is named {_orig_file_stem}-frame-{cuda|hip}.g
-        ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame-hip.g
+        ##  Assume gap file is named {_orig_file_stem}-frame.g
+        ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame.g
         _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'

@@ -38,6 +38,12 @@ namespace fftx {
       // if (destroy_spiral != nullptr) destroy_spiral();
     }
 
+    inline bool defined()
+    {
+      transformTuple_t* tupl = fftx_rconv_Tuple ( this->m_size );
+      return (tupl != NULL);
+    }
+
     inline fftx::handle_t transform(array_t<DIM, double>& a_src,
                                     array_t<DIM, double>& a_dst,
                                     array_t<DIM, double>& a_sym)
