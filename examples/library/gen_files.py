@@ -265,6 +265,10 @@ def cmake_library ( type ):
     else:
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
 
+    _str = _str + 'if ( WIN32 )\n'
+    _str = _str + '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n'
+    _str = _str + 'endif ()\n\n'
+    
     _str = _str + 'install ( TARGETS\n'
     _str = _str + '          ${_lib_name}\n'
     _str = _str + '          DESTINATION ${CMAKE_BINARY_DIR}/bin )\n\n'
