@@ -89,9 +89,10 @@ void convolutionDevice(Transformer& a_transformer,
   if (a_verbosity >= SHOW_ROUNDS)
     {
       double maxOut = 0.;
-      for (int ind = 0; ind < input_size; ind++)
+      double* outputHostPtr = a_output.m_data.local();
+      for (int ind = 0; ind < output_size; ind++)
         {
-          updateMaxAbs<double>(maxOut, outputPtr[ind]);
+          updateMaxAbs<double>(maxOut, outputHostPtr[ind]);
         }
       double tol = 1.e-7;
       if (maxOut < tol)
