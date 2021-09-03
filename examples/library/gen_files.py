@@ -28,6 +28,18 @@ else:
     if not re.match ( '_$', _file_stem ):                ## append an underscore if one is not present
         _file_stem = _file_stem + '_'
 
+_xform_name = _file_stem
+_xform_pref = ''
+
+if re.match ( '^.*_.*_', _file_stem ):
+    _dims = re.split ( '_', _file_stem )
+    _xform_pref = _dims[0]
+    _xform_name = _dims[1]
+    _xform_name = _xform_name + '_' 
+    _xform_pref = _xform_pref + '_' 
+
+_orig_file_stem = _file_stem
+
 ##  Code to build -- Hip or CUDA (default) governs file suffix etc.
 _code_type = 'CUDA'
 _file_suffix = '.cu'
@@ -45,7 +57,18 @@ if len ( sys.argv ) >= 3:
         _code_type = 'HIP'
         _file_suffix = '.cpp'
 
+##  If the transform can be forward or inverse accept an argument to specify
+_fwd = 'true'             ## default to true or forward
+
+if len ( sys.argv ) >= 4:
+    ##  Forward/Inverse parameter specified -- anything except false ==> true
+    if re.match ( 'false', sys.argv[3], re.IGNORECASE ):
+        _fwd = 'false'
+        _file_stem =  _xform_pref + 'i' + _xform_name
+        ##  print ( 'File stem = ' + _file_stem )
+        
 ##  Create the library sources directory (if it doesn't exist)
+
 _srcs_dir  = 'lib_' + _file_stem + 'srcs'
 isdir = os.path.isdir ( _srcs_dir )
 if not isdir:
@@ -84,8 +107,15 @@ def start_header_file ( type ):
 
     _str = _str + '#ifndef RUNTRANSFORMFUNC\n'
     _str = _str + '#define RUNTRANSFORMFUNC\n'
+    ##  TODO: Allow optional 3rd arg for symbol
+    ##  _str = _str + 'typedef void ( * runTransformFunc ) ( double *output, double *input );\n'
     _str = _str + 'typedef void ( * runTransformFunc ) ( double *output, double *input, double *sym );\n'
     _str = _str + '#endif\n\n'
+
+##    _str = _str + '#ifndef CUBESIZE_T\n'
+##    _str = _str + '#define CUBESIZE_T\n'
+##    _str = _str + 'typedef struct cubesize { int dimx, dimy, dimz; } cubesize_t;\n'
+##    _str = _str + '#endif\n\n'
 
     _str = _str + '#ifndef TRANSFORMTUPLE_T\n'
     _str = _str + '#define TRANSFORMTUPLE_T\n'
@@ -112,11 +142,13 @@ def body_public_header ():
     _str = _str + '//  specifying size, and pointers to the output (returned) data and the input\n'
     _str = _str + '//  data.\n\n'
 
+    ##  TODO: Allow optional 3rd arg for symbol
+    ##  _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input );\n\n'
     _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input, double * sym );\n\n'
 
     _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
     _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this information the\n'
-    _str = _str + '//  user may call the nit function to setup for the transform, then run the\n'
+    _str = _str + '//  user may call the init function to setup for the transform, then run the\n'
     _str = _str + '//  transform repeatedly, and finally tesr down (using destroy function).\n\n'
 
     _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<3> req );\n\n'
@@ -181,6 +213,8 @@ def library_api ( ):
     _str = _str + '//  specifying size, and pointers to the output (returned) data and the input\n'
     _str = _str + '//  data.\n\n'
 
+    ##  TODO: Allow optional 3rd arg for symbol
+    ##  _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input )\n'
     _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input, double * sym )\n'
     _str = _str + '{\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
@@ -192,6 +226,8 @@ def library_api ( ):
     _str = _str + '    ( * wp->initfp )();\n'
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
 	
+    ##  TODO: Allow optional 3rd arg for symbol
+    ##  _str = _str + '    ( * wp->runfp ) ( output, input );\n'
     _str = _str + '    ( * wp->runfp ) ( output, input, sym );\n'
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
 	
@@ -212,7 +248,8 @@ def cmake_library ( type ):
     _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
 
     _str = _str + 'set ( _lib_root ' + _file_stem + ' )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root}precomp )\n\n'
+    _str = _str + 'set ( _lib_name ${_lib_root}precomp )\n'
+    _str = _str + 'set ( _lib_name ${_lib_root}precomp PARENT_SCOPE )\n\n'
 
     if type == 'CUDA':
         _str = _str + 'set ( CMAKE_CUDA_ARCHITECTURES 70 )\n\n'
@@ -228,9 +265,13 @@ def cmake_library ( type ):
     else:
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
 
+    _str = _str + 'if ( WIN32 )\n'
+    _str = _str + '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n'
+    _str = _str + 'endif ()\n\n'
+    
     _str = _str + 'install ( TARGETS\n'
     _str = _str + '          ${_lib_name}\n'
-    _str = _str + '          DESTINATION ${CMAKE_SOURCE_DIR} )\n\n'
+    _str = _str + '          DESTINATION ${CMAKE_BINARY_DIR}/bin )\n\n'
 
     return _str;
 
@@ -253,6 +294,8 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         testscript.write ( line )
         testscript.write ( 'libdir := "' + _srcs_dir + '"; \n' )
         testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
+        testscript.write ( 'fwd := ' + _fwd + '; \n' )
+        testscript.write ( 'codefor := "' + _code_type + '"; \n' )
         testscript.close()
 
         line = re.sub ( '.*\[', '', line )               ## drop "szcube := ["
@@ -273,18 +316,20 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         ##  FUTURE: Need a way to handle functions with different signatures
         _extern_decls = _extern_decls + 'extern "C" { extern void init_' + _func_stem + '();  }\n'
         _extern_decls = _extern_decls + 'extern "C" { extern void destroy_' + _func_stem + '();  }\n'
+        ##  TODO: Allow optional 3rd arg for symbol
+        ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
         _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
         _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
         _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
         _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
         
         ##  TODO: Allow a way to specify different gap file(s)
-        ##  Assume gap file is named {_file_stem}-frame-{cuda|hip}.g
-        ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame-hip.g
-        _frame_file = re.sub ( '_$', '', _file_stem ) + '-frame-' + _code_type.lower() + '.g'
+        ##  Assume gap file is named {_orig_file_stem}-frame.g
+        ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame.g
+        _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = 'python3 ' + _catfils + ' myscript.g testscript.g ' + _frame_file
+        cmdstr = 'python ' + _catfils + ' myscript.g testscript.g ' + _frame_file
         result = subprocess.run ( cmdstr, shell=True, check=True )
         res = result.returncode
 
@@ -294,7 +339,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         else:
             cmdstr = _spiralhome + '/spiral < myscript.g'
 
-        if len ( sys.argv ) < 4:
+        if len ( sys.argv ) < 5:
             ##  No optional argument, generate the code
             result = subprocess.run ( cmdstr, shell=True, check=True )
             res = result.returncode
