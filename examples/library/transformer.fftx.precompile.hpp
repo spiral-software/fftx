@@ -6,7 +6,7 @@
 #endif
 
 #include "fftx3.hpp"
-// #include <string>
+#include "device_macros.h"
 
 /*
  Real 3D convolution class for precompiled transforms
@@ -38,31 +38,19 @@ namespace fftx {
       if (destroy_spiral != nullptr) destroy_spiral();
     }
 
-#ifdef __CUDACC__
-    cudaEvent_t m_start, m_stop;
-    void kernelStart() {cudaEventRecord(m_start);}
+#if defined(__CUDACC__) || defined(FFTX_HIP)
+    DEVICE_EVENT_T m_start, m_stop;
+    void kernelStart() { DEVICE_EVENT_RECORD(m_start); }
     void kernelStop()
     {
-      cudaEventRecord(m_stop);
-      cudaDeviceSynchronize();
-      cudaEventSynchronize(m_stop);
-      cudaEventElapsedTime(&m_GPU_milliseconds, m_start, m_stop);
-    }
-#else
-#ifdef FFTX_HIP
-    hipEvent_t m_start, m_stop;
-    void kernelStart() {hipEventRecord(m_start);}
-    void kernelStop()
-    {
-      hipEventRecord(m_stop);
-      hipDeviceSynchronize();
-      hipEventSynchronize(m_stop);
-      hipEventElapsedTime(&m_GPU_milliseconds, m_start, m_stop);
+      DEVICE_EVENT_RECORD(m_stop);
+      DEVICE_SYNCHRONIZE();
+      DEVICE_EVENT_SYNCHRONIZE(m_stop);
+      DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop);
     }
 #else
     void kernelStart(){ }
     void kernelStop(){ }
-#endif
 #endif
 
     virtual inline bool defined() = 0;
@@ -186,14 +174,9 @@ namespace fftx {
       if (init_spiral != nullptr)
         {
           init_spiral();
-#ifdef __CUDACC__
-          cudaEventCreate(&m_start);
-          cudaEventCreate(&m_stop);
-#else
-#ifdef FFTX_HIP
-          hipEventCreate(&m_start);
-          hipEventCreate(&m_stop);
-#endif
+#if defined(__CUDACC__) || defined(FFTX_HIP)
+          DEVICE_EVENT_CREATE(&m_start);
+          DEVICE_EVENT_CREATE(&m_stop);
 #endif
         }
     }
