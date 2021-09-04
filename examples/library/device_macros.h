@@ -1,4 +1,4 @@
-#ifdef FFTX_HIP
+#if defined(FFTX_HIP)
 #include <hip/hip_runtime.h>
 #include <hipfft.h>
 #include "rocfft.h"
@@ -29,7 +29,7 @@
 #define DEVICE_FFT_SUCCESS HIPFFT_SUCCESS
 #define DEVICE_FFT_FORWARD HIPFFT_FORWARD
 #define DEVICE_FFT_INVERSE HIPFFT_BACKWARD
-#else
+#elif defined(__CUDACC__)
 #include <cufft.h>
 #include <helper_cuda.h>
 #define DEVICE_EVENT_T cudaEvent_t
