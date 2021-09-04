@@ -42,6 +42,7 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
          }, a_arr);
 }
 
+#if defined(__CUDACC__) || defined(FFTX_HIP)
 template<int DIM, class Transformer>
 void convolutionDevice(Transformer& a_transformer,
                        fftx::array_t<DIM, double>& a_input,
@@ -101,7 +102,21 @@ void convolutionDevice(Transformer& a_transformer,
         }
     }
 }
+#endif
 
+template<int DIM, class Transformer>
+void convolutionTransform(Transformer& a_transformer,
+                          fftx::array_t<DIM, double>& a_input,
+                          fftx::array_t<DIM, double>& a_output,
+                          fftx::array_t<DIM, double>& a_symbol,
+                          int a_verbosity)
+{
+#if defined(__CUDACC__) || defined(FFTX_HIP)
+  convolutionDevice(a_transformer, a_input, a_output, a_symbol, a_verbosity);
+#else
+  a_transformer.transform(a_input, a_output, a_symbol);
+#endif
+}
 
 template<int DIM, class Transformer>
 double testConstantSymbol(Transformer& a_transformer,
@@ -121,7 +136,7 @@ double testConstantSymbol(Transformer& a_transformer,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifRealArray(input);
-      convolutionDevice(a_transformer, input, output, symbol, a_verbosity);
+      convolutionTransform(a_transformer, input, output, symbol, a_verbosity);
       double err = absMaxDiffArray(input, output);
       updateMax(errConstantSymbol, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -164,7 +179,7 @@ double testDelta(Transformer& a_transformer,
                }
            }, symbol);
 
-  convolutionDevice(a_transformer, input, output, symbol, a_verbosity);
+  convolutionTransform(a_transformer, input, output, symbol, a_verbosity);
   double errDelta = absMaxDiffArray(input, output);
   if (a_verbosity >= SHOW_CATEGORIES)
     {
@@ -240,7 +255,7 @@ double testPoisson(Transformer& a_transformer,
              }
          }, symbol);
   
-  convolutionDevice(a_transformer, input, output, symbol, a_verbosity);
+  convolutionTransform(a_transformer, input, output, symbol, a_verbosity);
 
   fftx::array_t<DIM,double> lap2output(a_domain);
   laplacian2periodic(lap2output, output);
