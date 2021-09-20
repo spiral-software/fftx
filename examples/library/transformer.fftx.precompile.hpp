@@ -26,8 +26,6 @@ namespace fftx {
       // May change these in derived class.
       m_inputSize = m_size;
       m_outputSize = m_size;
-      //      std::cout << "Defining transformer<" << DIM << ">" << m_size
-      //                << std::endl;
       // Do this in the derived class:
       // transformTuple_t* tupl = fftx_transformer_Tuple ( m_size );
       // setInit(tuple);
@@ -40,13 +38,21 @@ namespace fftx {
 
 #if defined(__CUDACC__) || defined(FFTX_HIP)
     DEVICE_EVENT_T m_start, m_stop;
-    void kernelStart() { DEVICE_EVENT_RECORD(m_start); }
+    void kernelStart()
+    {
+      DEVICE_CHECK(DEVICE_EVENT_RECORD(m_start),
+                   "device event record in kernelStart");
+    }
     void kernelStop()
     {
-      DEVICE_EVENT_RECORD(m_stop);
-      DEVICE_SYNCHRONIZE();
-      DEVICE_EVENT_SYNCHRONIZE(m_stop);
-      DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop);
+      DEVICE_CHECK(DEVICE_EVENT_RECORD(m_stop),
+                   "device event record in kernelStop");
+      DEVICE_CHECK(DEVICE_SYNCHRONIZE(),
+                   "device synchronize in kernelStop");
+      DEVICE_CHECK(DEVICE_EVENT_SYNCHRONIZE(m_stop),
+                   "device event synchronize in kernelStop");
+      DEVICE_CHECK(DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop),
+                   "device event elapsed time in kernelStop");
     }
 #else
     void kernelStart(){ }
@@ -62,7 +68,7 @@ namespace fftx {
     { // for the moment, the function signature is hard-coded.  trace will
       // generate this in our better world
 
-      if (transform_spiral == NULL)
+      if (transform_spiral == nullptr)
         {
           // dummy return handle for now
           fftx::handle_t rtn;
@@ -96,20 +102,7 @@ namespace fftx {
 
       if (srcSame && dstSame)
         {
-          double* inputLocal = (double*) (a_src.m_data.local());
-          double* outputLocal = (double*) (a_dst.m_data.local());
-          double* symLocal = NULL;
-
-          kernelStart();
-          std::chrono::high_resolution_clock::time_point t1 =
-            std::chrono::high_resolution_clock::now();
-          transform_spiral(outputLocal, inputLocal, symLocal);
-          kernelStop();
-          std::chrono::high_resolution_clock::time_point t2 =
-            std::chrono::high_resolution_clock::now();
-          std::chrono::duration<double> time_span =
-            std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
-          m_CPU_milliseconds = time_span.count()*1000;
+          return transform2Buffers(a_src.m_data.local(), a_dst.m_data.local());
         }
 
       // dummy return handle for now
@@ -117,6 +110,29 @@ namespace fftx {
       return rtn;
     }
     
+    inline fftx::handle_t transform2Buffers(T_IN* a_src,
+                                            T_OUT* a_dst)
+    {
+      double* inputLocal = (double*) a_src;
+      double* outputLocal = (double*) a_dst;
+      double* symLocal = nullptr;
+      
+      kernelStart();
+      std::chrono::high_resolution_clock::time_point t1 =
+        std::chrono::high_resolution_clock::now();
+      transform_spiral(outputLocal, inputLocal, symLocal);
+      kernelStop();
+      std::chrono::high_resolution_clock::time_point t2 =
+        std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> time_span =
+        std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1);
+      m_CPU_milliseconds = time_span.count()*1000;
+      
+      // dummy return handle for now
+      fftx::handle_t rtn;
+      return rtn;
+    }
+
     double CPU_milliseconds() { return m_CPU_milliseconds; }
     double GPU_milliseconds() { return m_GPU_milliseconds; }
 
@@ -157,7 +173,7 @@ namespace fftx {
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time
       // a_tupl = fftx_transformer_Tuple ( m_size );
-      if (a_tupl == NULL)
+      if (a_tupl == nullptr)
         {
           // printf("transformer: this size is not in the library.\n");
           printf("%s is not in the library.\n", name().c_str());
@@ -175,8 +191,10 @@ namespace fftx {
         {
           init_spiral();
 #if defined(__CUDACC__) || defined(FFTX_HIP)
-          DEVICE_EVENT_CREATE(&m_start);
-          DEVICE_EVENT_CREATE(&m_stop);
+          DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_start),
+                       "device event create start in setInit");
+          DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_stop),
+                       "device event create stop in setInit");
 #endif
         }
     }
