@@ -47,6 +47,13 @@ namespace fftx {
       return this->transform2(a_src, a_dst);
     }
 
+    inline fftx::handle_t transformBuffers(std::complex<double>* a_src,
+                                           std::complex<double>* a_dst)
+    { // for the moment, the function signature is hard-coded.  trace will
+      // generate this in our better world
+      return this->transform2Buffers(a_src, a_dst);
+    }
+    
     std::string shortname()
     {
       return "imddft";
