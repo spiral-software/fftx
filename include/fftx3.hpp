@@ -48,13 +48,13 @@ namespace fftx
   /**
    Is this a FFTX codegen program, or is this application code using a generated transform.
   */
-  bool tracing = false; // when creating a trace program user sets this to 'true'
+  static bool tracing = false; // when creating a trace program user sets this to 'true'
 
   /**
     counter for genereated variable names duringn FFTX codegen tracing.  Not meant for FFTX users but can be
     used when debugging codegen itself
   */
-  uint64_t ID=1; // variable naming counter
+  static uint64_t ID=1; // variable naming counter
   
   typedef int intrank_t; // just useful for self-documenting code.
 
@@ -227,7 +227,7 @@ namespace fftx
     std::cout<<"    TDAGNode(TGath(fBox("<<src.m_domain.extents()<<")),var_"<<dest.id()<<", var_"<<src.id()<<"),\n";
   }
 
-  void rawScript(const std::string& a_rawScript)
+  inline void rawScript(const std::string& a_rawScript)
   {
     std::cout<<"\n"<<a_rawScript<<"\n";
   }
@@ -334,7 +334,7 @@ namespace fftx
     std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
-  void include(const char* includeFile)
+  inline void include(const char* includeFile)
   {
     std::cout<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
   }
@@ -363,13 +363,12 @@ namespace fftx
     std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
   
-  std::string inputType = "double";
-  int inputCount = 1;
-  std::string outputType = "double";
-  int outputCount = 1;
-  template<int DIM, typename T, std::size_t COUNT>
+  static std::string inputType = "double";
+  static int inputCount = 1;
+  static std::string outputType = "double";
+  static int outputCount = 1;
 
-  
+  template<int DIM, typename T, std::size_t COUNT>
   void setInputs(const std::array<array_t<DIM, T>, COUNT>& a_inputs)
   {
     inputType = TypeName<T>::Get();
@@ -418,7 +417,7 @@ namespace fftx
              <<"var_"<<destination.id()<<","
              <<"var_"<<source.id()<<"),\n";
   }
-  void openDAG()
+  inline void openDAG()
   {
   //  std::cout<<"conf := FFTXGlobals.defaultWarpXConf();\n";
   //  std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
@@ -426,7 +425,7 @@ namespace fftx
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
 
-  void openScalarDAG()
+  inline void openScalarDAG()
   {
     std::cout<<"symvar := var(\"sym\", TPtr(TReal));\n";
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
