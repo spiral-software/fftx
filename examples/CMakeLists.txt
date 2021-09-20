@@ -16,7 +16,7 @@ project ( examples )
 
 ##                  subdir name   CPU       GPU
 
-set ( _library_includes )
+set ( _library_includes library)
 manage_add_subdir ( library       FALSE     TRUE )
 
 message ( STATUS "Library include dirs = ${_library_includes}" )
