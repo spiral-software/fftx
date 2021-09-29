@@ -15,7 +15,7 @@
 #include "transformer.fftx.precompile.hpp"
 
 #include "fftx3utilities.h"
-#include "rconv.h"
+#include "rconv_example.h"
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   
@@ -304,22 +304,22 @@ void rconvSize(fftx::point_t<DIM> a_size,
                int a_verbosity)
 {
   box_t<3> fulldomain(fftx::point_t<3>
-                      ({{rconv_dims::offx+1,
-                         rconv_dims::offy+1,
-                         rconv_dims::offz+1}}),
+                      ({{rconv_example::offx+1,
+                         rconv_example::offy+1,
+                         rconv_example::offz+1}}),
                       fftx::point_t<3>
-                      ({{rconv_dims::offx+a_size[0],
-                         rconv_dims::offy+a_size[1],
-                         rconv_dims::offz+a_size[2]}}));
+                      ({{rconv_example::offx+a_size[0],
+                         rconv_example::offy+a_size[1],
+                         rconv_example::offz+a_size[2]}}));
   
   box_t<3> halfdomain(fftx::point_t<3>
-                      ({{rconv_dims::offx+1,
-                         rconv_dims::offy+1,
-                         rconv_dims::offz+1}}),
+                      ({{rconv_example::offx+1,
+                         rconv_example::offy+1,
+                         rconv_example::offz+1}}),
                       fftx::point_t<3>
-                      ({{rconv_dims::offx+a_size[0]/2+1,
-                         rconv_dims::offy+a_size[1],
-                         rconv_dims::offz+a_size[2]}}));
+                      ({{rconv_example::offx+a_size[0]/2+1,
+                         rconv_example::offy+a_size[1],
+                         rconv_example::offz+a_size[2]}}));
 
   fftx::rconv<3> tfm(a_size); // does initialization
   rconvDimension(tfm, fulldomain, halfdomain, a_rounds, a_verbosity);
@@ -353,7 +353,7 @@ int main(int argc, char* argv[])
     2-dimensional tests.
   */
   //    rconv2::init();
-  //    rconvDimension(rconv2::transform, rconv_dims::domain2, rconv_dims::fdomain2,
+  //    rconvDimension(rconv2::transform, rconv_example::domain2, rconv_example::fdomain2,
   //                   rounds, verbosity);
   //    rconv2::destroy();
   
@@ -372,9 +372,9 @@ int main(int argc, char* argv[])
   
   // rconvSize(fftx::point_t<3>({{  48,  48,  48 }}), rounds, verbosity);
   
-  // fftx::point_t<3> extents = rconv_dims::domain3.extents();
+  // fftx::point_t<3> extents = rconv_example::domain3.extents();
   // fftx::rconv<3> tfm(extents); // does initialization
-  // rconvDimension(tfm, rconv_dims::domain3, rconv_dims::fdomain3,
+  // rconvDimension(tfm, rconv_example::domain3, rconv_example::fdomain3,
   //                rounds, verbosity);
 
   printf("%s: All done, exiting\n", argv[0]);

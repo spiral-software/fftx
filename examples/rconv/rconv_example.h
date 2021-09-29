@@ -1,6 +1,6 @@
 using namespace fftx;
 
-namespace rconv_dims
+namespace rconv_example
 {
   // some arbitrary offsets
   const int offx = 3;
