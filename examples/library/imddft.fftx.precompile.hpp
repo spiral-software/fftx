@@ -64,6 +64,6 @@ namespace fftx {
     // void (*transform_spiral)(double*, double*, double*) = nullptr;
     // void (*destroy_spiral)() = nullptr;
   };
-};
+}
 
 #endif  
