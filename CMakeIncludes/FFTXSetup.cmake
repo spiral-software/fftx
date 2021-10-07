@@ -10,8 +10,11 @@
 ##  at a lower level to support generating multiple sizes/sample builds within a single
 ##  example in the population of FFTX/examples
 
-## specify this only here, lower levels use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
-cmake_minimum_required (VERSION 3.14)
+if ( "x${CMAKE_MINIMUM_REQUIRED_VERSION}" STREQUAL "x" )
+    ## defined only when included from top level parent, set it so lower levels
+    ## use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
+    cmake_minimum_required (VERSION 3.14)
+endif ()
 
 ##  Start by finding things -- the list varies by what we're building for...
 ##  Get SPIRAL home...
