@@ -310,8 +310,17 @@ function ( setup_mpi_variables )
 	math ( EXPR _index "${_index} + 1" )
     endforeach ()
     set ( _num_MPI_libs ${_index} )
-    ##  message ( STATUS "Number of MPI Libraries = ${_num_MPI_libs}" )
+    message ( STATUS "Number of MPI Libraries = ${_num_MPI_libs}" )
 
+    set ( _index 0 )
+    foreach ( _mpiinc ${MPI_CXX_INCLUDE_DIRS} )
+	set ( MPI_CXX_INCL${_index} ${_mpiinc} PARENT_SCOPE )
+        message ( STATUS "MPI_CXX_INCL${_index} = ${_mpiinc}" )
+	math ( EXPR _index "${_index} + 1" )
+    endforeach ()
+    set ( _num_MPI_incls ${_index} )
+    message ( STATUS "Number of MPI Include Dirs = ${_num_MPI_incls}" )
+    
 endfunction ()
 
 
@@ -320,66 +329,66 @@ endfunction ()
 ##  external application would need this in order to include
 ##  $FFTX_HOME/CMakeInclude/FFTXCmakeFunctions.cmake in a CMake file anyway).
 ##  The build directory name need not be known (we look for a folder in FFTX_HOME
-##  with a bin subfolder).  All libraries in the bin subfolder are noted, and
+##  with a 'lib' subfolder).  All libraries in the 'lib' subfolder are noted, and
 ##  the include path directive for the library is derived from the library name
 ##  (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
 
 function ( FFTX_find_libraries )
 
-##  Start by finding FFTX home...
+    ##  Start by finding FFTX home...
 
-if ( DEFINED ENV{FFTX_HOME} )
-    ##  message ( STATUS "FFTX_HOME = $ENV{FFTX_HOME}" )
-    set ( FFTX_SOURCE_DIR $ENV{FFTX_HOME} )
-else ()
-    if ( "x${FFTX_HOME}" STREQUAL "x" )
-        message ( FATAL_ERROR "FFTX_HOME environment variable undefined and not specified on command line" )
-    endif ()
-    set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
-endif ()
-
-##  Find the build directory containing the libraries
-set (_root_folder "${FFTX_SOURCE_DIR}" )
-set ( _add_link_directory )
-set ( _libraries_added )
-set ( _includes_added ${FFTX_SOURCE_DIR}/include ${FFTX_SOURCE_DIR}/examples/library )
-file ( GLOB _root_names RELATIVE ${_root_folder} CONFIGURE_DEPENDS ${_root_folder}/* )
-
-foreach ( _dir ${_root_names} )
-    if ( IS_DIRECTORY ${_root_folder}/${_dir} AND IS_DIRECTORY ${_root_folder}/${_dir}/bin )
-	##  this is the folder...
-	message ( STATUS "Folder ${_root_folder}/${_dir}/bin may have installed libraries" )
-	set ( _lib_found FALSE )
-	
-	file ( GLOB _libs RELATIVE ${_root_folder}/${_dir}/bin
-	    ${_root_folder}/${_dir}/bin/*fftx_*_precomp* )
-	##  message ( STATUS "Check for libs in: ${_libs}" )
- 	foreach ( _lib ${_libs} )
-	    string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
-	    string ( REGEX REPLACE "_precomp.*$" "" _lib ${_lib} )	## strip trailing stuff
-	    list ( FIND _libraries_added "${_lib}_precomp" _posnlist )
-	    if ( ${_posnlist} EQUAL -1 )
-		##  message ( STATUS "${_lib}_precomp not in list -- adding" )
-		list ( APPEND _libraries_added "${_lib}_precomp" )
-		list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
-		set ( _lib_found TRUE )
-	    endif ()
-	endforeach ()
-	if ( ${_lib_found} )
-	    list ( APPEND _add_link_directory ${_root_folder}/${_dir}/bin )
-	    message ( STATUS "Add linker dir: ${_add_link_directory}" )
+    if ( DEFINED ENV{FFTX_HOME} )
+	##  message ( STATUS "FFTX_HOME = $ENV{FFTX_HOME}" )
+	set ( FFTX_SOURCE_DIR $ENV{FFTX_HOME} )
+    else ()
+	if ( "x${FFTX_HOME}" STREQUAL "x" )
+            message ( FATAL_ERROR "FFTX_HOME environment variable undefined and not specified on command line" )
 	endif ()
+	set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
     endif ()
-endforeach ()
 
-##  message ( STATUS "Include paths: ${_includes_added}" )
-##  message ( STATUS "Libraires found: ${_libraries_added}" )
-##  message ( STATUS "Library path is: ${_add_link_directory}" )
+    ##  Find the build directory containing the libraries
+    set (_root_folder "${FFTX_SOURCE_DIR}" )
+    set ( _add_link_directory )
+    set ( _libraries_added )
+    set ( _includes_added ${FFTX_SOURCE_DIR}/include ${FFTX_SOURCE_DIR}/examples/library )
+    file ( GLOB _root_names RELATIVE ${_root_folder} CONFIGURE_DEPENDS ${_root_folder}/* )
+    
+    foreach ( _dir ${_root_names} )
+	if ( IS_DIRECTORY ${_root_folder}/${_dir} AND IS_DIRECTORY ${_root_folder}/${_dir}/lib )
+	    ##  this is the folder...
+	    message ( STATUS "Folder ${_root_folder}/${_dir}/lib may have installed libraries" )
+	    set ( _lib_found FALSE )
+	
+	    file ( GLOB _libs RELATIVE ${_root_folder}/${_dir}/lib
+		${_root_folder}/${_dir}/lib/*fftx_*_precomp* )
+	    ##  message ( STATUS "Check for libs in: ${_libs}" )
+ 	    foreach ( _lib ${_libs} )
+		string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
+		string ( REGEX REPLACE "_precomp.*$" "" _lib ${_lib} )	## strip trailing stuff
+		list ( FIND _libraries_added "${_lib}_precomp" _posnlist )
+		if ( ${_posnlist} EQUAL -1 )
+		    ##  message ( STATUS "${_lib}_precomp not in list -- adding" )
+		    list ( APPEND _libraries_added "${_lib}_precomp" )
+		    list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
+		    set ( _lib_found TRUE )
+		endif ()
+	    endforeach ()
+	    if ( ${_lib_found} )
+		list ( APPEND _add_link_directory ${_root_folder}/${_dir}/lib )
+		message ( STATUS "Add linker dir: ${_add_link_directory}" )
+	    endif ()
+	endif ()
+    endforeach ()
 
-##  setup FFTX variables in parent scope for include dirs, library path, and library names
-set ( FFTX_LIB_INCLUDE_PATHS ${_includes_added}     PARENT_SCOPE )
-set ( FFTX_LIB_NAMES         ${_libraries_added}    PARENT_SCOPE )
-set ( FFTX_LIB_LIBRARY_PATH  ${_add_link_directory} PARENT_SCOPE )
+    ##  message ( STATUS "Include paths: ${_includes_added}" )
+    ##  message ( STATUS "Libraires found: ${_libraries_added}" )
+    ##  message ( STATUS "Library path is: ${_add_link_directory}" )
+    
+    ##  setup FFTX variables in parent scope for include dirs, library path, and library names
+    set ( FFTX_LIB_INCLUDE_PATHS ${_includes_added}     PARENT_SCOPE )
+    set ( FFTX_LIB_NAMES         ${_libraries_added}    PARENT_SCOPE )
+    set ( FFTX_LIB_LIBRARY_PATH  ${_add_link_directory} PARENT_SCOPE )
 
 endfunction ()
 

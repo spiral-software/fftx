@@ -3,8 +3,8 @@
 ##  Copyright (c) 2018-2021, Carnegie Mellon University
 ##  See LICENSE for details
 
-##  This script reads a file, cube-sizes.txt, that contains several cube size
-##  specifications for the 3D DFT.  This script will:
+##  This script reads a file, dftbatch-sizes.txt, that contains several size
+##  specifications for batch 1D DFTs.  This script will:
 ##      Generate a list of source file names for CMake to build
 ##      Create the source files (by running Spiral), writing them
 ##      to directory lib_<stem>_srcs
@@ -20,8 +20,8 @@ import shutil
 
 ##  file stem can be an argument speciying library to build
 if len ( sys.argv ) < 2:
-    ##  No library name stem provided, default to mddft3d_
-    _file_stem = 'mddft3d_'
+    ##  No library name stem provided, default to dftbat_
+    _file_stem = 'dftbat_'
 else:
     ##  Use given argument as the library stem name
     _file_stem = sys.argv[1]
@@ -55,6 +55,11 @@ if len ( sys.argv ) >= 3:
     if re.match ( 'hip', _code_type, re.IGNORECASE ):
         ##  HIP selected
         _code_type = 'HIP'
+        _file_suffix = '.cpp'
+
+    if re.match ( 'cpu', _code_type, re.IGNORECASE ):
+        ##  CPU selected
+        _code_type = 'CPU'
         _file_suffix = '.cpp'
 
 ##  If the transform can be forward or inverse accept an argument to specify
@@ -108,8 +113,8 @@ def start_header_file ( type ):
     _str = _str + '#ifndef RUNTRANSFORMFUNC\n'
     _str = _str + '#define RUNTRANSFORMFUNC\n'
     ##  TODO: Allow optional 3rd arg for symbol
-    ##  _str = _str + 'typedef void ( * runTransformFunc ) ( double *output, double *input );\n'
-    _str = _str + 'typedef void ( * runTransformFunc ) ( double *output, double *input, double *sym );\n'
+    _str = _str + 'typedef void ( * runTransformFunc ) ( double *output, double *input );\n'
+    ##  _str = _str + 'typedef void ( * runTransformFunc ) ( double *output, double *input, double *sym );\n'
     _str = _str + '#endif\n\n'
 
 ##    _str = _str + '#ifndef CUBESIZE_T\n'
@@ -132,26 +137,27 @@ def start_header_file ( type ):
 def body_public_header ():
     "Add the body details for the public header file"
     _str =        '//  Query the list of sizes available from the library; returns a pointer to an\n'
-    _str = _str + '//  array of size, each element is a struct of type fftx::point_t<3> specifying the X,\n'
-    _str = _str + '//  Y, and Z dimensions\n\n'
+    _str = _str + '//  array of length N + 1, where N is the number of unique instances of the\n'
+    _str = _str + '//  transform in the library.  Each element is a struct of type\n'
+    _str = _str + '//  fftx::point_t<2> specifying the number of batches and the transform dimension\n\n'
 
-    _str = _str + 'fftx::point_t<3> * ' + _file_stem + 'QuerySizes ();\n\n'
+    _str = _str + 'fftx::point_t<2> * ' + _file_stem + 'QuerySizes ();\n\n'
 
-    _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the transform,\n'
-    _str = _str + '//  and finally tear down by calling the destroy function.  Accepts fftx::point_t<3>\n'
-    _str = _str + '//  specifying size, and pointers to the output (returned) data and the input\n'
-    _str = _str + '//  data.\n\n'
+    _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the,\n'
+    _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
+    _str = _str + '//  Accepts fftx::point_t<2> specifying size, and pointers to the output\n'
+    _str = _str + '//  (returned) data and the input data.\n\n'
 
     ##  TODO: Allow optional 3rd arg for symbol
-    ##  _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input );\n\n'
-    _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input, double * sym );\n\n'
+    _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<2> req, double * output, double * input );\n\n'
+    ##  _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<2> req, double * output, double * input, double * sym );\n\n'
 
     _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
-    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this information the\n'
-    _str = _str + '//  user may call the init function to setup for the transform, then run the\n'
-    _str = _str + '//  transform repeatedly, and finally tesr down (using destroy function).\n\n'
+    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this\n'
+    _str = _str + '//  information the user may call the init function to setup for the transform,\n'
+    _str = _str + '//  then run the transform repeatedly, and finally tear down (using destroy function).\n\n'
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<3> req );\n\n'
+    _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<2> req );\n\n'
     _str = _str + '#endif\n\n'
 
     return _str;
@@ -169,33 +175,34 @@ def library_api ( ):
     _str = _str + '#include "' + _file_stem + 'public.h"\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
-    _str = _str + '//  array of size, each element is a struct of type fftx::point_t<3> specifying the X,\n'
-    _str = _str + '//  Y, and Z dimensions\n\n'
+    _str = _str + '//  array of length N + 1, where N is the number of unique instances of the\n'
+    _str = _str + '//  transform in the library.  Each element is a struct of type\n'
+    _str = _str + '//  fftx::point_t<2> specifying the number of batches and the transform\n'
+    _str = _str + '//  dimension.  The final entry in the list is a zero entry.\n\n'
 
-    _str = _str + 'fftx::point_t<3> * ' + _file_stem + 'QuerySizes ()\n'
+    _str = _str + 'fftx::point_t<2> * ' + _file_stem + 'QuerySizes ()\n'
     _str = _str + '{\n'
-    _str = _str + '    fftx::point_t<3> *wp = (fftx::point_t<3> *) malloc ( sizeof ( AllSizes3 ) );\n'
+    _str = _str + '    fftx::point_t<2> *wp = (fftx::point_t<2> *) malloc ( sizeof ( AllSizes2 ) );\n'
     _str = _str + '    if ( wp != NULL)\n'
-    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes3, sizeof ( AllSizes3 ) );\n\n'
+    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes2, sizeof ( AllSizes2 ) );\n\n'
     _str = _str + '    return wp;\n'
     _str = _str + '}\n\n'
 
     _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
-    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this information the\n'
-    _str = _str + '//  user may call the nit function to setup for the transform, then run the\n'
-    _str = _str + '//  transform repeatedly, and finally tesr down (using destroy function).\n'
-    _str = _str + '//  Returns NULL if requested size is not found\n\n'
+    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this\n'
+    _str = _str + '//  information the user may call the init function to setup for the transform,\n'
+    _str = _str + '//  then run the transform repeatedly, and finally tear down (using the destroy\n'
+    _str = _str + '//  function).  Returns NULL if requested size is not found\n\n'
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<3> req )\n'
+    _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<2> req )\n'
     _str = _str + '{\n'
     _str = _str + '    int indx;\n'
-    _str = _str + '    int numentries = sizeof ( AllSizes3 ) / sizeof ( fftx::point_t<3> ) - 1;    // last entry in { 0, 0, 0 }\n'
+    _str = _str + '    int numentries = sizeof ( AllSizes2 ) / sizeof ( fftx::point_t<2> ) - 1;    // last entry is { 0, 0 }\n'
     _str = _str + '    transformTuple_t *wp = NULL;\n\n'
 	
     _str = _str + '    for ( indx = 0; indx < numentries; indx++ ) {\n'
-    _str = _str + '        if ( req[0] == AllSizes3[indx][0] &&\n'
-    _str = _str + '             req[1] == AllSizes3[indx][1] &&\n'
-    _str = _str + '             req[2] == AllSizes3[indx][2] ) {\n'
+    _str = _str + '        if ( req[0] == AllSizes2[indx][0] &&\n'
+    _str = _str + '             req[1] == AllSizes2[indx][1] ) {\n'
     _str = _str + '            // found a match\n'
     _str = _str + '            wp = (transformTuple_t *) malloc ( sizeof ( transformTuple_t ) );\n'
     _str = _str + '            if ( wp != NULL) {\n'
@@ -208,14 +215,14 @@ def library_api ( ):
     _str = _str + '    return wp;\n'
     _str = _str + '}\n\n'
 
-    _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the transform,\n'
-    _str = _str + '//  and finally tear down by calling the destroy function.  Accepts fftx::point_t<3>\n'
-    _str = _str + '//  specifying size, and pointers to the output (returned) data and the input\n'
-    _str = _str + '//  data.\n\n'
+    _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the,\n'
+    _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
+    _str = _str + '//  Accepts fftx::point_t<2> specifying size, and pointers to the output\n'
+    _str = _str + '//  (returned) data and the input data.\n\n'
 
     ##  TODO: Allow optional 3rd arg for symbol
-    ##  _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input )\n'
-    _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<3> req, double * output, double * input, double * sym )\n'
+    _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<2> req, double * output, double * input )\n'
+    ##  _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<2> req, double * output, double * input, double * sym )\n'
     _str = _str + '{\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
     _str = _str + '    if ( wp == NULL )\n'
@@ -227,8 +234,8 @@ def library_api ( ):
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
 	
     ##  TODO: Allow optional 3rd arg for symbol
-    ##  _str = _str + '    ( * wp->runfp ) ( output, input );\n'
-    _str = _str + '    ( * wp->runfp ) ( output, input, sym );\n'
+    _str = _str + '    ( * wp->runfp ) ( output, input );\n'
+    ##  _str = _str + '    ( * wp->runfp ) ( output, input, sym );\n'
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
 	
     _str = _str + '    //  Tear down / cleanup\n'
@@ -262,9 +269,11 @@ def cmake_library ( type ):
     if type == 'CUDA':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${CUDA_COMPILE_FLAGS} ${GPU_COMPILE_DEFNS} )\n'
         _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n'
-    else:
+    elif type == 'HIP':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
-
+    elif type == 'CPU':
+        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n\n'
+        
     _str = _str + 'if ( WIN32 )\n'
     _str = _str + '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n'
     _str = _str + 'endif ()\n\n'
@@ -277,11 +286,11 @@ def cmake_library ( type ):
 
 
 _extern_decls  = ''
-_all_cubes     = 'static fftx::point_t<3> AllSizes3[] = {\n'
+_all_sizes     = 'static fftx::point_t<2> AllSizes2[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + 'Tuples[] = {\n'
 
 
-with open ( 'cube-sizes.txt', 'r' ) as fil:
+with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
     for line in fil.readlines():
         ##  print ( 'Line read = ' + line )
         if re.match ( '[ \t]*#', line ):                ## ignore comment lines
@@ -298,28 +307,32 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         testscript.write ( 'codefor := "' + _code_type + '"; \n' )
         testscript.close()
 
-        line = re.sub ( '.*\[', '', line )               ## drop "szcube := ["
-        line = re.sub ( '\].*', '', line )               ## drop "];"
-        line = re.sub ( ' *', '', line )                 ## compress out white space
-        line = line.rstrip()                             ## remove training newline
-        dims = re.split ( ',', line )
-        _dimx = dims[0]
-        _dimy = dims[1]
-        _dimz = dims[2]
+        _dims = re.sub ( '.*nbatch :=', '', line )      ## get number batches
+        _dims = re.sub ( ';.*', '', _dims )
+        _dims = re.sub ( ' *', '', _dims )              ## compress out white space
+        _dims = _dims.rstrip()                          ## remove training newline
+        _nbat = _dims
+        
+        line = re.sub ( '.*\[', '', line )              ## drop "szns := ["
+        line = re.sub ( '\].*', '', line )              ## drop "];"
+        line = re.sub ( ' *', '', line )                ## compress out white space
+        line = line.rstrip()                            ## remove training newline
+        _dims = line
 
         ##  Add the file name to the list of sources
-        _func_stem = _file_stem + _dimx + 'x' + _dimy + 'x' + _dimz
+        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d'
         _file_name = _func_stem + _file_suffix
         _cmake_srcs.write ( '    ' + _file_name + '\n' )
 
-        ##  Add the extern declarations and tranck func name for header file
+        ##  Add the extern declarations and track func name for header file
         ##  FUTURE: Need a way to handle functions with different signatures
         _extern_decls = _extern_decls + 'extern "C" { extern void init_' + _func_stem + '();  }\n'
         _extern_decls = _extern_decls + 'extern "C" { extern void destroy_' + _func_stem + '();  }\n'
         ##  TODO: Allow optional 3rd arg for symbol
-        ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
-        _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
-        _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
+        _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
+        ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
+        ##  Identify transform by # batches and xform size
+        _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _dims + ' },\n'
         _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
         _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
         
@@ -356,7 +369,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
     _header_fil.write ( _filebody )
     _header_fil.write ( _extern_decls )
     _header_fil.write ( _tuple_funcs + '    { NULL, NULL, NULL }\n};\n\n' )
-    _header_fil.write ( _all_cubes + '    { 0, 0, 0 }\n};\n\n' )
+    _header_fil.write ( _all_sizes + '    { 0, 0 }\n};\n\n' )
     _header_fil.write ( '#endif\n\n' )
     _header_fil.close ()
     
