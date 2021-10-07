@@ -167,7 +167,11 @@ void compareSize(Transformer& a_tfm,
                  int a_iterations,
                  int a_verbosity)
 {
-  // fftx::mddft<3> tfm(a_extents); // does initialization
+  if (!tfm.defined())
+    {
+      return;
+    }
+  
   fftx::point_t<3> tfmSize = a_tfm.size();
   // deviceTransform<double, std::complex<double> > tfmDevice(DEVICE_FFT_D2Z);
   
@@ -345,6 +349,7 @@ void compareSize(Transformer& a_tfm,
   const double tol = 1.e-7;
   bool match = true;
   double maxDiff = 0.;
+  double maxSpiral = 0.;
   {
     for (size_t ind = 0; ind < nptsOutput; ind++)
       {
@@ -353,6 +358,8 @@ void compareSize(Transformer& a_tfm,
         // auto diffPoint = outputSpiralPoint - outputDeviceFFTPoint;
         // double diffReal = outputSpiralPoint.x - outputDeviceFFTPoint.x;
         // double diffImag = outputSpiralPoint.y - outputDeviceFFTPoint.y;
+        double spiralAbsPoint = std::abs(outputSpiralPoint);
+        updateMaxAbs(maxSpiral, spiralAbsPoint);
         double diffAbsPoint = diffAbs(outputSpiralPoint, outputDeviceFFTPoint);
         updateMaxAbs(maxDiff, diffAbsPoint);
         bool matchPoint = (diffAbsPoint < tol);
@@ -361,7 +368,7 @@ void compareSize(Transformer& a_tfm,
             match = false;
             if (a_verbosity >= 3)
               {
-                point_t<3> pt = pointFromPositionBox(ind, outputDomain);
+                fftx::point_t<3> pt = pointFromPositionBox(ind, outputDomain);
                 std::cout << "error at " << pt
                           << ": SPIRAL " << outputSpiralPoint
                           << ", deviceFFT " << outputDeviceFFTPoint
@@ -386,6 +393,7 @@ void compareSize(Transformer& a_tfm,
     {
       printf("NO, results do not match for %s. Max diff %11.5e\n",
              a_tfm.name().c_str(), maxDiff);
+      std::cout << "SPIRAL max abs output = " << maxSpiral << std::endl;
     }
 
   /*
@@ -488,7 +496,7 @@ int main(int argc, char* argv[])
       {
         fftx::imddft<3> tfm(sz);
         compareSize(tfm, imddftDevice, iterations, verbosity);
-       }
+      }
 
       {
         fftx::mdprdft<3> tfm(sz);
