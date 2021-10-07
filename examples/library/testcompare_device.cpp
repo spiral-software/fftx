@@ -19,8 +19,6 @@
 
 #include "fftx3utilities.h"
 
-#include "test_comp.h"
-
 template<typename T>
 T minSubarray(const T* arr, int lo, int hi)
 {
@@ -169,10 +167,7 @@ void compareSize(Transformer& a_tfm,
                  int a_iterations,
                  int a_verbosity)
 {
-  // fftx::point_t<3> extents = test_comp::domain.extents();
   // fftx::mddft<3> tfm(a_extents); // does initialization
-
-  // fftx::mdprdft<3> tfm(a_size); // does initialization
   fftx::point_t<3> tfmSize = a_tfm.size();
   // deviceTransform<double, std::complex<double> > tfmDevice(DEVICE_FFT_D2Z);
   
