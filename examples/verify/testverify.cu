@@ -1,24 +1,23 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
-
-#include "fftx_mddft_public.h"
-#include "fftx_imddft_public.h"
-#include "fftx_mdprdft_public.h"
-#include "fftx_imdprdft_public.h"
-// #include "fftx_rconv_public.h"
-
-// Need this for AllSizes3 only
-#include "sizes.h"
-
-#include "mddft.fftx.precompile.hpp"
-#include "imddft.fftx.precompile.hpp"
-#include "mdprdft.fftx.precompile.hpp"
-#include "imdprdft.fftx.precompile.hpp"
-// #include "rconv.fftx.precompile.hpp"
-
+/*
+#include "mddft1.fftx.codegen.hpp"
+#include "imddft1.fftx.codegen.hpp"
+#include "mddft2.fftx.codegen.hpp"
+#include "imddft2.fftx.codegen.hpp"
+*/
+#include "mddft3.fftx.codegen.hpp"
+#include "imddft3.fftx.codegen.hpp"
+/*
+#include "prdft1.fftx.codegen.hpp"
+#include "iprdft1.fftx.codegen.hpp"
+#include "prdft2.fftx.codegen.hpp"
+#include "iprdft2.fftx.codegen.hpp"
+*/
+#include "prdft3.fftx.codegen.hpp"
+#include "iprdft3.fftx.codegen.hpp"
 #include "fftx3utilities.h"
-
-#include "device_macros.h"
+#include "verify.h"
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   
@@ -135,23 +134,8 @@ void unifArray(fftx::array_t<DIM, std::complex<double>>& a_arr)
   unifComplexArray(a_arr);
 }
 
-fftx::box_t<3> domainFromSize(const fftx::point_t<3>& a_size)
-{
-  fftx::box_t<3> bx(fftx::point_t<3>({{1, 1, 1}}),
-                    fftx::point_t<3>({{a_size[0], a_size[1], a_size[2]}}));
-  return bx;
-}
+               
 
-template<int DIM>
-size_t pointProduct(const fftx::point_t<DIM>& a_pt)
-{
-  size_t prod = 1;
-  for (int d = 0; d < DIM; d++)
-    {
-      prod *= a_pt[d];
-    }
-  return prod;
-}
 
 // Set a_arr to a_scaling at point a_fixed, and 0 elsewhere.
 template<int DIM, typename T>
@@ -220,12 +204,13 @@ void setRotator(fftx::array_t<DIM, std::complex<double>>& a_arr,
   setProductWaves(a_arr, a_dom.extents(), fixed, -1);
 }
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-void transformOnDevice(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+void DFTfunctionDevice(fftx::handle_t (a_dftFunction)
+                       (fftx::array_t<DIM, T_IN>&,
+                        fftx::array_t<DIM, T_OUT>&),
                        fftx::array_t<DIM, T_IN>& a_input, // make this const?
-                       fftx::array_t<DIM, T_OUT>& a_output,
-                       int a_verbosity)
+                       fftx::array_t<DIM, T_OUT>& a_output)
+
 {
   auto inputDomain = a_input.m_domain;
   auto outputDomain = a_output.m_domain;
@@ -237,70 +222,42 @@ void transformOnDevice(Transformer& a_tfm,
   auto output_bytes = output_size * sizeof(T_OUT);
 
   char* bufferPtr;
-  DEVICE_MALLOC(&bufferPtr, input_bytes + output_bytes);
+  cudaMalloc(&bufferPtr, input_bytes + output_bytes);
   T_IN* inputPtr = (T_IN*) bufferPtr;
   bufferPtr += input_bytes;
   T_OUT* outputPtr = (T_OUT*) bufferPtr;
 
-  DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
-                  MEM_COPY_HOST_TO_DEVICE);
+  cudaMemcpy(inputPtr, a_input.m_data.local(), input_bytes,
+             cudaMemcpyHostToDevice);
 
   fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
                                        (inputPtr, 0, 1), inputDomain);
   fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
                                          (outputPtr, 0, 1), outputDomain);
-
-  a_tfm.transform(inputDevice, outputDevice);
-
-  DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
-                  MEM_COPY_DEVICE_TO_HOST);
-
-  if (a_verbosity >= SHOW_ROUNDS)
-    {
-      double maxOut = 0.;
-      T_OUT* outputHostPtr = a_output.m_data.local();
-      for (int ind = 0; ind < output_size; ind++)
-        {
-          updateMaxAbs<T_OUT>(maxOut, outputHostPtr[ind]);
-        }
-      double tol = 1.e-7;
-      if (maxOut < tol)
-        {
-          std::cout << "transform max output = " << maxOut << std::endl;
-        }
-    }
-}
-#endif
-
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-void transformCall(Transformer& a_tfm,
-                   fftx::array_t<DIM, T_IN>& a_input, // make this const?
-                   fftx::array_t<DIM, T_OUT>& a_output,
-                   int a_verbosity)
-{
-#if defined(__CUDACC__) || defined(FFTX_HIP)
-  transformOnDevice(a_tfm, a_input, a_output, a_verbosity);
-#else
-  a_tfm.transform(a_input, a_output);
-#endif
-}
-
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test1Transform(Transformer& a_tfm,
-                      int a_rounds,
-                      int a_verbosity)
-{
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
   
-  fftx::array_t<DIM, T_IN> inA(inputDomain);
-  fftx::array_t<DIM, T_IN> inB(inputDomain);
-  fftx::array_t<DIM, T_IN> LCin(inputDomain);
+  a_dftFunction(inputDevice, outputDevice);
 
-  fftx::array_t<DIM, T_OUT> outA(outputDomain);
-  fftx::array_t<DIM, T_OUT> outB(outputDomain);
-  fftx::array_t<DIM, T_OUT> LCout(outputDomain);
-  fftx::array_t<DIM, T_OUT> outLCin(outputDomain);
+  cudaMemcpy(a_output.m_data.local(), outputPtr, output_bytes,
+             cudaMemcpyDeviceToHost);
+}
+
+template<int DIM, typename T_IN, typename T_OUT>
+double test1DFTfunction(fftx::handle_t (a_dftFunction)
+                       (fftx::array_t<DIM, T_IN>&,
+                        fftx::array_t<DIM, T_OUT>&),
+                        fftx::box_t<DIM> a_inDomain,
+                        fftx::box_t<DIM> a_outDomain,
+                        int a_rounds,
+                        int a_verbosity)
+{
+  fftx::array_t<DIM, T_IN> inA(a_inDomain);
+  fftx::array_t<DIM, T_IN> inB(a_inDomain);
+  fftx::array_t<DIM, T_IN> LCin(a_inDomain);
+
+  fftx::array_t<DIM, T_OUT> outA(a_outDomain);
+  fftx::array_t<DIM, T_OUT> outB(a_outDomain);
+  fftx::array_t<DIM, T_OUT> LCout(a_outDomain);
+  fftx::array_t<DIM, T_OUT> outLCin(a_outDomain);
 
   double errtest1 = 0.;
   for (int itn = 1; itn <= a_rounds; itn++)
@@ -312,11 +269,11 @@ double test1Transform(Transformer& a_tfm,
       unifArray(inA);
       unifArray(inB);
       sumArrays(LCin, inA, inB, alphaIn, betaIn);
-
-      transformCall(a_tfm, inA, outA, a_verbosity);
-      transformCall(a_tfm, inB, outB, a_verbosity);
+      
+      DFTfunctionDevice(a_dftFunction, inA, outA);
+      DFTfunctionDevice(a_dftFunction, inB, outB);
       sumArrays(LCout, outA, outB, alphaOut, betaOut);
-      transformCall(a_tfm, LCin, outLCin, a_verbosity);
+      DFTfunctionDevice(a_dftFunction, LCin, outLCin);
       double err = absMaxDiffArray(outLCin, LCout);
       updateMax(errtest1, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -332,49 +289,50 @@ double test1Transform(Transformer& a_tfm,
 }
 
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test2impulse1(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test2impulse1(fftx::handle_t (a_dftFunction)
+                     (fftx::array_t<DIM, T_IN>&,
+                      fftx::array_t<DIM, T_OUT>&),
+                     fftx::box_t<DIM> a_inDomain,
+                     fftx::box_t<DIM> a_outDomain,
                      int a_verbosity)
 { // Unit impulse at low corner.
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-
-  fftx::array_t<DIM, T_IN> inImpulse(inputDomain);
-  fftx::array_t<DIM, T_OUT> outImpulse(outputDomain);
-  fftx::array_t<DIM, T_OUT> all1out(outputDomain);
-  setUnitImpulse(inImpulse, inputDomain.lo);
+  fftx::array_t<DIM, T_IN> inImpulse(a_inDomain);
+  fftx::array_t<DIM, T_OUT> outImpulse(a_outDomain);
+  fftx::array_t<DIM, T_OUT> all1out(a_outDomain);
+  setUnitImpulse(inImpulse, a_inDomain.lo);
   setConstant(all1out, scalarVal<T_OUT>(1.));
-  transformCall(a_tfm, inImpulse, outImpulse, a_verbosity);
+  DFTfunctionDevice(a_dftFunction, inImpulse, outImpulse);
   double errtest2impulse1 = absMaxDiffArray(outImpulse, all1out);
   if (a_verbosity >= SHOW_SUBTESTS)
     {
-       printf("%dD unit impulse low corner test: max error %11.5e\n",
-              DIM, errtest2impulse1);
+       printf("%dD unit impulse low corner test: max error %11.5e\n", DIM, errtest2impulse1);
     }
   return errtest2impulse1;
 }
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test2impulsePlus(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test2impulsePlus(fftx::handle_t (a_dftFunction)
+                        (fftx::array_t<DIM, T_IN>&,
+                         fftx::array_t<DIM, T_OUT>&),
+                        fftx::box_t<DIM> a_inDomain,
+                        fftx::box_t<DIM> a_outDomain,
                         int a_rounds,
                         int a_verbosity)
 { // Unit impulse at low corner.
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-
-  fftx::array_t<DIM, T_IN> inImpulse(inputDomain);
-  fftx::array_t<DIM, T_OUT> outImpulse(outputDomain);
-  fftx::array_t<DIM, T_OUT> all1out(outputDomain);
-  setUnitImpulse(inImpulse, inputDomain.lo);
+  fftx::array_t<DIM, T_IN> inImpulse(a_inDomain);
+  fftx::array_t<DIM, T_OUT> outImpulse(a_outDomain);
+  fftx::array_t<DIM, T_OUT> all1out(a_outDomain);
+  setUnitImpulse(inImpulse, a_inDomain.lo);
   setConstant(all1out, scalarVal<T_OUT>(1.));
-  transformCall(a_tfm, inImpulse, outImpulse, a_verbosity);
+  DFTfunctionDevice(a_dftFunction, inImpulse, outImpulse);
 
-  fftx::array_t<DIM, T_IN> inRand(inputDomain);
-  fftx::array_t<DIM, T_IN> inImpulseMinusRand(inputDomain);
+  fftx::array_t<DIM, T_IN> inRand(a_inDomain);
+  fftx::array_t<DIM, T_IN> inImpulseMinusRand(a_inDomain);
 
-  fftx::array_t<DIM, T_OUT> outRand(outputDomain);
-  fftx::array_t<DIM, T_OUT> outImpulseMinusRand(outputDomain);
-  fftx::array_t<DIM, T_OUT> mysum(outputDomain);
+  fftx::array_t<DIM, T_OUT> outRand(a_outDomain);
+  fftx::array_t<DIM, T_OUT> outImpulseMinusRand(a_outDomain);
+  fftx::array_t<DIM, T_OUT> mysum(a_outDomain);
   
   // Check that for random arrays inRand,
   // fft(inRand) + fft(inImpulse - inRand) = fft(inImpulse) = all1out.
@@ -382,9 +340,9 @@ double test2impulsePlus(Transformer& a_tfm,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifArray(inRand);
-      transformCall(a_tfm, inRand, outRand, a_verbosity);
+      DFTfunctionDevice(a_dftFunction, inRand, outRand);
       diffArrays(inImpulseMinusRand, inImpulse, inRand);
-      transformCall(a_tfm, inImpulseMinusRand, outImpulseMinusRand, a_verbosity);
+      DFTfunctionDevice(a_dftFunction, inImpulseMinusRand, outImpulseMinusRand);
       sumArrays(mysum, outRand, outImpulseMinusRand);
       double err = absMaxDiffArray(mysum, all1out);
       updateMax(errtest2impulsePlus, err);
@@ -396,28 +354,34 @@ double test2impulsePlus(Transformer& a_tfm,
 
   if (a_verbosity >= SHOW_SUBTESTS)
     {
-      printf("%dD unit impulse low corner test in %d rounds: max error %11.5e\n",
-             DIM, a_rounds, errtest2impulsePlus);
+      printf("%dD unit impulse low corner test in %d rounds: max error %11.5e\n", DIM, a_rounds, errtest2impulsePlus);
     }
   return errtest2impulsePlus;
 }
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test2constant(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test2constant(fftx::handle_t (a_dftFunction)
+                     (fftx::array_t<DIM, T_IN>&,
+                      fftx::array_t<DIM, T_OUT>&),
+                     const fftx::box_t<DIM>& a_inDomain,
+                     const fftx::box_t<DIM>& a_outDomain,
+                     const fftx::point_t<DIM>& a_fullExtents,
                      int a_verbosity)
 { // Check that constant maps back to unit impulse at low corner.
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-  fftx::array_t<DIM, T_IN> all1in(inputDomain);
+  fftx::array_t<DIM, T_IN> all1in(a_inDomain);
   setConstant(all1in, scalarVal<T_IN>(1.));
 
-  fftx::array_t<DIM, T_OUT> magImpulse(outputDomain);
-  size_t npts = pointProduct(a_tfm.size());
+  fftx::array_t<DIM, T_OUT> magImpulse(a_outDomain);
+  size_t npts = 1;
+  for (int d = 0; d < DIM; d++)
+    {
+      npts *= a_fullExtents[d];
+    }
   T_OUT mag = scalarVal<T_OUT>(npts * 1.);
-  setUnitImpulse(magImpulse, outputDomain.lo, mag);
+  setUnitImpulse(magImpulse, a_outDomain.lo, mag);
 
-  fftx::array_t<DIM, T_OUT> outImpulse(outputDomain);
-  transformCall(a_tfm, all1in, outImpulse, a_verbosity);
+  fftx::array_t<DIM, T_OUT> outImpulse(a_outDomain);
+  DFTfunctionDevice(a_dftFunction, all1in, outImpulse);
 
   double errtest2constant = absMaxDiffArray(outImpulse, magImpulse);
   if (a_verbosity >= SHOW_SUBTESTS)
@@ -427,28 +391,34 @@ double test2constant(Transformer& a_tfm,
   return errtest2constant;
 }
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test2constantPlus(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test2constantPlus(fftx::handle_t (a_dftFunction)
+                         (fftx::array_t<DIM, T_IN>&,
+                          fftx::array_t<DIM, T_OUT>&),
+                         const fftx::box_t<DIM>& a_inDomain,
+                         const fftx::box_t<DIM>& a_outDomain,
+                         const fftx::point_t<DIM>& a_fullExtents,
                          int a_rounds,
                          int a_verbosity)
 {
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-
-  fftx::array_t<DIM, T_IN> all1in(inputDomain);
+  fftx::array_t<DIM, T_IN> all1in(a_inDomain);
   setConstant(all1in, scalarVal<T_IN>(1.));
 
-  fftx::array_t<DIM, T_OUT> magImpulse(outputDomain);
-  size_t npts = pointProduct(a_tfm.size());
+  fftx::array_t<DIM, T_OUT> magImpulse(a_outDomain);
+  size_t npts = 1;
+  for (int d = 0; d < DIM; d++)
+    {
+      npts *= a_fullExtents[d];
+    }
   T_OUT mag = scalarVal<T_OUT>(npts * 1.);
-  setUnitImpulse(magImpulse, outputDomain.lo, mag);
+  setUnitImpulse(magImpulse, a_outDomain.lo, mag);
 
-  fftx::array_t<DIM, T_IN> inRand(inputDomain);
-  fftx::array_t<DIM, T_IN> inConstantMinusRand(inputDomain);
+  fftx::array_t<DIM, T_IN> inRand(a_inDomain);
+  fftx::array_t<DIM, T_IN> inConstantMinusRand(a_inDomain);
 
-  fftx::array_t<DIM, T_OUT> outRand(outputDomain);
-  fftx::array_t<DIM, T_OUT> outConstantMinusRand(outputDomain);
-  fftx::array_t<DIM, T_OUT> outSum(outputDomain);
+  fftx::array_t<DIM, T_OUT> outRand(a_outDomain);
+  fftx::array_t<DIM, T_OUT> outConstantMinusRand(a_outDomain);
+  fftx::array_t<DIM, T_OUT> outSum(a_outDomain);
 
   // Check that for random arrays inRand,
   // fft(inRand) + fft(all1 - inRand) = fft(all1) = magImpulse.
@@ -456,10 +426,10 @@ double test2constantPlus(Transformer& a_tfm,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifArray(inRand);
-      transformCall(a_tfm, inRand, outRand, a_verbosity);
+      DFTfunctionDevice(a_dftFunction, inRand, outRand);
 
       diffArrays(inConstantMinusRand, all1in, inRand);
-      transformCall(a_tfm, inConstantMinusRand, outConstantMinusRand, a_verbosity);
+      DFTfunctionDevice(a_dftFunction, inConstantMinusRand, outConstantMinusRand);
 
       sumArrays(outSum, outRand, outConstantMinusRand);
       
@@ -467,56 +437,55 @@ double test2constantPlus(Transformer& a_tfm,
       updateMax(errtest2constantPlus, err);
       if (a_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random + constant test round %d max error %11.5e\n",
-                   DIM, itn, err);
+            printf("%dD random + constant test round %d max error %11.5e\n", DIM, itn, err);
           }
     }
 
   if (a_verbosity >= SHOW_SUBTESTS)
     {
-      printf("%dD random + constant test in %d rounds: max error %11.5e\n",
-             DIM, a_rounds, errtest2constantPlus);
+      printf("%dD random + constant test in %d rounds: max error %11.5e\n", DIM, a_rounds, errtest2constantPlus);
   
     }
   return errtest2constantPlus;
 }
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test2impulseRandom(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test2impulseRandom(fftx::handle_t (a_dftFunction)
+                          (fftx::array_t<DIM, T_IN>&,
+                           fftx::array_t<DIM, T_OUT>&),
+                          const fftx::box_t<DIM>& a_inDomain,
+                          const fftx::box_t<DIM>& a_outDomain,
                           int a_sign,
                           int a_rounds,
                           int a_verbosity)
 {
-  // Do nothing if T_OUT is real. Run this test only if T_OUT is complex.
   return 0.;
 }
 
-
-template<int DIM, typename T_IN, class Transformer>
-double test2impulseRandom(Transformer& a_tfm,
+template<int DIM, typename T_IN>
+double test2impulseRandom(fftx::handle_t (a_dftFunction)
+                          (fftx::array_t<DIM, T_IN>&,
+                           fftx::array_t<DIM, std::complex<double>>&),
+                          const fftx::box_t<DIM>& a_inDomain,
+                          const fftx::box_t<DIM>& a_outDomain,
                           int a_sign,
                           int a_rounds,
                           int a_verbosity)
 {
   // Check unit impulse at random position.
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-
-  fftx::array_t<DIM, T_IN> inImpulse(inputDomain);
-  fftx::array_t<DIM, std::complex<double>> outImpulse(outputDomain); // FIXME
-  fftx::array_t<DIM, std::complex<double>> outCheck(outputDomain); // FIXME
+  fftx::array_t<DIM, T_IN> inImpulse(a_inDomain);
+  fftx::array_t<DIM, std::complex<double>> outImpulse(a_outDomain);
+  fftx::array_t<DIM, std::complex<double>> outCheck(a_outDomain);
   double errtest2impulseRandom = 0.;
-  fftx::point_t<DIM> fullExtents = a_tfm.size();
+  fftx::point_t<DIM> fullExtents = a_inDomain.extents();
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       fftx::point_t<DIM> rpoint = unifPoint<DIM>();
       setUnitImpulse(inImpulse, rpoint);
-      transformCall(a_tfm, inImpulse, outImpulse, a_verbosity);
-      // Recall inputDomain is whole domain,
-      // but outputDomain may be truncated;
-      // waves defined on outputDomain,
-      // but based on the full inputDomain extents.
-      setProductWaves(outCheck, fullExtents, rpoint, a_sign);
+      DFTfunctionDevice(a_dftFunction, inImpulse, outImpulse);
+      // Recall a_inDomain is whole domain, but a_outDomain may be truncated;
+      // waves defined on a_outDomain, but based on the full a_inDomain extents.
+      setProductWaves(outCheck, fullExtents, rpoint,  a_sign);
       double err = absMaxDiffArray(outImpulse, outCheck);
       updateMax(errtest2impulseRandom, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -528,33 +497,37 @@ double test2impulseRandom(Transformer& a_tfm,
 }
 
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test2Transform(Transformer& a_tfm,
-                      int a_sign,
-                      int a_rounds,
-                      int a_verbosity)
+template<int DIM, typename T_IN, typename T_OUT>
+double test2DFTfunction(fftx::handle_t (a_dftFunction)
+                       (fftx::array_t<DIM, T_IN>&,
+                        fftx::array_t<DIM, T_OUT>&),
+                        const fftx::box_t<DIM>& a_inDomain,
+                        const fftx::box_t<DIM>& a_outDomain,
+                        const fftx::point_t<DIM>& a_fullExtents,
+                        int a_sign,
+                        int a_rounds,
+                        int a_verbosity)
 {
   double errtest2 = 0.;
 
   updateMax(errtest2,
-            test2impulse1<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_verbosity));
-
+            test2impulse1(a_dftFunction, a_inDomain, a_outDomain,
+                          a_verbosity));
   updateMax(errtest2,
-            test2impulsePlus<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_rounds, a_verbosity));
-
-  updateMax(errtest2,
-            test2constant<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_verbosity));
+            test2impulsePlus(a_dftFunction, a_inDomain, a_outDomain,
+                             a_rounds, a_verbosity));
   
   updateMax(errtest2,
-            test2constantPlus<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_rounds, a_verbosity));
+            test2constant(a_dftFunction, a_inDomain, a_outDomain,
+                          a_fullExtents, a_verbosity));
   
   updateMax(errtest2,
-            test2impulseRandom<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_sign, a_rounds, a_verbosity));
+            test2constantPlus(a_dftFunction, a_inDomain, a_outDomain,
+                              a_fullExtents, a_rounds, a_verbosity));
+  
+  updateMax(errtest2,
+            test2impulseRandom(a_dftFunction, a_inDomain, a_outDomain,
+                               a_sign, a_rounds, a_verbosity));
   
   if (a_verbosity >= SHOW_CATEGORIES)
     {
@@ -564,107 +537,111 @@ double test2Transform(Transformer& a_tfm,
 }
 
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test3time(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test3time(fftx::handle_t (a_dftFunction)
+                 (fftx::array_t<DIM, T_IN>&,
+                  fftx::array_t<DIM, T_OUT>&),
+                 const fftx::box_t<DIM>& a_inDomain,
+                 const fftx::box_t<DIM>& a_outDomain,
                  int a_sign,
                  int a_rounds,
                  int a_verbosity)
 {
-  // Do nothing if T_OUT is real. Run this test only if T_OUT is complex.
   return 0.;
 }
 
-template<int DIM, typename T_IN, class Transformer>
-double test3time(Transformer& a_tfm,
+template<int DIM, typename T_IN>
+double test3time(fftx::handle_t (a_dftFunction)
+                 (fftx::array_t<DIM, T_IN>&,
+                  fftx::array_t<DIM, std::complex<double>>&),
+                 const fftx::box_t<DIM>& a_inDomain,
+                 const fftx::box_t<DIM>& a_outDomain,
                  int a_sign,
                  int a_rounds,
                  int a_verbosity)
 {
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-
-  fftx::array_t<DIM, T_IN> inRand(inputDomain);
-  fftx::array_t<DIM, T_IN> inRandRot(inputDomain);
-  fftx::array_t<DIM, std::complex<double>> outRand(outputDomain);
-  fftx::array_t<DIM, std::complex<double>> outRandRot(outputDomain);
-  fftx::array_t<DIM, std::complex<double>> rotator(outputDomain);
-  fftx::array_t<DIM, std::complex<double>> outRandRotMult(outputDomain);
+  fftx::array_t<DIM, T_IN> inRand(a_inDomain);
+  fftx::array_t<DIM, T_IN> inRandRot(a_inDomain);
+  fftx::array_t<DIM, std::complex<double>> outRand(a_outDomain);
+  fftx::array_t<DIM, std::complex<double>> outRandRot(a_outDomain);
+  fftx::array_t<DIM, std::complex<double>> rotator(a_outDomain);
+  fftx::array_t<DIM, std::complex<double>> outRandRotMult(a_outDomain);
   double errtest3timeDim[DIM];
   double errtest3time = 0.;
   for (int d = 0; d < DIM; d++)
     {
       errtest3timeDim[d] = 0.;
-      setRotator(rotator, inputDomain, d, -a_sign); // +1 for MDDFT, -1 for IMDDFT, -1 for PRDFT
+      setRotator(rotator, a_inDomain, d, -a_sign); // +1 for MDDFT, -1 for IMDDFT, -1 for PRDFT
       for (int itn = 1; itn <= a_rounds; itn++)
         {
           unifArray(inRand);
           
           // time-shift test in dimension d
           rotate(inRandRot, inRand, d, 1); // +1 for MDDFT, +1 for IMDDFT, +1 for PRDFT
-          transformCall(a_tfm, inRand, outRand, a_verbosity);
-          transformCall(a_tfm, inRandRot, outRandRot, a_verbosity);
+          DFTfunctionDevice(a_dftFunction, inRand, outRand);
+          DFTfunctionDevice(a_dftFunction, inRandRot, outRandRot);
           productArrays(outRandRotMult, outRandRot, rotator);
           double err = absMaxDiffArray(outRandRotMult, outRand);
           updateMax(errtest3timeDim[d], err);
           updateMax(errtest3time, errtest3timeDim[d]);
           if (a_verbosity >= SHOW_ROUNDS)
             {
-              printf("%dD dim %d time-shift test %d max error %11.5e\n",
-                     DIM, d, itn, err);
+              printf("%dD dim %d time-shift test %d max error %11.5e\n", DIM, d, itn, err);
             }
         }
       if (a_verbosity >= SHOW_SUBTESTS)
         {
-          printf("%dD dim %d time-shift test in %d rounds: max error %11.5e\n",
-                 DIM, d, a_rounds, errtest3timeDim[d]);
+          printf("%dD dim %d time-shift test in %d rounds: max error %11.5e\n", DIM, d, a_rounds, errtest3timeDim[d]);
         }
     }
   return errtest3time;
 }
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test3frequency(Transformer& a_tfm,
+template<int DIM, typename T_IN, typename T_OUT>
+double test3frequency(fftx::handle_t (a_dftFunction)
+                      (fftx::array_t<DIM, T_IN>&,
+                       fftx::array_t<DIM, T_OUT>&),
+                      const fftx::box_t<DIM>& a_inDomain,
+                      const fftx::box_t<DIM>& a_outDomain,
                       int a_sign,
                       int a_rounds,
                       int a_verbosity)
 {
-  // Do nothing if T_IN is real. Run this test only if T_IN is complex.
   return 0.;
 }
 
-template<int DIM, typename T_OUT, class Transformer>
-double test3frequency(Transformer& a_tfm,
+template<int DIM, typename T_OUT>
+double test3frequency(fftx::handle_t (a_dftFunction)
+                      (fftx::array_t<DIM, std::complex<double>>&,
+                       fftx::array_t<DIM, T_OUT>&),
+                      const fftx::box_t<DIM>& a_inDomain,
+                      const fftx::box_t<DIM>& a_outDomain,
                       int a_sign,
                       int a_rounds,
                       int a_verbosity)
 {
-  fftx::box_t<DIM> inputDomain = domainFromSize(a_tfm.inputSize());
-  fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
-
-  fftx::array_t<DIM, std::complex<double>> inRand(inputDomain);
-  fftx::array_t<DIM, std::complex<double>> inRandMult(inputDomain);
-  fftx::array_t<DIM, T_OUT> outRand(outputDomain);
-  fftx::array_t<DIM, T_OUT> outRandMult(outputDomain);
-  fftx::array_t<DIM, std::complex<double>> rotatorUp(inputDomain);
-  fftx::array_t<DIM, T_OUT> outRandMultRot(outputDomain);
+  fftx::array_t<DIM, std::complex<double>> inRand(a_inDomain);
+  fftx::array_t<DIM, std::complex<double>> inRandMult(a_inDomain);
+  fftx::array_t<DIM, T_OUT> outRand(a_outDomain);
+  fftx::array_t<DIM, T_OUT> outRandMult(a_outDomain);
+  fftx::array_t<DIM, std::complex<double>> rotatorUp(a_inDomain);
+  fftx::array_t<DIM, T_OUT> outRandMultRot(a_outDomain);
   double errtest3frequencyDim[DIM];
   double errtest3frequency = 0.;
   for (int d = 0; d < DIM; d++)
     {
       // frequency-shift test in dimension d
       errtest3frequencyDim[d] = 0.;
-      // Recall outputDomain is whole domain,
-      // but inputDomain may be truncated;
-      // rotatorUp is defined on inputDomain,
-      // but based on full outputDomain.
-      setRotator(rotatorUp, outputDomain, d, 1);
+      // Recall a_outDomain is whole domain, but a_inDomain may be truncated;
+      // rotatorUp is defined on a_inDomain, but based on the full a_outDomain.
+      setRotator(rotatorUp, a_outDomain, d, 1);
       for (int itn = 1; itn <= a_rounds; itn++)
         {
           unifComplexArray(inRand);
 
           productArrays(inRandMult, inRand, rotatorUp);
-          transformCall(a_tfm, inRand, outRand, a_verbosity);
-          transformCall(a_tfm, inRandMult, outRandMult, a_verbosity);
+          DFTfunctionDevice(a_dftFunction, inRand, outRand);
+          DFTfunctionDevice(a_dftFunction, inRandMult, outRandMult);
           rotate(outRandMultRot, outRandMult, d, a_sign);
           double err = absMaxDiffArray(outRandMultRot, outRand);
           updateMax(errtest3frequencyDim[d], err);
@@ -682,61 +659,109 @@ double test3frequency(Transformer& a_tfm,
   return errtest3frequency;
 }
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-double test3Transform(Transformer& a_tfm,
-                      int a_sign,
-                      int a_rounds,
-                      int a_verbosity)
+template<int DIM, typename T_IN, typename T_OUT>
+double test3DFTfunction(fftx::handle_t (a_dftFunction)
+                        (fftx::array_t<DIM, T_IN>&,
+                         fftx::array_t<DIM, T_OUT>&),
+                        const fftx::box_t<DIM>& a_inDomain,
+                        const fftx::box_t<DIM>& a_outDomain,
+                        int a_sign,
+                        int a_rounds,
+                        int a_verbosity)
 {
   double errtest3 = 0.;
 
   updateMax(errtest3,
-            test3time<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_sign, a_rounds, a_verbosity));
+            test3time(a_dftFunction, a_inDomain, a_outDomain,
+                      a_sign, a_rounds, a_verbosity));
   
   updateMax(errtest3,
-            test3frequency<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_sign, a_rounds, a_verbosity));
+            test3frequency(a_dftFunction, a_inDomain, a_outDomain,
+                           a_sign, a_rounds, a_verbosity));
   
   if (a_verbosity >= SHOW_CATEGORIES)
     {
-      printf("%dD Test 3 (shifts) in %d rounds: max error %11.5e\n",
-             DIM, a_rounds, errtest3);
+      printf("%dD Test 3 (shifts) in %d rounds: max error %11.5e\n", DIM, a_rounds, errtest3);
     }
   return errtest3;
 }
 
 
-template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-void verifyTransform(Transformer& a_tfm,
-                     int a_sign,
-                     int a_rounds,
-                     int a_verbosity)
+template<int DIM, typename T_IN, typename T_OUT>
+void verifyDFTfunction(fftx::handle_t (a_dftFunction)
+                       (fftx::array_t<DIM, T_IN>&,
+                        fftx::array_t<DIM, T_OUT>&),
+                       const fftx::box_t<DIM>& a_inDomain,
+                       const fftx::box_t<DIM>& a_outDomain,
+                       const fftx::point_t<DIM>& a_fullExtents,
+                       int a_sign,
+                       int a_rounds,
+                       int a_verbosity)
 {
   double err = 0.;
 
   updateMax(err,
-            test1Transform<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_rounds, a_verbosity));
+            test1DFTfunction(a_dftFunction, a_inDomain, a_outDomain,
+                             a_rounds, a_verbosity));
 
   updateMax(err,
-            test2Transform<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_sign, a_rounds, a_verbosity));
+            test2DFTfunction(a_dftFunction, a_inDomain, a_outDomain,
+                             a_fullExtents, a_sign, a_rounds, a_verbosity));
 
   updateMax(err,
-            test3Transform<DIM, T_IN, T_OUT, Transformer>
-            (a_tfm, a_sign, a_rounds, a_verbosity));
+            test3DFTfunction(a_dftFunction, a_inDomain, a_outDomain,
+                             a_sign, a_rounds, a_verbosity));
 
-  printf("%dD test on %s in %d rounds max error %11.5e\n",
-         DIM, a_tfm.name().c_str(), a_rounds, err);
+  printf("%dD test in %d rounds max error %11.5e\n", DIM, a_rounds, err);
 }
 
+
+template<int DIM>
+void verifyDimension(fftx::box_t<DIM> a_domain,
+                     fftx::box_t<DIM> a_fdomain,
+                     int a_rounds,
+                     fftx::handle_t (a_mddft)
+                     (fftx::array_t<DIM, std::complex<double>>&,
+                      fftx::array_t<DIM, std::complex<double>>&),
+                     fftx::handle_t (a_imddft)
+                     (fftx::array_t<DIM, std::complex<double>>&,
+                      fftx::array_t<DIM, std::complex<double>>&),
+                     fftx::handle_t (a_prdft)
+                     (fftx::array_t<DIM, double>&,
+                      fftx::array_t<DIM, std::complex<double>>&),
+                     fftx::handle_t (a_iprdft)
+                     (fftx::array_t<DIM, std::complex<double>>&,
+                      fftx::array_t<DIM, double>&),
+                     int a_verbosity)
+{
+  // std::cout << "*******************************************" << std::endl;
+  // std::cout << DIM << "D domain = " << verify::domain1 << std::endl;
+  // std::cout << "*******************************************" << std::endl;
+
+  fftx::point_t<DIM> fullextents = a_domain.extents();
+
+  std::cout << "***** test " << DIM << "D MDDFT on complex "
+            << a_domain << std::endl;
+  verifyDFTfunction(a_mddft, a_domain, a_domain, fullextents, -1, a_rounds, a_verbosity);
+
+  std::cout << "***** test " << DIM << "D IMDDFT on complex "
+            << a_domain << std::endl;
+  verifyDFTfunction(a_imddft, a_domain, a_domain, fullextents, 1, a_rounds, a_verbosity);
+  
+  std::cout << "***** test " << DIM << "D PRDFT from real "
+            << a_domain << " to complex " << a_fdomain << std::endl;
+  verifyDFTfunction(a_prdft, a_domain, a_fdomain, fullextents, -1, a_rounds, a_verbosity);
+
+  std::cout << "***** test " << DIM << "D IPRDFT from complex "
+            << a_fdomain << " to real " << a_domain << std::endl;
+  verifyDFTfunction(a_iprdft, a_fdomain, a_domain, fullextents, 1, a_rounds, a_verbosity);
+}
+                    
 
 int main(int argc, char* argv[])
 {
   // { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   printf("Usage:  %s [verbosity=0] [rounds=20]\n", argv[0]);
-  printf("verbosity 0 for summary, 1 for categories, 2 for subtests, 3 for rounds\n");
   int verbosity = 0;
   int rounds = 20;
   if (argc > 1)
@@ -755,59 +780,72 @@ int main(int argc, char* argv[])
   std::random_device rd;
   generator = std::mt19937(rd());
   unifRealDist = std::uniform_real_distribution<double>(-0.5, 0.5);
-
-    // last entry is { 0, 0, 0 }
-  int numentries = sizeof ( AllSizes3 ) / sizeof ( fftx::point_t<3> ) - 1;
-  
-  for ( int ind = 0; ind < numentries; ind++ )
+  for (int d = 0; d < 3; d++)
     {
-      fftx::point_t<3> sz = AllSizes3[ind];
-
-      for (int d = 0; d < 3; d++)
-        {
-          unifInt[d] = std::uniform_int_distribution<int>(1, sz[d]);
-        }
-
-      {
-        fftx::mddft<3> tfm(sz);
-        if (tfm.defined())
-          {
-            verifyTransform
-              <3, std::complex<double>, std::complex<double>, fftx::mddft<3>>
-              (tfm, -1, rounds, verbosity);
-          }
-       }
-
-      {
-        fftx::imddft<3> tfm(sz);
-        if (tfm.defined())
-          {
-            verifyTransform
-              <3, std::complex<double>, std::complex<double>, fftx::imddft<3>>
-              (tfm, 1, rounds, verbosity);
-          }
-       }
-
-      {
-        fftx::mdprdft<3> tfm(sz);
-        if (tfm.defined())
-          {
-            verifyTransform
-              <3, double, std::complex<double>, fftx::mdprdft<3>>
-              (tfm, -1, rounds, verbosity);
-          }
-      }
-
-      {
-        fftx::imdprdft<3> tfm(sz);
-        if (tfm.defined())
-          {
-            verifyTransform
-              <3, std::complex<double>, double, fftx::imdprdft<3>>
-              (tfm, 1, rounds, verbosity);
-          }
-      }
+      unifInt[d] = std::uniform_int_distribution<int>(verify::domain3.lo[d],
+                                                      verify::domain3.hi[d]);
     }
+
+  /*
+  // printf("Call mddft1::init()\n");
+  mddft1::init();
+  // printf("Call imddft1::init()\n");
+  imddft1::init();
+  // printf("Call prdft1::init()\n");
+  prdft1::init();
+  // printf("Call iprdft1::init()\n");
+  iprdft1::init();
+
+  verifyDimension(verify::domain1, verify::fdomain1, rounds,
+                  mddft1::transform, imddft1::transform,
+                  prdft1::transform, iprdft1::transform,
+                  verbosity);
+  
+  mddft1::destroy();
+  imddft1::destroy();
+  prdft1::destroy();
+  iprdft1::destroy();
+  */
+
+  /*
+  // printf("Call mddft2::init()\n");
+  mddft2::init();
+  // printf("Call imddft2::init()\n");
+  imddft2::init();
+  // printf("Call prdft2::init()\n");
+  prdft2::init();
+  // printf("Call iprdft2::init()\n");
+  iprdft2::init();
+
+  verifyDimension(verify::domain2, verify::fdomain2, rounds,
+                  mddft2::transform, imddft2::transform,
+                  prdft2::transform, iprdft2::transform,
+                  verbosity);
+  
+  mddft2::destroy();
+  imddft2::destroy();
+  prdft2::destroy();
+  iprdft2::destroy();
+  */
+
+  // printf("Call mddft3::init()\n");
+  mddft3::init();
+  // printf("Call imddft3::init()\n");
+  imddft3::init();
+  // printf("Call prdft3::init()\n");
+  prdft3::init();
+  // printf("Call iprdft3::init()\n");
+  iprdft3::init();
+
+  verifyDimension(verify::domain3, verify::fdomain3, rounds,
+                  mddft3::transform, imddft3::transform,
+                  prdft3::transform, iprdft3::transform,
+                  verbosity);
+  
+  mddft3::destroy();
+  imddft3::destroy();
+  prdft3::destroy();
+  iprdft3::destroy();
 
   printf("%s: All done, exiting\n", argv[0]);
   return 0;
