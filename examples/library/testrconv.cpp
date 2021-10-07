@@ -44,9 +44,10 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
 
 template<int DIM, class Transformer>
 void convolutionDevice(Transformer& a_transformer,
-                       array_t<DIM, double>& a_input,
-                       array_t<DIM, double>& a_output,
-                       array_t<DIM, double>& a_symbol)
+                       fftx::array_t<DIM, double>& a_input,
+                       fftx::array_t<DIM, double>& a_output,
+                       fftx::array_t<DIM, double>& a_symbol,
+                       int a_verbosity)
 {
   auto inputDomain = a_input.m_domain;
   auto outputDomain = a_output.m_domain;
@@ -84,6 +85,21 @@ void convolutionDevice(Transformer& a_transformer,
 
   DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
                   MEM_COPY_DEVICE_TO_HOST);
+
+  if (a_verbosity >= SHOW_ROUNDS)
+    {
+      double maxOut = 0.;
+      double* outputHostPtr = a_output.m_data.local();
+      for (int ind = 0; ind < output_size; ind++)
+        {
+          updateMaxAbs<double>(maxOut, outputHostPtr[ind]);
+        }
+      double tol = 1.e-7;
+      if (maxOut < tol)
+        {
+          std::cout << "transform max output = " << maxOut << std::endl;
+        }
+    }
 }
 
 
@@ -95,9 +111,9 @@ double testConstantSymbol(Transformer& a_transformer,
                           int a_verbosity)
 {
   printf("calling testConstantSymbol<%d>\n", DIM);
-  array_t<DIM, double> input(a_domain);
-  array_t<DIM, double> output(a_domain);
-  array_t<DIM, double> symbol(a_fdomain);
+  fftx::array_t<DIM, double> input(a_domain);
+  fftx::array_t<DIM, double> output(a_domain);
+  fftx::array_t<DIM, double> symbol(a_fdomain);
 
   double scaling = 1. / (a_domain.size()*1.);
   setConstant(symbol, scaling);
@@ -105,7 +121,7 @@ double testConstantSymbol(Transformer& a_transformer,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifRealArray(input);
-      convolutionDevice(a_transformer, input, output, symbol);
+      convolutionDevice(a_transformer, input, output, symbol, a_verbosity);
       double err = absMaxDiffArray(input, output);
       updateMax(errConstantSymbol, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -128,13 +144,13 @@ double testDelta(Transformer& a_transformer,
                  int a_verbosity)
 {
   printf("calling testDelta<%d>\n", DIM);
-  array_t<DIM, double> input(a_domain);
-  array_t<DIM, double> output(a_domain);
-  array_t<DIM, double> symbol(a_fdomain);
+  fftx::array_t<DIM, double> input(a_domain);
+  fftx::array_t<DIM, double> output(a_domain);
+  fftx::array_t<DIM, double> symbol(a_fdomain);
 
   setConstant(input, 2.);
 
-  point_t<DIM> cornerLo = a_domain.lo;
+  fftx::point_t<DIM> cornerLo = a_domain.lo;
   double scaling = 1. / (a_domain.size()*1.);
   forall([cornerLo, scaling](double(&v), const fftx::point_t<DIM>& p)
            {
@@ -148,7 +164,7 @@ double testDelta(Transformer& a_transformer,
                }
            }, symbol);
 
-  convolutionDevice(a_transformer, input, output, symbol);
+  convolutionDevice(a_transformer, input, output, symbol, a_verbosity);
   double errDelta = absMaxDiffArray(input, output);
   if (a_verbosity >= SHOW_CATEGORIES)
     {
@@ -164,9 +180,9 @@ double testPoisson(Transformer& a_transformer,
                    int a_verbosity)
 {
   printf("calling testPoisson<%d>\n", DIM);
-  array_t<DIM, double> input(a_domain);
-  array_t<DIM, double> output(a_domain);
-  array_t<DIM, double> symbol(a_fdomain);
+  fftx::array_t<DIM, double> input(a_domain);
+  fftx::array_t<DIM, double> output(a_domain);
+  fftx::array_t<DIM, double> symbol(a_fdomain);
 
   fftx::point_t<DIM> lo = a_domain.lo;
   fftx::point_t<DIM> hi = a_domain.hi;
@@ -204,7 +220,7 @@ double testPoisson(Transformer& a_transformer,
              }
          }, input);
 
-  point_t<DIM> cornerLo = a_domain.lo;
+  fftx::point_t<DIM> cornerLo = a_domain.lo;
   size_t normalize = a_domain.size();
   forall([cornerLo, extents, normalize](double(&v), const fftx::point_t<DIM>& p)
          {
@@ -224,9 +240,9 @@ double testPoisson(Transformer& a_transformer,
              }
          }, symbol);
   
-  convolutionDevice(a_transformer, input, output, symbol);
+  convolutionDevice(a_transformer, input, output, symbol, a_verbosity);
 
-  array_t<DIM,double> lap2output(a_domain);
+  fftx::array_t<DIM,double> lap2output(a_domain);
   laplacian2periodic(lap2output, output);
   
   double errPoisson = absMaxDiffArray(lap2output, input);
@@ -272,20 +288,20 @@ void rconvSize(fftx::point_t<DIM> a_size,
                int a_rounds,
                int a_verbosity)
 {
-  box_t<3> fulldomain(point_t<3>
+  box_t<3> fulldomain(fftx::point_t<3>
                       ({{rconv_dims::offx+1,
                          rconv_dims::offy+1,
                          rconv_dims::offz+1}}),
-                      point_t<3>
+                      fftx::point_t<3>
                       ({{rconv_dims::offx+a_size[0],
                          rconv_dims::offy+a_size[1],
                          rconv_dims::offz+a_size[2]}}));
   
-  box_t<3> halfdomain(point_t<3>
+  box_t<3> halfdomain(fftx::point_t<3>
                       ({{rconv_dims::offx+1,
                          rconv_dims::offy+1,
                          rconv_dims::offz+1}}),
-                      point_t<3>
+                      fftx::point_t<3>
                       ({{rconv_dims::offx+a_size[0]/2+1,
                          rconv_dims::offy+a_size[1],
                          rconv_dims::offz+a_size[2]}}));
