@@ -1,3 +1,4 @@
+
 #! /bin/sh
 
 ##  Simply call python (gen_files.py) to build each library
@@ -16,3 +17,6 @@ python gen_files.py fftx_rconv cuda
 ##  python gen_files.py fftx_mdprdft hip false
 ##  python gen_files.py fftx_rconv hip
 
+##  Build DFT batch for CPU
+
+python gen_dftbatch.py fftx_dftbat cpu true
