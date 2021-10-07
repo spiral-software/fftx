@@ -271,7 +271,7 @@ def cmake_library ( type ):
     
     _str = _str + 'install ( TARGETS\n'
     _str = _str + '          ${_lib_name}\n'
-    _str = _str + '          DESTINATION ${CMAKE_BINARY_DIR}/bin )\n\n'
+    _str = _str + '          DESTINATION ${CMAKE_BINARY_DIR}/lib )\n\n'
 
     return _str;
 
