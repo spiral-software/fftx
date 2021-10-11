@@ -1,7 +1,10 @@
-#ifdef FFTX_HIP
+#ifndef DEVICE_MACROS_HEADER
+#define DEVICE_MACROS_HEADER
+#if defined(FFTX_HIP)
 #include <hip/hip_runtime.h>
 #include <hipfft.h>
 #include "rocfft.h"
+#define DEVICE_SUCCESS hipSuccess
 #define DEVICE_EVENT_T hipEvent_t
 #define DEVICE_EVENT_CREATE hipEventCreate
 #define DEVICE_MALLOC hipMalloc
@@ -29,9 +32,10 @@
 #define DEVICE_FFT_SUCCESS HIPFFT_SUCCESS
 #define DEVICE_FFT_FORWARD HIPFFT_FORWARD
 #define DEVICE_FFT_INVERSE HIPFFT_BACKWARD
-#else
+#elif defined(__CUDACC__)
 #include <cufft.h>
-#include <helper_cuda.h>
+// #include <helper_cuda.h>
+#define DEVICE_SUCCESS cudaSuccess
 #define DEVICE_EVENT_T cudaEvent_t
 #define DEVICE_EVENT_CREATE cudaEventCreate
 #define DEVICE_MALLOC cudaMalloc
@@ -59,4 +63,18 @@
 #define DEVICE_FFT_SUCCESS CUFFT_SUCCESS
 #define DEVICE_FFT_FORWARD CUFFT_FORWARD
 #define DEVICE_FFT_INVERSE CUFFT_INVERSE
+#else
+// neither CUDA nor HIP
+#define DEVICE_SUCCESS 0
+#endif
+#include <iostream>
+// Example of use: DEVICE_CHECK(DEVICE_MEM_COPY(...), "memcpy at step 2");
+inline void DEVICE_CHECK(int a_rc, const std::string& a_name)
+{
+   if (a_rc != DEVICE_SUCCESS)
+     {
+        std::cerr << a_name << " failed with code " << a_rc << std::endl;
+        exit(-1);
+     }
+}
 #endif

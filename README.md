@@ -52,31 +52,40 @@ git clone https://www.github.com/spiral-software/fftx
 
 You can build the examples for CPU or GPU (for those examples that support GPU).
 By default they are built for CPU (this is your only option if your machine
-doesn't have a GPU or the NVIDIA nvcc compiler).  To build the software do the
-following:
+doesn't have a GPU or the NVIDIA nvcc compiler).  To build the software,
+first do the following to run SPIRAL to generate code for all the sizes in
+`examples/library/cube-sizes.txt`:
 ```
-mkdir build
-cd build
-cmake ..				# build for CPU, *OR*
-cmake -D_codegen=CPU ..			# build for CPU, *OR*
-cmake -D_codegen=GPU ..			# build for GPU
+pushd examples/library
+./create_lib_code.sh
+popd
 ```
-If you are building on Linux or Linux like systems then do:
+If you are using HIP instead of CUDA, you will need to change
+references to `cuda` in `create_lib_code.sh` to `hip`.
+This can take up to 3 hours.
+
+Then compile and link by:
 ```
-make install
+cmake -S . -B build -D_codegen=CPU      # build for CPU, *or*
+cmake -S . -B build -D_codegen=GPU      # build for GPU, *or*
+cmake -S . -B build -D_codegen=HIP      # build for HIP
+```
+If you are building on Linux or Linux-like systems then do:
+```
+cmake --build build --target install
 ```
 or, if you are building on Windows (for Release configuration), do:
 ```
-cmake --build . --config Release --target install
+cmake --build build --target install --config Release
 ```
 
 Currently, **FFTX** builds a number of example programs; the programs will be
 installed in the *build/bin* folder and can be run from there; e.g.,
 ```
 cd build/bin
-./testhockney
+./testcompare_device
 ./testrconv
-./testmddft
+./testverify
 ```
 
 ## Examples Structure
