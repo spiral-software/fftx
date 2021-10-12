@@ -36,19 +36,19 @@ set ( SRCS ../common/gpu.cu ../common/mddft3d.cpp )
 
 set ( _generator_script COMPLETE )		## generator script is complete, do not add preamble
 
+##  make the include directories available for all targets
+include_directories ( ${${PROJECT_NAME}_BINARY_DIR}
+		      ${${PROJECT_NAME}_SOURCE_DIR}
+		      ${${PROJECT_NAME}_SOURCE_DIR}/../common
+		      ${SPIRAL_CUDA_INCLUDE_DIRS}
+		      ${MPI_CXX_INCLUDE_DIRS}
+		      ${CMAKE_BINARY_DIR} )
+		  
 manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
 ##  list ( APPEND _all_build_srcs ${BUILD_PROGRAM}.cpp )		## ${_suffix}
 
 add_library                ( ${_libname} STATIC ${SRCS} ${_all_build_srcs} )
 target_compile_options     ( ${_libname} PRIVATE ${ADDL_COMPILE_FLAGS} )
-target_include_directories ( ${_libname}
-                             PUBLIC
-			         ${${PROJECT_NAME}_BINARY_DIR}
-				 ${${PROJECT_NAME}_SOURCE_DIR}
-				 ${${PROJECT_NAME}_SOURCE_DIR}/../common
-				 ${SPIRAL_CUDA_INCLUDE_DIRS}
-				 ${MPI_CXX_INCLUDE_DIRS}
-				 ${CMAKE_BINARY_DIR} )
 add_dependencies           ( ${_libname} ${_all_build_deps} )
 
 ##  Add custom command to run mpicxx to build the test program...
@@ -65,7 +65,18 @@ else ()
     message ( STATUS "Run custom command to build '${BUILD_PROGRAM}'" )
     include ( FindUnixCommands )
     add_custom_command ( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${BUILD_PROGRAM}
-	COMMAND ${BASH} -c "${MPI_CXX_COMPILER} -D__FILEROOT__=${_prefixes} -I${${PROJECT_NAME}_BINARY_DIR} -I${${PROJECT_NAME}_SOURCE_DIR} -I${${PROJECT_NAME}_SOURCE_DIR}/../common -I${SPIRAL_CUDA_INCLUDE_DIRS} -I${MPI_CXX_INCL0} -I${MPI_CXX_INCL1} -I${CMAKE_BINARY_DIR} -std=c++11 -o ${CMAKE_CURRENT_BINARY_DIR}/${BUILD_PROGRAM} ${${PROJECT_NAME}_SOURCE_DIR}/${BUILD_PROGRAM}.cpp ${MPI_CXX_LIB0} ${MPI_CXX_LIB1} -L ${SPIRAL_CUDA_LIBRARIES} -lcudart -L${${PROJECT_NAME}_BINARY_DIR} -l${_libname}" 
+	COMMAND ${BASH} -c "${MPI_CXX_COMPILER} -D__FILEROOT__=${_prefixes} \
+	-I${${PROJECT_NAME}_BINARY_DIR} \
+	-I${${PROJECT_NAME}_SOURCE_DIR} \
+	-I${${PROJECT_NAME}_SOURCE_DIR}/../common \
+	-I${SPIRAL_CUDA_INCLUDE_DIRS} \
+	-I${MPI_CXX_INCL0} -I${MPI_CXX_INCL1} \
+	-I${CMAKE_BINARY_DIR} \
+	-std=c++11 \
+	-o ${CMAKE_CURRENT_BINARY_DIR}/${BUILD_PROGRAM} \
+	${${PROJECT_NAME}_SOURCE_DIR}/${BUILD_PROGRAM}.cpp \
+	${MPI_CXX_LIB0} ${MPI_CXX_LIB1} \
+	-L ${SPIRAL_CUDA_LIBRARIES} -lcudart -L${${PROJECT_NAME}_BINARY_DIR} -l${_libname}" 
 	DEPENDS ${_libname}
 	VERBATIM
 	COMMENT "Generating ${BUILD_PROGRAM}" )
