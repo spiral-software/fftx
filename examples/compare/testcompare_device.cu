@@ -160,6 +160,96 @@ mdprdftDevice(DEVICE_FFT_D2Z);
 deviceTransform<std::complex<double>, double>
 imdprdftDevice(DEVICE_FFT_Z2D);
 
+void setArray3dElementConj(fftx::array_t<3, std::complex<double> >& a_arr,
+                           int a_dst0, int a_dst1, int a_dst2,
+                           int a_src0, int a_src1, int a_src2)
+{
+  fftx::box_t<3> arrDomain = a_arr.m_domain;
+  std::complex<double>* arrPtr = a_arr.m_data.local();
+  fftx::point_t<3> pointDst({{a_dst0, a_dst1, a_dst2}});
+  fftx::point_t<3> pointSrc({{a_src0, a_src1, a_src2}});
+  auto indDst = positionInBox(pointDst, arrDomain);
+  auto indSrc = positionInBox(pointSrc, arrDomain);
+  arrPtr[indDst] = std::conj(arrPtr[indSrc]);
+}
+
+template<typename T_IN, typename T_OUT>
+void symmetrize(fftx::array_t<3, T_IN>& a_arr,
+                fftx::box_t<3> a_fullDomain)
+{ };
+
+// Modify complex array so that it actually does transform to a real array.
+template<>
+void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<double> >& a_arr,
+                                              fftx::box_t<3> a_fullDomain)
+{
+  fftx::box_t<3> arrDomain = a_arr.m_domain;
+  std::complex<double>* arrPtr = a_arr.m_data.local();
+  
+  fftx::point_t<3> lo = a_fullDomain.lo;
+  fftx::point_t<3> hi = a_fullDomain.hi;
+  fftx::point_t<3> extent = a_fullDomain.extents();
+
+  int k0 = extent[0]/2;
+  int k1 = extent[1]/2; 
+  int k2 = extent[2]/2;
+  
+  fftx::point_t<3> maxpt = lo;
+  for (int d = 0; d < 3; d++)
+    {
+      if (extent[d] % 2 == 0)
+        { // length is even in dimension d
+          maxpt[d] += extent[d]/2;
+        }
+    }
+
+  // POINT must be real.
+  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
+    for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
+      for (int pt2 = lo[2]; pt2 <= maxpt[2]; pt2 += k2)
+        {
+          fftx::point_t<3> point({{pt0, pt1, pt2}});
+          auto ind = positionInBox(point, arrDomain);
+          arrPtr[ind].imag(0.);
+        }
+
+  // ROWS in first dimension are truncated from the array.
+  
+  // ROWS in second dimension must have symmetry.
+  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
+    {
+      for (int off1 = k1+1; off1 < extent[1]; off1++)
+        {
+          setArray3dElementConj(a_arr,
+                                pt0, lo[1] + off1, lo[2],
+                                pt0, lo[1] + extent[1] - off1, lo[2]);
+        }
+    }
+
+  // ROWS in third dimension must have symmetry.
+  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
+    for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
+      {
+        for (int off2 = k2+1; off2 < extent[2]; off2++)
+          {
+            setArray3dElementConj(a_arr,
+                                  pt0, pt1, lo[2] + off2,
+                                  pt0, pt1, lo[2] + extent[2] - off2);
+          }
+      }
+
+  // PLANE through the point must have symmetry.
+  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
+    {
+      for (int off1 = k1+1; off1 < extent[1]; off1++)
+        for (int off2 = 1; off2 < extent[2]; off2++)
+          {
+            setArray3dElementConj(a_arr,
+                                  pt0, lo[1] + off1, lo[2] + off2,
+                                  pt0, lo[1] + extent[1] - off1, lo[2] + extent[2] - off2);
+          }
+    }
+}
 
 template<typename T_IN, typename T_OUT, class Transformer>
 void compareSize(Transformer& a_tfm,
@@ -189,12 +279,12 @@ void compareSize(Transformer& a_tfm,
 
   fftx::box_t<3> inputDomain(fftx::point_t<3>({{1, 1, 1}}),
                              fftx::point_t<3>({{inputSize[0],
-                                     inputSize[1],
-                                     inputSize[2]}}));
+                                                inputSize[1],
+                                                inputSize[2]}}));
   fftx::box_t<3> outputDomain(fftx::point_t<3>({{1, 1, 1}}),
                               fftx::point_t<3>({{outputSize[0],
-                                      outputSize[1],
-                                      outputSize[2]}}));
+                                                 outputSize[1],
+                                                 outputSize[2]}}));
   
   // fftx::array_t<3,std::complex<double>> inputArrayHost(test_comp::domain);
   fftx::array_t<3, T_IN> inputArrayHost(inputDomain);
@@ -206,6 +296,9 @@ void compareSize(Transformer& a_tfm,
          {
            setRand(v);
          }, inputArrayHost);
+  // This symmetrizes only for complex input and real output,
+  // in order to get a complex array that transforms to a real array.
+  symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain);
   T_IN* inputHostPtr = inputArrayHost.m_data.local();
   // additional code for GPU programs
   char* bufferDevicePtr;
