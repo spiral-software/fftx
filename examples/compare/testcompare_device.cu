@@ -187,7 +187,6 @@ void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<doub
   std::complex<double>* arrPtr = a_arr.m_data.local();
   
   fftx::point_t<3> lo = a_fullDomain.lo;
-  fftx::point_t<3> hi = a_fullDomain.hi;
   fftx::point_t<3> extent = a_fullDomain.extents();
 
   int k0 = extent[0]/2;
