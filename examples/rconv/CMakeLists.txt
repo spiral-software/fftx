@@ -25,3 +25,7 @@ set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
 add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
+
+##  Hack needed so that we find the local rconv.h first (the perils of having
+##  multiple include files named the same across different directories)
+target_include_directories ( ${BUILD_PROGRAM} BEFORE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} )
