@@ -16,7 +16,7 @@ project ( examples )
 
 ##                  subdir name   CPU       GPU
 
-set ( _library_includes )
+set ( _library_includes library)
 manage_add_subdir ( library       FALSE     TRUE )
 
 message ( STATUS "Library include dirs = ${_library_includes}" )
@@ -41,7 +41,11 @@ if ( ${MPI_FOUND} )
     ##  MPI installation found
     setup_mpi_variables ()
 
-    manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
+    if ( ${_codegen} STREQUAL "HIP" )
+	message ( STATUS "MPI example is not built for HIP" )
+    else ()
+	manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
+    endif ()
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()
