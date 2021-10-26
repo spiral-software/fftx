@@ -50,6 +50,19 @@ git clone https://www.github.com/spiral-software/fftx
 **NOTE:** Before attempting to build ensure you have set environment variable
 **SPIRAL_HOME** to point to your **spiral-software** instance.
 
+FFTX builds libraries of transforms for different sizes.  The library source
+code is generated from Spiral script specifications, and must be created before
+building FFTX.  To create the library source code do the following:
+```
+cd fftx			## your FFTX install directory
+cd examples/library
+./create_lib_code.sh
+cd ../..
+```
+This step can take quite a long time depending on the number of transforms and
+set of sizes to create.  By default the code created is for CUDA (see simple
+change in create_lib_code to build for HIP).  
+
 You can build the examples for CPU or GPU (for those examples that support GPU).
 By default they are built for CPU (this is your only option if your machine
 doesn't have a GPU or the NVIDIA nvcc compiler).  To build the software do the

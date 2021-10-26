@@ -20,3 +20,4 @@ python gen_files.py fftx_rconv cuda
 ##  Build DFT batch for CPU
 
 python gen_dftbat.py fftx_dftbat cpu true
+python gen_dftbat.py fftx_dftbat cpu false
