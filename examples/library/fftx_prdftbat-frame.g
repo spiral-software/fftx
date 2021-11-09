@@ -27,7 +27,7 @@ if 1 = 1 then
     name := prefix::StringInt(nbatch)::"_"::StringInt(szns[1])::"_"::StringInt(Length(ns))::"d";
     PrintLine("fftx_prdft-batch: batch = ", nbatch, " ns = ", szns, ";\t\t##PICKME##");
     t := let(batch := nbatch,
-        apat := When(fwd, APar, AVec),
+        apat := When(true, APar, AVec),
         dft := When(fwd, MDPRDFT, IMDPRDFT),
         k := sign,
         TFCall(TTensorI(dft(ns, k), batch, apat, apat), 
