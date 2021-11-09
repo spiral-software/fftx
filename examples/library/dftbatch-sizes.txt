@@ -15,11 +15,27 @@ nbatch := 1;  szns := [ 256 ];
 nbatch := 1;  szns := [ 512 ];
 nbatch := 1;  szns := [ 1024 ];
 
-nbatch := 16;  szns := [ 32 ];
-nbatch := 16;  szns := [ 60 ];
-nbatch := 16;  szns := [ 64 ];
-nbatch := 16;  szns := [ 128 ];
-nbatch := 16;  szns := [ 256 ];
-nbatch := 16;  szns := [ 512 ];
-nbatch := 16;  szns := [ 1024 ];
+nbatch := 4;  szns := [ 32 ];
+nbatch := 4;  szns := [ 60 ];
+nbatch := 4;  szns := [ 64 ];
+nbatch := 4;  szns := [ 128 ];
+nbatch := 4;  szns := [ 256 ];
+nbatch := 4;  szns := [ 512 ];
+nbatch := 4;  szns := [ 1024 ];
+
+##  nbatch := 16;  szns := [ 32 ];
+##  nbatch := 16;  szns := [ 60 ];
+##  nbatch := 16;  szns := [ 64 ];
+##  nbatch := 16;  szns := [ 128 ];
+##  nbatch := 16;  szns := [ 256 ];
+##  nbatch := 16;  szns := [ 512 ];
+##  nbatch := 16;  szns := [ 1024 ];
+
+##  nbatch := 64;  szns := [ 32 ];
+##  nbatch := 64;  szns := [ 60 ];
+##  nbatch := 64;  szns := [ 64 ];
+##  nbatch := 64;  szns := [ 128 ];
+##  nbatch := 64;  szns := [ 256 ];
+##  nbatch := 64;  szns := [ 512 ];
+##  nbatch := 64;  szns := [ 1024 ];
 
