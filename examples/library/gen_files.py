@@ -155,9 +155,9 @@ def body_public_header ():
 
     _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
     _str = _str + 'extern "C" {\n\n'
-    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( fftx::point_t<3> req );\n'
-    _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( fftx::point_t<3> req, double * output, double * input, double * sym );\n'
-    _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( fftx::point_t<3> req );\n\n'
+    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( int * req );\n'  ##  fftx::point_t<3> req );\n'
+    _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input, double * sym );\n'
+    _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( int * req );\n\n'
     _str = _str + '}\n\n#endif\n\n'
 
     return _str;
@@ -254,9 +254,11 @@ def python_cuda_api ( type ):
     _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
     _str = _str + 'extern "C" {\n\n'
     
-    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( fftx::point_t<3> req )\n{\n'
+    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
+    _str = _str + '    fftx::point_t<3> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
+    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
@@ -275,9 +277,11 @@ def python_cuda_api ( type ):
 
     _str = _str + '    return;\n}\n\n'
 
-    _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( fftx::point_t<3> req, double * output, double * input, double * sym )\n{\n'
+    _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input, double * sym )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
+    _str = _str + '    fftx::point_t<3> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
+    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
@@ -294,9 +298,11 @@ def python_cuda_api ( type ):
     _str = _str + '    cudaMemcpy ( output, dev_out, sizeof(double) * ndoub, cudaMemcpyDeviceToHost );\n'
     _str = _str + '    return;\n}\n\n'
 
-    _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( fftx::point_t<3> req )\n{\n'
+    _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
+    _str = _str + '    fftx::point_t<3> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
+    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
