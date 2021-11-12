@@ -152,7 +152,13 @@ def body_public_header ():
     _str = _str + '//  transform repeatedly, and finally tesr down (using destroy function).\n\n'
 
     _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<3> req );\n\n'
-    _str = _str + '#endif\n\n'
+
+    _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
+    _str = _str + 'extern "C" {\n\n'
+    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( fftx::point_t<3> req );\n'
+    _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( fftx::point_t<3> req, double * output, double * input, double * sym );\n'
+    _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( fftx::point_t<3> req );\n\n'
+    _str = _str + '}\n\n#endif\n\n'
 
     return _str;
 
@@ -166,7 +172,8 @@ def library_api ( ):
     _str = _str + '#include <stdlib.h>\n'
     _str = _str + '#include <string.h>\n'
     _str = _str + '#include "' + _file_stem + 'decls.h"\n'
-    _str = _str + '#include "' + _file_stem + 'public.h"\n\n'
+    _str = _str + '#include "' + _file_stem + 'public.h"\n'
+    _str = _str + '#include <helper_cuda.h>\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of size, each element is a struct of type fftx::point_t<3> specifying the X,\n'
@@ -241,6 +248,71 @@ def library_api ( ):
     return _str;
 
 
+def python_cuda_api ( type ):
+    "Sets up the python wrapper API to allow Python to call C++ CUDA or HIP code"
+    _str =        '//  Host-to-Device C/CUDA wrapper functions to permit Python to call the CUDA kernels.\n\n'
+    _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
+    _str = _str + 'extern "C" {\n\n'
+    
+    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( fftx::point_t<3> req )\n{\n'
+    _str = _str + '    //  Get the tuple for the requested size\n'
+    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
+    _str = _str + '    if ( wp == NULL )\n'
+    _str = _str + '        //  Requested size not found -- just return\n'
+    _str = _str + '        return;\n\n'
+
+    _str = _str + '    int ndoub = (int)(req[0] * req[1] * req[2] * 2);\n'
+    _str = _str + '    if ( ndoub == 0 )\n        return;\n\n'
+
+    _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoub );\n'
+    _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoub );\n'
+    _str = _str + '    cudaMalloc ( &dev_sym, sizeof(double) * 1000 );\n'
+    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+
+    _str = _str + '    //  Call the init function\n'
+    _str = _str + '    ( * wp->initfp )();\n'
+    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+
+    _str = _str + '    return;\n}\n\n'
+
+    _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( fftx::point_t<3> req, double * output, double * input, double * sym )\n{\n'
+    _str = _str + '    //  Get the tuple for the requested size\n'
+    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
+    _str = _str + '    if ( wp == NULL )\n'
+    _str = _str + '        //  Requested size not found -- just return\n'
+    _str = _str + '        return;\n\n'
+
+    _str = _str + '    int ndoub = (int)(req[0] * req[1] * req[2] * 2);\n'
+    _str = _str + '    if ( ndoub == 0 )\n        return;\n\n'
+
+    _str = _str + '    cudaMemcpy ( dev_in, input, sizeof(double) * ndoub, cudaMemcpyHostToDevice );\n\n'
+
+    _str = _str + '    //  Call the run function\n'
+    _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
+    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+
+    _str = _str + '    cudaMemcpy ( output, dev_out, sizeof(double) * ndoub, cudaMemcpyDeviceToHost );\n'
+    _str = _str + '    return;\n}\n\n'
+
+    _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( fftx::point_t<3> req )\n{\n'
+    _str = _str + '    //  Get the tuple for the requested size\n'
+    _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( req );\n'
+    _str = _str + '    if ( wp == NULL )\n'
+    _str = _str + '        //  Requested size not found -- just return\n'
+    _str = _str + '        return;\n\n'
+
+    _str = _str + '    cudaFree ( dev_out );\n'
+    _str = _str + '    cudaFree ( dev_in  );\n\n'
+
+    _str = _str + '    //  Tear down / cleanup\n'
+    _str = _str + '    ( * wp->destroyfp ) ();\n'
+    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+
+    _str = _str + '    return;\n}\n\n}\n'
+
+    return _str;
+
+    
 def cmake_library ( type ):
     _str =        '##\n## Copyright (c) 2018-2021, Carnegie Mellon University\n'
     _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
@@ -368,6 +440,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
 
     _api_file = open ( _lib_apifname, 'w' )
     _filebody = library_api ()
+    _filebody = _filebody + python_cuda_api ( _code_type )
     _api_file.write ( _filebody )
     _api_file.close ()
 
