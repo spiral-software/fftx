@@ -17,13 +17,10 @@ fi;
 if fwd then
     prefix := "fftx_prdftbat_";
     sign   := -1;
-    dft    := MDPRDFT;
 else
     prefix := "fftx_iprdftbat_";
     sign   := 1;
-    dft    := IMDPRDFT;
 fi;
-##    dft := When(fwd, MDPRDFT, IMDPRDFT),
 
 if 1 = 1 then
     ns := szns;
@@ -31,9 +28,9 @@ if 1 = 1 then
     PrintLine("fftx_prdft-batch: batch = ", nbatch, " ns = ", szns, ";\t\t##PICKME##");
     t := let(batch := nbatch,
         apat := When(true, APar, AVec),
+        dft := When(fwd, MDPRDFT, IMDPRDFT),
         k := sign,
-	##  name := "dft"::StringInt(Length(ns))::"d_batch",  
-        TFCall(TRC(TTensorI(dft(ns, k), batch, apat, apat)), 
+        TFCall(TTensorI(dft(ns, k), batch, apat, apat), 
             rec(fname := name, params := []))
     );
 
