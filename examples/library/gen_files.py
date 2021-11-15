@@ -10,7 +10,7 @@
 ##      to directory lib_<stem>_srcs
 ##      Create the prototype definitions in a private library include file: <stem>_decls.h
 ##      Create the public header file for the library: <stem>_public.h
-##  Compiling and library is handled by CMake. 
+##  Compiling and library is handled by CMake.
 
 import sys
 import subprocess
@@ -35,8 +35,8 @@ if re.match ( '^.*_.*_', _file_stem ):
     _dims = re.split ( '_', _file_stem )
     _xform_pref = _dims[0]
     _xform_name = _dims[1]
-    _xform_name = _xform_name + '_' 
-    _xform_pref = _xform_pref + '_' 
+    _xform_name = _xform_name + '_'
+    _xform_pref = _xform_pref + '_'
 
 _orig_file_stem = _file_stem
 
@@ -66,7 +66,7 @@ if len ( sys.argv ) >= 4:
         _fwd = 'false'
         _file_stem =  _xform_pref + 'i' + _xform_name
         ##  print ( 'File stem = ' + _file_stem )
-        
+
 ##  Create the library sources directory (if it doesn't exist)
 
 _srcs_dir  = 'lib_' + _file_stem + 'srcs'
@@ -94,7 +94,7 @@ def start_header_file ( type ):
     _str = _str + '//  See LICENSE for details\n\n'
 
     _str = _str + '#include "fftx3.hpp"\n\n'
-    
+
     _str = _str + '#ifndef INITTRANSFORMFUNC\n'
     _str = _str + '#define INITTRANSFORMFUNC\n'
     _str = _str + 'typedef void ( * initTransformFunc ) ( void );\n'
@@ -155,7 +155,7 @@ def body_public_header ():
 
     _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
     _str = _str + 'extern "C" {\n\n'
-    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( int * req );\n'  ##  fftx::point_t<3> req );\n'
+    _str = _str + 'bool ' + _file_stem + 'python_init_wrapper ( int * req );\n'  ##  fftx::point_t<3> req );\n'
     _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input, double * sym );\n'
     _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( int * req );\n\n'
     _str = _str + '}\n\n#endif\n\n'
@@ -189,8 +189,8 @@ def library_api ( ):
 
     _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
     _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this information the\n'
-    _str = _str + '//  user may call the nit function to setup for the transform, then run the\n'
-    _str = _str + '//  transform repeatedly, and finally tesr down (using destroy function).\n'
+    _str = _str + '//  user may call the init function to setup for the transform, then run the\n'
+    _str = _str + '//  transform repeatedly, and finally tear down (using destroy function).\n'
     _str = _str + '//  Returns NULL if requested size is not found\n\n'
 
     _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<3> req )\n'
@@ -198,7 +198,7 @@ def library_api ( ):
     _str = _str + '    int indx;\n'
     _str = _str + '    int numentries = sizeof ( AllSizes3 ) / sizeof ( fftx::point_t<3> ) - 1;    // last entry in { 0, 0, 0 }\n'
     _str = _str + '    transformTuple_t *wp = NULL;\n\n'
-	
+
     _str = _str + '    for ( indx = 0; indx < numentries; indx++ ) {\n'
     _str = _str + '        if ( req[0] == AllSizes3[indx][0] &&\n'
     _str = _str + '             req[1] == AllSizes3[indx][1] &&\n'
@@ -232,12 +232,12 @@ def library_api ( ):
     _str = _str + '    //  Call the init function\n'
     _str = _str + '    ( * wp->initfp )();\n'
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
-	
+
     ##  TODO: Allow optional 3rd arg for symbol
     ##  _str = _str + '    ( * wp->runfp ) ( output, input );\n'
     _str = _str + '    ( * wp->runfp ) ( output, input, sym );\n'
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
-	
+
     _str = _str + '    //  Tear down / cleanup\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
     _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
@@ -253,18 +253,19 @@ def python_cuda_api ( type ):
     _str =        '//  Host-to-Device C/CUDA wrapper functions to permit Python to call the CUDA kernels.\n\n'
     _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
     _str = _str + 'extern "C" {\n\n'
-    
-    _str = _str + 'void ' + _file_stem + 'python_init_wrapper ( int * req )\n{\n'
+
+    _str = _str + 'bool ' + _file_stem + 'python_init_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
     _str = _str + '    fftx::point_t<3> rsz;\n'
     _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
-    _str = _str + '        //  Requested size not found -- just return\n'
-    _str = _str + '        return;\n\n'
+    _str = _str + '        //  Requested size not found -- return false\n'
+    _str = _str + '        return false;\n\n'
 
     _str = _str + '    int ndoub = (int)(req[0] * req[1] * req[2] * 2);\n'
-    _str = _str + '    if ( ndoub == 0 )\n        return;\n\n'
+    _str = _str + '    if ( ndoub == 0 )\n        return false;\n\n'
+    _str = _str + '    //  Reset the device each python run\n    //  cudaDeviceReset();\n\n'
 
     _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoub );\n'
     _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoub );\n'
@@ -272,10 +273,12 @@ def python_cuda_api ( type ):
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
     _str = _str + '    //  Call the init function\n'
+    _str = _str + '    printf ( "' + _file_stem + 'python_init_wrapper():'
+    _str = _str + '    Call [ %d, %d, %d ] init function\\n", req[0], req[1], req[2] );\n'
     _str = _str + '    ( * wp->initfp )();\n'
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
-    _str = _str + '    return;\n}\n\n'
+    _str = _str + '    return true;\n}\n\n'
 
     _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input, double * sym )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
@@ -292,6 +295,8 @@ def python_cuda_api ( type ):
     _str = _str + '    cudaMemcpy ( dev_in, input, sizeof(double) * ndoub, cudaMemcpyHostToDevice );\n\n'
 
     _str = _str + '    //  Call the run function\n'
+    _str = _str + '    printf ( "' + _file_stem + 'python_run_wrapper():'
+    _str = _str + '    Call [ %d, %d, %d ] run function\\n", req[0], req[1], req[2] );\n'
     _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
@@ -308,9 +313,13 @@ def python_cuda_api ( type ):
     _str = _str + '        return;\n\n'
 
     _str = _str + '    cudaFree ( dev_out );\n'
+    _str = _str + '    cudaFree ( dev_sym );\n'
     _str = _str + '    cudaFree ( dev_in  );\n\n'
 
     _str = _str + '    //  Tear down / cleanup\n'
+    _str = _str + '    printf ( "' + _file_stem + 'python_destroy_wrapper():'
+    _str = _str + '    Call [ %d, %d, %d ] destroy function\\n", req[0], req[1], req[2] );\n'
+    _str = _str + '    fflush ( stdout );\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
@@ -318,7 +327,7 @@ def python_cuda_api ( type ):
 
     return _str;
 
-    
+
 def cmake_library ( type ):
     _str =        '##\n## Copyright (c) 2018-2021, Carnegie Mellon University\n'
     _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
@@ -346,7 +355,7 @@ def cmake_library ( type ):
     _str = _str + 'if ( WIN32 )\n'
     _str = _str + '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n'
     _str = _str + 'endif ()\n\n'
-    
+
     _str = _str + 'install ( TARGETS\n'
     _str = _str + '          ${_lib_name}\n'
     _str = _str + '          DESTINATION ${CMAKE_BINARY_DIR}/lib )\n\n'
@@ -400,7 +409,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
         _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
         _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
-        
+
         ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
         ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame.g
@@ -423,7 +432,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
             res = result.returncode
         else:
             ##  Just print a message and skip copde gen (test python process/logic)
-            print ( 'run spiral to create source file: ' + _file_name )
+            print ( 'run spiral to create source file: ' + _file_name, flush = True )
 
     ##  All cube sizes processed: close list of sources, create header file
     _cmake_srcs.write ( ')\n' )
@@ -437,7 +446,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
     _header_fil.write ( _all_cubes + '    { 0, 0, 0 }\n};\n\n' )
     _header_fil.write ( '#endif\n\n' )
     _header_fil.close ()
-    
+
     _header_fil = open ( _lib_pubfname, 'w' )
     _filebody = start_header_file ( 'PUBLIC' )
     _filebody = _filebody + body_public_header ()
@@ -455,6 +464,6 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
     _cmake_file.write ( _filebody )
     _cmake_file.close ()
 
-    
+
 sys.exit (0)
 

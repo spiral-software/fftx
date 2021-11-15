@@ -34,7 +34,7 @@ else:
     _libfwd = 'lib' + _libfwd + '.so'
     _libinv = 'lib' + _libinv + '.so'
 
-print ( 'library for fwd xform = ' + _libfwd + ' inv xform = ' + _libinv )
+print ( 'library for fwd xform = ' + _libfwd + ' inv xform = ' + _libinv, flush = True )
 
 ##  open the right file of sizes: mddft | mdprdft ==> cube-sizes.txt
 
@@ -58,12 +58,12 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _dx = int ( _dimx )
         _dy = int ( _dimy )
         _dz = int ( _dimz )
-        
+
         _funcname = _xfmseg[0] + _under + _xfmseg[1] + _under + _dimx + 'x' + _dimy + 'x' + _dimz
         _pystemfw = _xfmseg[0] + _under + _xfmseg[1] + _under + 'python' + _under
         _invfunc  = _xfmseg[0] + _under + 'i' + _xfmseg[1] + _under + _dimx + 'x' + _dimy + 'x' + _dimz
         _pystemin = _xfmseg[0] + _under + 'i' + _xfmseg[1] + _under + 'python' + _under
-        print ( 'Size = ' + _dimx + 'x' + _dimy + 'x' + _dimz )
+        print ( 'Size = ' + _dimx + 'x' + _dimy + 'x' + _dimz, flush = True )
 
         ##  Setup source (input) data -- fill with random values
         _src        = np.random.rand(_dx, _dy, _dz).astype(complex)
@@ -83,51 +83,50 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _dftsz[0] = _dx
         _dftsz[1] = _dy
         _dftsz[2] = _dz
-        print ( _dftsz )
-        
-        ##  Evaluate using numpy (forward transform first) ... 
+
+        ##  Evaluate using numpy (forward transform first) ...
         _dst_python    = np.fft.fftn ( _src )
         _dst_python = _dst_python / np.size ( _dst_python )
-        
+
         ##  Access library and call Spiral generated code... we use the python wrapper funcs in the library
         _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), _libfwd )
         _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
         ##  Call the SPIRAL generated init function
         _inifunc = _pystemfw + 'init' + _under + 'wrapper'
-        print ( 'Python wrapper init func = ' + _inifunc )
 
         _libFuncAttr = getattr ( _sharedLibAccess, _inifunc, None)
         if _libFuncAttr == None:
             msg = 'could not find function: ' + _inifunc
             raise RuntimeError(msg)
-        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
-        
+        _status = _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
+        if not _status:
+            print ( 'Size: ' + str(_dftsz) + ' was not found in library - continue' )
+            continue
+
         ##  Call the library function
         _funcname = _pystemfw + 'run' + _under + 'wrapper'
-        print ( 'Function name: ' + _funcname )   ## 'Using Library = ' + _sharedLibPath
         _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
         _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ),
                        _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
                        _src.ctypes.data_as ( ctypes.c_void_p ),
                        _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
         _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
-        
+
         ##  Call the transform's destroy function
         _funcname = _pystemfw + 'destroy' + _under + 'wrapper'
         _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
         _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
-        
+
         ##  Check difference
         _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
-        print ( 'Difference between Python / Spiral transforms = ' + str ( _diff ), flush = True )
-        ## sys.stdout.flush()
+        print ( 'Difference between Python / Spiral [forward] transforms = ' + str ( _diff ), flush = True )
 
         ##  Setup and repeat for the inverse transform
         ##  Destination (output) -- fill with zeros, one for spiral, one for python
         _dst_python = np.zeros(shape=(_dx, _dy, _dz), dtype=complex)
         _dst_spiral = np.zeros(shape=(_dx, _dy, _dz), dtype=complex)
-        
-        ##  Evaluate using numpy ... 
+
+        ##  Evaluate using numpy ...
         _dst_python = np.fft.ifftn ( _src )
         ##  _dst_python = _dst_python / np.size ( _dst_python )
 
@@ -136,8 +135,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
         ##  Call the SPIRAL generated init function
         _inifunc = _pystemin + 'init' + _under + 'wrapper'
-        print ( 'Python wrapper init func = ' + _inifunc )
-        
+
         _libFuncAttr = getattr ( _sharedLibAccess, _inifunc, None)
         if _libFuncAttr == None:
             msg = 'could not find function: ' + _inifunc
@@ -146,27 +144,32 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
 
         ##  Call the library function, normalize Spiral output
         _funcname = _pystemin + 'run' + _under + 'wrapper'
-        print ( 'Function name: ' + _funcname )   ## 'Using Library = ' + _sharedLibPath
+        ##  print ( 'Function name: ' + _funcname )   ## 'Using Library = ' + _sharedLibPath
         _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
         _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ),
                        _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
                        _src.ctypes.data_as ( ctypes.c_void_p ),
                        _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
         _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
-        
+
+        ##  Call the transform's destroy function
+        _funcname = _pystemin + 'destroy' + _under + 'wrapper'
+        _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
+        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
+
         ##  Check difference
         _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
-        print ( 'Difference between Python / Spiral transforms = ' + str ( _diff ), flush = True )
+        print ( 'Difference between Python / Spiral [inverse] transforms = ' + str ( _diff ), flush = True )
 
 
 ## ---  extra debugging ...
         # print ( '_src type = ' + str(type(_src)) + ', shape = ' + str(_src.shape) + ', dtype = ' + str(_src.dtype) )
         # print ( '_src_spiral type = ' + str(type(_src_spiral)) + ', shape = ' + str(_src_spiral.shape) + ', dtype = ' + str(_src_spiral.dtype) )
-        
+
         # print ( '_dst_spiral type = ' + str(type(_dst_spiral)) + ', shape = ' + str(_dst_spiral.shape) + ', dtype = ' + str(_dst_spiral.dtype) )
         # print ( '_dst_python type = ' + str(type(_dst_python)) + ', shape = ' + str(_dst_python.shape) + ', dtype = ' + str(_dst_python.dtype) )
         # print ( '_dst_python_IL type = ' + str(type(_dst_python_IL)) + ', shape = ' + str(_dst_python_IL.shape) + ', dtype = ' + str(_dst_python_IL.dtype) )
-        
+
         # _dims = re.sub ( '.*nbatch :=', '', line )      ## get number batches
         # _dims = re.sub ( ';.*', '', _dims )
         # _dims = re.sub ( ' *', '', _dims )              ## compress out white space
@@ -175,9 +178,9 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         # _nbt  = int ( _nbat )
         # ##  if ( _nbt != 1 ):
         # ##      continue
-        
-        
+
         # _N = int ( _dims )
         # _NN = _N
         # if ( _xfmseg[1] == 'prdftbat' ):
         #     _NN = _N // 2 + 1
+        ##  print ( 'Library path = ' + _sharedLibPath + ';  access token = ' + str(_sharedLibAccess), flush = True )
