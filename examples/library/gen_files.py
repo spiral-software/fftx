@@ -265,7 +265,6 @@ def python_cuda_api ( type ):
 
     _str = _str + '    int ndoub = (int)(req[0] * req[1] * req[2] * 2);\n'
     _str = _str + '    if ( ndoub == 0 )\n        return false;\n\n'
-    _str = _str + '    //  Reset the device each python run\n    //  cudaDeviceReset();\n\n'
 
     _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoub );\n'
     _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoub );\n'
@@ -273,8 +272,6 @@ def python_cuda_api ( type ):
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
     _str = _str + '    //  Call the init function\n'
-    _str = _str + '    printf ( "' + _file_stem + 'python_init_wrapper():'
-    _str = _str + '    Call [ %d, %d, %d ] init function\\n", req[0], req[1], req[2] );\n'
     _str = _str + '    ( * wp->initfp )();\n'
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
@@ -295,8 +292,6 @@ def python_cuda_api ( type ):
     _str = _str + '    cudaMemcpy ( dev_in, input, sizeof(double) * ndoub, cudaMemcpyHostToDevice );\n\n'
 
     _str = _str + '    //  Call the run function\n'
-    _str = _str + '    printf ( "' + _file_stem + 'python_run_wrapper():'
-    _str = _str + '    Call [ %d, %d, %d ] run function\\n", req[0], req[1], req[2] );\n'
     _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
@@ -317,8 +312,6 @@ def python_cuda_api ( type ):
     _str = _str + '    cudaFree ( dev_in  );\n\n'
 
     _str = _str + '    //  Tear down / cleanup\n'
-    _str = _str + '    printf ( "' + _file_stem + 'python_destroy_wrapper():'
-    _str = _str + '    Call [ %d, %d, %d ] destroy function\\n", req[0], req[1], req[2] );\n'
     _str = _str + '    fflush ( stdout );\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
     _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
