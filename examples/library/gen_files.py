@@ -35,6 +35,7 @@ if re.match ( '^.*_.*_', _file_stem ):
     _dims = re.split ( '_', _file_stem )
     _xform_pref = _dims[0]
     _xform_name = _dims[1]
+    _xform_root = _dims[1]
     _xform_name = _xform_name + '_'
     _xform_pref = _xform_pref + '_'
 
@@ -57,6 +58,11 @@ if len ( sys.argv ) >= 3:
         _code_type = 'HIP'
         _file_suffix = '.cpp'
 
+    if re.match ( 'cpu', _code_type, re.IGNORECASE ):
+        ##  CPU code gen selected
+        _code_type = 'CPU'
+        _file_suffix = '.cpp'
+        
 ##  If the transform can be forward or inverse accept an argument to specify
 _fwd = 'true'             ## default to true or forward
 
@@ -65,6 +71,7 @@ if len ( sys.argv ) >= 4:
     if re.match ( 'false', sys.argv[3], re.IGNORECASE ):
         _fwd = 'false'
         _file_stem =  _xform_pref + 'i' + _xform_name
+        _xform_root = 'i' + _xform_root
         ##  print ( 'File stem = ' + _file_stem )
 
 ##  Create the library sources directory (if it doesn't exist)
@@ -155,7 +162,7 @@ def body_public_header ():
 
     _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
     _str = _str + 'extern "C" {\n\n'
-    _str = _str + 'bool ' + _file_stem + 'python_init_wrapper ( int * req );\n'  ##  fftx::point_t<3> req );\n'
+    _str = _str + 'int  ' + _file_stem + 'python_init_wrapper ( int * req );\n'
     _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input, double * sym );\n'
     _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( int * req );\n\n'
     _str = _str + '}\n\n#endif\n\n'
@@ -163,7 +170,7 @@ def body_public_header ():
     return _str;
 
 
-def library_api ( ):
+def library_api ( type ):
     "Sets up the public API for the library"
     _str =        '//  Copyright (c) 2018-2021, Carnegie Mellon University\n'
     _str = _str + '//  See LICENSE for details\n\n'
@@ -173,7 +180,8 @@ def library_api ( ):
     _str = _str + '#include <string.h>\n'
     _str = _str + '#include "' + _file_stem + 'decls.h"\n'
     _str = _str + '#include "' + _file_stem + 'public.h"\n'
-    _str = _str + '#include <helper_cuda.h>\n\n'
+    if type == 'CUDA':
+        _str = _str + '#include <helper_cuda.h>\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of size, each element is a struct of type fftx::point_t<3> specifying the X,\n'
@@ -248,34 +256,52 @@ def library_api ( ):
     return _str;
 
 
-def python_cuda_api ( type ):
-    "Sets up the python wrapper API to allow Python to call C++ CUDA or HIP code"
+def python_cuda_api ( type, xfm ):
+    "Sets up the python wrapper API to allow Python to call C++ CUDA or HIP code. \
+     For CPU code no data management or marshalling is required"
     _str =        '//  Host-to-Device C/CUDA wrapper functions to permit Python to call the CUDA kernels.\n\n'
-    _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
+    if type == 'CUDA' or type == 'HIP':
+        _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
     _str = _str + 'extern "C" {\n\n'
 
-    _str = _str + 'bool ' + _file_stem + 'python_init_wrapper ( int * req )\n{\n'
+    _str = _str + 'int  ' + _file_stem + 'python_init_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
     _str = _str + '    fftx::point_t<3> rsz;\n'
     _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- return false\n'
-    _str = _str + '        return false;\n\n'
+    _str = _str + '        return 0;\n\n'
 
-    _str = _str + '    int ndoub = (int)(req[0] * req[1] * req[2] * 2);\n'
-    _str = _str + '    if ( ndoub == 0 )\n        return false;\n\n'
+    if type == 'CUDA' or type == 'HIP':
+        ##  Amount of data space to mlloc depends on transform:
+        ##     MDDFT/IMDDFT:   x * y * z * 2 doubles (for C2C, both input & output)
+        ##     MDPRDFT:        x * y * z     doubles (for R2C, input)
+        ##                     x * y * ((z/2) + 1) * 2 doubles (for R2C, output)
+        ##     IMDPRDFT:       x * y * ((z/2) + 1) * 2 doubles (for C2R, input)
+        ##                     x * y * z     doubles (for C2R, output)
+        if xfm == 'mddft' or xfm == 'imddft':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
+        elif xfm == 'mdprdft':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+        elif xfm == 'imdprdft' or xfm == 'rconv':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
 
-    _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoub );\n'
-    _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoub );\n'
-    _str = _str + '    cudaMalloc ( &dev_sym, sizeof(double) * 1000 );\n'
-    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+            _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
+            _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoubin  );\n'
+            _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoubout );\n'
+            _str = _str + '    cudaMalloc ( &dev_sym, sizeof(double) * 1000 );\n'
+            _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
     _str = _str + '    //  Call the init function\n'
     _str = _str + '    ( * wp->initfp )();\n'
-    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+    if type == 'CUDA' or type == 'HIP':
+        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
-    _str = _str + '    return true;\n}\n\n'
+    _str = _str + '    return 1;\n}\n\n'
 
     _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input, double * sym )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
@@ -286,16 +312,28 @@ def python_cuda_api ( type ):
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
-    _str = _str + '    int ndoub = (int)(req[0] * req[1] * req[2] * 2);\n'
-    _str = _str + '    if ( ndoub == 0 )\n        return;\n\n'
+    if type == 'CUDA' or type == 'HIP':
+        if xfm == 'mddft' or xfm == 'imddft':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
+        elif xfm == 'mdprdft':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+        elif xfm == 'imdprdft' or xfm == 'rconv':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
 
-    _str = _str + '    cudaMemcpy ( dev_in, input, sizeof(double) * ndoub, cudaMemcpyHostToDevice );\n\n'
+        _str = _str + '    if ( ndoubin  == 0 )\n        return;\n\n'
+        _str = _str + '    cudaMemcpy ( dev_in, input, sizeof(double) * ndoubin, cudaMemcpyHostToDevice );\n\n'
 
     _str = _str + '    //  Call the run function\n'
-    _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
-    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
-
-    _str = _str + '    cudaMemcpy ( output, dev_out, sizeof(double) * ndoub, cudaMemcpyDeviceToHost );\n'
+    if type == 'CUDA' or type == 'HIP':
+        _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
+        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+        _str = _str + '    cudaMemcpy ( output, dev_out, sizeof(double) * ndoubout, cudaMemcpyDeviceToHost );\n'
+    else:
+        _str = _str + '    ( * wp->runfp )( output, input, sym );\n'
+        
     _str = _str + '    return;\n}\n\n'
 
     _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( int * req )\n{\n'
@@ -307,14 +345,15 @@ def python_cuda_api ( type ):
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
-    _str = _str + '    cudaFree ( dev_out );\n'
-    _str = _str + '    cudaFree ( dev_sym );\n'
-    _str = _str + '    cudaFree ( dev_in  );\n\n'
+    if type == 'CUDA' or type == 'HIP':
+        _str = _str + '    cudaFree ( dev_out );\n'
+        _str = _str + '    cudaFree ( dev_sym );\n'
+        _str = _str + '    cudaFree ( dev_in  );\n\n'
 
     _str = _str + '    //  Tear down / cleanup\n'
-    _str = _str + '    fflush ( stdout );\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
-    _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+    if type == 'CUDA' or type == 'HIP':
+        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
     _str = _str + '    return;\n}\n\n}\n'
 
@@ -447,8 +486,8 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
     _header_fil.close ()
 
     _api_file = open ( _lib_apifname, 'w' )
-    _filebody = library_api ()
-    _filebody = _filebody + python_cuda_api ( _code_type )
+    _filebody = library_api ( _code_type )
+    _filebody = _filebody + python_cuda_api ( _code_type, _xform_root )
     _api_file.write ( _filebody )
     _api_file.close ()
 

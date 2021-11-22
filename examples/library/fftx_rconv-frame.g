@@ -13,8 +13,10 @@ ImportAll(fftx);
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
-else
+elif codefor = "HIP" then
     conf := FFTXGlobals.defaultHIPConf();
+elif codefor = "CPU" then
+    conf := LocalConfig.fftx.defaultConf();
 fi;
 
 if 1 = 1 then

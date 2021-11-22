@@ -4,11 +4,11 @@
 ##  Exercise all the sizes in the library (read cube-sizes or dftbatch-sizes) and call both
 ##  forward and inverse transforms
 
-import numpy as np
 import ctypes
 import sys
 import re
 import os
+import numpy as np
 
 if len(sys.argv) < 3:
     print ('Usage: ' + sys.argv[0] + ' libdir xform_name' )
@@ -36,8 +36,109 @@ else:
 
 print ( 'library for fwd xform = ' + _libfwd + ' inv xform = ' + _libinv, flush = True )
 
-##  open the right file of sizes: mddft | mdprdft ==> cube-sizes.txt
 
+def exec_xform ( segnams, dims, fwd ):
+    "Run a transform specified by segment names and fwd flag of size dims"
+
+    dx = int ( dims[0] )
+    dy = int ( dims[1] )
+    dz = int ( dims[2] )
+    dz_adj = dz // 2 + 1
+
+    pywrap = segnams[0] + _under
+    if not fwd:
+        pywrap = pywrap + 'i'
+    pywrap = pywrap + segnams[1] + _under + 'python' + _under
+
+    if fwd:
+        print ( 'Size = ' + dims[0] + 'x' + dims[1] + 'x' + dims[2], flush = True )
+
+    ##  Setup source (input) data -- fill with random values
+    _src        = np.random.rand(dx, dy, dz).astype(complex)
+    _src_spiral = _src.view(dtype=np.double)
+    for ix in range ( dx ):
+        for iy in range ( dy ):
+            for iz in range ( dz ):
+                vr = np.random.random()
+                vi = np.random.random()
+                _src[ix, iy, iz] = vr + vi * 1j
+
+    ##  Destination (output) -- fill with zeros, one for spiral, one for python
+    _dst_python = np.zeros(shape=(dx, dy, dz), dtype=complex)
+    _dst_spiral = np.zeros(shape=(dx, dy, dz), dtype=complex)
+    _xfm_sym    = np.ones (shape=(10, 10, 10), dtype=complex)       ## dummy symbol
+    _dftsz      = np.zeros(3).astype(ctypes.c_int)
+    _dftsz[0] = dx
+    _dftsz[1] = dy
+    _dftsz[2] = dz
+
+    ##  Evaluate using numpy
+    if fwd:
+        ##  Normalize the results of the forward xfrom...
+        _dst_python = np.fft.fftn ( _src )
+        _dst_python = _dst_python / np.size ( _dst_python )
+    else:
+        ##  Result of inverse xform is already normalized...
+        _dst_python = np.fft.ifftn ( _src )
+
+    ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
+    ##  the library (these setup/teardown GPU resources when using GPU libraries).
+    if fwd:
+        uselib = _libfwd
+    else:
+        uselib = _libinv
+
+    _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
+    _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
+    func = pywrap + 'init' + _under + 'wrapper'
+
+    _libFuncAttr = getattr ( _sharedLibAccess, func, None)
+    if _libFuncAttr is None:
+        msg = 'could not find function: ' + func
+        raise RuntimeError(msg)
+    _status = _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
+    if not _status:
+        print ( 'Size: ' + str(_dftsz) + ' was not found in library - continue' )
+        return
+
+    ##  Call the library function
+    func = pywrap + 'run' + _under + 'wrapper'
+    _libFuncAttr = getattr ( _sharedLibAccess, func )
+    _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ),
+                   _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
+                   _src.ctypes.data_as ( ctypes.c_void_p ),
+                   _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
+    ##  Normalize Spiral result
+    _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
+
+    ##  Call the transform's destroy function
+    func = pywrap + 'destroy' + _under + 'wrapper'
+    _libFuncAttr = getattr ( _sharedLibAccess, func )
+    _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
+
+    ##  Check difference
+    diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
+    if fwd:
+        dir = 'forward'
+    else:
+        dir = 'inverse'
+    print ( 'Difference between Python / Spiral [' + dir + '] transforms = ' + str ( diff ), flush = True )
+
+    return;
+
+
+if len(sys.argv) == 4:
+    ##  Optional problem size is specified:  e.g., 80x80x80
+    _probsz = sys.argv[3]
+    _probsz = _probsz.rstrip()                  ##  remove training newline
+    _dims = re.split ( 'x', _probsz )
+
+    exec_xform ( _xfmseg, _dims, True )
+    exec_xform ( _xfmseg, _dims, False )
+
+    exit ()
+
+    
 with open ( 'cube-sizes.txt', 'r' ) as fil:
     for line in fil.readlines():
         ##  print ( 'Line read = ' + line )
@@ -52,135 +153,8 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         line = re.sub ( ' *', '', line )                ## compress out white space
         line = line.rstrip()                            ## remove training newline
         _dims = re.split ( ',', line )
-        _dimx = _dims[0]
-        _dimy = _dims[1]
-        _dimz = _dims[2]
-        _dx = int ( _dimx )
-        _dy = int ( _dimy )
-        _dz = int ( _dimz )
 
-        _funcname = _xfmseg[0] + _under + _xfmseg[1] + _under + _dimx + 'x' + _dimy + 'x' + _dimz
-        _pystemfw = _xfmseg[0] + _under + _xfmseg[1] + _under + 'python' + _under
-        _invfunc  = _xfmseg[0] + _under + 'i' + _xfmseg[1] + _under + _dimx + 'x' + _dimy + 'x' + _dimz
-        _pystemin = _xfmseg[0] + _under + 'i' + _xfmseg[1] + _under + 'python' + _under
-        print ( 'Size = ' + _dimx + 'x' + _dimy + 'x' + _dimz, flush = True )
+        exec_xform ( _xfmseg, _dims, True )
+        exec_xform ( _xfmseg, _dims, False )
 
-        ##  Setup source (input) data -- fill with random values
-        _src        = np.random.rand(_dx, _dy, _dz).astype(complex)
-        _src_spiral = _src.view(dtype=np.double)
-        for ix in range ( _dx ):
-            for iy in range ( _dy ):
-                for iz in range ( _dz ):
-                    vr = np.random.random()
-                    vi = np.random.random()
-                    _src[ix, iy, iz] = vr + vi * 1j
-
-        ##  Destination (output) -- fill with zeros, one for spiral, one for python
-        _dst_python = np.zeros(shape=(_dx, _dy, _dz), dtype=complex)
-        _dst_spiral = np.zeros(shape=(_dx, _dy, _dz), dtype=complex)
-        _xfm_sym    = np.ones (shape=(10, 10, 10), dtype=complex)       ## dummy symbol
-        _dftsz      = np.zeros(3).astype(ctypes.c_int)
-        _dftsz[0] = _dx
-        _dftsz[1] = _dy
-        _dftsz[2] = _dz
-
-        ##  Evaluate using numpy (forward transform first) ...
-        _dst_python    = np.fft.fftn ( _src )
-        _dst_python = _dst_python / np.size ( _dst_python )
-
-        ##  Access library and call Spiral generated code... we use the python wrapper funcs in the library
-        _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), _libfwd )
-        _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
-        ##  Call the SPIRAL generated init function
-        _inifunc = _pystemfw + 'init' + _under + 'wrapper'
-
-        _libFuncAttr = getattr ( _sharedLibAccess, _inifunc, None)
-        if _libFuncAttr == None:
-            msg = 'could not find function: ' + _inifunc
-            raise RuntimeError(msg)
-        _status = _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
-        if not _status:
-            print ( 'Size: ' + str(_dftsz) + ' was not found in library - continue' )
-            continue
-
-        ##  Call the library function
-        _funcname = _pystemfw + 'run' + _under + 'wrapper'
-        _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
-        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ),
-                       _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
-                       _src.ctypes.data_as ( ctypes.c_void_p ),
-                       _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
-        _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
-
-        ##  Call the transform's destroy function
-        _funcname = _pystemfw + 'destroy' + _under + 'wrapper'
-        _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
-        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
-
-        ##  Check difference
-        _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
-        print ( 'Difference between Python / Spiral [forward] transforms = ' + str ( _diff ), flush = True )
-
-        ##  Setup and repeat for the inverse transform
-        ##  Destination (output) -- fill with zeros, one for spiral, one for python
-        _dst_python = np.zeros(shape=(_dx, _dy, _dz), dtype=complex)
-        _dst_spiral = np.zeros(shape=(_dx, _dy, _dz), dtype=complex)
-
-        ##  Evaluate using numpy ...
-        _dst_python = np.fft.ifftn ( _src )
-        ##  _dst_python = _dst_python / np.size ( _dst_python )
-
-        ##  Access library and call Spiral generated code... use the python wrapper funcs in the library
-        _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), _libinv )
-        _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
-        ##  Call the SPIRAL generated init function
-        _inifunc = _pystemin + 'init' + _under + 'wrapper'
-
-        _libFuncAttr = getattr ( _sharedLibAccess, _inifunc, None)
-        if _libFuncAttr == None:
-            msg = 'could not find function: ' + _inifunc
-            raise RuntimeError(msg)
-        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
-
-        ##  Call the library function, normalize Spiral output
-        _funcname = _pystemin + 'run' + _under + 'wrapper'
-        ##  print ( 'Function name: ' + _funcname )   ## 'Using Library = ' + _sharedLibPath
-        _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
-        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ),
-                       _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
-                       _src.ctypes.data_as ( ctypes.c_void_p ),
-                       _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
-        _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
-
-        ##  Call the transform's destroy function
-        _funcname = _pystemin + 'destroy' + _under + 'wrapper'
-        _libFuncAttr = getattr ( _sharedLibAccess, _funcname )
-        _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
-
-        ##  Check difference
-        _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
-        print ( 'Difference between Python / Spiral [inverse] transforms = ' + str ( _diff ), flush = True )
-
-
-## ---  extra debugging ...
-        # print ( '_src type = ' + str(type(_src)) + ', shape = ' + str(_src.shape) + ', dtype = ' + str(_src.dtype) )
-        # print ( '_src_spiral type = ' + str(type(_src_spiral)) + ', shape = ' + str(_src_spiral.shape) + ', dtype = ' + str(_src_spiral.dtype) )
-
-        # print ( '_dst_spiral type = ' + str(type(_dst_spiral)) + ', shape = ' + str(_dst_spiral.shape) + ', dtype = ' + str(_dst_spiral.dtype) )
-        # print ( '_dst_python type = ' + str(type(_dst_python)) + ', shape = ' + str(_dst_python.shape) + ', dtype = ' + str(_dst_python.dtype) )
-        # print ( '_dst_python_IL type = ' + str(type(_dst_python_IL)) + ', shape = ' + str(_dst_python_IL.shape) + ', dtype = ' + str(_dst_python_IL.dtype) )
-
-        # _dims = re.sub ( '.*nbatch :=', '', line )      ## get number batches
-        # _dims = re.sub ( ';.*', '', _dims )
-        # _dims = re.sub ( ' *', '', _dims )              ## compress out white space
-        # _dims = _dims.rstrip()                          ## remove training newline
-        # _nbat = _dims
-        # _nbt  = int ( _nbat )
-        # ##  if ( _nbt != 1 ):
-        # ##      continue
-
-        # _N = int ( _dims )
-        # _NN = _N
-        # if ( _xfmseg[1] == 'prdftbat' ):
-        #     _NN = _N // 2 + 1
-        ##  print ( 'Library path = ' + _sharedLibPath + ';  access token = ' + str(_sharedLibAccess), flush = True )
+    exit()
