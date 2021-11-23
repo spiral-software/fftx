@@ -290,11 +290,11 @@ def python_cuda_api ( type, xfm ):
             _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
             _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
 
-            _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
-            _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoubin  );\n'
-            _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoubout );\n'
-            _str = _str + '    cudaMalloc ( &dev_sym, sizeof(double) * 1000 );\n'
-            _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+        _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
+        _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoubin  );\n'
+        _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoubout );\n'
+        _str = _str + '    cudaMalloc ( &dev_sym, sizeof(double) * 1000 );\n'
+        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
 
     _str = _str + '    //  Call the init function\n'
     _str = _str + '    ( * wp->initfp )();\n'
