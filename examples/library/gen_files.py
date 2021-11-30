@@ -182,6 +182,10 @@ def library_api ( type ):
     _str = _str + '#include "' + _file_stem + 'public.h"\n'
     if type == 'CUDA':
         _str = _str + '#include <helper_cuda.h>\n\n'
+    elif type == 'HIP':
+        _str = _str + '#include <hip/hip_runtime.h>\n\n'
+        _str = _str + '#define checkLastHipError(str)	{ hipError_t err = hipGetLastError();	if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  exit(-1); } }\n\n'
+        ##  _str = _str + '#include <hipfft.h>\n#include "rocfft.h"\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of size, each element is a struct of type fftx::point_t<3> specifying the X,\n'
@@ -273,6 +277,21 @@ def python_cuda_api ( type, xfm ):
     _str = _str + '        //  Requested size not found -- return false\n'
     _str = _str + '        return 0;\n\n'
 
+    if type == 'CUDA':
+        _mmalloc = 'cudaMalloc'
+        _errchk  = 'checkCudaErrors ( cudaGetLastError () );'
+        _mmemcpy = 'cudaMemcpy'
+        _cph2dev = 'cudaMemcpyHostToDevice'
+        _cpdev2h = 'cudaMemcpyDeviceToHost'
+        _memfree = 'cudaFree'
+    elif type == 'HIP':
+        _mmalloc = 'hipMalloc'
+        _errchk  = 'checkLastHipError ( "Error: " );'
+        _mmemcpy = 'hipMemcpy'
+        _cph2dev = 'hipMemcpyHostToDevice'
+        _cpdev2h = 'hipMemcpyDeviceToHost'
+        _memfree = 'hipFree'
+
     if type == 'CUDA' or type == 'HIP':
         ##  Amount of data space to mlloc depends on transform:
         ##     MDDFT/IMDDFT:   x * y * z * 2 doubles (for C2C, both input & output)
@@ -291,15 +310,15 @@ def python_cuda_api ( type, xfm ):
             _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
-        _str = _str + '    cudaMalloc ( &dev_in,  sizeof(double) * ndoubin  );\n'
-        _str = _str + '    cudaMalloc ( &dev_out, sizeof(double) * ndoubout );\n'
-        _str = _str + '    cudaMalloc ( &dev_sym, sizeof(double) * 1000 );\n'
-        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+        _str = _str + '    ' + _mmalloc + ' ( &dev_in,  sizeof(double) * ndoubin  );\n'
+        _str = _str + '    ' + _mmalloc + ' ( &dev_out, sizeof(double) * ndoubout );\n'
+        _str = _str + '    ' + _mmalloc + ' ( &dev_sym, sizeof(double) * 1000 );\n'
+        _str = _str + '    ' + _errchk +  '\n\n'
 
     _str = _str + '    //  Call the init function\n'
     _str = _str + '    ( * wp->initfp )();\n'
     if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+        _str = _str + '    ' + _errchk +  '\n\n'
 
     _str = _str + '    return 1;\n}\n\n'
 
@@ -324,13 +343,13 @@ def python_cuda_api ( type, xfm ):
             _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return;\n\n'
-        _str = _str + '    cudaMemcpy ( dev_in, input, sizeof(double) * ndoubin, cudaMemcpyHostToDevice );\n\n'
+        _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
 
     _str = _str + '    //  Call the run function\n'
     if type == 'CUDA' or type == 'HIP':
         _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
-        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
-        _str = _str + '    cudaMemcpy ( output, dev_out, sizeof(double) * ndoubout, cudaMemcpyDeviceToHost );\n'
+        _str = _str + '    ' + _errchk  + '\n\n'
+        _str = _str + '    ' + _mmemcpy + ' ( output, dev_out, sizeof(double) * ndoubout, ' + _cpdev2h + ' );\n'
     else:
         _str = _str + '    ( * wp->runfp )( output, input, sym );\n'
         
@@ -346,14 +365,14 @@ def python_cuda_api ( type, xfm ):
     _str = _str + '        return;\n\n'
 
     if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    cudaFree ( dev_out );\n'
-        _str = _str + '    cudaFree ( dev_sym );\n'
-        _str = _str + '    cudaFree ( dev_in  );\n\n'
+        _str = _str + '    ' + _memfree + ' ( dev_out );\n'
+        _str = _str + '    ' + _memfree + ' ( dev_sym );\n'
+        _str = _str + '    ' + _memfree + ' ( dev_in  );\n\n'
 
     _str = _str + '    //  Tear down / cleanup\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
     if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    checkCudaErrors ( cudaGetLastError () );\n\n'
+        _str = _str + '    ' + _errchk + '\n\n'
 
     _str = _str + '    return;\n}\n\n}\n'
 
