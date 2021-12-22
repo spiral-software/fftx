@@ -348,9 +348,9 @@ with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
 
         ##  Generate the code by running SPIRAL
         if sys.platform == 'win32':
-            cmdstr = _spiralhome + '/spiral.bat < myscript.g'
+            cmdstr = _spiralhome + 'bin/spiral.bat < myscript.g'
         else:
-            cmdstr = _spiralhome + '/spiral < myscript.g'
+            cmdstr = _spiralhome + 'bin/spiral < myscript.g'
 
         if len ( sys.argv ) < 5:
             ##  No optional argument, generate the code
