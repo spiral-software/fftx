@@ -7,7 +7,6 @@
 // #include "fftx_mddft_public.h"
 // #include "fftx_imddft_public.h"
 #include "fftx_rconv_public.h"
-#include "fftx_rconv_decls.h"
 
 // #include "mddft.fftx.precompile.hpp"
 // #include "imddft.fftx.precompile.hpp"
@@ -332,11 +331,11 @@ int main(int argc, char* argv[])
 
   // rconvSize(fftx::point_t<3>({{  48,  48,  48 }}), rounds, verbosity);
 
-  int numentries = sizeof ( AllSizes3 ) / sizeof ( fftx::point_t<3> ) - 1; // last entry is { 0, 0, 0 }
+  fftx::point_t<3> *ents = fftx_rconv_QuerySizes ();
 
-  for ( int ind = 0; ind < numentries; ind++ )
+  for ( int ind = 0; ents[ind][0] != 0; ind++ )
     {
-      rconvSize(AllSizes3[ind], rounds, verbosity);
+      rconvSize(ents[ind], rounds, verbosity);
     }
   
   // rconvSize(fftx::point_t<3>({{  48,  48,  48 }}), rounds, verbosity);
