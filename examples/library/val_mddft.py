@@ -36,8 +36,12 @@ else:
 
 print ( 'library for fwd xform = ' + _libfwd + ' inv xform = ' + _libinv, flush = True )
 
+##  Default mode for library (get by calling the library <root>GetLibraryMode() func
+_def_libmode = 0
+_do_once = True
+lmode = [ 'CPU', 'CUDA', 'HIP' ]
 
-def exec_xform ( segnams, dims, fwd ):
+def exec_xform ( segnams, dims, fwd, libmode ):
     "Run a transform specified by segment names and fwd flag of size dims"
 
     dx = int ( dims[0] )
@@ -45,13 +49,11 @@ def exec_xform ( segnams, dims, fwd ):
     dz = int ( dims[2] )
     dz_adj = dz // 2 + 1
 
-    pywrap = segnams[0] + _under
+    froot = segnams[0] + _under
     if not fwd:
-        pywrap = pywrap + 'i'
-    pywrap = pywrap + segnams[1] + _under + 'python' + _under
-
-    if fwd:
-        print ( 'Size = ' + dims[0] + 'x' + dims[1] + 'x' + dims[2], flush = True )
+        froot = froot + 'i'
+    froot = froot + segnams[1] + _under
+    pywrap = froot + 'python' + _under
 
     ##  Setup source (input) data -- fill with random values
     _src        = np.random.rand(dx, dy, dz).astype(complex)
@@ -90,8 +92,41 @@ def exec_xform ( segnams, dims, fwd ):
 
     _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
     _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
-    func = pywrap + 'init' + _under + 'wrapper'
 
+    global _do_once
+    global _def_libmode
+    if _do_once:
+        func = froot + 'GetLibraryMode'
+        _libFuncAttr = getattr ( _sharedLibAccess, func, None)
+        if _libFuncAttr is None:
+            ##  No library mode functions -- just run without attempting to set CPU/GPU
+            msg = 'Could not find function: ' + func
+            ##  raise RuntimeError(msg)
+            print ( msg + ';  No CPU/GPU switching available', flush = True )
+        
+        _status = _libFuncAttr ( )
+        ##  print ( 'Initial, default Library mode = ' + str ( _status ) )
+        _def_libmode = _status
+        _do_once = False
+        
+    if libmode == 'CPU':
+        setlibmode = 0
+    else:
+        setlibmode = _def_libmode
+
+    func = froot + 'SetLibraryMode'
+    _libFuncAttr = getattr ( _sharedLibAccess, func, None)
+    if _libFuncAttr is None:
+        ##  No library mode functions -- just run without attempting to set CPU/GPU
+        msg = 'Could not find function: ' + func
+        ##  raise RuntimeError(msg)
+        print ( msg + ';  No CPU/GPU switching available', flush = True )
+
+    global lmode
+    _libFuncAttr ( setlibmode )
+    ##  print ( 'Library mode set to ' + lmode[setlibmode] )
+    
+    func = pywrap + 'init' + _under + 'wrapper'
     _libFuncAttr = getattr ( _sharedLibAccess, func, None)
     if _libFuncAttr is None:
         msg = 'could not find function: ' + func
@@ -122,7 +157,8 @@ def exec_xform ( segnams, dims, fwd ):
         dir = 'forward'
     else:
         dir = 'inverse'
-    print ( 'Difference between Python / Spiral [' + dir + '] transforms = ' + str ( diff ), flush = True )
+
+    print ( 'Difference between Python / Spiral(' + lmode[setlibmode] + ') [' + dir + '] transforms = ' + str ( diff ), flush = True )
 
     return;
 
@@ -133,8 +169,11 @@ if len(sys.argv) == 4:
     _probsz = _probsz.rstrip()                  ##  remove training newline
     _dims = re.split ( 'x', _probsz )
 
-    exec_xform ( _xfmseg, _dims, True )
-    exec_xform ( _xfmseg, _dims, False )
+    print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
+    exec_xform ( _xfmseg, _dims, True, 'CPU' )
+    exec_xform ( _xfmseg, _dims, False, 'CPU' )
+    exec_xform ( _xfmseg, _dims, True, '' )
+    exec_xform ( _xfmseg, _dims, False, '' )
 
     exit ()
 
@@ -154,7 +193,10 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         line = line.rstrip()                            ## remove training newline
         _dims = re.split ( ',', line )
 
-        exec_xform ( _xfmseg, _dims, True )
-        exec_xform ( _xfmseg, _dims, False )
+        print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
+        exec_xform ( _xfmseg, _dims, True, 'CPU' )
+        exec_xform ( _xfmseg, _dims, False, 'CPU' )
+        exec_xform ( _xfmseg, _dims, True, '' )
+        exec_xform ( _xfmseg, _dims, False, '' )
 
     exit()

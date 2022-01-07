@@ -31,6 +31,7 @@ fi;
 
 if 1 = 1 then
     name := prefix::StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1), s->"x"::StringInt(s)));
+    name := name::"_"::codefor;
     
     PrintLine("fftx_mdprdft-frame: name = ", name, ", cube = ", szcube, ", size = ",
               StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1),

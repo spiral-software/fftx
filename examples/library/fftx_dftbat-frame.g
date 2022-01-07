@@ -25,6 +25,8 @@ fi;
 if 1 = 1 then
     ns := szns;
     name := prefix::StringInt(nbatch)::"_"::StringInt(szns[1])::"_"::StringInt(Length(ns))::"d";
+    name := name::"_"::codefor;
+
     PrintLine("fftx_dft-batch: batch = ", nbatch, " ns = ", szns, ";\t\t##PICKME##");
     t := let(batch := nbatch,
         apat := When(true, APar, AVec),
