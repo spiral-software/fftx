@@ -62,7 +62,7 @@ if len ( sys.argv ) >= 3:
         ##  CPU code gen selected
         _code_type = 'CPU'
         _file_suffix = '.cpp'
-        
+
 ##  If the transform can be forward or inverse accept an argument to specify
 _fwd = 'true'             ## default to true or forward
 
