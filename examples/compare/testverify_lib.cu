@@ -7,9 +7,6 @@
 #include "fftx_imdprdft_public.h"
 // #include "fftx_rconv_public.h"
 
-// Need this for AllSizes3 only
-#include "fftx_imdprdft_decls.h"
-
 #include "mddft.fftx.precompile.hpp"
 #include "imddft.fftx.precompile.hpp"
 #include "mdprdft.fftx.precompile.hpp"
@@ -727,11 +724,11 @@ int main(int argc, char* argv[])
   unifRealDist = std::uniform_real_distribution<double>(-0.5, 0.5);
 
     // last entry is { 0, 0, 0 }
-  int numentries = sizeof ( AllSizes3 ) / sizeof ( fftx::point_t<3> ) - 1;
+  fftx::point_t<3> *ents = fftx_mddft_QuerySizes ();
   
-  for ( int ind = 0; ind < numentries; ind++ )
+  for ( int ind = 0; ents[ind][0] != 0; ind++ )
     {
-      fftx::point_t<3> sz = AllSizes3[ind];
+      fftx::point_t<3> sz = ents[ind];
 
       for (int d = 0; d < 3; d++)
         {

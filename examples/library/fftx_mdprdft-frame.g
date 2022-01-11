@@ -5,7 +5,7 @@
 # 1d and multidimensional complex DFTs
 
 ##  Script to generate code, will be driven by a size specification and will write the
-##  CUDA/HIP code to a file.  The code will be compiled into a library for applications
+##  CUDA/HIP/CPU code to a file.  The code will be compiled into a library for applications
 ##  to link against -- providing pre-compiled FFTs of standard sizes.
 
 Load(fftx);
@@ -13,8 +13,10 @@ ImportAll(fftx);
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
-else
+elif codefor = "HIP" then
     conf := FFTXGlobals.defaultHIPConf();
+elif codefor = "CPU" then
+    conf := LocalConfig.fftx.defaultConf();
 fi;
 
 if fwd then
@@ -29,6 +31,7 @@ fi;
 
 if 1 = 1 then
     name := prefix::StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1), s->"x"::StringInt(s)));
+    name := name::"_"::codefor;
     
     PrintLine("fftx_mdprdft-frame: name = ", name, ", cube = ", szcube, ", size = ",
               StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1),
