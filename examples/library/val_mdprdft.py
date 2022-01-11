@@ -49,57 +49,17 @@ def exec_xform ( segnams, dims, fwd, libmode ):
     dz = int ( dims[2] )
     dz_adj = dz // 2 + 1
 
+    dftsz      = np.zeros(3).astype(ctypes.c_int)
+    dftsz[0] = dx
+    dftsz[1] = dy
+    dftsz[2] = dz
+
     froot = segnams[0] + _under
     if not fwd:
         froot = froot + 'i'
     froot = froot + segnams[1] + _under
     pywrap = froot + 'python' + _under
 
-    if fwd:
-        ##  Real-to-Complex, R2C  (MDPRDFT)
-        ##  Setup source (Real input) data -- fill with random values
-        _src        = np.zeros(shape=(dx, dy, dz)).astype(np.double)
-        for ix in range ( dx ):
-            for iy in range ( dy ):
-                for iz in range ( dz ):
-                    vr = np.random.random()
-                    _src[ix, iy, iz] = vr
-
-        ##  Destination (output) -- fill with zeros, one for spiral, one for python
-        _dst_py     = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
-        _dst_spiral = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
-        
-    else:
-        ##  Complex-to-Real, C2R (IMDPRDFT)              ----------------------------
-        ##  Setup and repeat for the inverse transform
-        _src        = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
-        for ix in range ( dx ):
-            for iy in range ( dy ):
-                for iz in range ( dz_adj ):
-                    vr = np.random.random()
-                    vi = np.random.random()
-                    _src[ix, iy, iz] = vr + vi * 1j
-        
-        _dst_py     = np.zeros(shape=(dx, dy, dz)).astype(np.double)
-        _dst_spiral = np.zeros(shape=(dx, dy, dz)).astype(np.double)
-
-    xfm_sym    = np.ones (shape=(10, 10, 10), dtype=complex)       ## dummy symbol
-    dftsz      = np.zeros(3).astype(ctypes.c_int)
-    dftsz[0] = dx
-    dftsz[1] = dy
-    dftsz[2] = dz
-
-    ##  Evaluate using numpy
-    if fwd:
-        ##  Normalize results of forward xform...
-        _dst_py    = np.fft.rfftn ( _src )
-        _dst_py    = _dst_py / np.size ( _dst_py )
-    else:
-        ##  Result of inverse xform is already normalized...
-        _dst_py    = np.fft.irfftn ( _src )
-
-    ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
-    ##  the library (these setup/teardown GPU resources when using GPU libraries).
     if fwd:
         uselib = _libfwd
     else:
@@ -151,6 +111,47 @@ def exec_xform ( segnams, dims, fwd, libmode ):
         print ( 'Size: ' + str(dftsz) + ' was not found in library - continue' )
         return
 
+    if fwd:
+        ##  Real-to-Complex, R2C  (MDPRDFT)
+        ##  Setup source (Real input) data -- fill with random values
+        _src        = np.zeros(shape=(dx, dy, dz)).astype(np.double)
+        for ix in range ( dx ):
+            for iy in range ( dy ):
+                for iz in range ( dz ):
+                    vr = np.random.random()
+                    _src[ix, iy, iz] = vr
+
+        ##  Destination (output) -- fill with zeros, one for spiral, one for python
+        _dst_py     = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
+        _dst_spiral = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
+        
+    else:
+        ##  Complex-to-Real, C2R (IMDPRDFT)              ----------------------------
+        ##  Setup and repeat for the inverse transform
+        _src        = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
+        for ix in range ( dx ):
+            for iy in range ( dy ):
+                for iz in range ( dz_adj ):
+                    vr = np.random.random()
+                    vi = np.random.random()
+                    _src[ix, iy, iz] = vr + vi * 1j
+        
+        _dst_py     = np.zeros(shape=(dx, dy, dz)).astype(np.double)
+        _dst_spiral = np.zeros(shape=(dx, dy, dz)).astype(np.double)
+
+    xfm_sym    = np.ones (shape=(10, 10, 10), dtype=complex)       ## dummy symbol
+
+    ##  Evaluate using numpy
+    if fwd:
+        ##  Normalize results of forward xform...
+        _dst_py    = np.fft.rfftn ( _src )
+        _dst_py    = _dst_py / np.size ( _dst_py )
+    else:
+        ##  Result of inverse xform is already normalized...
+        _dst_py    = np.fft.irfftn ( _src )
+
+    ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
+    ##  the library (these setup/teardown GPU resources when using GPU libraries).
     ##  Call the library function
     func = pywrap + 'run' + _under + 'wrapper'
     _libFuncAttr = getattr ( _sharedLibAccess, func )
