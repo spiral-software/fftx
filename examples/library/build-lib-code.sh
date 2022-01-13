@@ -10,13 +10,11 @@ retc=0
 
 echo "Always create the CPU code ... commands:"
 
-##  For now, skip the convolution files...
-
 python gen_files.py fftx_mddft cpu true &
 python gen_files.py fftx_mddft cpu false &
 python gen_files.py fftx_mdprdft cpu true &
 python gen_files.py fftx_mdprdft cpu false &
-##  python gen_files.py fftx_rconv cpu true &
+python gen_files.py fftx_rconv cpu true &
 
 wait		##  wait for the chile processes to complete
 
@@ -39,7 +37,7 @@ if [ $? -eq 0 ]; then
     python gen_files.py fftx_mddft cuda false &
     python gen_files.py fftx_mdprdft cuda true &
     python gen_files.py fftx_mdprdft cuda false &
-    ##  python gen_files.py fftx_rconv cuda true &
+    python gen_files.py fftx_rconv cuda true &
     wait
     retc=1
 else
@@ -54,7 +52,7 @@ if [ $? -eq 0 ]; then
     python gen_files.py fftx_mddft hip false &
     python gen_files.py fftx_mdprdft hip true &
     python gen_files.py fftx_mdprdft hip false &
-    ##  python gen_files.py fftx_rconv hip true &
+    python gen_files.py fftx_rconv hip true &
     wait
     retc=2
 else
