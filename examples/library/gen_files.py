@@ -549,6 +549,10 @@ _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples
 
 
 with open ( 'cube-sizes.txt', 'r' ) as fil:
+    currpid = os.getpid()
+    myscrf  = 'myscript_' + str ( currpid ) + '.g'
+    testsf  = 'testscript_' + str ( currpid ) + '.g'
+
     for line in fil.readlines():
         ##  print ( 'Line read = ' + line )
         if re.match ( '[ \t]*#', line ):                ## ignore comment lines
@@ -557,7 +561,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         if re.match ( '[ \t]*$', line ):                ## skip lines consisting of whitespace
             continue
 
-        testscript = open ( 'testscript.g', 'w' )
+        testscript = open ( testsf, 'w' )
         testscript.write ( line )
         testscript.write ( 'libdir := "' + _srcs_dir + '"; \n' )
         testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
@@ -592,19 +596,19 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
 
         ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
-        ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame.g
+        ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
         _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = 'python ' + _catfils + ' myscript.g testscript.g ' + _frame_file
+        cmdstr = 'python ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
         result = subprocess.run ( cmdstr, shell=True, check=True )
         res = result.returncode
 
         ##  Generate the code by running SPIRAL
         if sys.platform == 'win32':
-            cmdstr = _spiralhome + '/bin/spiral.bat < myscript.g'
+            cmdstr = _spiralhome + '/bin/spiral.bat < ' + myscrf
         else:
-            cmdstr = _spiralhome + '/bin/spiral < myscript.g'
+            cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
         if len ( sys.argv ) < 5:
             ##  No optional argument, generate the code
@@ -676,5 +680,9 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
     _cmake_file.write ( _filebody )
     _cmake_file.close ()
 
+    if os.path.exists ( myscrf ):
+        os.remove ( myscrf )
+    if os.path.exists ( testsf ):
+        os.remove ( testsf )
 
 sys.exit (0)
