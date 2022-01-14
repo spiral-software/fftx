@@ -72,22 +72,22 @@ endfunction ()
 ##  the plan and codegen header files).  For example:
 ##      create_generator_file ( _codefor "mddft" "fftx" )
 ##  will create script mddft.fftx.generator.g, _codefor indicates if code should
-##  be generated for CPU or GPU.  This script may be consumed in a subsequent
-##  step to create a source code file (e.g., see RunSpiral.cmake).
+##  be generated for CPU or GPU (CUDA or HIP).  This script may be consumed in a
+##  subsequent step to create a source code file (e.g., see RunSpiral.cmake).
 ##  Additionally, the variable ${mddft_gen} = "mddft.fftx.generator.g" is
 ##  defined.
     
 ##  define standard files... (may need to customize this later)
 
 set ( BACKEND_SPIRAL_CPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_cpu_serial )
-set ( BACKEND_SPIRAL_GPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_gpu )
+set ( BACKEND_SPIRAL_CUDA_DIR     ${BACKEND_SOURCE_DIR}/spiral_gpu )
 set ( BACKEND_SPIRAL_HIP_DIR      ${BACKEND_SOURCE_DIR}/spiral_hip )
 
 set ( SPIRAL_BACKEND_CPU_PREAMBLE ${BACKEND_SPIRAL_CPU_DIR}/preamble.g )
-set ( SPIRAL_BACKEND_GPU_PREAMBLE ${BACKEND_SPIRAL_GPU_DIR}/preamble.g )
+set ( SPIRAL_BACKEND_CUDA_PREAMBLE ${BACKEND_SPIRAL_CUDA_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_HIP_PREAMBLE ${BACKEND_SPIRAL_HIP_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_CPU_CODEGEN  ${BACKEND_SPIRAL_CPU_DIR}/codegen.g  )
-set ( SPIRAL_BACKEND_GPU_CODEGEN  ${BACKEND_SPIRAL_GPU_DIR}/codegen.g  )
+set ( SPIRAL_BACKEND_CUDA_CODEGEN  ${BACKEND_SPIRAL_CUDA_DIR}/codegen.g  )
 set ( SPIRAL_BACKEND_HIP_CODEGEN  ${BACKEND_SPIRAL_HIP_DIR}/codegen.g  )
 
 function ( create_generator_file _codefor prefix stem )
@@ -186,7 +186,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     if ( ${_codegen} STREQUAL "HIP" )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
 	target_link_libraries      ( ${_target} ${LIBS_FOR_HIP} )
-    elseif ( ${_codegen} STREQUAL "GPU" )
+    elseif ( ${_codegen} STREQUAL "CUDA" )
 	target_link_libraries      ( ${_target} ${LIBS_FOR_CUDA} )
     endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
@@ -206,7 +206,7 @@ endfunction ()
 ##  intermediate files (targets) for codegen and build the list of dependencies
 ##  for a test program.  The following conventions are assumed:
 ##  File naming convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
-##  The function is passed a codegen flag (create CPU/GPU/HIP code), a stem, a list
+##  The function is passed a codegen flag (create CPU/CUDA/HIP code), a stem, a list
 ##  of prefixes (1 or more) and builds lists of all source code files for the
 ##  test program and a list of dependency names (to ensure cmake builds all
 ##  targets in the right order).
@@ -218,7 +218,7 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	message ( FATAL_ERROR "manage_deps_codegen() requires at least 1 prefix" )
     endif ()
     
-    if ( ( ${_codefor} STREQUAL "GPU" ) OR ( ${_codefor} STREQUAL "HIP" ) )
+    if ( ( ${_codefor} STREQUAL "CUDA" ) OR ( ${_codefor} STREQUAL "HIP" ) )
 	set ( _suffix cu PARENT_SCOPE )
 	set ( _suffix cu )
     else ()
@@ -274,7 +274,7 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
-    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
+    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "CUDA"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
 	add_subdirectory ( ${_subdir} )
 	if ( NOT "X${_library_includes}" STREQUAL "X" )
@@ -283,7 +283,7 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 	if ( NOT "X${_library_names}" STREQUAL "X" )
 	    set ( _library_names ${_library_names} PARENT_SCOPE )
 	endif () 
-    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
+    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "CUDA"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 

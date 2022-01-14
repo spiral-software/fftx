@@ -12,7 +12,8 @@ project ( examples )
 ##  All examples are expected to support CPU code generation, and ultimately
 ##  most (if not all) will support GPU code generation also.  Call
 ##  manage_add_subdir with the directory name and True/False for building for
-##  CPU and GPU
+##  CPU and GPU.  Building for GPU will build for the GPU type (e.g., CUDA or
+##  HIP) depending on the toolchain/compilers present
 
 ##                  subdir name   CPU       GPU
 
@@ -44,7 +45,7 @@ if ( ${MPI_FOUND} )
     if ( ${_codegen} STREQUAL "HIP" )
 	message ( STATUS "MPI example is not built for HIP" )
     else ()
-	manage_add_subdir ( MPI/3DFFT     FALSE     TRUE )
+	manage_add_subdir ( MPI/3DFFT     FALSE     FALSE )
     endif ()
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )

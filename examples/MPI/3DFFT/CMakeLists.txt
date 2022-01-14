@@ -11,7 +11,7 @@ cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
 ##  ===== For most examples you should not need to modify anything ABOVE this line =====
 
-if ( ${_codegen} STREQUAL "GPU" )
+if ( ${_codegen} STREQUAL "CUDA" )
     set ( _lang_add LANGUAGES CUDA CXX )
     include ("${SPIRAL_SOURCE_DIR}/config/CMakeIncludes/SetupCudaDefines.cmake")
     setup_cuda_variables_for_spiral ()

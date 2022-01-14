@@ -4,7 +4,7 @@
 ##  Script to generate the source code for the libraries
 
 ##  Exit code indicates the appropriate code gen flag for cmake:
-##  0 ==> -D_codegen=CPU | 1 ==> -D_codegen=GPU | 2 ==> -D_codegen=HIP
+##  0 ==> -D_codegen=CPU | 1 ==> -D_codegen=CUDA | 2 ==> -D_codegen=HIP
 
 retc=0
 
