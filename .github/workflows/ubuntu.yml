@@ -4,33 +4,6 @@ on: [push, pull_request]
 
 jobs:
   build_gcc:
-    name: Build FFTX on Linux
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: install dependencies
-      run: |
-        export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get -qqq update
-        sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
-        sudo apt-get install python3.8
-        sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
-        sudo chmod a+x /usr/local/bin/cmake-easyinstall
-        export CEI_SUDO="sudo"
-    - name: build SPIRAL
-      run: |
-        mkdir build && cd build
-        cmake ..
-        make -j 2 install
-        make test
-
-
-name: Ubuntu build
-
-on: [push, pull_request]
-
-jobs:
-  build_gcc:
     name: Check sprial-package-fftx on Linux
     runs-on: ubuntu-latest
     steps:
@@ -43,12 +16,20 @@ jobs:
     - name: Checkout repo spiral-package-fftx
       uses: actions/checkout@v2
       with:
+        ref: develop
         path: spiral/namespaces/packages/fftx
     - name: Checkout repo spiral-package-simt
       uses: actions/checkout@v2
       with:
         repository: spiral-software/spiral-package-simt
+        ref: develop
         path: spiral/namespaces/packages/simt
+    - name: Checkout repo spiral-package-mpi
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/spiral-package-mpi
+        ref: develop
+        path: spiral/namespaces/packages/mpi
     - name: install dependencies
       run: |
         export DEBIAN_FRONTEND=noninteractive
@@ -66,5 +47,30 @@ jobs:
         mkdir build && cd build
         cmake -D_codegen=CPU .. 
         make -j 2 install
-        make test
+    - name: Build FFTX on Linux
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/fftx
+        ref: develop
+        path: fftx
+    - name: build FFTX
+      run: |
+        pushd examples/library
+	"./build-lib-code.sh"
+	popd
+        mkdir build && cd build
+	# -DCMAKE_INSTALL_PREFIX=fftx 
+        cmake -D_codegen=CPU ..
+        make -j 2 install
 
+
+    # - name: install dependencies
+    #   run: |
+    #     export DEBIAN_FRONTEND=noninteractive
+    #     sudo apt-get -qqq update
+    #     sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
+    #     sudo apt-get install python3.8
+    #     sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
+    #     sudo chmod a+x /usr/local/bin/cmake-easyinstall
+    #     export CEI_SUDO="sudo"
+      # shell: bash
