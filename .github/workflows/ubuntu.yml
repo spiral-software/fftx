@@ -55,11 +55,11 @@ jobs:
         path: fftx
     - name: build FFTX
       run: |
-        pushd examples/library
-	"./build-lib-code.sh"
-	popd
+        cd ${{ github.workspace }}/fftx/examples/library
+        "./build-lib-code.sh"
+        cd ${{ github.workspace }}/fftx
         mkdir build && cd build
-	# -DCMAKE_INSTALL_PREFIX=fftx 
+        # -DCMAKE_INSTALL_PREFIX=fftx 
         cmake -D_codegen=CPU ..
         make -j 2 install
 
