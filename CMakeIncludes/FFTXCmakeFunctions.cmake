@@ -195,7 +195,8 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 	message ( STATUS "${_target}: Libraries added = ${_library_names}" )
     endif ()
 
-    set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
+    ##  set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
+    set ( INSTALL_DIR_TARGET ${CMAKE_INSTALL_PREFIX}/bin )
     install ( TARGETS ${_target} DESTINATION ${INSTALL_DIR_TARGET} )
 
 endfunction ()

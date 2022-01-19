@@ -13,13 +13,16 @@ ImportAll(fftx);
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
-else
+elif codefor = "HIP" then
     conf := FFTXGlobals.defaultHIPConf();
+elif codefor = "CPU" then
+    conf := LocalConfig.fftx.defaultConf();
 fi;
 
 if 1 = 1 then
     prefix := "fftx_rconv_";
     name := prefix::StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1), s->"x"::StringInt(s)));
+    name := name::"_"::codefor;
     
     PrintLine("fftx_rconv-frame: name = ", name, ", cube = ", szcube, ", size = ",
               StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1),
