@@ -508,9 +508,10 @@ def cmake_library ( type ):
 
     _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
 
-    _str = _str + 'set ( _lib_root ' + _file_stem + ' )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root}precomp )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root}precomp PARENT_SCOPE )\n\n'
+    _modfs = re.sub ( '_$', '', _file_stem )                 ## remove trailing underscore
+    _str = _str + 'set ( _lib_root ' + _modfs + ' )\n'
+    _str = _str + 'set ( _lib_name ${_lib_root} )\n'
+    _str = _str + 'set ( _lib_name ${_lib_root} PARENT_SCOPE )\n\n'
 
     if type == 'CUDA':
         _str = _str + 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n'
@@ -519,10 +520,10 @@ def cmake_library ( type ):
     if type == 'CUDA' or type == 'HIP':
         _str = _str + 'include ( SourceList' + type + '.cmake )\n'
 
-    _str = _str + 'list    ( APPEND _source_files ${_lib_root}CPU_libentry.cpp' + ' )\n'
-    _str = _str + 'list    ( APPEND _source_files ${_lib_root}libentry' + _file_suffix + ' )\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_CPU_libentry.cpp' + ' )\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
     if type == 'CUDA' or type == 'HIP':
-        _str = _str + 'list    ( APPEND _source_files ${_lib_root}' + type + '_libentry' + _file_suffix + ' )\n\n'
+        _str = _str + 'list    ( APPEND _source_files ${_lib_root}_' + type + '_libentry' + _file_suffix + ' )\n\n'
     ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
 
     _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'

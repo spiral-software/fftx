@@ -24,8 +24,8 @@ if not re.match ( '_$', _xform ):                ## append an underscore if one 
 
 if re.match ( '^.*_.*_', _xform ):
     _xfmseg = re.split ( _under, _xform )
-    _libfwd = _xfmseg[0] + _under + _xfmseg[1] + _under + 'precomp'
-    _libinv = _xfmseg[0] + _under + 'i' + _xfmseg[1] + _under + 'precomp'
+    _libfwd = _xfmseg[0] + _under + _xfmseg[1]
+    _libinv = _xfmseg[0] + _under + 'i' + _xfmseg[1]
 
 if sys.platform == 'win32':
     _libfwd = _libfwd + '.dll'

@@ -329,10 +329,9 @@ endfunction ()
 ##  of transforms built by FFTX.  It relies on FFTX_HOME being set (typically an
 ##  external application would need this in order to include
 ##  $FFTX_HOME/CMakeInclude/FFTXCmakeFunctions.cmake in a CMake file anyway).
-##  The build directory name need not be known (we look for a folder in FFTX_HOME
-##  with a 'lib' subfolder).  All libraries in the 'lib' subfolder are noted, and
-##  the include path directive for the library is derived from the library name
-##  (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
+##  The libraries must be in the 'lib' folder (under $FFTX_HOME).  All libraries
+##  found are noted and the include path directive for the library is derived
+##  from the library name (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
 
 function ( FFTX_find_libraries )
 
@@ -350,41 +349,44 @@ function ( FFTX_find_libraries )
 
     ##  Find the build directory containing the libraries
     set (_root_folder "${FFTX_SOURCE_DIR}" )
+    if ( NOT IS_DIRECTORY ${_root_folder}/lib )
+	message ( SEND_ERROR "${_root_folder}/lib is not a directory -- no libraries found, CANNOT build" )
+    endif ()
+    
     set ( _add_link_directory )
     set ( _libraries_added )
     set ( _includes_added ${FFTX_SOURCE_DIR}/include ${FFTX_SOURCE_DIR}/examples/library )
-    file ( GLOB _root_names RELATIVE ${_root_folder} CONFIGURE_DEPENDS ${_root_folder}/* )
     
-    foreach ( _dir ${_root_names} )
-	if ( IS_DIRECTORY ${_root_folder}/${_dir} AND IS_DIRECTORY ${_root_folder}/${_dir}/lib )
-	    ##  this is the folder...
-	    message ( STATUS "Folder ${_root_folder}/${_dir}/lib may have installed libraries" )
-	    set ( _lib_found FALSE )
-	
-	    file ( GLOB _libs RELATIVE ${_root_folder}/${_dir}/lib
-		${_root_folder}/${_dir}/lib/*fftx_*_precomp* )
-	    ##  message ( STATUS "Check for libs in: ${_libs}" )
- 	    foreach ( _lib ${_libs} )
-		string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
-		string ( REGEX REPLACE "_precomp.*$" "" _lib ${_lib} )	## strip trailing stuff
-		list ( FIND _libraries_added "${_lib}_precomp" _posnlist )
-		if ( ${_posnlist} EQUAL -1 )
-		    ##  message ( STATUS "${_lib}_precomp not in list -- adding" )
-		    list ( APPEND _libraries_added "${_lib}_precomp" )
-		    list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
-		    set ( _lib_found TRUE )
-		endif ()
-	    endforeach ()
-	    if ( ${_lib_found} )
-		list ( APPEND _add_link_directory ${_root_folder}/${_dir}/lib )
-		message ( STATUS "Add linker dir: ${_add_link_directory}" )
-	    endif ()
+    set ( _lib_found FALSE )
+    file ( GLOB _libs RELATIVE ${_root_folder}/lib ${_root_folder}/lib/*fftx_* )
+    ##  message ( STATUS "Check for libs in: ${_libs}" )
+    foreach ( _lib ${_libs} )
+	string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
+	string ( REGEX REPLACE ".so.*$" "" _lib ${_lib} )	## strip trailing stuff
+	list ( FIND _libraries_added "${_lib}" _posnlist )
+	if ( ${_posnlist} EQUAL -1 )
+	    ##  message ( STATUS "${_lib} not in list -- adding" )
+	    list ( APPEND _libraries_added "${_lib}" )
+	    list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
+	    set ( _lib_found TRUE )
 	endif ()
     endforeach ()
+    if ( ${_lib_found} )
+	list ( APPEND _add_link_directory ${_root_folder}/lib )
+	message ( STATUS "Add linker dir: ${_add_link_directory}" )
+    endif ()
 
-    ##  message ( STATUS "Include paths: ${_includes_added}" )
-    ##  message ( STATUS "Libraires found: ${_libraries_added}" )
-    ##  message ( STATUS "Library path is: ${_add_link_directory}" )
+    ##  file ( GLOB _root_names RELATIVE ${_root_folder} CONFIGURE_DEPENDS ${_root_folder}/* )
+    ##  foreach ( _dir ${_root_names} )
+	##  if ( IS_DIRECTORY ${_root_folder}/${_dir} AND IS_DIRECTORY ${_root_folder}/${_dir}/lib )
+	##      ##  this is the folder...
+	##      message ( STATUS "Folder ${_root_folder}/${_dir}/lib may have installed libraries" )
+    ##      endif ()
+    ##  endforeach ()
+
+    message ( STATUS "Include paths: ${_includes_added}" )
+    message ( STATUS "Libraires found: ${_libraries_added}" )
+    message ( STATUS "Library path is: ${_add_link_directory}" )
     
     ##  setup FFTX variables in parent scope for include dirs, library path, and library names
     set ( FFTX_LIB_INCLUDE_PATHS ${_includes_added}     PARENT_SCOPE )
