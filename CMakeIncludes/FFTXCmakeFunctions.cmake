@@ -376,17 +376,9 @@ function ( FFTX_find_libraries )
 	message ( STATUS "Add linker dir: ${_add_link_directory}" )
     endif ()
 
-    ##  file ( GLOB _root_names RELATIVE ${_root_folder} CONFIGURE_DEPENDS ${_root_folder}/* )
-    ##  foreach ( _dir ${_root_names} )
-	##  if ( IS_DIRECTORY ${_root_folder}/${_dir} AND IS_DIRECTORY ${_root_folder}/${_dir}/lib )
-	##      ##  this is the folder...
-	##      message ( STATUS "Folder ${_root_folder}/${_dir}/lib may have installed libraries" )
-    ##      endif ()
-    ##  endforeach ()
-
-    message ( STATUS "Include paths: ${_includes_added}" )
-    message ( STATUS "Libraires found: ${_libraries_added}" )
-    message ( STATUS "Library path is: ${_add_link_directory}" )
+    ##  message ( STATUS "Include paths: ${_includes_added}" )
+    ##  message ( STATUS "Libraries found: ${_libraries_added}" )
+    ##  message ( STATUS "Library path is: ${_add_link_directory}" )
     
     ##  setup FFTX variables in parent scope for include dirs, library path, and library names
     set ( FFTX_LIB_INCLUDE_PATHS ${_includes_added}     PARENT_SCOPE )
