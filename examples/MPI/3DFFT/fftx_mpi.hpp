@@ -1,5 +1,7 @@
 #include "fftx3.hpp"
 #include <mpi.h>
+#include <vector>
+#include <string>
 
 enum FFTX_Distribution : int {FFTX_NO_DIST, FFTX_GRID_X, FFTX_GRID_Y, FFTX_GRID_Z};
 
@@ -18,15 +20,15 @@ template<int DIM, typename T>
 struct d_array_t
   {
     d_array_t(const box_t<DIM>& a_box,  const std::vector<FFTX_Distribution>& global_layout, const std::vector<int>local_layout = vector<int>())
-      :m_domain(a_box),  m_dist(global_layout)
+      :m_domain(a_box),  m_dist(global_layout), embedding(NULL)
     {      
       m_array = array_t<DIM, T>(m_domain);
     }    
     
-    d_array_t() = default;
+  d_array_t() = default;
 
     d_array_t(global_ptr<T>&& p, const box_t<DIM>& a_box,const std::vector<FFTX_Distribution>& global_layout)
-      :m_domain(a_box), m_dist(global_layout)
+      :m_domain(a_box), m_dist(global_layout), embedding(NULL)
     {
       m_array = array_t<DIM, T>(p, m_domain);
     }
@@ -35,6 +37,7 @@ struct d_array_t
     vector<int> m_layout;        
     box_t<DIM>  m_domain;
     array_t<DIM, T> m_array;
+    const d_array_t *embedding;
   };
 
 
@@ -69,32 +72,108 @@ template<int DIM, typename T>
 void MDDFT(const point_t<DIM>& extents, int batch,           //extents is the size of the DFT  
 	   d_array_t<DIM, T>& destination,
 	   d_array_t<DIM, T>& source)
-{    
+{
+  //extracts all dimensions
+  cout<<"# "<<DIM<<"-dimensional DFT"<<endl<<endl;
+  
   cout<<"N := [";
   for (int i = 0; i !=source.m_domain.extents().dim()-1; ++i){
     cout<<source.m_domain.extents()[i]<<",";
   }
   cout<<source.m_domain.extents()[DIM-1];  
   cout<<"];"<<endl;
+
   
-  //figure out how data is distributed
-  cout<<"#Assumes default layout "<<endl;
-  cout<<"Nlocal := N{[1]}::List([2, 3], i-> N[i]/pg[i-1]);"<<endl;
-
-
-  cout<<"localBrick := TArrayND(TComplex, Nlocal, dimXYZ);"<<endl;
-
-  cout<<"dataLayout := TGlobalArrayND(procGrid, localBrick);"<<endl;
-  cout<<"Xglobal := tcast(TPtr(dataLayout), X);"<<endl;
-  cout<<"Yglobal := tcast(TPtr(dataLayout), Y);"<<endl;
+  //count how many distributed dimensions
+  int num_dist_dim = 0;
   
-  cout<<"mddft := TRC(MDDFT(N, -1));"<<endl;
+  for (int i = 0; i != source.m_domain.extents().dim(); ++i)    
+    num_dist_dim += (source.m_dist[i] != FFTX_NO_DIST);
+   
 
-  dagnodes.push_back("TDAGNode(mddft, Yglobal, Xglobal)");
+  if (!source.embedding){
+  
+    //figure out how data is distributed
+    cout<<"#Assumes default layout "<<endl;
+    
+    if (num_dist_dim == 1){ //slab-pencil distribute Z
+      cout<<"Nlocal := N{[1, 2]}::List([3], i-> N[i]/pg[i-1]);"<<endl;
+    }
+    if (num_dist_dim == 2){  //pencil-pencil distribute Y, Z
+      cout<<"Nlocal := N{[1]}::List([2, 3], i-> N[i]/pg[i-1]);"<<endl;
+    }
+    
+    cout<<"localBrick := TArrayND(TComplex, Nlocal, [dimX, dimY, dimZ]);"<<endl;
+    
+    cout<<"dataLayout := TGlobalArrayND(procGrid, localBrick);"<<endl;
+    cout<<"Xglobal := tcast(TPtr(dataLayout), X);"<<endl;
+    cout<<"Yglobal := tcast(TPtr(dataLayout), Y);"<<endl;
+    
+    cout<<"mddft := TRC(MDDFT(N, -1));"<<endl;
+    
+    dagnodes.push_back("TDAGNode(mddft, Yglobal, Xglobal)");
+  }
+  else{
+    cout<<"# EMBEDDED "<<DIM<<"D-DFT"<<endl;
+    
+    //this is an embedding so need to pad in stages
+    if (num_dist_dim == 1)
+      {	
+	cout<<"# Decomp: "<<(num_dist_dim==DIM-1?"Pencil":"Slab")<<"-pencil"<<endl;
+	
+	cout<<"Xglobal := tcast(TPtr(dataLayout), X);"<<endl;
+	cout<<"Yglobal := tcast(TPtr(dataLayout), Y);"<<endl;
 
+	cout<<"mddft1 := TRC(MDDFT(N, -1));"<<endl;
+	cout<<"mddft2 := TRC(MDDFT(N, -1));"<<endl;
+	dagnodes.push_back("TDAGNode(mddft1, Yglobal, Xglobal)");
+	dagnodes.push_back("TDAGNode(mddft2, Yglobal, Xglobal)");	
+      }
+    if (num_dist_dim == 2)
+      {
+	cout<<"# Decomp: "<<(num_dist_dim==DIM-1?"Pencil":"Slab")<<"-pencil"<<endl<<endl;
+
+	for (int i = 0; i != DIM; ++i)
+	  {
+	    int input_sz = source.embedding->m_domain.hi[i] - source.embedding->m_domain.lo[i] + 1;
+
+	    //input != output size so embedding is performed
+	    //assumes that there is embedding instead of extract
+	    if (input_sz != destination.m_domain.extents()[i])
+	      {
+		cout<<"# Embedding dimension "<<(i+1)<<endl;
+
+		cout<<"mddft"<<(i+1)<<" := TRC(MDDFT(N, -1));"<<endl;
+		
+		string dag_desc = "TDAGNode(mddft";
+		dag_desc += to_string(i+1);
+		dag_desc += ", Yglobal, Xglobal)";
+		
+		dagnodes.push_back(dag_desc);
+		cout<<endl;		
+	      }
+	    
+	  }
+
+
+
+    std::cout<<"    TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<",[";
+    for(int i=0; i<DIM; i++)
+      {
+        std::cout<<"["<<source.embedding->m_domain.lo[i]<<".."<<source.embedding->m_domain.hi[i]<<"]";
+        if(i<DIM-1) std::cout<<",";
+      }
+    std::cout<<"]), dest, src),\n";
+
+
+	cout<<"# EMBEDDED "<<DIM<<"D-DFT"<<endl<<endl;
+      }    
+    
+  }
   //cout<<endl;
 }
 
+/*
 template<typename T, int DIM>
 void IMDDFT(const point_t<DIM>& extents, int batch,
 	    d_array_t<DIM, T>& destination,
@@ -112,13 +191,15 @@ void IMDDFT(const point_t<DIM>& extents, int batch,
   //  uint64_t src_id = source.m_array.id();  
   dagnodes.push_back("TDAGNode(imddft, dest, src)");
 }
-
+*/
 
 
 template<typename T, int DIM, unsigned long COUNT, int GDIM>
 void closeScalarDAG(std::array<d_array_t<DIM,T>, COUNT>& localVars, const char* name, box_t<GDIM>& grid)
 {
 
+  cout<<endl<<"# Generate DAG "<<endl;
+  
   cout<<"t := TFCall(TDAG("<<endl; 
   for (auto anode: dagnodes)
     {
@@ -159,3 +240,18 @@ void kernel(const d_array_t<DIM, double>& symbol,
   //std::cout<<"    TDAGNode(Diag(diagTensor(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0),fConst(TReal, 2, 1))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   
 }
+
+template<int DIM, typename T>
+void zeroEmbedBox(d_array_t<DIM, T>& destination, const d_array_t<DIM, T>& source)
+{
+  cout<<"# zeroEmbedBox BEGIN"<<endl;;
+  
+  destination.embedding = &source;
+  destination.m_dist = source.m_dist;
+
+  cout<<"# No DAG node created for this. Handled by compute routine"<<endl;
+
+  cout<<"# zeroEmbedBox END"<<endl<<endl;
+ 
+}
+
