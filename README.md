@@ -56,50 +56,53 @@ building FFTX.  To create the library source code do the following:
 ```
 cd fftx			## your FFTX install directory
 cd examples/library
-./create_lib_code.sh
+./build-lib-code.sh
 cd ../..
 ```
 This step can take quite a long time depending on the number of transforms and
-set of sizes to create.  By default the code created is for CUDA (see simple
-change in create_lib_code to build for HIP).  
+set of sizes to create.  The code is targeted to run on the CPU,
+**additionally**, code is created targeted to run on an NVIDIA GPU (CUDA,
+assuming **nvcc** is found in the PATH) or on an AMD GPU (HIP, assuming
+**hipcc** is found in the PATH).  Depending on the number of sizes being built
+for each transform this process can take a considerable amount of time.
 
-You can build the examples for CPU or GPU (for those examples that support GPU).
-By default they are built for CPU (this is your only option if your machine
-doesn't have a GPU or the NVIDIA nvcc compiler).  To build the software,
-first do the following to run SPIRAL to generate code for all the sizes in
-`examples/library/cube-sizes.txt`:
+Next, run **cmake** and build the software:
 ```
-pushd examples/library
-./create_lib_code.sh
-popd
-```
-If you are using HIP instead of CUDA, you will need to change
-references to `cuda` in `create_lib_code.sh` to `hip`.
-This can take up to 3 hours.
-
-Then compile and link by:
-```
-cmake -S . -B build -D_codegen=CPU      # build for CPU, *or*
-cmake -S . -B build -D_codegen=GPU      # build for GPU, *or*
-cmake -S . -B build -D_codegen=HIP      # build for HIP
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CPU ..      # build for CPU, *or*
+cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..     # build for CUDA, *or*
+cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -DCMAKE_CXX_COMPILER=hipcc -D_codegen=HIP ..      # build for HIP
 ```
 If you are building on Linux or Linux-like systems then do:
 ```
-cmake --build build --target install
+make install
 ```
 or, if you are building on Windows (for Release configuration), do:
 ```
-cmake --build build --target install --config Release
+cmake --build . --target install --config Release
 ```
 
 Currently, **FFTX** builds a number of example programs; the programs will be
-installed in the *build/bin* folder and can be run from there; e.g.,
+installed in the location specified by **CMAKE_INSTALL_PREFIX**.  This often
+defaults to a system location, such as /usr/local, to which you may not have
+write priviliges; thus it is best to specify **CMAKE_INSTALL_PREFIX** explicitly
+on the **cmake** command line (as shown above).  A reasonable option is the root
+of your FFTX tree (e.g., ~/work/fftx).  The example programs are written to a
+**bin** folder and the libraries created are written to a **lib** folder.  To
+run the programs simplt do (you may need to add the **lib** folder to LD_LIBRARY_PATH):
 ```
-cd build/bin
+cd bin
 ./testcompare_device
-./testrconv
 ./testverify
 ```
+
+The libraries built and copied to the **lib** folder can be used by external
+applications to leverage FFTX transforms.  To access the necessary include files
+and libraries an external application's *cmake* should include
+**CMakeInclude/FFTXCmakeFunctions.cmake**.  A full example of an external
+application linking with FFTX libraries is available in the
+[fftx-demo-extern-app](https://www.github.com/spiral-software/fftx-demo-extern-app).
 
 ## Examples Structure
 
@@ -117,7 +120,7 @@ harness to exercise the transform and a *cmake* file to build the example.
 ### Naming Conventions For Examples
 
 The folder containing the example should be named for the transform or problem
-being illustrated, e.g., **rconv**.  This name will be used as the *project*
+being illustrated, e.g., **mddft**.  This name will be used as the *project*
 name in the *cmake* file (details below).
 
 Within each folder there should be one (or possibly several) file(s) defining
@@ -148,36 +151,32 @@ Add (or copy and edit) a *cmake* file (instructions for editing below).
 The CMakeLists.txt file has a section in the beginning to specifiy a few names;
 most of the rules and targets are defined automatically and few, if any, changes
 should be required.  The cmake file uses the varaible **\_codegen** to determine
-whether to build for CPU or GPU.  This variable is defined on the cmake command
-line (or defaults to CPU); do **not** override it in the cmake file.
-
-```
-##  _codegen specifies CPU or GPU (serial or CUDA) code generation.  Will be set
-##  in parent so don't change here.
-```
+whether to build for CPU or GPU (either CUDA or HIP).  This variable is defined
+on the cmake command line (or defaults to CPU); do **not** override it in the
+cmake file.
 
 &nbsp;&nbsp;**1.**&nbsp;&nbsp;
-Set the project name.  The preferred name is the same name as the example folder, e.g., **verify**<br>
+Set the project name.  The preferred name is the same name as the example folder, e.g., **mddft**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-project ( verify ${\_lang\_add} )
+project ( mddft ${\_lang\_add} )
 
 &nbsp;&nbsp;**2.**&nbsp;&nbsp;
-As noted above, the file namimg convention for the *driver* programs is *prefix.stem*.**cpp**.
-Specify the *stem* and *prefix(es)* used; e.g., from the **verify** example:<br>
+As noted above, the file naming convention for the *driver* programs is *prefix.stem*.**cpp**.
+Specify the *stem* and *prefix(es)* used; e.g., from the **mddft** example:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 set ( \_stem fftx )<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-set ( \_prefixes mddft2 mddft3 imddft2 imddft3 )
+set ( \_prefixes mddft imddft )
 
 &nbsp;&nbsp;**3.**&nbsp;&nbsp;
 Check the test harness program name: you won't need to modify this if you've
 followed the recommended conventions:  The test harness program name is expected
-to be **test**_project_.{**cpp|cu**}<br> 
+to be **test**_project<br> 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
     set ( BUILD\_PROGRAM test${PROJECT\_NAME} )
 <br>
 
-Finally add an entry to the cmake file in the **examples** folder.  We use a cmake
+Finally add an entry to the cmake file in the **examples** folder.  We use a *cmake*
 function **manage_add_subdir** to control this.  Call the function with
 parameters directory name and True/False flags for building for CPU and GPU, for
 example:
