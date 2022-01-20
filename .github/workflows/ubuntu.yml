@@ -61,7 +61,7 @@ jobs:
     - name: build FFTX
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
-	FFTX_HOME: ${{ github.workspace }}/fftx
+        FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
         cd ${{ github.workspace }}/fftx/examples/library
         "./build-lib-code.sh"
