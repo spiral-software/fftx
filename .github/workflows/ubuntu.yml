@@ -47,13 +47,21 @@ jobs:
         mkdir build && cd build
         cmake -D_codegen=CPU .. 
         make -j 2 install
-    - name: Build FFTX on Linux
+
+  build_fftx:
+    name: Build FFTX on Linux
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout FFTX
       uses: actions/checkout@v2
       with:
         repository: spiral-software/fftx
         ref: develop
-        path: ${{ github.workspace }}/fftx
+        path: fftx
     - name: build FFTX
+      env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
+	FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
         cd ${{ github.workspace }}/fftx/examples/library
         "./build-lib-code.sh"
