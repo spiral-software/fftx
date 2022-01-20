@@ -87,7 +87,7 @@ endif ()
 ##  relocatable code doesn't work if multiple spiral files are included (name collisions)
 ##  Default setting is false; only running on 64 bit machines.
 
-if ( ${_codegen} STREQUAL "GPU" )
+if ( ${_codegen} STREQUAL "CUDA" )
     if (WIN32)
 	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v

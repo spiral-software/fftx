@@ -501,9 +501,10 @@ def cmake_library ( type ):
 
     _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
 
-    _str = _str + 'set ( _lib_root ' + _file_stem + ' )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root}precomp )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root}precomp PARENT_SCOPE )\n\n'
+    _modfs = re.sub ( '_$', '', _file_stem )                 ## remove trailing underscore
+    _str = _str + 'set ( _lib_root ' + _modfs + ' )\n'
+    _str = _str + 'set ( _lib_name ${_lib_root} )\n'
+    _str = _str + 'set ( _lib_name ${_lib_root} PARENT_SCOPE )\n\n'
 
     if type == 'CUDA':
         _str = _str + 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n'
@@ -512,8 +513,8 @@ def cmake_library ( type ):
     if type == 'CUDA' or type == 'HIP':
         _str = _str + 'include ( SourceList' + type + '.cmake )\n'
 
-    _str = _str + 'list    ( APPEND _source_files ${_lib_root}CPU_libentry.cpp' + ' )\n'
-    _str = _str + 'list    ( APPEND _source_files ${_lib_root}libentry' + _file_suffix + ' )\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_CPU_libentry.cpp' + ' )\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
     if type == 'CUDA' or type == 'HIP':
         _str = _str + 'list    ( APPEND _source_files ${_lib_root}' + type + '_libentry' + _file_suffix + ' )\n\n'
     ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
@@ -544,6 +545,10 @@ _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples
 
 
 with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
+    currpid = os.getpid()
+    myscrf  = 'myscript_' + str ( currpid ) + '.g'
+    testsf  = 'testscript_' + str ( currpid ) + '.g'
+
     for line in fil.readlines():
         ##  print ( 'Line read = ' + line )
         if re.match ( '[ \t]*#', line ):                ## ignore comment lines
@@ -552,7 +557,7 @@ with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
         if re.match ( '[ \t]*$', line ):                ## skip lines consisting of whitespace
             continue
 
-        testscript = open ( 'testscript.g', 'w' )
+        testscript = open ( testsf, 'w' )
         testscript.write ( line )
         testscript.write ( 'libdir := "' + _srcs_dir + '"; \n' )
         testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
@@ -581,9 +586,11 @@ with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
         ##  FUTURE: Need a way to handle functions with different signatures
         _extern_decls = _extern_decls + 'extern "C" { extern void init_' + _func_stem + '();  }\n'
         _extern_decls = _extern_decls + 'extern "C" { extern void destroy_' + _func_stem + '();  }\n'
+
         ##  TODO: Allow optional 3rd arg for symbol
         _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
         ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
+
         ##  Identify transform by # batches and xform size
         _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _dims + ' },\n'
         _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
@@ -591,19 +598,19 @@ with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
 
         ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
-        ##  Generate the SPIRAL script: cat testscript.g & {transform}-frame.g
+        ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
         _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = 'python ' + _catfils + ' myscript.g testscript.g ' + _frame_file
+        cmdstr = 'python ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
         result = subprocess.run ( cmdstr, shell=True, check=True )
         res = result.returncode
 
         ##  Generate the code by running SPIRAL
         if sys.platform == 'win32':
-            cmdstr = _spiralhome + '/bin/spiral.bat < myscript.g'
+            cmdstr = _spiralhome + '/bin/spiral.bat < ' + myscrf
         else:
-            cmdstr = _spiralhome + '/bin/spiral < myscript.g'
+            cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
         if len ( sys.argv ) < 5:
             ##  No optional argument, generate the code
@@ -676,5 +683,9 @@ with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
     _cmake_file.write ( _filebody )
     _cmake_file.close ()
 
+    if os.path.exists ( myscrf ):
+        os.remove ( myscrf )
+    if os.path.exists ( testsf ):
+        os.remove ( testsf )
 
 sys.exit (0)
