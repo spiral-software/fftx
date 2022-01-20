@@ -52,7 +52,7 @@ jobs:
       with:
         repository: spiral-software/fftx
         ref: develop
-        path: fftx
+        path: ${{ github.workspace }}/fftx
     - name: build FFTX
       run: |
         cd ${{ github.workspace }}/fftx/examples/library
