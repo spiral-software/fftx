@@ -624,7 +624,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         else:
             ## Failed to generate file -- note it in build-lib-code-failures.txt
             bldf = open ( 'build-lib-code-failures.txt', 'a' )
-            bldf.write  ( 'Failed to generate:   ' + src_file_path )
+            bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
             bldf.close  ()
 
     ##  All cube sizes processed: close list of sources, create header file
