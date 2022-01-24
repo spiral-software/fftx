@@ -8,6 +8,12 @@
 
 retc=0
 
+##  Use a file named build-lib-code-failures.txt to note any files that fail to
+##  generate -- failures are noted & written by the python drivers: gen_{files|dftbat}.py
+
+rm -f build-lib-code-failures.txt
+touch build-lib-code-failures.txt
+
 echo "Always create the CPU code ... commands:"
 
 python gen_files.py fftx_mddft cpu true &
