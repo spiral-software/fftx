@@ -579,22 +579,6 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _dimy = dims[1]
         _dimz = dims[2]
 
-        ##  Add the file name to the list of sources
-        _func_stem = _file_stem + _dimx + 'x' + _dimy + 'x' + _dimz + '_' + _code_type
-        _file_name = _func_stem + _file_suffix
-        _cmake_srcs.write ( '    ' + _file_name + '\n' )
-
-        ##  Add the extern declarations and track func name for header file
-        ##  FUTURE: Need a way to handle functions with different signatures
-        _extern_decls = _extern_decls + 'extern "C" { extern void init_' + _func_stem + '();  }\n'
-        _extern_decls = _extern_decls + 'extern "C" { extern void destroy_' + _func_stem + '();  }\n'
-        ##  TODO: Allow optional 3rd arg for symbol
-        ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
-        _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
-        _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
-        _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
-        _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
-
         ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
         ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
@@ -611,6 +595,9 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         else:
             cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
+        _func_stem = _file_stem + _dimx + 'x' + _dimy + 'x' + _dimz + '_' + _code_type
+        _file_name = _func_stem + _file_suffix
+        src_file_path = _srcs_dir + '/' + _file_name
         if len ( sys.argv ) < 5:
             ##  No optional argument, generate the code
             result = subprocess.run ( cmdstr, shell=True, check=True )
@@ -618,6 +605,27 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         else:
             ##  Just print a message and skip copde gen (test python process/logic)
             print ( 'run spiral to create source file: ' + _file_name, flush = True )
+
+        ##  Add the file name to the list of sources, update declarations etc. if file exists
+        if os.path.exists ( src_file_path ):
+            _cmake_srcs.write ( '    ' + _file_name + '\n' )
+
+            ##  Add the extern declarations and track func name for header file
+            ##  FUTURE: Need a way to handle functions with different signatures
+            _extern_decls = _extern_decls + 'extern "C" { extern void init_' + _func_stem + '();  }\n'
+            _extern_decls = _extern_decls + 'extern "C" { extern void destroy_' + _func_stem + '();  }\n'
+            ##  TODO: Allow optional 3rd arg for symbol
+            ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
+            _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
+            _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
+            _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
+            _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
+
+        else:
+            ## Failed to generate file -- note it in build-lib-code-failures.txt
+            bldf = open ( 'build-lib-code-failures.txt', 'a' )
+            bldf.write  ( 'Failed to generate:   ' + src_file_path )
+            bldf.close  ()
 
     ##  All cube sizes processed: close list of sources, create header file
     _cmake_srcs.write ( ')\n' )
