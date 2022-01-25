@@ -579,6 +579,9 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _dimy = dims[1]
         _dimz = dims[2]
 
+        if re.match ( 'rconv', _xform_root ) and _code_type == 'CPU' and int ( _dimx ) > 260:
+            continue
+
         ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
         ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
