@@ -243,6 +243,11 @@ void rconvDimension(Transformer& a_transformer,
                     int a_rounds,
                     int a_verbosity)
 {
+  if (!a_transformer.isDefined())
+    {
+      return;
+    }
+
   std::cout << "***** test " << DIM << "D real convolution on "
             << a_domain << std::endl;
 

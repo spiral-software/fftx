@@ -680,6 +680,11 @@ void verifyTransform(Transformer& a_tfm,
                      int a_rounds,
                      int a_verbosity)
 {
+  if (!a_tfm.isDefined())
+    {
+      return;
+    }
+
   double err = 0.;
 
   updateMax(err,
