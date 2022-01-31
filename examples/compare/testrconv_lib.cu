@@ -83,6 +83,7 @@ void convolutionDevice(Transformer& a_transformer,
 
   DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
                   MEM_COPY_DEVICE_TO_HOST);
+  DEVICE_FREE(bufferPtr);
 }
 
 
