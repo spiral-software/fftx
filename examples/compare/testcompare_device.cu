@@ -255,6 +255,11 @@ void compareSize(Transformer& a_tfm,
                  int a_iterations,
                  int a_verbosity)
 {
+  if (!a_tfm.isDefined())
+    {
+      return;
+    }
+
   // fftx::point_t<3> extents = test_comp::domain.extents();
   // fftx::mddft<3> tfm(a_extents); // does initialization
 

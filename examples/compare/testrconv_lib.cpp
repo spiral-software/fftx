@@ -83,6 +83,7 @@ void convolutionDevice(Transformer& a_transformer,
 
   DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
                   MEM_COPY_DEVICE_TO_HOST);
+  DEVICE_FREE(bufferPtr);
 }
 
 
@@ -243,6 +244,11 @@ void rconvDimension(Transformer& a_transformer,
                     int a_rounds,
                     int a_verbosity)
 {
+  if (!a_transformer.isDefined())
+    {
+      return;
+    }
+
   std::cout << "***** test " << DIM << "D real convolution on "
             << a_domain << std::endl;
 

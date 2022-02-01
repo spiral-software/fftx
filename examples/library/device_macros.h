@@ -16,6 +16,8 @@
 #define DEVICE_MEM_COPY hipMemcpy
 #define MEM_COPY_DEVICE_TO_HOST hipMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE hipMemcpyHostToDevice
+#define DEVICE_ERROR_T hipError_t
+#define DEVICE_GET_ERROR_STRING hipGetErrorString
 #define DEVICE_FFT_TYPE hipfftType
 #define DEVICE_FFT_RESULT hipfftResult
 #define DEVICE_FFT_HANDLE hipfftHandle
@@ -47,6 +49,8 @@
 #define DEVICE_MEM_COPY cudaMemcpy
 #define MEM_COPY_DEVICE_TO_HOST cudaMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE cudaMemcpyHostToDevice
+#define DEVICE_ERROR_T cudaError_t
+#define DEVICE_GET_ERROR_STRING cudaGetErrorString
 #define DEVICE_FFT_TYPE cufftType
 #define DEVICE_FFT_RESULT cufftResult
 #define DEVICE_FFT_HANDLE cufftHandle
@@ -69,11 +73,13 @@
 #endif
 #include <iostream>
 // Example of use: DEVICE_CHECK(DEVICE_MEM_COPY(...), "memcpy at step 2");
-inline void DEVICE_CHECK(int a_rc, const std::string& a_name)
+inline void DEVICE_CHECK(DEVICE_ERROR_T a_rc, const std::string& a_name)
 {
    if (a_rc != DEVICE_SUCCESS)
      {
-        std::cerr << a_name << " failed with code " << a_rc << std::endl;
+        std::cerr << a_name << " failed with code " << a_rc
+                  << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
+                  << std::endl;
         exit(-1);
      }
 }
