@@ -302,23 +302,12 @@ void compareSize(Transformer& a_tfm,
   symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain);
   T_IN* inputHostPtr = inputArrayHost.m_data.local();
   // additional code for GPU programs
-  char* bufferDevicePtr;
   T_IN* inputDevicePtr;
   T_OUT* outputSpiralDevicePtr;
   T_OUT* outputDeviceFFTDevicePtr;
-  // DEVICE_MALLOC(&bufferDevicePtr, 3 * nptsInput*sizeof(std::complex<double>));
-  DEVICE_MALLOC(&bufferDevicePtr, bytesInput + 2*bytesOutput);
-  char* thisDevicePtr = bufferDevicePtr;
-  inputDevicePtr = (T_IN *) thisDevicePtr;
-  thisDevicePtr += bytesInput;
-  outputSpiralDevicePtr = (T_OUT *) thisDevicePtr;
-  thisDevicePtr += bytesOutput;
-  outputDeviceFFTDevicePtr = (T_OUT *) thisDevicePtr;
-  thisDevicePtr += bytesOutput;
-  // Do this at the beginning of each iteration instead of here.
-  //  DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, // dest, source
-  //                  npts*sizeof(double), // bytes
-  //                  MEM_COPY_HOST_TO_DEVICE); // type
+  DEVICE_MALLOC(&inputDevicePtr, bytesInput);
+  DEVICE_MALLOC(&outputSpiralDevicePtr, bytesOutput);
+  DEVICE_MALLOC(&outputDeviceFFTDevicePtr, bytesOutput);
   
   fftx::array_t<3, T_IN>
     inputArrayDevice(fftx::global_ptr<T_IN>
@@ -410,7 +399,7 @@ void compareSize(Transformer& a_tfm,
     }
 
   /*
-    Time iterations of complex-to-complex MDPRDFT with SPIRAL-generated code.
+    Time iterations of transform with SPIRAL-generated code.
    */
   double* spiral_cpu = new double[a_iterations];
   float* spiral_gpu = new float[a_iterations];
@@ -439,7 +428,9 @@ void compareSize(Transformer& a_tfm,
                   bytesOutput, // bytes
                   MEM_COPY_DEVICE_TO_HOST); // type
 
-  DEVICE_FREE(bufferDevicePtr);
+  DEVICE_FREE(inputDevicePtr);
+  DEVICE_FREE(outputSpiralDevicePtr);
+  DEVICE_FREE(outputDeviceFFTDevicePtr);
 
   const double tol = 1.e-7;
   bool match = true;
@@ -582,7 +573,7 @@ int main(int argc, char* argv[])
       {
         fftx::mddft<3> tfm(sz);
         compareSize(tfm, mddftDevice, iterations, verbosity);
-       }
+      }
 
       {
         fftx::imddft<3> tfm(sz);
