@@ -83,4 +83,18 @@ inline void DEVICE_CHECK(DEVICE_ERROR_T a_rc, const std::string& a_name)
         exit(-1);
      }
 }
+// Example of use: DEVICE_FFT_CHECK(DEVICE_MEM_COPY(...), "memcpy at step 2");
+inline void DEVICE_FFT_CHECK(DEVICE_FFT_RESULT a_rc, const std::string& a_name)
+{
+   if (a_rc != DEVICE_FFT_SUCCESS)
+     {
+        // There does not appear to be a HIP analogue.
+        std::cerr << a_name << " failed with code " << a_rc
+#elif defined(__CUDACC__)
+                  << " meaning " << _cudaGetErrorEnum(a_rc)
+#endif
+                  << std::endl;
+        exit(-1);
+     }
+}
 #endif
