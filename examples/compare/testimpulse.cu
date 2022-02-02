@@ -101,22 +101,6 @@ fftx::box_t<3> domain1(fftx::point_t<3> a_pt)
                         fftx::point_t<3>({{a_pt[0], a_pt[1], a_pt[2]}}));
 }
                                 
-
-// Example of use: DEVICE_FFT_CHECK(exec(...), "exec");
-inline void DEVICE_FFT_CHECK(DEVICE_FFT_RESULT a_rc,
-                             const std::string& a_name)
-{
-  if (a_rc != DEVICE_FFT_SUCCESS)
-    {
-      std::cerr << a_name << " failed with code " << a_rc
-#if defined(__CUDACC__)
-                << " meaning " << _cudaGetErrorEnum(a_rc)
-#endif
-                << std::endl;
-      exit(-1);
-    }
-}  
-
 template<typename T_IN, typename T_OUT>
 struct deviceTransform
 {
