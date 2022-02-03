@@ -50,6 +50,8 @@ git clone https://www.github.com/spiral-software/fftx
 **NOTE:** Before attempting to build ensure you have set environment variable
 **SPIRAL_HOME** to point to your **spiral-software** instance.
 
+#### Building on Linux or Linux-like Systems
+
 FFTX builds libraries of transforms for different sizes.  The library source
 code is generated from Spiral script specifications, and must be created before
 building FFTX.  To create the library source code do the following:
@@ -73,15 +75,28 @@ cd build
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CPU ..      # build for CPU, *or*
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..     # build for CUDA, *or*
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -DCMAKE_CXX_COMPILER=hipcc -D_codegen=HIP ..      # build for HIP
-```
-If you are building on Linux or Linux-like systems then do:
-```
 make install
 ```
-or, if you are building on Windows (for Release configuration), do:
+
+#### Building on Windows
+
+FFTX can be built on Windows, however, you need to be able to run a [bash] shell
+script to build the library source code.  The easiest option to accomplish this
+may be using the Git Bash shell available with **git** (other shells such as
+Cygwin or msys will also work).  To build FFTX, open a shell and do the
+following:
 ```
+cd fftx
+cd examples/library
+./build-lib-code.sh
+cd ../..
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..
 cmake --build . --target install --config Release
 ```
+This shows an example building for CUDA on Windows, you can also build for CPU
+or AMD HIP as shown above (under Building for Linux).
 
 Currently, **FFTX** builds a number of example programs; the programs will be
 installed in the location specified by **CMAKE_INSTALL_PREFIX**.  This often
@@ -90,7 +105,7 @@ write priviliges; thus it is best to specify **CMAKE_INSTALL_PREFIX** explicitly
 on the **cmake** command line (as shown above).  A reasonable option is the root
 of your FFTX tree (e.g., ~/work/fftx).  The example programs are written to a
 **bin** folder and the libraries created are written to a **lib** folder.  To
-run the programs simplt do (you may need to add the **lib** folder to LD_LIBRARY_PATH):
+run the programs simply do (you may need to add the **lib** folder to LD_LIBRARY_PATH):
 ```
 cd bin
 ./testcompare_device
