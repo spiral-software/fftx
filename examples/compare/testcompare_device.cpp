@@ -114,6 +114,14 @@ struct deviceTransform
 
   int m_dir;
 
+  DEVICE_FFT_RESULT plan3d(DEVICE_FFT_HANDLE& a_plan,
+                           fftx::point_t<3> a_tfmSize)
+  {
+    return DEVICE_FFT_PLAN3D(&a_plan,
+                             a_tfmSize[0], a_tfmSize[1], a_tfmSize[2],
+                             m_tp);
+  }
+
   DEVICE_FFT_RESULT exec(DEVICE_FFT_HANDLE a_plan,
                          T_IN* a_in,
                          T_OUT* a_out)
@@ -308,6 +316,10 @@ void compareSize(Transformer& a_tfm,
   DEVICE_MALLOC(&inputDevicePtr, bytesInput);
   DEVICE_MALLOC(&outputSpiralDevicePtr, bytesOutput);
   DEVICE_MALLOC(&outputDeviceFFTDevicePtr, bytesOutput);
+  // Do this at the beginning of each iteration instead of here.
+  //  DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, // dest, source
+  //                  npts*sizeof(double), // bytes
+  //                  MEM_COPY_HOST_TO_DEVICE); // type
   
   fftx::array_t<3, T_IN>
     inputArrayDevice(fftx::global_ptr<T_IN>
@@ -336,15 +348,8 @@ void compareSize(Transformer& a_tfm,
       printf("get deviceFFT plan\n");
     }
   DEVICE_FFT_HANDLE plan;
-  {
-    auto result =
-      DEVICE_FFT_PLAN3D(&plan, tfmSize[0], tfmSize[1], tfmSize[2],
-                        a_tfmDevice.m_tp); // DEVICE_FFT_D2Z
-    if (result != DEVICE_FFT_SUCCESS)
-      {
-        exit(-1);
-      }
-  }
+  DEVICE_FFT_CHECK(a_tfmDevice.plan3d(plan, tfmSize),
+                   "device FFT define plan");
 
   /*
     Time iterations of real-to-complex deviceFFT calls using the plan.
@@ -364,20 +369,16 @@ void compareSize(Transformer& a_tfm,
       //      auto result = deviceExecD2Z(plan,
       //                                  inputDevicePtr,
       //                                  outputDeviceFFTDevicePtr);
-      auto result = a_tfmDevice.exec(plan,
-                                     inputDevicePtr,
-                                     outputDeviceFFTDevicePtr);
+      DEVICE_FFT_CHECK(a_tfmDevice.exec(plan,
+                                        inputDevicePtr,
+                                        outputDeviceFFTDevicePtr),
+                       "device FFT exec launch");
       //      auto result = 
       //        DEVICE_FFT_EXECD2Z(plan,
       //                           (T_IN*) inputDevicePtr,
       //                           (DEVICE_FFT_DOUBLECOMPLEX*) outputDeviceFFTDevicePtr); // FIXME: (T_OUT*)
       DEVICE_EVENT_RECORD(stopDeviceFFT[itn]);
       DEVICE_EVENT_SYNCHRONIZE(stopDeviceFFT[itn]);
-      if (result != DEVICE_FFT_SUCCESS)
-        {
-          printf("deviceFFTExec launch failed\n");
-          exit(-1);
-        }
     }
   DEVICE_FFT_DESTROY(plan);
 
@@ -578,7 +579,7 @@ int main(int argc, char* argv[])
       {
         fftx::imddft<3> tfm(sz);
         compareSize(tfm, imddftDevice, iterations, verbosity);
-       }
+      }
 
       {
         fftx::mdprdft<3> tfm(sz);
