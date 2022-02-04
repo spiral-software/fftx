@@ -146,20 +146,22 @@ struct deviceTransform
 
   fftx::point_t<3> inputSize(fftx::point_t<3> a_tfmSize)
   {
-    fftx::point_t<3> ret = a_tfmSize;    
+    fftx::point_t<3> ret = a_tfmSize;
     if (m_tp == DEVICE_FFT_Z2D)
-      {
-        ret[0] = a_tfmSize[0]/2 + 1;
+      { // complex to real: reduce size of complex input domain
+        // ret[0] = a_tfmSize[0]/2 + 1;
+        ret[2] = a_tfmSize[2]/2 + 1;
       }
     return ret;
   }
 
   fftx::point_t<3> outputSize(fftx::point_t<3> a_tfmSize)
   {
-    fftx::point_t<3> ret = a_tfmSize;    
+    fftx::point_t<3> ret = a_tfmSize;
     if (m_tp == DEVICE_FFT_D2Z)
-      {
-        ret[0] = a_tfmSize[0]/2 + 1;
+      { // real to complex: reduce size of complex output domain
+        // ret[0] = a_tfmSize[0]/2 + 1;
+        ret[2] = a_tfmSize[2]/2 + 1;
       }
     return ret;
   }
@@ -193,19 +195,27 @@ void setArray3dElementConj(fftx::array_t<3, std::complex<double> >& a_arr,
 
 template<typename T_IN, typename T_OUT>
 void symmetrize(fftx::array_t<3, T_IN>& a_arr,
-                fftx::box_t<3> a_fullDomain)
+                fftx::box_t<3> a_fullDomain,
+                int a_verbosity)
 { };
 
 // Modify complex array so that it actually does transform to a real array.
 template<>
 void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<double> >& a_arr,
-                                              fftx::box_t<3> a_fullDomain)
+                                              fftx::box_t<3> a_fullDomain,
+                                              int a_verbosity)
 {
   fftx::box_t<3> arrDomain = a_arr.m_domain;
   std::complex<double>* arrPtr = a_arr.m_data.local();
   
   fftx::point_t<3> lo = a_fullDomain.lo;
   fftx::point_t<3> extent = a_fullDomain.extents();
+
+  if (a_verbosity >= 2)
+    {
+      std::cout << "symmetrizing complex input on "
+                << a_fullDomain << std::endl;
+    }
 
   int k0 = extent[0]/2;
   int k1 = extent[1]/2; 
@@ -221,6 +231,10 @@ void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<doub
     }
 
   // POINT must be real.
+  if (a_verbosity >= 2)
+    {
+      std::cout << "setting points that must be real" << std::endl;
+    }
   for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
     for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
       for (int pt2 = lo[2]; pt2 <= maxpt[2]; pt2 += k2)
@@ -233,17 +247,26 @@ void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<doub
   // ROWS in first dimension are truncated from the array.
   
   // ROWS in second dimension must have symmetry.
+  if (a_verbosity >= 2)
+    {
+      std::cout << "symmetrizing rows in second dimension" << std::endl;
+    }
   for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
     {
       for (int off1 = k1+1; off1 < extent[1]; off1++)
         {
           setArray3dElementConj(a_arr,
-                                pt0, lo[1] + off1, lo[2],
+                                pt0, lo[1] + off1,             lo[2],
                                 pt0, lo[1] + extent[1] - off1, lo[2]);
         }
     }
 
   // ROWS in third dimension must have symmetry.
+  if (a_verbosity >= 2)
+    {
+      std::cout << "symmetrizing rows in third dimension" << std::endl;
+    }
+  /*
   for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
     for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
       {
@@ -254,8 +277,24 @@ void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<doub
                                   pt0, pt1, lo[2] + extent[2] - off2);
           }
       }
+  */
+  for (int off0 = k0+1; off0 < extent[0]; off0++)
+    {
+      for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
+        for (int pt2 = lo[2]; pt2 <= maxpt[2]; pt2 += k2)
+          {
+            setArray3dElementConj(a_arr,
+                                  lo[0] + off0,             pt1, pt2,
+                                  lo[0] + extent[0] - off0, pt1, pt2);
+          }
+    }
 
   // PLANE through the point must have symmetry.
+  if (a_verbosity >= 2)
+    {
+      std::cout << "symmetrizing planes through points" << std::endl;
+    }
+  /*
   for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
     {
       for (int off1 = k1+1; off1 < extent[1]; off1++)
@@ -264,6 +303,17 @@ void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<doub
             setArray3dElementConj(a_arr,
                                   pt0, lo[1] + off1, lo[2] + off2,
                                   pt0, lo[1] + extent[1] - off1, lo[2] + extent[2] - off2);
+          }
+    }
+  */
+  for (int off0 = 1; off0 < extent[0]; off0++)
+    for (int off1 = k1+1; off1 < extent[1]; off1++)
+      {
+        for (int pt2 = lo[2]; pt2 <= maxpt[2]; pt2 += k2)
+          {
+            setArray3dElementConj(a_arr,
+                                  lo[0] + off0,             lo[1] + off1,             pt2,
+                                  lo[0] + extent[0] - off0, lo[1] + extent[1] - off1, pt2);
           }
     }
 }
@@ -324,7 +374,11 @@ void runDeviceFFT(deviceTransform<T_IN, T_OUT>& a_tfmDevice,
                set0(v);
              }
          }, inputArrayHost);
-  symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain);
+  symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain, a_verbosity);
+  if (a_verbosity >= 2)
+    {
+      std::cout << "copy input from host to device" << std::endl;
+    }
   T_IN* inputHostPtr = inputArrayHost.m_data.local();
   DEVICE_MEM_COPY(inputDevicePtr, // dest
                   inputHostPtr, // source
@@ -440,7 +494,7 @@ void runSpiral(Transformer& a_tfm,
                set0(v);
              }
          }, inputArrayHost);
-  symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain);
+  symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain, a_verbosity);
   T_IN* inputHostPtr = inputArrayHost.m_data.local();
   DEVICE_MEM_COPY(inputDevicePtr, // dest
                   inputHostPtr, // source
