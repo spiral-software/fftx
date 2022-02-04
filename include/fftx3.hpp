@@ -739,7 +739,6 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
 
     point_t<DIM> pt;
 
-    /*
     // Row-major order: Last dimension changes fastest.
     size_t disp = a_ind;
     for (int d = DIM-1; d >= 0; d--)
@@ -747,8 +746,8 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
           pt[d] = lo[d] + disp % lengths[d];
           disp = (disp - (pt[d] - lo[d])) / lengths[d];
        }
-    */
 
+    /*
     // Column-major order: First dimension changes fastest.
     size_t disp = a_ind;
     for (int d = 0; d < DIM; d++)
@@ -756,6 +755,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
           pt[d] = lo[d] + disp % lengths[d];
           disp = (disp - (pt[d] - lo[d])) / lengths[d];
        }
+    */
 
     return pt;
   }
