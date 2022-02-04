@@ -120,9 +120,8 @@ void productArrays(fftx::array_t<DIM, T>& a_prod,
                    const fftx::array_t<DIM, T>& a_arr1,
                    const fftx::array_t<DIM, T>& a_arr2)
 {
-  auto dom = a_prod.m_domain;
-  assert(dom == a_arr1.m_domain);
-  assert(dom == a_arr2.m_domain);
+  assert(a_prod.m_domain == a_arr1.m_domain);
+  assert(a_prod.m_domain == a_arr2.m_domain);
   copyArray(a_prod, a_arr1);
   multiplyByArray(a_prod, a_arr2);
 }
