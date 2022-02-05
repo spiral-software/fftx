@@ -264,3 +264,65 @@ void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
 }
 
 
+template<int DIM, typename T_IN, typename T_OUT>
+void symmetrizeHermitian(fftx::array_t<DIM, T_IN>& a_arr,
+                         fftx::box_t<DIM> a_fullDomain)
+{ };
+
+
+template<int DIM>
+void symmetrizeHermitian
+(fftx::array_t<DIM, std::complex<double> >& a_arr,
+ fftx::box_t<DIM> a_fullDomain)
+{
+  fftx::box_t<DIM> arrDomain = a_arr.m_domain;
+  std::complex<double>* arrPtr = a_arr.m_data.local();
+
+  fftx::point_t<DIM> lo = a_fullDomain.lo;
+  fftx::point_t<DIM> hi = a_fullDomain.hi;
+  fftx::point_t<DIM> extent = a_fullDomain.extents();
+
+  auto npts = arrDomain.size();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      fftx::point_t<DIM> pt = pointFromPositionBox(ind, arrDomain);
+
+      // If indices of pt are all at either low or (if extent even) middle,
+      // then array element must be real.
+      bool mustBeReal = true;
+      for (int d = 0; d < DIM; d++)
+        {
+          mustBeReal = mustBeReal &&
+            ((pt[d] == lo[d]) || (2*pt[d] == 2*lo[d] + extent[d]));
+        }
+      if (mustBeReal)
+        {
+          arrPtr[ind].imag(0.);
+        }
+      else
+        {
+          // If pt is outside lower octant, set array element to 
+          // conjugate of a mapped point in lower octant,
+          // if that point is in the array domain.
+          bool someUpperDim = false;
+          for (int d = 0; d < DIM; d++)
+            {
+              someUpperDim = someUpperDim ||
+                (2*pt[d] >= 2*lo[d] + extent[d]);
+            }
+          if (someUpperDim)
+            {
+              fftx::point_t<DIM> ptRef;
+              for (int d = 0; d < DIM; d++)
+                {
+                  ptRef[d] = lo[d] + hi[d] + 1 - pt[d];
+                }
+              if (isInBox(ptRef, arrDomain))
+                {
+                  size_t indRef = positionInBox(ptRef, arrDomain);
+                  arrPtr[ind] = std::conj(arrPtr[indRef]);
+                }
+            }
+        }
+    }
+}
