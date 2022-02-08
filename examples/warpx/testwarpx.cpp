@@ -37,8 +37,8 @@ int main(int argc, char* argv[])
       FILE* fout = fopen("fftxout", "w");
       forall([fout](double& v, const point_t<3>& point)
              {
-
-				 fprintf(fout, "%20.8e %20.8e\n", v, point);
+               fprintf(fout, "%20.8e %4d %4d %4d\n",
+                       v, point[0], point[1], point[2]);
              }, outputs[0]);
       fclose(fout);
     }
