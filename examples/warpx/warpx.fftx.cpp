@@ -30,40 +30,40 @@ static const char* CONTRACTION = R"(
     fx3v := nth(nth(symvar, 7), ii);
 
     rmat := TSparseMat([6,11], [
-        [0, [0, fcv/norm],
-            [4, cxpack(0, -fmkz * c2 * fsckv/norm)],
-            [5, cxpack(0, fmky * c2 * fsckv/norm)],
-            [6, -invep0 * fsckv/norm],
-            [9, cxpack(0, -fmkx * fx2v/norm)],
-            [10, cxpack(0, fmkx * fx3v/norm)]],
-        [1, [1, fcv/norm],
-            [3, cxpack(0, fmkz * c2 * fsckv/norm)], 
-            [5, cxpack(0, -fmkx * c2 * fsckv/norm)],
-            [7, -invep0 * fsckv/norm],
-            [9, cxpack(0, -fmky * fx2v/norm)],
-            [10, cxpack(0, fmky * fx3v/norm)]],
-        [2, [2, fcv/norm],
-            [3, cxpack(0, -fmky * c2 * fsckv/norm)],
-            [4,  cxpack(0, fmkx * c2 * fsckv/norm)],
-            [8, -invep0 * fsckv/norm],
-            [9, cxpack(0, -fmkz * fx2v/norm)],
-            [10, cxpack(0, fmkz * fx3v/norm)]],
+        [0, [0, fcv/norm_box],
+            [4, cxpack(0, -fmkz * c2 * fsckv/norm_box)],
+            [5, cxpack(0, fmky * c2 * fsckv/norm_box)],
+            [6, -invep0 * fsckv/norm_box],
+            [9, cxpack(0, -fmkx * fx2v/norm_box)],
+            [10, cxpack(0, fmkx * fx3v/norm_box)]],
+        [1, [1, fcv/norm_box],
+            [3, cxpack(0, fmkz * c2 * fsckv/norm_box)], 
+            [5, cxpack(0, -fmkx * c2 * fsckv/norm_box)],
+            [7, -invep0 * fsckv/norm_box],
+            [9, cxpack(0, -fmky * fx2v/norm_box)],
+            [10, cxpack(0, fmky * fx3v/norm_box)]],
+        [2, [2, fcv/norm_box],
+            [3, cxpack(0, -fmky * c2 * fsckv/norm_box)],
+            [4,  cxpack(0, fmkx * c2 * fsckv/norm_box)],
+            [8, -invep0 * fsckv/norm_box],
+            [9, cxpack(0, -fmkz * fx2v/norm_box)],
+            [10, cxpack(0, fmkz * fx3v/norm_box)]],
     
-        [3, [1, cxpack(0, fmkz * fsckv/norm)],
-            [2, cxpack(0, -fmky * fsckv/norm)],
-            [3, fcv/norm],
-            [7, cxpack(0, -fmkz * fx1v/norm)],
-            [8, cxpack(0, fmky * fx1v/norm)]],
-        [4, [0, cxpack(0, -fmkz * fsckv/norm)],
-            [2, cxpack(0, fmkx * fsckv/norm)],
-            [4, fcv/norm],
-            [6, cxpack(0, fmkz * fx1v/norm)],
-            [8, cxpack(0, -fmkx * fx1v/norm)]],
-        [5, [0, cxpack(0, fmky * fsckv/norm)],      
-            [1, cxpack(0, -fmkx * fsckv/norm)],
-            [5, fcv/norm],
-            [6, cxpack(0, -fmky * fx1v/norm)],
-            [7, cxpack(0, fmkx * fx1v/norm)]]
+        [3, [1, cxpack(0, fmkz * fsckv/norm_box)],
+            [2, cxpack(0, -fmky * fsckv/norm_box)],
+            [3, fcv/norm_box],
+            [7, cxpack(0, -fmkz * fx1v/norm_box)],
+            [8, cxpack(0, fmky * fx1v/norm_box)]],
+        [4, [0, cxpack(0, -fmkz * fsckv/norm_box)],
+            [2, cxpack(0, fmkx * fsckv/norm_box)],
+            [4, fcv/norm_box],
+            [6, cxpack(0, fmkz * fx1v/norm_box)],
+            [8, cxpack(0, -fmkx * fx1v/norm_box)]],
+        [5, [0, cxpack(0, fmky * fsckv/norm_box)],      
+            [1, cxpack(0, -fmkx * fsckv/norm_box)],
+            [5, fcv/norm_box],
+            [6, cxpack(0, -fmky * fx1v/norm_box)],
+            [7, cxpack(0, fmkx * fx1v/norm_box)]]
         ]);)";
 
 int main(int argc, char* argv[])
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
   std::string contraction = std::regex_replace(CONTRACTION,std::regex("xdim"),std::to_string(xdim));
   contraction = std::regex_replace(contraction,std::regex("ydim"),std::to_string(ydim));
   contraction = std::regex_replace(contraction,std::regex("zdim"),std::to_string(zdim));
-  contraction = std::regex_replace(contraction,std::regex("norm"),std::to_string(norm));
+  contraction = std::regex_replace(contraction,std::regex("norm_box"),std::to_string(norm_box));
   contraction = std::regex_replace(contraction,std::regex("fmkx"),"var_"+std::to_string(symvars[0].id()));
   contraction = std::regex_replace(contraction,std::regex("fmky"),"var_"+std::to_string(symvars[1].id()));
   contraction = std::regex_replace(contraction,std::regex("fmkz"),"var_"+std::to_string(symvars[2].id()));

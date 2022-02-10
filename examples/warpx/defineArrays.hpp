@@ -11,23 +11,12 @@
 using namespace fftx;
 
 const int nx=80, ny=80, nz=80;
-const int norm = nx*ny*nz;
+const int norm_box = nx*ny*nz;
 const int npx = nx+1, npy = ny+1, npz = nz+1;
 
 inline void defineBigBoxes(std::array<array_t<4, double>,4>& a_bigBoxes)
 {
-  /*  Fortran ordering
-  box_t<4> bigBox0(point_t<4>({{1,1,1,1}}),
-                   point_t<4>({{nx, ny, nz, 11}}));
-  box_t<4> bigBox1(point_t<4>({{1,1,1,1}}),
-                   point_t<4>({{nx+2,ny,nz,11}}));
-  
-  box_t<4> bigBox2(point_t<4>({{1,1,1,1}}),
-                   point_t<4>({{nx+2,ny,nz,6}}));
-  box_t<4> bigBox3(point_t<4>({{1,1,1,1}}),
-                   point_t<4>({{nx,ny,nz,6}}));
-  */
-
+#if FFTX_ROW_MAJOR_ORDER
   /*  C ordering */
   box_t<4> bigBox0(point_t<4>({{1,1,1,1}}),
                    point_t<4>({{11, nz, ny, nx}}));
@@ -38,6 +27,19 @@ inline void defineBigBoxes(std::array<array_t<4, double>,4>& a_bigBoxes)
                    point_t<4>({{6,nz,ny,nx+2}}));
   box_t<4> bigBox3(point_t<4>({{1,1,1,1}}),
                    point_t<4>({{6,nz,ny,nx}}));
+#else
+  /*  Fortran ordering */
+  box_t<4> bigBox0(point_t<4>({{1,1,1,1}}),
+                   point_t<4>({{nx, ny, nz, 11}}));
+  box_t<4> bigBox1(point_t<4>({{1,1,1,1}}),
+                   point_t<4>({{nx+2,ny,nz,11}}));
+  
+  box_t<4> bigBox2(point_t<4>({{1,1,1,1}}),
+                   point_t<4>({{nx+2,ny,nz,6}}));
+  box_t<4> bigBox3(point_t<4>({{1,1,1,1}}),
+                   point_t<4>({{nx,ny,nz,6}}));
+#endif
+  
   std::array<array_t<4, double>,4> bigBoxes = {bigBox0,
                                                bigBox1,
                                                bigBox2,
@@ -50,25 +52,8 @@ inline void defineArrays(std::array<array_t<3,double>,11>& a_inputs,
                          std::array<array_t<3,double>,6 >& a_outputs,
                          std::array<array_t<3,double>,8 >& a_symvars)
 {
-
-  /*  Fortran ordering  
-  box_t<3> cell(point_t<3>({{1,1,1}}),
-                 point_t<3>({{nx,ny,nz}}));
-  box_t<3> xface(point_t<3>({{1,1,1}}),
-                 point_t<3>({{npx,ny,nz}}));
-  box_t<3> yface(point_t<3>({{1,1,1}}),
-                 point_t<3>({{nx,npy,nz}}));
-  box_t<3> zface(point_t<3>({{1,1,1}}),
-                 point_t<3>({{nx,ny,npz}}));
-  box_t<3> xedge(point_t<3>({{1,1,1}}),
-                 point_t<3>({{nx,npy,npz}}));
-  box_t<3> yedge(point_t<3>({{1,1,1}}),
-                 point_t<3>({{npx,ny,npz}}));
-  box_t<3> zedge(point_t<3>({{1,1,1}}),
-                 point_t<3>({{npx,npy,nz}}));
-  */
-
-  /*  C ordering  */
+#if FFTX_ROW_MAJOR_ORDER
+  /*  C ordering */
   box_t<3> cell(point_t<3>({{1,1,1}}),
                  point_t<3>({{nz,ny,nx}}));
   box_t<3> xface(point_t<3>({{1,1,1}}),
@@ -83,9 +68,23 @@ inline void defineArrays(std::array<array_t<3,double>,11>& a_inputs,
                  point_t<3>({{npz,ny,npx}}));
   box_t<3> zedge(point_t<3>({{1,1,1}}),
                  point_t<3>({{nz,npy,npx}}));
-
-
-
+#else
+  /*  Fortran ordering */
+  box_t<3> cell(point_t<3>({{1,1,1}}),
+                 point_t<3>({{nx,ny,nz}}));
+  box_t<3> xface(point_t<3>({{1,1,1}}),
+                 point_t<3>({{npx,ny,nz}}));
+  box_t<3> yface(point_t<3>({{1,1,1}}),
+                 point_t<3>({{nx,npy,nz}}));
+  box_t<3> zface(point_t<3>({{1,1,1}}),
+                 point_t<3>({{nx,ny,npz}}));
+  box_t<3> xedge(point_t<3>({{1,1,1}}),
+                 point_t<3>({{nx,npy,npz}}));
+  box_t<3> yedge(point_t<3>({{1,1,1}}),
+                 point_t<3>({{npx,ny,npz}}));
+  box_t<3> zedge(point_t<3>({{1,1,1}}),
+                 point_t<3>({{npx,npy,nz}}));
+#endif
   
   //  array_t<1,double> Ex(xedge), Ey(yedge),Ez(zedge);
   //  array_t<1,double> Bx(xface), By(yface),Bz(zface);
@@ -98,15 +97,17 @@ inline void defineArrays(std::array<array_t<3,double>,11>& a_inputs,
                                              cell, cell};
 
 
-  /* Fortran ordering  
-  box_t<3> xbox(point_t<3>({{1,1,1}}),point_t<3>({{nx,1,1}}));
-  box_t<3> ybox(point_t<3>({{1,1,1}}),point_t<3>({{1,ny,1}}));
-  box_t<3> zbox(point_t<3>({{1,1,1}}),point_t<3>({{1,1,nz}}));
-  */
+#if FFTX_ROW_MAJOR_ORDER
   /* C ordering */
   box_t<3> zbox(point_t<3>({{1,1,1}}),point_t<3>({{nz,1,1}}));
   box_t<3> ybox(point_t<3>({{1,1,1}}),point_t<3>({{1,ny,1}}));
   box_t<3> xbox(point_t<3>({{1,1,1}}),point_t<3>({{1,1,nx}}));
+#else
+  /* Fortran ordering */
+  box_t<3> xbox(point_t<3>({{1,1,1}}),point_t<3>({{nx,1,1}}));
+  box_t<3> ybox(point_t<3>({{1,1,1}}),point_t<3>({{1,ny,1}}));
+  box_t<3> zbox(point_t<3>({{1,1,1}}),point_t<3>({{1,1,nz}}));
+#endif
 
   std::array<array_t<3,double>,8> symvars = {xbox,/*fmkx*/
                                              ybox,/*fmky*/
@@ -116,8 +117,6 @@ inline void defineArrays(std::array<array_t<3,double>,11>& a_inputs,
                                              cell,/*fx1v*/
                                              cell,/*fx2v*/
                                              cell /*fx3v*/};
-
-
 
   std::array<array_t<3, double >,6> output ={zedge, yedge, xedge,
                                               zface, yface, xface};

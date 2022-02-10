@@ -36,7 +36,7 @@
 #define DEVICE_FFT_INVERSE HIPFFT_BACKWARD
 #elif defined(__CUDACC__)
 #include <cufft.h>
-// #include <helper_cuda.h>
+#include <helper_cuda.h>
 #define DEVICE_SUCCESS cudaSuccess
 #define DEVICE_EVENT_T cudaEvent_t
 #define DEVICE_EVENT_CREATE cudaEventCreate
@@ -79,6 +79,20 @@ inline void DEVICE_CHECK(DEVICE_ERROR_T a_rc, const std::string& a_name)
      {
         std::cerr << a_name << " failed with code " << a_rc
                   << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
+                  << std::endl;
+        exit(-1);
+     }
+}
+// Example of use: DEVICE_FFT_CHECK(DEVICE_FFT_PLAN3D(...), "fftplan at step 3");
+inline void DEVICE_FFT_CHECK(DEVICE_FFT_RESULT a_rc, const std::string& a_name)
+{
+   if (a_rc != DEVICE_FFT_SUCCESS)
+     {
+        // There does not appear to be a HIP analogue.
+        std::cerr << a_name << " failed with code " << a_rc
+#if defined(__CUDACC__)
+                  << " meaning " << _cudaGetErrorEnum(a_rc)
+#endif
                   << std::endl;
         exit(-1);
      }

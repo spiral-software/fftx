@@ -18,7 +18,7 @@ project ( compare ${_lang_add} ${_lang_base} )
 
 set ( _stem fftx )
 set ( _prefixes )
-set ( BUILD_PROGS testcompare_device testrconv_lib testverify_lib )
+set ( BUILD_PROGS testcompare_device testrconv_lib testverify_lib testconstant testimpulse )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 

@@ -146,7 +146,11 @@ namespace fftx {
     point_t<DIM> sizeHalf()
     {
       point_t<DIM> ret = m_size;
+#if FFTX_COMPLEX_TRUNC_LAST
+      ret[DIM-1] = m_size[DIM-1]/2 + 1;
+#else
       ret[0] = m_size[0]/2 + 1;
+#endif
       return ret;
     }
 

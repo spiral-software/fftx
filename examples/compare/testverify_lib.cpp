@@ -232,28 +232,30 @@ void TransformDevice(Transformer& a_tfm,
   auto input_bytes = input_size * sizeof(T_IN);
   auto output_bytes = output_size * sizeof(T_OUT);
 
-  char* bufferInPtr;
-  char* bufferOutPtr;
-  DEVICE_MALLOC(&bufferInPtr, input_bytes);
-  DEVICE_MALLOC(&bufferOutPtr, output_bytes);
-  T_IN* inputPtr = (T_IN*) bufferInPtr;
-  T_OUT* outputPtr = (T_OUT*) bufferOutPtr;
+  T_IN* inputHostPtr = a_input.m_data.local();
+  T_OUT* outputHostPtr = a_output.m_data.local();
+
+  T_IN* inputDevicePtr;
+  T_OUT* outputDevicePtr;
+
+  DEVICE_MALLOC(&inputDevicePtr, input_bytes);
+  DEVICE_MALLOC(&outputDevicePtr, output_bytes);
  
   fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
-                                       (inputPtr, 0, 1), inputDomain);
+                                       (inputDevicePtr, 0, 1), inputDomain);
   fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
-                                         (outputPtr, 0, 1), outputDomain);
+                                         (outputDevicePtr, 0, 1), outputDomain);
 
-  DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
+  DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, input_bytes,
                   MEM_COPY_HOST_TO_DEVICE);
 
   a_tfm.transform(inputDevice, outputDevice);
 
-  DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
+  DEVICE_MEM_COPY(outputHostPtr, outputDevicePtr, output_bytes,
                   MEM_COPY_DEVICE_TO_HOST);
 
-  DEVICE_FREE(bufferInPtr);
-  DEVICE_FREE(bufferOutPtr);
+  DEVICE_FREE(inputDevicePtr);
+  DEVICE_FREE(outputDevicePtr);
 }
 
 template<int DIM, typename T_IN, typename T_OUT, class Transformer>

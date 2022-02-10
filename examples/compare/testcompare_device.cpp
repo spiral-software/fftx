@@ -114,6 +114,14 @@ struct deviceTransform
 
   int m_dir;
 
+  DEVICE_FFT_RESULT plan3d(DEVICE_FFT_HANDLE& a_plan,
+                           fftx::point_t<3> a_tfmSize)
+  {
+    return DEVICE_FFT_PLAN3D(&a_plan,
+                             a_tfmSize[0], a_tfmSize[1], a_tfmSize[2],
+                             m_tp);
+  }
+
   DEVICE_FFT_RESULT exec(DEVICE_FFT_HANDLE a_plan,
                          T_IN* a_in,
                          T_OUT* a_out)
@@ -156,96 +164,6 @@ mdprdftDevice(DEVICE_FFT_D2Z);
 
 deviceTransform<std::complex<double>, double>
 imdprdftDevice(DEVICE_FFT_Z2D);
-
-void setArray3dElementConj(fftx::array_t<3, std::complex<double> >& a_arr,
-                           int a_dst0, int a_dst1, int a_dst2,
-                           int a_src0, int a_src1, int a_src2)
-{
-  fftx::box_t<3> arrDomain = a_arr.m_domain;
-  std::complex<double>* arrPtr = a_arr.m_data.local();
-  fftx::point_t<3> pointDst({{a_dst0, a_dst1, a_dst2}});
-  fftx::point_t<3> pointSrc({{a_src0, a_src1, a_src2}});
-  auto indDst = positionInBox(pointDst, arrDomain);
-  auto indSrc = positionInBox(pointSrc, arrDomain);
-  arrPtr[indDst] = std::conj(arrPtr[indSrc]);
-}
-
-template<typename T_IN, typename T_OUT>
-void symmetrize(fftx::array_t<3, T_IN>& a_arr,
-                fftx::box_t<3> a_fullDomain)
-{ };
-
-// Modify complex array so that it actually does transform to a real array.
-template<>
-void symmetrize<std::complex<double>, double>(fftx::array_t<3, std::complex<double> >& a_arr,
-                                              fftx::box_t<3> a_fullDomain)
-{
-  fftx::box_t<3> arrDomain = a_arr.m_domain;
-  std::complex<double>* arrPtr = a_arr.m_data.local();
-  
-  fftx::point_t<3> lo = a_fullDomain.lo;
-  fftx::point_t<3> extent = a_fullDomain.extents();
-
-  int k0 = extent[0]/2;
-  int k1 = extent[1]/2; 
-  int k2 = extent[2]/2;
-  
-  fftx::point_t<3> maxpt = lo;
-  for (int d = 0; d < 3; d++)
-    {
-      if (extent[d] % 2 == 0)
-        { // length is even in dimension d
-          maxpt[d] += extent[d]/2;
-        }
-    }
-
-  // POINT must be real.
-  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
-    for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
-      for (int pt2 = lo[2]; pt2 <= maxpt[2]; pt2 += k2)
-        {
-          fftx::point_t<3> point({{pt0, pt1, pt2}});
-          auto ind = positionInBox(point, arrDomain);
-          arrPtr[ind].imag(0.);
-        }
-
-  // ROWS in first dimension are truncated from the array.
-  
-  // ROWS in second dimension must have symmetry.
-  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
-    {
-      for (int off1 = k1+1; off1 < extent[1]; off1++)
-        {
-          setArray3dElementConj(a_arr,
-                                pt0, lo[1] + off1, lo[2],
-                                pt0, lo[1] + extent[1] - off1, lo[2]);
-        }
-    }
-
-  // ROWS in third dimension must have symmetry.
-  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
-    for (int pt1 = lo[1]; pt1 <= maxpt[1]; pt1 += k1)
-      {
-        for (int off2 = k2+1; off2 < extent[2]; off2++)
-          {
-            setArray3dElementConj(a_arr,
-                                  pt0, pt1, lo[2] + off2,
-                                  pt0, pt1, lo[2] + extent[2] - off2);
-          }
-      }
-
-  // PLANE through the point must have symmetry.
-  for (int pt0 = lo[0]; pt0 <= maxpt[0]; pt0 += k0)
-    {
-      for (int off1 = k1+1; off1 < extent[1]; off1++)
-        for (int off2 = 1; off2 < extent[2]; off2++)
-          {
-            setArray3dElementConj(a_arr,
-                                  pt0, lo[1] + off1, lo[2] + off2,
-                                  pt0, lo[1] + extent[1] - off1, lo[2] + extent[2] - off2);
-          }
-    }
-}
 
 template<typename T_IN, typename T_OUT, class Transformer>
 void compareSize(Transformer& a_tfm,
@@ -299,22 +217,17 @@ void compareSize(Transformer& a_tfm,
          }, inputArrayHost);
   // This symmetrizes only for complex input and real output,
   // in order to get a complex array that transforms to a real array.
-  symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain);
+  // symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain, a_verbosity);
+  fftx::array_t<3, T_OUT> outputArrayHost(outputDomain);
+  symmetrizeHermitian(inputArrayHost, outputArrayHost);
   T_IN* inputHostPtr = inputArrayHost.m_data.local();
   // additional code for GPU programs
-  char* bufferDevicePtr;
   T_IN* inputDevicePtr;
   T_OUT* outputSpiralDevicePtr;
   T_OUT* outputDeviceFFTDevicePtr;
-  // DEVICE_MALLOC(&bufferDevicePtr, 3 * nptsInput*sizeof(std::complex<double>));
-  DEVICE_MALLOC(&bufferDevicePtr, bytesInput + 2*bytesOutput);
-  char* thisDevicePtr = bufferDevicePtr;
-  inputDevicePtr = (T_IN *) thisDevicePtr;
-  thisDevicePtr += bytesInput;
-  outputSpiralDevicePtr = (T_OUT *) thisDevicePtr;
-  thisDevicePtr += bytesOutput;
-  outputDeviceFFTDevicePtr = (T_OUT *) thisDevicePtr;
-  thisDevicePtr += bytesOutput;
+  DEVICE_MALLOC(&inputDevicePtr, bytesInput);
+  DEVICE_MALLOC(&outputSpiralDevicePtr, bytesOutput);
+  DEVICE_MALLOC(&outputDeviceFFTDevicePtr, bytesOutput);
   // Do this at the beginning of each iteration instead of here.
   //  DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, // dest, source
   //                  npts*sizeof(double), // bytes
@@ -347,15 +260,8 @@ void compareSize(Transformer& a_tfm,
       printf("get deviceFFT plan\n");
     }
   DEVICE_FFT_HANDLE plan;
-  {
-    auto result =
-      DEVICE_FFT_PLAN3D(&plan, tfmSize[0], tfmSize[1], tfmSize[2],
-                        a_tfmDevice.m_tp); // DEVICE_FFT_D2Z
-    if (result != DEVICE_FFT_SUCCESS)
-      {
-        exit(-1);
-      }
-  }
+  DEVICE_FFT_CHECK(a_tfmDevice.plan3d(plan, tfmSize),
+                   "device FFT define plan");
 
   /*
     Time iterations of real-to-complex deviceFFT calls using the plan.
@@ -375,20 +281,16 @@ void compareSize(Transformer& a_tfm,
       //      auto result = deviceExecD2Z(plan,
       //                                  inputDevicePtr,
       //                                  outputDeviceFFTDevicePtr);
-      auto result = a_tfmDevice.exec(plan,
-                                     inputDevicePtr,
-                                     outputDeviceFFTDevicePtr);
+      DEVICE_FFT_CHECK(a_tfmDevice.exec(plan,
+                                        inputDevicePtr,
+                                        outputDeviceFFTDevicePtr),
+                       "device FFT exec launch");
       //      auto result = 
       //        DEVICE_FFT_EXECD2Z(plan,
       //                           (T_IN*) inputDevicePtr,
       //                           (DEVICE_FFT_DOUBLECOMPLEX*) outputDeviceFFTDevicePtr); // FIXME: (T_OUT*)
       DEVICE_EVENT_RECORD(stopDeviceFFT[itn]);
       DEVICE_EVENT_SYNCHRONIZE(stopDeviceFFT[itn]);
-      if (result != DEVICE_FFT_SUCCESS)
-        {
-          printf("deviceFFTExec launch failed\n");
-          exit(-1);
-        }
     }
   DEVICE_FFT_DESTROY(plan);
 
@@ -410,7 +312,7 @@ void compareSize(Transformer& a_tfm,
     }
 
   /*
-    Time iterations of complex-to-complex MDPRDFT with SPIRAL-generated code.
+    Time iterations of transform with SPIRAL-generated code.
    */
   double* spiral_cpu = new double[a_iterations];
   float* spiral_gpu = new float[a_iterations];
@@ -439,7 +341,9 @@ void compareSize(Transformer& a_tfm,
                   bytesOutput, // bytes
                   MEM_COPY_DEVICE_TO_HOST); // type
 
-  DEVICE_FREE(bufferDevicePtr);
+  DEVICE_FREE(inputDevicePtr);
+  DEVICE_FREE(outputSpiralDevicePtr);
+  DEVICE_FREE(outputDeviceFFTDevicePtr);
 
   const double tol = 1.e-7;
   bool match = true;
@@ -579,15 +483,19 @@ int main(int argc, char* argv[])
     {
       fftx::point_t<3> sz = ents[ind];
 
+#ifdef FFTX_HIP
+      // Avoid size on which hipFFT fails in rocm 4.5.
+      if (sz == fftx::point_t<3>({{128, 128, 680}}) ) continue;
+#endif
       {
         fftx::mddft<3> tfm(sz);
         compareSize(tfm, mddftDevice, iterations, verbosity);
-       }
+      }
 
       {
         fftx::imddft<3> tfm(sz);
         compareSize(tfm, imddftDevice, iterations, verbosity);
-       }
+      }
 
       {
         fftx::mdprdft<3> tfm(sz);
