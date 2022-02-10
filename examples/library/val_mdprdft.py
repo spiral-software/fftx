@@ -100,7 +100,12 @@ def exec_xform ( segnams, dims, fwd, libmode ):
     global lmode
     _libFuncAttr ( setlibmode )
     ##  print ( 'Library mode set to ' + lmode[setlibmode] )
-    
+
+    if fwd:
+        dir = 'forward'
+    else:
+        dir = 'inverse'
+
     func = pywrap + 'init' + _under + 'wrapper'
     _libFuncAttr = getattr ( _sharedLibAccess, func, None)
     if _libFuncAttr is None:
@@ -108,7 +113,7 @@ def exec_xform ( segnams, dims, fwd, libmode ):
         raise RuntimeError(msg)
     _status = _libFuncAttr ( dftsz.ctypes.data_as ( ctypes.c_void_p ) )
     if not _status:
-        print ( 'Size: ' + str(dftsz) + ' was not found in library - continue' )
+        print ( 'Size: ' + str(dftsz) + ' (' + lmode[setlibmode] + ') [' + dir + '] was not found in library - continue' )
         return
 
     if fwd:
@@ -128,6 +133,11 @@ def exec_xform ( segnams, dims, fwd, libmode ):
     else:
         ##  Complex-to-Real, C2R (IMDPRDFT)              ----------------------------
         ##  Setup and repeat for the inverse transform
+        if dz % 2:
+            ##  Z dimension is odd -- not handling inverse transform -- skip
+            print ( 'Inverse [C2R] transform skipped when Z dimension is odd' )
+            return
+
         _src        = np.zeros(shape=(dx, dy, dz_adj)).astype(complex)
         for ix in range ( dx ):
             for iy in range ( dy ):
@@ -169,11 +179,6 @@ def exec_xform ( segnams, dims, fwd, libmode ):
 
     ##  Check difference
     diff = np.max ( np.absolute ( _dst_spiral - _dst_py ) )
-    if fwd:
-        dir = 'forward'
-    else:
-        dir = 'inverse'
-
     print ( 'Difference between Python / Spiral(' + lmode[setlibmode] + ') [' + dir + '] transforms = ' + str ( diff ), flush = True )
 
     return;
