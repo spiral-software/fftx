@@ -483,6 +483,10 @@ int main(int argc, char* argv[])
     {
       fftx::point_t<3> sz = ents[ind];
 
+#ifdef FFTX_HIP
+      // Avoid size on which hipFFT fails in rocm 4.5.
+      if (sz == fftx::point_t<3>({{128, 128, 680}}) ) continue;
+#endif
       {
         fftx::mddft<3> tfm(sz);
         compareSize(tfm, mddftDevice, iterations, verbosity);
