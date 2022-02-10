@@ -265,27 +265,45 @@ void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
 
 
 template<int DIM, typename T_IN, typename T_OUT>
-void symmetrizeHermitian(fftx::array_t<DIM, T_IN>& a_arr,
-                         fftx::box_t<DIM> a_fullDomain)
-{ };
+void symmetrizeHermitian(fftx::array_t<DIM, T_IN>& a_arrIn,
+                         fftx::array_t<DIM, T_OUT>& a_arrOut);
 
 
 template<int DIM>
-void symmetrizeHermitian
-(fftx::array_t<DIM, std::complex<double> >& a_arr,
- fftx::box_t<DIM> a_fullDomain)
+void symmetrizeHermitian(fftx::array_t<DIM, double>& a_arrIn,
+                         fftx::array_t<DIM, double>& a_arrOut)
 {
-  fftx::box_t<DIM> arrDomain = a_arr.m_domain;
-  std::complex<double>* arrPtr = a_arr.m_data.local();
+};
 
-  fftx::point_t<DIM> lo = a_fullDomain.lo;
-  fftx::point_t<DIM> hi = a_fullDomain.hi;
-  fftx::point_t<DIM> extent = a_fullDomain.extents();
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, double>& a_arrIn,
+                         fftx::array_t<DIM, std::complex<double>>& a_arrOut)
+{
+};
 
-  auto npts = arrDomain.size();
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, std::complex<double>>& a_arrIn,
+                         fftx::array_t<DIM, std::complex<double>>& a_arrOut)
+{
+};
+
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, std::complex<double> >& a_arrIn,
+                         fftx::array_t<DIM, double>& a_arrOut)
+{
+  std::cout << "*** symmetrizing C2R" << std::endl;
+  fftx::box_t<DIM> inputDomain = a_arrIn.m_domain;
+  std::complex<double>* arrPtr = a_arrIn.m_data.local();
+
+  fftx::box_t<DIM> outputDomain = a_arrOut.m_domain;
+  fftx::point_t<DIM> lo = outputDomain.lo;
+  fftx::point_t<DIM> hi = outputDomain.hi;
+  fftx::point_t<DIM> extent = outputDomain.extents();
+
+  auto npts = inputDomain.size();
   for (size_t ind = 0; ind < npts; ind++)
     {
-      fftx::point_t<DIM> pt = pointFromPositionBox(ind, arrDomain);
+      fftx::point_t<DIM> pt = pointFromPositionBox(ind, inputDomain);
 
       // If indices of pt are all at either low or (if extent even) middle,
       // then array element must be real.
@@ -317,9 +335,9 @@ void symmetrizeHermitian
                 {
                   ptRef[d] = lo[d] + hi[d] + 1 - pt[d];
                 }
-              if (isInBox(ptRef, arrDomain))
+              if (isInBox(ptRef, inputDomain))
                 {
-                  size_t indRef = positionInBox(ptRef, arrDomain);
+                  size_t indRef = positionInBox(ptRef, inputDomain);
                   arrPtr[ind] = std::conj(arrPtr[indRef]);
                 }
             }

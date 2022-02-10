@@ -255,7 +255,8 @@ void runDeviceFFT(deviceTransform<T_IN, T_OUT>& a_tfmDevice,
     {
       std::cout << "symmetrize input" << std::endl;
     }
-  symmetrizeHermitian<3, T_IN, T_OUT>(inputArrayHost, outputDomain);
+  fftx::array_t<3, T_OUT> outputArrayHost(outputDomain);
+  symmetrizeHermitian(inputArrayHost, outputArrayHost);
   if (a_verbosity >= 2)
     {
       std::cout << "copy input from host to device" << std::endl;
@@ -310,7 +311,7 @@ void runDeviceFFT(deviceTransform<T_IN, T_OUT>& a_tfmDevice,
   /*
     Copy output from device to host.
   */
-  T_OUT* outputHostPtr = new T_OUT[nptsOutput];
+  T_OUT* outputHostPtr = outputArrayHost.m_data.local();
   if (a_verbosity >= 2)
     {
       std::cout << "copy output from device to host " << std::endl;
@@ -341,7 +342,6 @@ void runDeviceFFT(deviceTransform<T_IN, T_OUT>& a_tfmDevice,
           writeErrorValue(pt, outputPoint, 1.);
         }
     }
-  delete[] outputHostPtr;
 }
 
 
@@ -396,7 +396,8 @@ void runSpiral(Transformer& a_tfm,
     {
       std::cout << "symmetrize input" << std::endl;
     }
-  symmetrizeHermitian<3, T_IN, T_OUT>(inputArrayHost, outputDomain);
+  fftx::array_t<3, T_OUT> outputArrayHost(outputDomain);
+  symmetrizeHermitian(inputArrayHost, outputArrayHost);
   if (a_verbosity >= 2)
     {
       std::cout << "copy input from host to device" << std::endl;
@@ -437,7 +438,7 @@ void runSpiral(Transformer& a_tfm,
   /*
     Copy output from device to host.
   */
-  T_OUT* outputHostPtr = new T_OUT[nptsOutput];
+  T_OUT* outputHostPtr = outputArrayHost.m_data.local();
   if (a_verbosity >= 2)
     {
       std::cout << "copy output from device to host " << std::endl;
@@ -468,7 +469,6 @@ void runSpiral(Transformer& a_tfm,
           writeErrorValue(pt, outputPoint, 1.);
         }
     }
-  delete[] outputHostPtr;
 }
 
 

@@ -218,7 +218,8 @@ void compareSize(Transformer& a_tfm,
   // This symmetrizes only for complex input and real output,
   // in order to get a complex array that transforms to a real array.
   // symmetrize<T_IN, T_OUT>(inputArrayHost, outputDomain, a_verbosity);
-  symmetrizeHermitian<3, T_IN, T_OUT>(inputArrayHost, outputDomain);
+  fftx::array_t<3, T_OUT> outputArrayHost(outputDomain);
+  symmetrizeHermitian(inputArrayHost, outputArrayHost);
   T_IN* inputHostPtr = inputArrayHost.m_data.local();
   // additional code for GPU programs
   T_IN* inputDevicePtr;
