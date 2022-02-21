@@ -13,7 +13,6 @@
 #define FFTX_HEADER
 
 
-#include <complex>
 #include <regex>
 #include <memory>
 #include <iostream>
@@ -28,6 +27,7 @@
 #include <array>
 
 #include <cassert>
+#include <complex>
 #include <iomanip>
 /*! \mainpage FFTX Package
  *
@@ -42,19 +42,25 @@
  * etc...
  */
 
+// Set this to 1 for row-major order, 0 for column-major order.
+#define FFTX_ROW_MAJOR_ORDER 1
+
+// Set this to 1 if truncating complex array in last dimension, 0 if in first.
+#define FFTX_COMPLEX_TRUNC_LAST 1
+
 namespace fftx
 {
 
   /**
    Is this a FFTX codegen program, or is this application code using a generated transform.
   */
-  bool tracing = false; // when creating a trace program user sets this to 'true'
+  static bool tracing = false; // when creating a trace program user sets this to 'true'
 
   /**
     counter for genereated variable names duringn FFTX codegen tracing.  Not meant for FFTX users but can be
     used when debugging codegen itself
   */
-  uint64_t ID=1; // variable naming counter
+  static uint64_t ID=1; // variable naming counter
   
   typedef int intrank_t; // just useful for self-documenting code.
 
@@ -126,6 +132,7 @@ namespace fftx
     point_t<DIM> operator*(int scale) const;
     static point_t<DIM> Unit();
     static point_t<DIM> Zero();
+    static int dim() {return DIM;}
     /** reverse the odering of the tuple, reutrn by value */
     point_t<DIM> flipped() const { point_t<DIM> rtn; for (int d=0; d<DIM; d++) { rtn[d] = x[DIM-1 - d]; } return rtn; }
   };
@@ -226,7 +233,7 @@ namespace fftx
     std::cout<<"    TDAGNode(TGath(fBox("<<src.m_domain.extents()<<")),var_"<<dest.id()<<", var_"<<src.id()<<"),\n";
   }
 
-  void rawScript(const std::string& a_rawScript)
+  inline void rawScript(const std::string& a_rawScript)
   {
     std::cout<<"\n"<<a_rawScript<<"\n";
   }
@@ -333,7 +340,7 @@ namespace fftx
     std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
-  void include(const char* includeFile)
+  inline void include(const char* includeFile)
   {
     std::cout<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
   }
@@ -362,13 +369,12 @@ namespace fftx
     std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
   
-  std::string inputType = "double";
-  int inputCount = 1;
-  std::string outputType = "double";
-  int outputCount = 1;
-  template<int DIM, typename T, std::size_t COUNT>
+  static std::string inputType = "double";
+  static int inputCount = 1;
+  static std::string outputType = "double";
+  static int outputCount = 1;
 
-  
+  template<int DIM, typename T, std::size_t COUNT>
   void setInputs(const std::array<array_t<DIM, T>, COUNT>& a_inputs)
   {
     inputType = TypeName<T>::Get();
@@ -417,7 +423,7 @@ namespace fftx
              <<"var_"<<destination.id()<<","
              <<"var_"<<source.id()<<"),\n";
   }
-  void openDAG()
+  inline void openDAG()
   {
   //  std::cout<<"conf := FFTXGlobals.defaultWarpXConf();\n";
   //  std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
@@ -425,7 +431,7 @@ namespace fftx
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
   }
 
-  void openScalarDAG()
+  inline void openScalarDAG()
   {
     std::cout<<"symvar := var(\"sym\", TPtr(TReal));\n";
     std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
@@ -639,7 +645,11 @@ template<int DIM>
    header_text = std::regex_replace(header_text, std::regex("S_TYPE"), inputType);
    header_text = std::regex_replace(header_text, std::regex("D_TYPE"), outputType);
    header_text = std::regex_replace(header_text, std::regex("DD"), std::to_string(DIM));
-   
+#ifdef FFTX_HIP
+   header_text = std::regex_replace(header_text,std::regex("cuda"),std::string("hip"));
+   header_text = std::regex_replace(header_text,std::regex("__CUDACC__"),std::string("__HIPCC__"));
+   header_text = std::string("#include <hip/hip_runtime.h>\n\n") + header_text;
+#endif
    headerFile<<header_text<<"\n";
    headerFile.close();
 
@@ -668,7 +678,9 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
   void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars,
                       const std::array<array_t<DIM,T2>, COUNT2>& a_vars2, const char* name)
   {
+
     closeScalarDAG<DIM>(varNames(a_vars)+','+varNames(a_vars2), name);
+
   }
   
   template<int DIM>
@@ -703,7 +715,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
     point_t<DIM> lo = a_bx.lo;
     point_t<DIM> lengths = lengthsBox(a_bx);
 
-    /*
+#if FFTX_ROW_MAJOR_ORDER
     // Row-major order: Last dimension changes fastest.
     size_t disp = a_pt[0] - lo[0];
     for (int d = 1; d < DIM; d++)
@@ -711,8 +723,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
         disp *= lengths[d];
         disp += a_pt[d] - lo[d];
       }
-    */
-
+#else
     // Column-major order: First dimension changes fastest.
     size_t disp = a_pt[DIM-1] - lo[DIM-1];
     for (int d = DIM-2; d >= 0; d--)
@@ -720,6 +731,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
         disp *= lengths[d];
         disp += a_pt[d] - lo[d];
       }
+#endif
 
     return disp;
   }
@@ -733,7 +745,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
 
     point_t<DIM> pt;
 
-    /*
+#if FFTX_ROW_MAJOR_ORDER
     // Row-major order: Last dimension changes fastest.
     size_t disp = a_ind;
     for (int d = DIM-1; d >= 0; d--)
@@ -741,8 +753,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
           pt[d] = lo[d] + disp % lengths[d];
           disp = (disp - (pt[d] - lo[d])) / lengths[d];
        }
-    */
-
+#else
     // Column-major order: First dimension changes fastest.
     size_t disp = a_ind;
     for (int d = 0; d < DIM; d++)
@@ -750,6 +761,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
           pt[d] = lo[d] + disp % lengths[d];
           disp = (disp - (pt[d] - lo[d])) / lengths[d];
        }
+#endif
 
     return pt;
   }

@@ -120,9 +120,8 @@ void productArrays(fftx::array_t<DIM, T>& a_prod,
                    const fftx::array_t<DIM, T>& a_arr1,
                    const fftx::array_t<DIM, T>& a_arr2)
 {
-  auto dom = a_prod.m_domain;
-  assert(dom == a_arr1.m_domain);
-  assert(dom == a_arr2.m_domain);
+  assert(a_prod.m_domain == a_arr1.m_domain);
+  assert(a_prod.m_domain == a_arr2.m_domain);
   copyArray(a_prod, a_arr1);
   multiplyByArray(a_prod, a_arr2);
 }
@@ -264,4 +263,194 @@ void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
          }, a_laplacian, a_arr);
 }
 
+inline int sym_index(int i, int lo, int hi)
+{ // index of i in array lo:hi that should be conjugate if Hermitian symmetry
+  int ret = i;
+  if (! ((i == lo) || (2*i == lo + hi + 1)) )
+    {
+      ret = lo + hi + 1 - i;
+    }
+  return ret;
+}
 
+template<int DIM>
+fftx::point_t<DIM> sym_point(fftx::point_t<DIM> a_pt,
+                             fftx::box_t<DIM> a_bx)
+{
+  fftx::point_t<DIM> ptRef;
+  for (int d = 0; d < DIM; d++)
+    {
+      ptRef[d] = sym_index(a_pt[d], a_bx.lo[d], a_bx.hi[d]);
+    }
+  return ptRef;
+}
+
+template<int DIM, typename T_IN, typename T_OUT>
+void symmetrizeHermitian(fftx::array_t<DIM, T_IN>& a_arrIn,
+                         fftx::array_t<DIM, T_OUT>& a_arrOut);
+
+
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, double>& a_arrIn,
+                         fftx::array_t<DIM, double>& a_arrOut)
+{ };
+
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, double>& a_arrIn,
+                         fftx::array_t<DIM, std::complex<double>>& a_arrOut)
+{ };
+
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, std::complex<double>>& a_arrIn,
+                         fftx::array_t<DIM, std::complex<double>>& a_arrOut)
+{ };
+
+template<int DIM>
+void symmetrizeHermitian(fftx::array_t<DIM, std::complex<double> >& a_arrIn,
+                         fftx::array_t<DIM, double>& a_arrOut)
+{
+  fftx::box_t<DIM> inputDomain = a_arrIn.m_domain;
+  std::complex<double>* arrPtr = a_arrIn.m_data.local();
+
+  fftx::box_t<DIM> outputDomain = a_arrOut.m_domain;
+  fftx::point_t<DIM> lo = outputDomain.lo;
+  fftx::point_t<DIM> hi = outputDomain.hi;
+  fftx::point_t<DIM> extent = outputDomain.extents();
+
+  auto npts = inputDomain.size();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      fftx::point_t<DIM> pt = pointFromPositionBox(ind, inputDomain);
+
+      // If indices of pt are all at either low or (if extent even) middle,
+      // then array element must be real.
+      bool mustBeReal = true;
+      for (int d = 0; d < DIM; d++)
+        {
+          mustBeReal = mustBeReal &&
+            ((pt[d] == lo[d]) || (2*pt[d] == 2*lo[d] + extent[d]));
+        }
+      if (mustBeReal)
+        {
+          arrPtr[ind].imag(0.);
+        }
+      else
+        {
+          // If pt is outside lower octant, set array element to 
+          // conjugate of a mapped point in lower octant,
+          // if that point is in the array domain.
+          bool someUpperDim = false;
+          for (int d = 0; d < DIM; d++)
+            {
+              someUpperDim = someUpperDim ||
+                (2*pt[d] >= 2*lo[d] + extent[d]);
+            }
+          if (someUpperDim)
+            {
+              fftx::point_t<DIM> ptRef = sym_point(pt, outputDomain);
+              if (isInBox(ptRef, inputDomain))
+                {
+                  size_t indRef = positionInBox(ptRef, inputDomain);
+                  arrPtr[ind] = std::conj(arrPtr[indRef]);
+                }
+              // If ptRef is not in inputDomain,
+              // then you don't need to worry about setting pt.
+            }
+        }
+    }
+}
+
+template<int DIM, typename T_IN, typename T_OUT>
+bool checkSymmetryHermitian(fftx::array_t<DIM, T_IN>& a_arrIn,
+                            fftx::array_t<DIM, T_OUT>& a_arrOut);
+
+
+template<int DIM>
+bool checkSymmetryHermitian(fftx::array_t<DIM, double>& a_arrIn,
+                            fftx::array_t<DIM, std::complex<double>>& a_arrOut)
+{
+  return true;
+}
+
+template<int DIM>
+bool checkSymmetryHermitian(fftx::array_t<DIM, std::complex<double>>& a_arrIn,
+                            fftx::array_t<DIM, std::complex<double>>& a_arrOut)
+{
+  return true;
+}
+
+template<int DIM>
+bool checkSymmetryHermitian
+(fftx::array_t<DIM, std::complex<double> >& a_arrIn,
+ fftx::array_t<DIM, double>& a_arrOut)
+{
+  fftx::box_t<DIM> inputDomain = a_arrIn.m_domain;
+  std::complex<double>* arrPtr = a_arrIn.m_data.local();
+
+  fftx::box_t<DIM> outputDomain = a_arrOut.m_domain;
+  fftx::point_t<DIM> lo = outputDomain.lo;
+  fftx::point_t<DIM> hi = outputDomain.hi;
+
+  auto npts = inputDomain.size();
+  bool is_symmetric = true;
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      fftx::point_t<DIM> pt = pointFromPositionBox(ind, inputDomain);
+      fftx::point_t<DIM> ptRef;
+      for (int d = 0; d < DIM; d++)
+        {
+          ptRef[d] = sym_index(pt[d], lo[d], hi[d]);
+        }
+      if (isInBox(ptRef, inputDomain))
+        {
+          size_t indRef = positionInBox(ptRef, inputDomain);
+          if (arrPtr[indRef] != std::conj(arrPtr[ind]))
+            {
+              is_symmetric = false;
+              break;
+            }
+        }
+      // If ptRef is not in inputDomain, then no symmetry to check for pt.
+    }
+  return is_symmetric;
+}
+
+template<int DIM>
+void fillSymmetric(fftx::array_t<DIM, std::complex<double> >& a_arrOut,
+                   fftx::array_t<DIM, std::complex<double> >& a_arrIn)
+{
+  std::cout << "*** symmetrizing C2R" << std::endl;
+  fftx::box_t<DIM> inputDomain = a_arrIn.m_domain;
+  std::complex<double>* arrInPtr = a_arrIn.m_data.local();
+
+  fftx::box_t<DIM> outputDomain = a_arrOut.m_domain;
+  std::complex<double>* arrOutPtr = a_arrOut.m_data.local();
+
+  fftx::point_t<DIM> lo = outputDomain.lo;
+  fftx::point_t<DIM> hi = outputDomain.hi;
+
+  auto nptsOut = outputDomain.size();
+  for (size_t indOut = 0; indOut < nptsOut; indOut++)
+    {
+      fftx::point_t<DIM> ptOut = pointFromPositionBox(indOut, outputDomain);
+      if (isInBox(ptOut, inputDomain))
+        {
+          size_t indIn = positionInBox(ptOut, inputDomain);
+          arrOutPtr[indOut] = arrInPtr[indIn];
+        }
+      else
+        { // Find reflected point, and set arrOutPtr[ind] to conjugate.
+          fftx::point_t<DIM> ptRefIn = sym_point(ptOut, outputDomain);
+          if (isInBox(ptRefIn, inputDomain))
+            {
+              size_t indRefIn = positionInBox(ptRefIn, inputDomain);
+              arrOutPtr[indOut] = std::conj(arrInPtr[indRefIn]);
+            }
+          else
+            {
+              std::cout << "fillSymmetric: " << ptOut << " from " << ptRefIn
+                        << " which is not in input domain" << std::endl;
+            }
+        }
+    }
+}

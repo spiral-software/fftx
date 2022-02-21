@@ -10,9 +10,13 @@
 ##  at a lower level to support generating multiple sizes/sample builds within a single
 ##  example in the population of FFTX/examples
 
-## specify this only here, lower levels use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
-cmake_minimum_required (VERSION 3.14)
+if ( "x${CMAKE_MINIMUM_REQUIRED_VERSION}" STREQUAL "x" )
+    ## defined only when included from top level parent, set it so lower levels
+    ## use CMAKE_MINIMUM_REQUIRED_VERSION that this sets
+    cmake_minimum_required (VERSION 3.14)
+endif ()
 
+##  Start by finding things -- the list varies by what we're building for...
 ##  Get SPIRAL home...
 
 if ( DEFINED ENV{SPIRAL_HOME} )
@@ -43,30 +47,60 @@ include ("${SPIRAL_INCLUDE_PATH}/RunSpiral.cmake")
 set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
 set ( BACKEND_SOURCE_DIR ${FFTX_PROJECT_SOURCE_DIR}/examples/backend )
 
-##  message ( STATUS "FFTX_PROJECT_SOURCE_DIR set to: ${FFTX_PROJECT_SOURCE_DIR}" )
-##  message ( STATUS "BACKEND_SOURCE_DIR set to: ${BACKEND_SOURCE_DIR}" )
-
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXCmakeFunctions.cmake" )
-##  message ( STATUS "FFTX_CMAKE_INCLUDE_DIR set to: ${FFTX_CMAKE_INCLUDE_DIR}" )
+
+##  Get hip/rocm stuff if _codegen == HIP
+
+if ( ${_codegen} STREQUAL "HIP" )
+    ##  Setup what we need to build for HIP/ROCm
+    list ( APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm )
+    find_package ( hip REQUIRED )
+    if ( ${hip_FOUND} )
+	##  HIP/ROCm support found
+	message ( STATUS "Found HIP: Version = ${hip_VERSION}" )
+    else ()
+	message ( SEND_ERROR "HIP NOT FOUND: HIP is required to build")
+    endif ()
+
+    # ##  Set the compiler/linker
+    ##  Specify these on command line -- if done here cmake re-evaluates (reruns) and loses the _codegen value
+    # if ( NOT WIN32 )
+    # 	set (  CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE} )
+    # 	set ( CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE} )
+    # endif ()
+
+    ##  Adjust include and library directories
+    ##  Need to add $ROCM_PATH for includes and libraries
+    if ( DEFINED ENV{ROCM_PATH} )
+	message ( STATUS "ROCM_PATH is defined: $ENV{ROCM_PATH}" )
+	include_directories ( $ENV{ROCM_PATH}/hipfft/include $ENV{ROCM_PATH}/include )
+    endif ()
+    list ( APPEND LIBS_FOR_HIP hipfft rocfft )
+    list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_HIP )
+endif ()
 
 ##  Set flags and options for use when building code
+if ( WIN32 )
+    list ( APPEND ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
+endif ()
 
-set ( ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
-if ( ${_codegen} STREQUAL "GPU" )
+##  relocatable code doesn't work if multiple spiral files are included (name collisions)
+##  Default setting is false; only running on 64 bit machines.
+
+if ( ${_codegen} STREQUAL "CUDA" )
     if (WIN32)
-	set ( CUDA_COMPILE_FLAGS -rdc=false )
+	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft )
-	set ( ADDL_COMPILE_FLAGS -DWIN64 -D_USE_MATH_DEFINES )
+	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
     else ()
-	set ( CUDA_COMPILE_FLAGS -m64 -rdc=true )
-	set ( GPU_COMPILE_DEFNS -dc )		## -Xptxas -v
+	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
+	##  Don't use -dc (library code can't be relocatable)
+	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
 	set ( LIBS_FOR_CUDA cufft culibos )
-	set ( ADDL_COMPILE_FLAGS )
     endif ()
 
     set ( CMAKE_CUDA_ARCHITECTURES 52 )
-    set ( GPU_EXTRAS _CUDAGEN )
 endif ()
 
 if ( "x${DIM_X}" STREQUAL "x" )
@@ -78,13 +112,14 @@ else ()
     message ( STATUS "Building for size [ ${DIM_X}, ${DIM_Y}, ${DIM_Z} ]" )
 endif ()
 
-##  Set include paths and require C++ 14 standard
+##  Set include paths and require C++ 11 standard
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 11)
-set ( CMAKE_CXX_STANDARD 14)
+set ( CMAKE_CXX_STANDARD 11)
 
-include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets )
+include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets
+    ${SPIRAL_SOURCE_DIR}/profiler/targets/include )
 
 if ( (NOT DEFINED CMAKE_BUILD_TYPE) OR (NOT CMAKE_BUILD_TYPE) )
     set ( CMAKE_BUILD_TYPE Release )

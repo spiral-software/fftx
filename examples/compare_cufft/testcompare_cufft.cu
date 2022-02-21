@@ -1,4 +1,11 @@
 #include <stdio.h>
+
+#ifdef FFTX_HIP
+#include <hip/hip_runtime.h>
+#include <hipfft.h>
+#include "rocfft.h"
+#endif
+
 #include <cufft.h>
 #include "spiralmddft.fftx.codegen.hpp"
 #include "test_comp.h"
@@ -237,7 +244,7 @@ int main(int argc, char* argv[])
     }
   else
     {
-      printf("NO, results do not match.\n");
+      printf("NO, results do not match.  Max difference %11.5e\n", maxDiff);
     }
 
   /*
