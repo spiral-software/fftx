@@ -88,6 +88,12 @@ def exec_xform ( segnams, dims, fwd, libmode ):
         setlibmode = 0
     else:
         setlibmode = _def_libmode
+        ##  Want to run library default mode (will be CUDA / HIP if available)
+        ##  Only do so if present
+        if _def_libmode == 0:
+            ##  No GPU functions in library
+            print ( 'Library only has CPU code - no GPU function available' )
+            return
 
     func = froot + 'SetLibraryMode'
     _libFuncAttr = getattr ( _sharedLibAccess, func, None)
