@@ -14,7 +14,7 @@
 #include "transformer.fftx.precompile.hpp"
 
 #include "fftx3utilities.h"
-#include "rconv.h"
+#include "rconv_dims.h"
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   
@@ -41,51 +41,6 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
          }, a_arr);
 }
 
-template<int DIM, class Transformer>
-void convolutionDevice(Transformer& a_transformer,
-                       array_t<DIM, double>& a_input,
-                       array_t<DIM, double>& a_output,
-                       array_t<DIM, double>& a_symbol)
-{
-  auto inputDomain = a_input.m_domain;
-  auto outputDomain = a_output.m_domain;
-  auto symbolDomain = a_symbol.m_domain;
-  
-  auto input_size = inputDomain.size();
-  auto output_size = outputDomain.size();
-  auto symbol_size = symbolDomain.size();
-  
-  auto input_bytes = input_size * sizeof(double);
-  auto output_bytes = output_size * sizeof(double);
-  auto symbol_bytes = symbol_size * sizeof(double);
-  
-  double* bufferPtr;
-  DEVICE_MALLOC(&bufferPtr, input_bytes + output_bytes + symbol_bytes);
-  double* inputPtr = bufferPtr;
-  bufferPtr += input_size;
-  double* outputPtr = bufferPtr;
-  bufferPtr += output_size;
-  double* symbolPtr = bufferPtr;
-  
-  DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
-                  MEM_COPY_HOST_TO_DEVICE);
-  DEVICE_MEM_COPY(symbolPtr, a_symbol.m_data.local(), symbol_bytes,
-                  MEM_COPY_HOST_TO_DEVICE);
-  
-  fftx::array_t<DIM, double> inputDevice(fftx::global_ptr<double>
-                                         (inputPtr, 0, 1), inputDomain);
-  fftx::array_t<DIM, double> outputDevice(fftx::global_ptr<double>
-                                          (outputPtr, 0, 1), outputDomain);
-  fftx::array_t<DIM, double> symbolDevice(fftx::global_ptr<double>
-                                          (symbolPtr, 0, 1), symbolDomain);
-
-  a_transformer.transform(inputDevice, outputDevice, symbolDevice);
-
-  DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
-                  MEM_COPY_DEVICE_TO_HOST);
-  DEVICE_FREE(bufferPtr);
-}
-
 
 template<int DIM, class Transformer>
 double testConstantSymbol(Transformer& a_transformer,
@@ -105,7 +60,7 @@ double testConstantSymbol(Transformer& a_transformer,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifRealArray(input);
-      convolutionDevice(a_transformer, input, output, symbol);
+      a_transformer.transform(input, output, symbol);
       double err = absMaxDiffArray(input, output);
       updateMax(errConstantSymbol, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -148,7 +103,7 @@ double testDelta(Transformer& a_transformer,
                }
            }, symbol);
 
-  convolutionDevice(a_transformer, input, output, symbol);
+  a_transformer.transform(input, output, symbol);
   double errDelta = absMaxDiffArray(input, output);
   if (a_verbosity >= SHOW_CATEGORIES)
     {
@@ -223,8 +178,8 @@ double testPoisson(Transformer& a_transformer,
                v = -1. / ((4 * normalize) * sin2sum);
              }
          }, symbol);
-  
-  convolutionDevice(a_transformer, input, output, symbol);
+
+  a_transformer.transform(input, output, symbol);
 
   array_t<DIM,double> lap2output(a_domain);
   laplacian2periodic(lap2output, output);
