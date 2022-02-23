@@ -2,8 +2,6 @@
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
 
-#include "device_macros.h"
-
 // #include "fftx_mddft_public.h"
 // #include "fftx_imddft_public.h"
 #include "fftx_rconv_public.h"
