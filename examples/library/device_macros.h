@@ -71,6 +71,8 @@
 // neither CUDA nor HIP
 #define DEVICE_SUCCESS 0
 #endif
+// Functions that are defined if and only if either CUDA or HIP.
+#if defined(__CUDACC__) || defined(FFTX_HIP)
 #include <iostream>
 // Example of use: DEVICE_CHECK(DEVICE_MEM_COPY(...), "memcpy at step 2");
 inline void DEVICE_CHECK(DEVICE_ERROR_T a_rc, const std::string& a_name)
@@ -97,4 +99,5 @@ inline void DEVICE_FFT_CHECK(DEVICE_FFT_RESULT a_rc, const std::string& a_name)
         exit(-1);
      }
 }
+#endif
 #endif

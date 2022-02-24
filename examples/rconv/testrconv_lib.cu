@@ -14,7 +14,7 @@
 #include "transformer.fftx.precompile.hpp"
 
 #include "fftx3utilities.h"
-#include "rconv.h"
+#include "rconv_dims.h"
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   
