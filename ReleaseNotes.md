@@ -2,17 +2,17 @@
 
 ### Introduction
 
-These release notes for Spiral 8.4.0 provide an overview of the release and document any known issues.  For details of the changes applied since the last release, please see the **Change Summary** below.
+This is the first release of FFTX with libraries of transforms.
 
 ### Supported Platforms
 
-Spiral is supported on Windows, Linux, and MacOS.
+FFTX is supported on Windows, Linux, and MacOS.
 
-Spiral is configured using **cmake** and is expected to run on most UNIX-like systems.
+FFTX is configured using **cmake** and is expected to run on most UNIX-like systems.
 
 See the [**README**](./README.md) file for more information on how to build for a specific platform.
 
-### Get FFTX Version 1.0.1
+### Get FFTX Version 1.0.0
 
 You can download the lastest release from:
 
