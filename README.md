@@ -54,7 +54,18 @@ git clone https://www.github.com/spiral-software/fftx
 
 FFTX builds libraries of transforms for different sizes.  The library source
 code is generated from Spiral script specifications, and must be created before
-building FFTX.  To create the library source code do the following:
+building FFTX.  Before creating the library source code consider if you will be
+running on CPU only or also utilizing a GPU.  If you create all the source code
+(and related **cmake** scripts and library APIs) for GPU and then try building
+for CPU only you may encounter compiler errors or unexpected results.
+
+NOTE: If you plan to build FFTX for CPU (i.e., use the -D_codegen=CPU switch
+with **cmake**) ensure that the compiler for GPU (nvcc for CUDA or hipcc for HIP)
+**is not** in your path.  Typically, on a supercomputer, this is easily
+accomplished by unloading the relevant module: e.g., ```module unload cuda``` or
+```module unload rocm```.
+
+To create the library source code do the following:
 ```
 cd fftx			## your FFTX install directory
 cd examples/library
@@ -114,7 +125,7 @@ cd bin
 
 The libraries built and copied to the **lib** folder can be used by external
 applications to leverage FFTX transforms.  To access the necessary include files
-and libraries an external application's *cmake* should include
+and libraries an external application's **cmake** should include
 **CMakeInclude/FFTXCmakeFunctions.cmake**.  A full example of an external
 application linking with FFTX libraries is available in the
 [fftx-demo-extern-app](https://www.github.com/spiral-software/fftx-demo-extern-app).
@@ -130,13 +141,13 @@ new example is also described.
 Each example is expected to reside in its own directory; the directory should be
 named for the transform or problem it illustrates or tests.   At its most basic
 an example consists of a driver program that defines the transform, a test
-harness to exercise the transform and a *cmake* file to build the example.
+harness to exercise the transform and a **cmake** file to build the example.
 
 ### Naming Conventions For Examples
 
 The folder containing the example should be named for the transform or problem
 being illustrated, e.g., **mddft**.  This name will be used as the *project*
-name in the *cmake* file (details below).
+name in the **cmake** file (details below).
 
 Within each folder there should be one (or possibly several) file(s) defining
 transforms to be tested.  These *driver* programs are named as
@@ -150,7 +161,7 @@ named with a **.cpp** suffix used to exercise a CPU version of the transform(s)
 and one named with a **.cu** suffix used to exercise a GPU version of the
 transform(s).
 
-The *cmake* file is named in the usual standard way as: **CMakeLists.txt**.
+The **cmake** file is named in the usual standard way as: **CMakeLists.txt**.
 
 ### How To Add A New Example
 
@@ -159,16 +170,16 @@ called *project*.  Then in the newly created folder add your transform
 definition(s), named *prefix*.**fftx.cpp**.  Add a test harness named
 **test**_project_; with either, or both, suffixes: **.cpp**, or **.cu**.
 
-Add (or copy and edit) a *cmake* file (instructions for editing below).
+Add (or copy and edit) a **cmake** file (instructions for editing below).
 
 ### Setting Up The CMakeLists.txt File
 
-The CMakeLists.txt file has a section in the beginning to specifiy a few names;
+The **CMakeLists.txt** file has a section in the beginning to specifiy a few names;
 most of the rules and targets are defined automatically and few, if any, changes
-should be required.  The cmake file uses the varaible **\_codegen** to determine
+should be required.  The **cmake** file uses the varaible **\_codegen** to determine
 whether to build for CPU or GPU (either CUDA or HIP).  This variable is defined
-on the cmake command line (or defaults to CPU); do **not** override it in the
-cmake file.
+on the **cmake** command line (or defaults to CPU); do **not** override it in the
+**cmake** file.
 
 &nbsp;&nbsp;**1.**&nbsp;&nbsp;
 Set the project name.  The preferred name is the same name as the example folder, e.g., **mddft**<br>
@@ -191,9 +202,9 @@ to be **test**_project<br>
     set ( BUILD\_PROGRAM test${PROJECT\_NAME} )
 <br>
 
-Finally add an entry to the cmake file in the **examples** folder.  We use a *cmake*
-function **manage_add_subdir** to control this.  Call the function with
-parameters directory name and True/False flags for building for CPU and GPU, for
+Finally add an entry to the **CMakeLists.txt** file in the **examples** folder.  We use a **cmake**
+function, **manage_add_subdir,** to control this.  Call the function with
+parameters: example directory name and True/False flags for building for CPU and GPU, for
 example:
 ```
 ##                  subdir name   CPU       GPU
