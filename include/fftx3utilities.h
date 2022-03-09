@@ -52,12 +52,14 @@ template<int DIM, typename T>
 void copyArray(fftx::array_t<DIM, T>& a_arrOut,
                const fftx::array_t<DIM, T>& a_arrIn)
 {
-  forall([](T(&arrOutElem),
-            const T(&arrInElem),
-            const fftx::point_t<DIM>& p)
-         {
-           arrOutElem = arrInElem;
-         }, a_arrOut, a_arrIn);
+  auto arrInPtr = a_arrIn.m_data.local();
+  auto arrOutPtr = a_arrOut.m_data.local();
+  auto dom = a_arrOut.m_domain;
+  size_t npts = dom.size();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      arrOutPtr[ind] = arrInPtr[ind];
+    }
 }
 
 // Set a_arr += a_scaling * a_multiplier pointwise.
@@ -67,13 +69,15 @@ void addArray(fftx::array_t<DIM, T>& a_arr,
               T a_scalingSummand = scalarVal<T>(1.),
               T a_scalingOrig = scalarVal<T>(1.))
 {
-  forall([a_scalingSummand, a_scalingOrig](T(&arrElem),
-            const T(&summandElem),
-            const fftx::point_t<DIM>& p)
-         {
-           arrElem *= a_scalingOrig;
-           arrElem += a_scalingSummand * summandElem;
-         }, a_arr, a_summand);
+  auto arrPtr = a_arr.m_data.local();
+  auto summandPtr = a_summand.m_data.local();
+  auto dom = a_arr.m_domain;
+  size_t npts = dom.size();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      arrPtr[ind] *= a_scalingOrig;
+      arrPtr[ind] += a_scalingSummand * summandPtr[ind];
+    }
 }
 
 // Set a_arr *= a_multiplier pointwise.
@@ -81,12 +85,14 @@ template<int DIM, typename T>
 void multiplyByArray(fftx::array_t<DIM, T>& a_arr,
                      const fftx::array_t<DIM, T>& a_multiplier)
 {
-  forall([](T(&arrElem),
-            const T(&multiplierElem),
-            const fftx::point_t<DIM>& p)
-         {
-           arrElem *= multiplierElem;
-         }, a_arr, a_multiplier);
+  auto arrPtr = a_arr.m_data.local();
+  auto multiplierPtr = a_multiplier.m_data.local();
+  auto dom = a_arr.m_domain;
+  size_t npts = dom.size();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      arrPtr[ind] *= multiplierPtr[ind];
+    }
 }
 
 // Set a_sum = a_scaling1 * a_arr1 + a_scaling2 * a_arr2 pointwise.
@@ -207,9 +213,13 @@ double absMaxDiffArray(fftx::array_t<DIM, T>& a_arr1,
   assert(dom == a_arr2.m_domain);
   auto arr1Ptr = a_arr1.m_data.local();
   auto arr2Ptr = a_arr2.m_data.local();
-  fftx::array_t<DIM, T> arrDiff(dom);
-  diffArrays(arrDiff, a_arr1, a_arr2);
-  double absDiffMax = absMaxArray(arrDiff);
+  size_t npts = dom.size();
+  double absDiffMax = 0.;
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      T diffHere = arr1Ptr[ind] - arr2Ptr[ind];
+      updateMaxAbs(absDiffMax, diffHere);
+    }
   return absDiffMax;
 }
 
