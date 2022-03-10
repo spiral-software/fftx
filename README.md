@@ -19,6 +19,8 @@ and **Xcode Command Line Tools**.
 
 ### Installing Pre-requisites
 
+#### spiral-software
+
 Clone **spiral-software** to a location on you computer.  E.g., do:
 ```
 cd ~/work
@@ -39,6 +41,19 @@ prefix *spiral-package* removed.
 
 Follow the build instructions for **spiral-software** (see the **README**
 [**here**](https://github.com/spiral-software/spiral-software/blob/master/README.md) ).
+
+#### Python 3
+
+FFTX, like SPIRAL, requires **Python 3**.
+
+On macOS, `/usr/bin/python` usually links to Python 2.7, but
+`/usr/bin/python3` is also present.  Now macOS doesn't allow you to
+link `/usr/bin/python` to `/usr/bin/python3`, even with `sudo`.
+So you will need to make a link like
+```
+sudo ln -s /usr/local/bin/python /usr/bin/python3
+```
+and then change your `$path` so that `/usr/local/bin` *precedes* `/usr/bin`.
 
 ### Installing FFTX
 
