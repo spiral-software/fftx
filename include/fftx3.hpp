@@ -196,6 +196,14 @@ namespace fftx
         }
     }
 
+    friend void swap(array_t& first, array_t& second)
+    {
+      using std::swap;
+      swap(first.m_local_data, second.m_local_data);
+      swap(first.m_data, second.m_data);
+      swap(first.m_domain, second.m_domain);
+    }
+
     T* m_local_data = nullptr;
     global_ptr<T> m_data;
     box_t<DIM>    m_domain;
