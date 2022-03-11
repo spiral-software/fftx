@@ -172,13 +172,12 @@ namespace fftx
     array_t() = default;
     /** string constructor from an aliased global_ptr object.  This constructor is an error when fftx::tracing==true*/
     array_t(global_ptr<T>&& p, const box_t<DIM>& a_box)
-      :m_data(p), m_domain(a_box), m_local_data(nullptr) {;}
+      :m_data(p), m_domain(a_box) {;}
     array_t(const box_t<DIM>& m_box):m_domain(m_box)
     {
       if(tracing)
         {
           m_data = global_ptr<T>((T*)ID);
-          m_local_data = nullptr;
           std::cout<<"var_"<<ID<<":= var(\"var_"<<ID<<"\", BoxND("<<m_box.extents()<<", TReal));\n";
           ID++;
         }
@@ -197,7 +196,7 @@ namespace fftx
         }
     }
 
-    T* m_local_data;
+    T* m_local_data = nullptr;
     global_ptr<T> m_data;
     box_t<DIM>    m_domain;
     array_t<DIM, T> subArray(box_t<DIM>&& subbox);
