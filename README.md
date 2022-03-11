@@ -51,9 +51,9 @@ On macOS, `/usr/bin/python` usually links to Python 2.7, but
 link `/usr/bin/python` to `/usr/bin/python3`, even with `sudo`.
 So you will need to make a link like
 ```
-sudo ln -s /usr/local/bin/python /usr/bin/python3
+sudo ln -s /usr/bin/python3 /usr/local/bin/python
 ```
-and then change your `$path` so that `/usr/local/bin` *precedes* `/usr/bin`.
+and then change your `$path` so that `/usr/local/bin` comes *before* `/usr/bin`.
 
 ### Installing FFTX
 
