@@ -65,6 +65,9 @@ git clone https://www.github.com/spiral-software/fftx
 **NOTE:** Before attempting to build ensure you have set environment variable
 **SPIRAL_HOME** to point to your **spiral-software** instance.
 
+Also set the environment variable **FFTX_HOME** to point to the directory where
+you have cloned **FFTX** (so `~/work/fftx` if following the exact commands above).
+
 #### Building on Linux or Linux-like Systems
 
 FFTX builds libraries of transforms for different sizes.  The library source
