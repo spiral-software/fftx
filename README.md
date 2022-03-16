@@ -19,6 +19,12 @@ and **Xcode Command Line Tools**.
 
 ### Installing Pre-requisites
 
+Tools required on the target machine in order to build SPIRAL and FFTX, include:
+<br>
+**cmake**, version 3.14 or higher
+<br>
+**python**, version 3.6 or higher
+
 Clone **spiral-software** to a location on you computer.  E.g., do:
 ```
 cd ~/work
@@ -27,11 +33,12 @@ git clone https://www.github.com/spiral-software/spiral-software
 This location is known as *SPIRAL HOME* and you must set an environment variable
 **SPIRAL_HOME** to point to this location later.
 
-To install the two spiral packages do the following:
+To install the spiral packages do the following:
 ```
 cd ~/work/spiral-software/namespaces/packages
 git clone https://www.github.com/spiral-software/spiral-package-fftx fftx
 git clone https://www.github.com/spiral-software/spiral-package-simt simt
+git clone https://www.github.com/spiral-software/spiral-package-mpi mpi
 ```
 **NOTE:** The spiral packages must be installed under directory
 **$SPIRAL_HOME/namespaces/packages** and must be placed in folders with the
