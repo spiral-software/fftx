@@ -3,6 +3,7 @@
 #include "mddft.fftx.codegen.hpp"
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
+#include "device_macros.h"
 
 #include <chrono>
 
@@ -29,11 +30,11 @@ int main(int argc, char* argv[])
   std::complex<double> * bufferPtr;
   std::complex<double> * inputPtr;
   std::complex<double> * outputPtr;
-  cudaMalloc(&bufferPtr, test_plan::domain.size()*sizeof(std::complex<double>)*2);
+  DEVICE_MALLOC(&bufferPtr, test_plan::domain.size()*sizeof(std::complex<double>)*2);
   inputPtr = bufferPtr;
   outputPtr = bufferPtr + test_plan::domain.size();
-  cudaMemcpy(inputPtr, inputH.m_data.local(), test_plan::domain.size()*sizeof(std::complex<double>),
-             cudaMemcpyHostToDevice);
+  DEVICE_MEM_COPY(inputPtr, inputH.m_data.local(), test_plan::domain.size()*sizeof(std::complex<double>),
+                  MEM_COPY_HOST_TO_DEVICE);
   fftx::array_t<3,std::complex<double>> input(fftx::global_ptr<std::complex<double>>(inputPtr,0,1), test_plan::domain);
   fftx::array_t<3,std::complex<double>> output(fftx::global_ptr<std::complex<double>>(outputPtr,0,1), test_plan::domain);
   //  end special code for GPU

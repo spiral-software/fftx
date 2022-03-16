@@ -16,8 +16,10 @@
 */
 #include "prdft3.fftx.codegen.hpp"
 #include "iprdft3.fftx.codegen.hpp"
+
 #include "fftx3utilities.h"
 #include "verify.h"
+#include "device_macros.h"
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   
@@ -222,13 +224,13 @@ void DFTfunctionDevice(fftx::handle_t (a_dftFunction)
   auto output_bytes = output_size * sizeof(T_OUT);
 
   char* bufferPtr;
-  cudaMalloc(&bufferPtr, input_bytes + output_bytes);
+  DEVICE_MALLOC(&bufferPtr, input_bytes + output_bytes);
   T_IN* inputPtr = (T_IN*) bufferPtr;
   bufferPtr += input_bytes;
   T_OUT* outputPtr = (T_OUT*) bufferPtr;
 
-  cudaMemcpy(inputPtr, a_input.m_data.local(), input_bytes,
-             cudaMemcpyHostToDevice);
+  DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
+                  MEM_COPY_HOST_TO_DEVICE);
 
   fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
                                        (inputPtr, 0, 1), inputDomain);
@@ -237,8 +239,8 @@ void DFTfunctionDevice(fftx::handle_t (a_dftFunction)
   
   a_dftFunction(inputDevice, outputDevice);
 
-  cudaMemcpy(a_output.m_data.local(), outputPtr, output_bytes,
-             cudaMemcpyDeviceToHost);
+  DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
+                  MEM_COPY_DEVICE_TO_HOST);
 }
 
 template<int DIM, typename T_IN, typename T_OUT>

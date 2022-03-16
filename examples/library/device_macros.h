@@ -7,6 +7,7 @@
 #define DEVICE_SUCCESS hipSuccess
 #define DEVICE_EVENT_T hipEvent_t
 #define DEVICE_EVENT_CREATE hipEventCreate
+#define DEVICE_SET hipSetDevice
 #define DEVICE_MALLOC hipMalloc
 #define DEVICE_EVENT_RECORD hipEventRecord
 #define DEVICE_EVENT_ELAPSED_TIME hipEventElapsedTime
@@ -17,6 +18,7 @@
 #define MEM_COPY_DEVICE_TO_HOST hipMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE hipMemcpyHostToDevice
 #define DEVICE_ERROR_T hipError_t
+#define DEVICE_GET_LAST_ERROR hipGetLastError
 #define DEVICE_GET_ERROR_STRING hipGetErrorString
 #define DEVICE_FFT_TYPE hipfftType
 #define DEVICE_FFT_RESULT hipfftResult
@@ -40,6 +42,7 @@
 #define DEVICE_SUCCESS cudaSuccess
 #define DEVICE_EVENT_T cudaEvent_t
 #define DEVICE_EVENT_CREATE cudaEventCreate
+#define DEVICE_SET cudaSetDevice
 #define DEVICE_MALLOC cudaMalloc
 #define DEVICE_EVENT_RECORD cudaEventRecord
 #define DEVICE_EVENT_ELAPSED_TIME cudaEventElapsedTime
@@ -50,6 +53,7 @@
 #define MEM_COPY_DEVICE_TO_HOST cudaMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE cudaMemcpyHostToDevice
 #define DEVICE_ERROR_T cudaError_t
+#define DEVICE_GET_LAST_ERROR cudaGetLastError
 #define DEVICE_GET_ERROR_STRING cudaGetErrorString
 #define DEVICE_FFT_TYPE cufftType
 #define DEVICE_FFT_RESULT cufftResult
@@ -74,6 +78,20 @@
 // Functions that are defined if and only if either CUDA or HIP.
 #if defined(__CUDACC__) || defined(FFTX_HIP)
 #include <iostream>
+inline void DEVICE_CHECK_ERROR(DEVICE_ERROR_T a_rc)
+{
+  // There does not appear to be a HIP analogue.
+#if defined(__CUDACC__)
+  checkCudaErrors(a_rc);
+#endif
+  if (a_rc != DEVICE_SUCCESS)
+    {
+      std::cerr << "Failure with code " << a_rc
+                << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
+                << std::endl;
+      exit(-1);
+    }
+}
 // Example of use: DEVICE_CHECK(DEVICE_MEM_COPY(...), "memcpy at step 2");
 inline void DEVICE_CHECK(DEVICE_ERROR_T a_rc, const std::string& a_name)
 {

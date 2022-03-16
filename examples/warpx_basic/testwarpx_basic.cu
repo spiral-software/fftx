@@ -3,16 +3,9 @@
 #include <limits.h>
 #include <float.h>
 
-#ifdef FFTX_HIP
-#include <hip/hip_runtime.h>
-#include <hipfft.h>
-#include "rocfft.h"
-#else
-#include <cuda.h>
-#include <cuda_runtime.h>
+#include "device_macros.h"
+//#include <cuda_runtime.h>
 //#include <device_launch_parameters.h>
-#include <cufft.h>
-#endif
 
 #include <iostream>
 #include <algorithm>
@@ -29,9 +22,9 @@
 #define C_SPEED 1
 #define EP0 1
 
-enum MODE:int {CUFFT=1, FFTX=2, BOTH=3};
+enum MODE:int {LIBFFT=1, FFTX=2, BOTH=3};
 
-MODE mode = CUFFT;
+MODE mode = LIBFFT;
 
 // pack the data
 __global__ void pack_data(int l,
@@ -60,16 +53,16 @@ __global__ void pack_data(int l,
 __global__ void shift_data(int l,
 			   int m,
 			   int n,
-			   cufftDoubleComplex *io,
+			   DEVICE_FFT_DOUBLECOMPLEX *io,
 			   int do_shift_i,
-			   cufftDoubleComplex *shift_i,
+			   DEVICE_FFT_DOUBLECOMPLEX *shift_i,
 			   int do_shift_j,
-			   cufftDoubleComplex *shift_j,
+			   DEVICE_FFT_DOUBLECOMPLEX *shift_j,
 			   int do_shift_k,
-			   cufftDoubleComplex *shift_k) {
+			   DEVICE_FFT_DOUBLECOMPLEX *shift_k) {
   int id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  cufftDoubleComplex Z;
+  DEVICE_FFT_DOUBLECOMPLEX Z;
   Z.x = 1.0;
   Z.y = 0.0;
   
@@ -78,12 +71,12 @@ __global__ void shift_data(int l,
     int j = (iter / l) % m;
     int k = (iter / (l * m)) % n;
 
-    cufftDoubleComplex v_shift_i = (do_shift_i == 0) ? Z : *(shift_i + i);
-    cufftDoubleComplex v_shift_j = (do_shift_j == 0) ? Z : *(shift_j + j);
-    cufftDoubleComplex v_shift_k = (do_shift_k == 0) ? Z : *(shift_k + k);
+    DEVICE_FFT_DOUBLECOMPLEX v_shift_i = (do_shift_i == 0) ? Z : *(shift_i + i);
+    DEVICE_FFT_DOUBLECOMPLEX v_shift_j = (do_shift_j == 0) ? Z : *(shift_j + j);
+    DEVICE_FFT_DOUBLECOMPLEX v_shift_k = (do_shift_k == 0) ? Z : *(shift_k + k);
     
-    cufftDoubleComplex value = *(io + iter);
-    cufftDoubleComplex result;
+    DEVICE_FFT_DOUBLECOMPLEX value = *(io + iter);
+    DEVICE_FFT_DOUBLECOMPLEX result;
 
     result.x = value.x * v_shift_i.x - value.y * v_shift_i.y;
     result.y = value.x * v_shift_i.y + value.y * v_shift_i.x;
@@ -102,7 +95,7 @@ __global__ void shift_data(int l,
 __global__ void compute_contraction(int l,
 				    int m,
 				    int n,
-				    cufftDoubleComplex *io,
+				    DEVICE_FFT_DOUBLECOMPLEX *io,
 				    double *modified_ki_arr,
 				    double *modified_kj_arr,
 				    double *modified_kk_arr,
@@ -122,19 +115,19 @@ __global__ void compute_contraction(int l,
     int k = (iter / (l * m)) % n;
 
     // E and B fields
-    cufftDoubleComplex Ex = *(io + 0 * l * m * n + iter);
-    cufftDoubleComplex Ey = *(io + 1 * l * m * n + iter);
-    cufftDoubleComplex Ez = *(io + 2 * l * m * n + iter);
-    cufftDoubleComplex Bx = *(io + 3 * l * m * n + iter);
-    cufftDoubleComplex By = *(io + 4 * l * m * n + iter);
-    cufftDoubleComplex Bz = *(io + 5 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Ex = *(io + 0 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Ey = *(io + 1 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Ez = *(io + 2 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Bx = *(io + 3 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX By = *(io + 4 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Bz = *(io + 5 * l * m * n + iter);
 
     // Shortcut for the values of J and rho
-    cufftDoubleComplex Jx = *(io + 6 * l * m * n + iter);
-    cufftDoubleComplex Jy = *(io + 7 * l * m * n + iter);
-    cufftDoubleComplex Jz = *(io + 8 * l * m * n + iter);
-    cufftDoubleComplex rho_old = *(io + 9 * l * m * n + iter);
-    cufftDoubleComplex rho_new = *(io + 10 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Jx = *(io + 6 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Jy = *(io + 7 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX Jz = *(io + 8 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX rho_old = *(io + 9 * l * m * n + iter);
+    DEVICE_FFT_DOUBLECOMPLEX rho_new = *(io + 10 * l * m * n + iter);
     
     // k vector values, and coefficients
     double kx = *(modified_ki_arr + i);
@@ -147,7 +140,7 @@ __global__ void compute_contraction(int l,
     double X2 = *(X2_arr + iter);
     double X3 = *(X3_arr + iter);
 
-    cufftDoubleComplex ex, ey, ez, bx, by, bz;
+    DEVICE_FFT_DOUBLECOMPLEX ex, ey, ez, bx, by, bz;
 
     ex.x = C * Ex.x + S_ck * (-1.0 * c2 * (ky * Bz.y - kz * By.y) - inv_ep0 * Jx.x) + (X2 * rho_new.y - X3 * rho_old.y) * kx;
     ex.y = C * Ex.y + S_ck * (       c2 * (ky * Bz.x - kz * By.x) - inv_ep0 * Jx.y) - (X2 * rho_new.x - X3 * rho_old.x) * kx; 
@@ -181,7 +174,7 @@ __global__ void compute_contraction(int l,
 
 
 // compute forward and inverse Fourier transforms
-inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle plan,
+inline void __attribute__((always_inline)) compute_warp_forward_dft(DEVICE_FFT_HANDLE plan,
 								    int l,
 								    int m,
 								    int n,
@@ -190,23 +183,23 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
 								    int m_is,
 								    int n_is,
 								    double *temp,
-								    cufftDoubleComplex *output,
-                                                                    cufftDoubleComplex *output_fftx,
+								    DEVICE_FFT_DOUBLECOMPLEX *output,
+                                                                    DEVICE_FFT_DOUBLECOMPLEX *output_fftx,
 								    int do_shift_i,
-								    cufftDoubleComplex *shift_i,
+								    DEVICE_FFT_DOUBLECOMPLEX *shift_i,
 								    int do_shift_j,
-								    cufftDoubleComplex *shift_j,
+								    DEVICE_FFT_DOUBLECOMPLEX *shift_j,
 								    int do_shift_k,
-								    cufftDoubleComplex *shift_k) {
-  // cufft implementation
-  if(mode == CUFFT || mode==BOTH)
+								    DEVICE_FFT_DOUBLECOMPLEX *shift_k) {
+  // library FFT implementation
+  if(mode == LIBFFT || mode==BOTH)
     {
       pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
                                             input,
                                             l_is, m_is, n_is,
                                             temp,
                                             l, m, n);
-      cufftExecD2Z(plan, temp, output);
+      DEVICE_FFT_EXECD2Z(plan, temp, output);
       shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
                                              output,
                                              do_shift_i,
@@ -259,12 +252,12 @@ inline void __attribute__((always_inline)) compute_warp_forward_dft(cufftHandle 
     }
 }
 
-inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle plan,
+inline void __attribute__((always_inline)) compute_warp_inverse_dft(DEVICE_FFT_HANDLE plan,
 								    int l,
 								    int m,
 								    int n,
-								    cufftDoubleComplex *input,
-                                                                    cufftDoubleComplex *input_fftx,
+								    DEVICE_FFT_DOUBLECOMPLEX *input,
+                                                                    DEVICE_FFT_DOUBLECOMPLEX *input_fftx,
 								    double *temp,
 								    double *output,
 								    double *output_fftx,
@@ -272,14 +265,14 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 								    int m_os,
 								    int n_os,
 								    int do_shift_i,
-								    cufftDoubleComplex *shift_i,
+								    DEVICE_FFT_DOUBLECOMPLEX *shift_i,
 								    int do_shift_j,
-								    cufftDoubleComplex *shift_j,
+								    DEVICE_FFT_DOUBLECOMPLEX *shift_j,
 								    int do_shift_k,
-								    cufftDoubleComplex *shift_k) {
+								    DEVICE_FFT_DOUBLECOMPLEX *shift_k) {
 
-  // cufft implementation
-  if(mode == CUFFT || mode==BOTH)
+  // library FFT implementation
+  if(mode == LIBFFT || mode==BOTH)
     {
       shift_data<<<THREAD_BLOCKS, THREADS>>>(l / 2 + 1, m, n,
                                              input,
@@ -289,7 +282,7 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
                                              shift_j,
                                              do_shift_k,
                                              shift_k);
-      cufftExecZ2D(plan, input, temp);
+      DEVICE_FFT_EXECZ2D(plan, input, temp);
       pack_data<<<THREAD_BLOCKS, THREADS>>>(l, m, n,
                                             temp,
                                             l, m, n,
@@ -345,8 +338,8 @@ inline void __attribute__((always_inline)) compute_warp_inverse_dft(cufftHandle 
 inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  int m,
 								  int n,
-								  cufftHandle plan_forward,
-								  cufftHandle plan_inverse,
+								  DEVICE_FFT_HANDLE plan_forward,
+								  DEVICE_FFT_HANDLE plan_inverse,
 								  double *Ex_in,
 								  double *Ey_in,
 								  double *Ez_in,
@@ -358,12 +351,12 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  double *Jz,
 								  double *rho_0,
 								  double *rho_1,
-								  cufftDoubleComplex *fshift_i,
-								  cufftDoubleComplex *fshift_j,
-								  cufftDoubleComplex *fshift_k,
+								  DEVICE_FFT_DOUBLECOMPLEX *fshift_i,
+								  DEVICE_FFT_DOUBLECOMPLEX *fshift_j,
+								  DEVICE_FFT_DOUBLECOMPLEX *fshift_k,
 								  double *temp0,
-								  cufftDoubleComplex *temp1,
-                                                                  cufftDoubleComplex *temp1_fftx,
+								  DEVICE_FFT_DOUBLECOMPLEX *temp1,
+                                                                  DEVICE_FFT_DOUBLECOMPLEX *temp1_fftx,
 								  double *modified_ki_arr,
 								  double *modified_kj_arr,
 								  double *modified_kk_arr,
@@ -384,9 +377,9 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 								  double *Bx_out_fftx,
 								  double *By_out_fftx,
 								  double *Bz_out_fftx,
-								  cufftDoubleComplex *ishift_i,
-								  cufftDoubleComplex *ishift_j,
-								  cufftDoubleComplex *ishift_k) {
+								  DEVICE_FFT_DOUBLECOMPLEX *ishift_i,
+								  DEVICE_FFT_DOUBLECOMPLEX *ishift_j,
+								  DEVICE_FFT_DOUBLECOMPLEX *ishift_k) {
   // Ex, Ey, Ez fields
   compute_warp_forward_dft(plan_forward,
 			   l,
@@ -557,7 +550,7 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   0,
 			   fshift_k);
   // contraction
-  if(mode==CUFFT || mode==BOTH)
+  if(mode==LIBFFT || mode==BOTH)
     {
       compute_contraction<<<THREAD_BLOCKS, THREADS>>>((l / 2 + 1),
                                                       m,
@@ -688,15 +681,15 @@ inline void __attribute__((always_inline)) compute_spectral_solve(int l,
 			   ishift_k);
 }
 
-void reportDifferences(const char* name, double* cufft_out, double* fftx_out, int ll, int mm, int nn) {
-  double diff=0, cufft_max=0, fftx_max=0;
+void reportDifferences(const char* name, double* libfft_out, double* fftx_out, int ll, int mm, int nn) {
+  double diff=0, libfft_max=0, fftx_max=0;
   int imax=-1, jmax=-1, kmax=-1;
   
   for(int k = 0; k < nn; k++)
     for(int j = 0; j < mm; j++)
       for(int i = 0; i < ll; i++) { 
 	int idx = i + j * ll + k * (ll * mm);
-	double c = cufft_out[idx];
+	double c = libfft_out[idx];
 	double f = fftx_out[idx];
 	double d = std::abs(c-f);
 	  
@@ -710,449 +703,449 @@ void reportDifferences(const char* name, double* cufft_out, double* fftx_out, in
             kmax=k;
           }
 	
-	if(std::abs(c)>cufft_max) cufft_max=c;
+	if(std::abs(c)>libfft_max) libfft_max=c;
 	if(std::abs(f)>fftx_max) fftx_max=f;   
       }
 
-  std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  cufft_max="<<cufft_max<<"  fftx_max="<<fftx_max<<"\n";
+  std::cout<<"max norm diff for "<<name<<" is "<<diff<<" at ["<<imax<<","<<jmax<<","<<kmax<<"]  libfft_max="<<libfft_max<<"  fftx_max="<<fftx_max<<"\n";
 }
 
 float execute_code(int l,
 		   int m,
 		   int n,
 		   double **fields_in,
-		   cufftDoubleComplex **shift_in,
+		   DEVICE_FFT_DOUBLECOMPLEX **shift_in,
 		   double **contractions,
 		   double **fields_out, double **fields_out_fftx,
-		   cufftDoubleComplex **shift_out) {
+		   DEVICE_FFT_DOUBLECOMPLEX **shift_out) {
   // the fields
   double *dev_Ex_in, *dev_Ey_in, *dev_Ez_in, *dev_Bx_in, *dev_By_in, *dev_Bz_in, *dev_Jx, *dev_Jy, *dev_Jz, *dev_rho_0, *dev_rho_1;
   double *dev_Ex_out, *dev_Ey_out, *dev_Ez_out, *dev_Bx_out, *dev_By_out, *dev_Bz_out;
   double *dev_Ex_out_fftx, *dev_Ey_out_fftx, *dev_Ez_out_fftx, *dev_Bx_out_fftx, *dev_By_out_fftx, *dev_Bz_out_fftx;
 
   // the shifts
-  cufftDoubleComplex *dev_fshift_i, *dev_fshift_j, *dev_fshift_k, *dev_ishift_i, *dev_ishift_j, *dev_ishift_k;
+  DEVICE_FFT_DOUBLECOMPLEX *dev_fshift_i, *dev_fshift_j, *dev_fshift_k, *dev_ishift_i, *dev_ishift_j, *dev_ishift_k;
 
   // the temporaries
   double *dev_temp0;
-  cufftDoubleComplex *dev_temp1, *dev_temp1_fftx;
+  DEVICE_FFT_DOUBLECOMPLEX *dev_temp1, *dev_temp1_fftx;
 
   // the contraction arrays;
   double *dev_modified_ki_arr, *dev_modified_kj_arr, *dev_modified_kk_arr;
   double *dev_C_arr, *dev_S_arr, *dev_X1_arr, *dev_X2_arr, *dev_X3_arr;
 
-  int cudaStatus = cudaSetDevice(0);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
+  int deviceStatus = DEVICE_SET(0);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "DEVICE_SET failed!  Do you have a CUDA/HIP-capable GPU installed?");
     exit(-1);
   }
 
   // device memory allocation
   // allocate Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz, rho_0, rho_1
-  cudaStatus = cudaMalloc((void**)&dev_Ex_in, l * (m + 1) * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_in cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ex_in, l * (m + 1) * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ex_in DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Ey_in, (l + 1) * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_in cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ey_in, (l + 1) * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_in DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Ez_in, (l + 1) * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_in cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ez_in, (l + 1) * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_in DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Bx_in, (l + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_in cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Bx_in, (l + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bx_in DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_By_in, l * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_in cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_By_in, l * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_in DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Bz_in, l * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_in cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Bz_in, l * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_in DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Jx, l * (m + 1) * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Jx cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Jx, l * (m + 1) * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Jx DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Jy, (l + 1) * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Jy cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Jy, (l + 1) * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Jy DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Jz, (l + 1) * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Jz cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Jz, (l + 1) * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Jz DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_rho_0, l * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_rho_0 cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_rho_0, l * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_rho_0 DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_rho_1, l * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_rho_1 cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_rho_1, l * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_rho_1 DEVICE_MALLOC failed!");
     exit(-1);
   }
 
   // allocate Ex, Ey, Ez, Bx, By, Bz
-  cudaStatus = cudaMalloc((void**)&dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ex_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Bx_out, (l + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Bx_out, (l + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bx_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_By_out, l * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_By_out, l * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Bz_out, l * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Bz_out, l * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
     // allocate Ex, Ey, Ez, Bx, By, Bz for the FFTX version of the algorithm.
   
-  cudaStatus = cudaMalloc((void**)&dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ex_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bx_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_By_out_fftx, l * (m + 1) * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_By_out_fftx, l * (m + 1) * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_out DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_out DEVICE_MALLOC failed!");
     exit(-1);
   }
   
   // allocate the shifts
-  cudaStatus = cudaMalloc((void**)&dev_fshift_i, (l / 2 + 1) * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_fshift_i cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_fshift_i, (l / 2 + 1) * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_fshift_i DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_fshift_j, m * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_fshift_j cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_fshift_j, m * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_fshift_j DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_fshift_k, n * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_fshift_n cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_fshift_k, n * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_fshift_n DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_ishift_i, (l / 2 + 1) * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_ishift_i cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_ishift_i, (l / 2 + 1) * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_ishift_i DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_ishift_j, m * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_ishift_j cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_ishift_j, m * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_ishift_j DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_ishift_k, n * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_ishift_n cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_ishift_k, n * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_ishift_n DEVICE_MALLOC failed!");
     exit(-1);
   }
   
   // allocate temporary arrays
-  cudaStatus = cudaMalloc((void**)&dev_temp0, l * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_temp0 cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_temp0, l * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_temp0 DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_temp1, 11 * (l / 2 + 1) * m * n * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_temp1 cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_temp1, 11 * (l / 2 + 1) * m * n * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_temp1 DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_temp1_fftx, 11 * (l / 2 + 1) * m * n * sizeof(cufftDoubleComplex));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_temp1 cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_temp1_fftx, 11 * (l / 2 + 1) * m * n * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_temp1 DEVICE_MALLOC failed!");
     exit(-1);
   }
   
   // allocate the contraction arrays
-  cudaStatus = cudaMalloc((void**)&dev_modified_ki_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_modified_ki_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_modified_ki_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_modified_ki_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_modified_kj_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_modified_kj_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_modified_kj_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_modified_kj_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_modified_kk_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_modified_kk_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_modified_kk_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_modified_kk_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_C_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_C_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_C_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_C_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_S_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_S_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_S_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_S_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
   
-  cudaStatus = cudaMalloc((void**)&dev_X1_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_X1_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_X1_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_X1_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_X2_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_X2_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_X2_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_X2_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMalloc((void**)&dev_X3_arr, (l / 2 + 1) * m * n * sizeof(double));
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_X3_arr cudaMalloc failed!");
+  deviceStatus = DEVICE_MALLOC((void**)&dev_X3_arr, (l / 2 + 1) * m * n * sizeof(double));
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_X3_arr DEVICE_MALLOC failed!");
     exit(-1);
   }
 
   // copy the data to the device
   // copy Ex, Ey, Ez, Bx, By, Bz, Jx, Jy, Jz, rho_0, rho_1
-  cudaStatus = cudaMemcpy((void*) dev_Ex_in, fields_in[0], l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_in cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Ex_in, fields_in[0], l * (m + 1) * (n + 1) * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ex_in DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Ey_in, fields_in[1], (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_in cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Ey_in, fields_in[1], (l + 1) * m * (n + 1) * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_in DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Ez_in, fields_in[2], (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ez_in cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Ez_in, fields_in[2], (l + 1) * (m + 1) * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ez_in DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Bx_in, fields_in[3], (l + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_in cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Bx_in, fields_in[3], (l + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bx_in DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_By_in, fields_in[4], l * (m + 1) * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_in cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_By_in, fields_in[4], l * (m + 1) * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_in DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Bz_in, fields_in[5], l * m * (n + 1) * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bz_in cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Bz_in, fields_in[5], l * m * (n + 1) * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bz_in DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Jx, fields_in[6], l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Jx cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Jx, fields_in[6], l * (m + 1) * (n + 1) * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Jx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Jy, fields_in[7], (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Jy cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Jy, fields_in[7], (l + 1) * m * (n + 1) * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Jy DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_Jz, fields_in[8], (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Jz cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_Jz, fields_in[8], (l + 1) * (m + 1) * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Jz DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_rho_0, fields_in[9], l * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_rho_0 cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_rho_0, fields_in[9], l * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_rho_0 DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_rho_1, fields_in[10], l * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_rho_1 cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_rho_1, fields_in[10], l * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_rho_1 DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
   // copy the shift arrays
-  cudaStatus = cudaMemcpy((void*) dev_fshift_i, shift_in[0], (l / 2 + 1) * sizeof(cufftDoubleComplex), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_fshift_i cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_fshift_i, shift_in[0], (l / 2 + 1) * sizeof(DEVICE_FFT_DOUBLECOMPLEX), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_fshift_i DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_fshift_j, shift_in[1], m * sizeof(cufftDoubleComplex), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_fshift_j cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_fshift_j, shift_in[1], m * sizeof(DEVICE_FFT_DOUBLECOMPLEX), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_fshift_j DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_fshift_k, shift_in[2], n * sizeof(cufftDoubleComplex), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_fshift_k cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_fshift_k, shift_in[2], n * sizeof(DEVICE_FFT_DOUBLECOMPLEX), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_fshift_k DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_ishift_i, shift_out[0], (l / 2 + 1) * sizeof(cufftDoubleComplex), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_ishift_i cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_ishift_i, shift_out[0], (l / 2 + 1) * sizeof(DEVICE_FFT_DOUBLECOMPLEX), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_ishift_i DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_ishift_j, shift_out[1], m * sizeof(cufftDoubleComplex), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_ishift_j cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_ishift_j, shift_out[1], m * sizeof(DEVICE_FFT_DOUBLECOMPLEX), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_ishift_j DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_ishift_k, shift_out[2], n * sizeof(cufftDoubleComplex), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_ishift_k cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_ishift_k, shift_out[2], n * sizeof(DEVICE_FFT_DOUBLECOMPLEX), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_ishift_k DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
   // copy the contraction arrays
-  cudaStatus = cudaMemcpy((void*) dev_modified_ki_arr, contractions[0], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_modified_ki_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_modified_ki_arr, contractions[0], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_modified_ki_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_modified_kj_arr, contractions[1], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_modified_kj_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_modified_kj_arr, contractions[1], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_modified_kj_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_modified_kk_arr, contractions[2], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_modified_kk_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_modified_kk_arr, contractions[2], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_modified_kk_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_C_arr, contractions[3], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_C_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_C_arr, contractions[3], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_C_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
   
-  cudaStatus = cudaMemcpy((void*) dev_S_arr, contractions[4], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_S_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_S_arr, contractions[4], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_S_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_X1_arr, contractions[5], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_X1_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_X1_arr, contractions[5], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_X1_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_X2_arr, contractions[6], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_X2_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_X2_arr, contractions[6], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_X2_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) dev_X3_arr, contractions[7], (l / 2 + 1) * m * n * sizeof(double), cudaMemcpyHostToDevice);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_X3_arr cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) dev_X3_arr, contractions[7], (l / 2 + 1) * m * n * sizeof(double), MEM_COPY_HOST_TO_DEVICE);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_X3_arr DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
   // create Fourier plans
-  cufftHandle plan_forward, plan_inverse;
-  cufftPlan3d(&plan_forward, l, m, n, CUFFT_D2Z);
-  cufftPlan3d(&plan_inverse, l, m, n, CUFFT_Z2D);
+  DEVICE_FFT_HANDLE plan_forward, plan_inverse;
+  DEVICE_FFT_PLAN3D(&plan_forward, l, m, n, DEVICE_FFT_D2Z);
+  DEVICE_FFT_PLAN3D(&plan_inverse, l, m, n, DEVICE_FFT_Z2D);
   if(l==80 && m==80 && n==80) {
     DFT_80::init();
     IDFT_80::init();
@@ -1216,15 +1209,15 @@ float execute_code(int l,
 			 dev_ishift_j,
 			 dev_ishift_k);
       
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
+  DEVICE_EVENT_T start, stop;
+  DEVICE_EVENT_CREATE(&start);
+  DEVICE_EVENT_CREATE(&stop);
 
   float milliseconds = 0;
-  for(int md = CUFFT; md< BOTH; md++)
+  for(int md = LIBFFT; md< BOTH; md++)
     {
       mode = (MODE)md;
-      cudaEventRecord(start);
+      DEVICE_EVENT_RECORD(start);
       compute_spectral_solve(l,
 			 m,
 			 n,
@@ -1270,21 +1263,21 @@ float execute_code(int l,
 			 dev_ishift_i,
 			 dev_ishift_j,
 			 dev_ishift_k);
-      cudaEventRecord(stop);
+      DEVICE_EVENT_RECORD(stop);
   
       // synchronize the device
-      cudaStatus = cudaDeviceSynchronize();
-      if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+      deviceStatus = DEVICE_SYNCHRONIZE();
+      if (deviceStatus != DEVICE_SUCCESS) {
+        fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", deviceStatus);
         exit(-1);
       }
       
       float tmilliseconds = 0;
-      cudaEventElapsedTime(&tmilliseconds, start, stop);
+      DEVICE_EVENT_ELAPSED_TIME(&tmilliseconds, start, stop);
 
-      if(md==CUFFT)
+      if(md==LIBFFT)
         {
-          std::cout<<"cuFFT implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
+          std::cout<<"library FFT implmentation total elapsed milliseconds: "<<tmilliseconds<<"\n";
          
         }
       if(md==FFTX)
@@ -1294,81 +1287,81 @@ float execute_code(int l,
       milliseconds += tmilliseconds;
     }
   // copy the data from the device
-  cudaStatus = cudaMemcpy((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_out cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out[0], dev_Ex_out, l * (m + 1) * (n + 1) * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ex_out DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out[1], dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out[1], dev_Ey_out, (l + 1) * m * (n + 1) * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_out DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out[2], dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ez_out cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out[2], dev_Ez_out, (l + 1) * (m + 1) * n * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ez_out DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out[3], dev_Bx_out, (l + 1) * m * n * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_out cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out[3], dev_Bx_out, (l + 1) * m * n * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bx_out DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out[4], dev_By_out, l * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out[4], dev_By_out, l * (m + 1) * n * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_out DEVICE_MEM_COPY failed!");
     exit(-1);
   }
   
 
-  cudaStatus = cudaMemcpy((void*) fields_out[5], dev_Bz_out, l * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bz_out cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out[5], dev_Bz_out, l * m * (n + 1) * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bz_out DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
 
-    cudaStatus = cudaMemcpy((void*) fields_out_fftx[0], dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ex_out_fftx cudaMemcpy failed!");
+    deviceStatus = DEVICE_MEM_COPY((void*) fields_out_fftx[0], dev_Ex_out_fftx, l * (m + 1) * (n + 1) * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ex_out_fftx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out_fftx[1], dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ey_out_fftx cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out_fftx[1], dev_Ey_out_fftx, (l + 1) * m * (n + 1) * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ey_out_fftx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out_fftx[2], dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Ez_out_fftx cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out_fftx[2], dev_Ez_out_fftx, (l + 1) * (m + 1) * n * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Ez_out_fftx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out_fftx[3], dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bx_out_fftx cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out_fftx[3], dev_Bx_out_fftx, (l + 1) * m * n * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bx_out_fftx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out_fftx[4], dev_By_out_fftx, l * (m + 1) * n * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_By_out_fftx cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out_fftx[4], dev_By_out_fftx, l * (m + 1) * n * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_By_out_fftx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  cudaStatus = cudaMemcpy((void*) fields_out_fftx[5], dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double), cudaMemcpyDeviceToHost);
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "dev_Bz_out_fftx cudaMemcpy failed!");
+  deviceStatus = DEVICE_MEM_COPY((void*) fields_out_fftx[5], dev_Bz_out_fftx, l * m * (n + 1) * sizeof(double), MEM_COPY_DEVICE_TO_HOST);
+  if (deviceStatus != DEVICE_SUCCESS) {
+    fprintf(stderr, "dev_Bz_out_fftx DEVICE_MEM_COPY failed!");
     exit(-1);
   }
 
-  // compare answers between cufft and fftx
+  // compare answers between library FFT and FFTX
   reportDifferences("Ex",fields_out[0],fields_out_fftx[0],l, m+1, n+1);
   reportDifferences("Ey",fields_out[1],fields_out_fftx[1],l+1, m, n+1);
   reportDifferences("Ez",fields_out[2],fields_out_fftx[2],l+1, m+1, n);
@@ -1376,9 +1369,9 @@ float execute_code(int l,
   reportDifferences("By",fields_out[4],fields_out_fftx[4],l, m+1, n);
   reportDifferences("Bz",fields_out[5],fields_out_fftx[5],l, m, n+1);
  
-  // destroy cufftPlans
-  cufftDestroy(plan_forward);
-  cufftDestroy(plan_inverse);
+  // destroy library FFT plans
+  DEVICE_FFT_DESTROY(plan_forward);
+  DEVICE_FFT_DESTROY(plan_inverse);
   
   if(l==80 && m==80 && n==80) {
     DFT_80::destroy();
@@ -1396,53 +1389,53 @@ float execute_code(int l,
   }
   
   // deallocate device memory
-  cudaFree(dev_Ex_in);
-  cudaFree(dev_Ey_in);
-  cudaFree(dev_Ez_in);
-  cudaFree(dev_Bx_in);
-  cudaFree(dev_By_in);
-  cudaFree(dev_Bz_in);
-  cudaFree(dev_Jx);
-  cudaFree(dev_Jy);
-  cudaFree(dev_Jz);
-  cudaFree(dev_rho_0);
-  cudaFree(dev_rho_1);
+  DEVICE_FREE(dev_Ex_in);
+  DEVICE_FREE(dev_Ey_in);
+  DEVICE_FREE(dev_Ez_in);
+  DEVICE_FREE(dev_Bx_in);
+  DEVICE_FREE(dev_By_in);
+  DEVICE_FREE(dev_Bz_in);
+  DEVICE_FREE(dev_Jx);
+  DEVICE_FREE(dev_Jy);
+  DEVICE_FREE(dev_Jz);
+  DEVICE_FREE(dev_rho_0);
+  DEVICE_FREE(dev_rho_1);
 
-  cudaFree(dev_fshift_i);
-  cudaFree(dev_fshift_j);
-  cudaFree(dev_fshift_k);
-  cudaFree(dev_ishift_i);
-  cudaFree(dev_ishift_j);
-  cudaFree(dev_ishift_k);
+  DEVICE_FREE(dev_fshift_i);
+  DEVICE_FREE(dev_fshift_j);
+  DEVICE_FREE(dev_fshift_k);
+  DEVICE_FREE(dev_ishift_i);
+  DEVICE_FREE(dev_ishift_j);
+  DEVICE_FREE(dev_ishift_k);
 
-  cudaFree(dev_temp0);
-  cudaFree(dev_temp1);
-  cudaFree(dev_temp1_fftx);
+  DEVICE_FREE(dev_temp0);
+  DEVICE_FREE(dev_temp1);
+  DEVICE_FREE(dev_temp1_fftx);
   
-  cudaFree(dev_modified_ki_arr);
-  cudaFree(dev_modified_kj_arr);
-  cudaFree(dev_modified_kk_arr);
+  DEVICE_FREE(dev_modified_ki_arr);
+  DEVICE_FREE(dev_modified_kj_arr);
+  DEVICE_FREE(dev_modified_kk_arr);
   
-  cudaFree(dev_S_arr);
-  cudaFree(dev_C_arr);
+  DEVICE_FREE(dev_S_arr);
+  DEVICE_FREE(dev_C_arr);
 
-  cudaFree(dev_X1_arr);
-  cudaFree(dev_X2_arr);
-  cudaFree(dev_X3_arr);
+  DEVICE_FREE(dev_X1_arr);
+  DEVICE_FREE(dev_X2_arr);
+  DEVICE_FREE(dev_X3_arr);
   
-  cudaFree(dev_Ex_out);
-  cudaFree(dev_Ey_out);
-  cudaFree(dev_Ez_out);
-  cudaFree(dev_Bx_out);
-  cudaFree(dev_By_out);
-  cudaFree(dev_Bz_out);
+  DEVICE_FREE(dev_Ex_out);
+  DEVICE_FREE(dev_Ey_out);
+  DEVICE_FREE(dev_Ez_out);
+  DEVICE_FREE(dev_Bx_out);
+  DEVICE_FREE(dev_By_out);
+  DEVICE_FREE(dev_Bz_out);
 
-  cudaFree(dev_Ex_out_fftx);
-  cudaFree(dev_Ey_out_fftx);
-  cudaFree(dev_Ez_out_fftx);
-  cudaFree(dev_Bx_out_fftx);
-  cudaFree(dev_By_out_fftx);
-  cudaFree(dev_Bz_out_fftx);
+  DEVICE_FREE(dev_Ex_out_fftx);
+  DEVICE_FREE(dev_Ey_out_fftx);
+  DEVICE_FREE(dev_Ez_out_fftx);
+  DEVICE_FREE(dev_Bx_out_fftx);
+  DEVICE_FREE(dev_By_out_fftx);
+  DEVICE_FREE(dev_Bz_out_fftx);
 
   return milliseconds;
 }
@@ -1457,7 +1450,7 @@ int main(int argc, char **argv) {
   double **fields_out_fftx;
 
   // shifting arrays
-  cufftDoubleComplex **shift_in, **shift_out;
+  DEVICE_FFT_DOUBLECOMPLEX **shift_in, **shift_out;
 
   // contraction arrays
   double **contractions;
@@ -1543,16 +1536,16 @@ int main(int argc, char **argv) {
   }
 
   // allocate the shifting arrays
-  shift_in = (cufftDoubleComplex**) malloc(3 * sizeof(cufftDoubleComplex*));
-  shift_out = (cufftDoubleComplex**) malloc(3 * sizeof(cufftDoubleComplex*));
+  shift_in = (DEVICE_FFT_DOUBLECOMPLEX**) malloc(3 * sizeof(DEVICE_FFT_DOUBLECOMPLEX*));
+  shift_out = (DEVICE_FFT_DOUBLECOMPLEX**) malloc(3 * sizeof(DEVICE_FFT_DOUBLECOMPLEX*));
 
-  shift_in[0] = (cufftDoubleComplex*) malloc((l / 2 + 1) * sizeof(cufftDoubleComplex));
-  shift_in[1] = (cufftDoubleComplex*) malloc(m * sizeof(cufftDoubleComplex));
-  shift_in[2] = (cufftDoubleComplex*) malloc(n * sizeof(cufftDoubleComplex));
+  shift_in[0] = (DEVICE_FFT_DOUBLECOMPLEX*) malloc((l / 2 + 1) * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  shift_in[1] = (DEVICE_FFT_DOUBLECOMPLEX*) malloc(m * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  shift_in[2] = (DEVICE_FFT_DOUBLECOMPLEX*) malloc(n * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
 
-  shift_out[0] = (cufftDoubleComplex*) malloc((l / 2 + 1) * sizeof(cufftDoubleComplex));
-  shift_out[1] = (cufftDoubleComplex*) malloc(m * sizeof(cufftDoubleComplex));
-  shift_out[2] = (cufftDoubleComplex*) malloc(n * sizeof(cufftDoubleComplex));
+  shift_out[0] = (DEVICE_FFT_DOUBLECOMPLEX*) malloc((l / 2 + 1) * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  shift_out[1] = (DEVICE_FFT_DOUBLECOMPLEX*) malloc(m * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
+  shift_out[2] = (DEVICE_FFT_DOUBLECOMPLEX*) malloc(n * sizeof(DEVICE_FFT_DOUBLECOMPLEX));
 
   for(int i = 0; i < (l / 2 + 1); ++i) {
     double re = rand() / ((double) (INT_MAX * 1.0));
