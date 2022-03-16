@@ -30,6 +30,9 @@ if re.match ( '^.*_.*_', _xform ):
 if sys.platform == 'win32':
     _libfwd = _libfwd + '.dll'
     _libinv = _libinv + '.dll'
+else if sys.platform == 'darwin':
+    _libfwd = 'lib' + _libfwd + '.dylib'
+    _libinv = 'lib' + _libinv + '.dylib'
 else:
     _libfwd = 'lib' + _libfwd + '.so'
     _libinv = 'lib' + _libinv + '.so'
