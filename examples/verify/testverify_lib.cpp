@@ -433,8 +433,8 @@ double test2impulseRandom(Transformer& a_tfm,
   fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
 
   fftx::array_t<DIM, T_IN> inImpulse(inputDomain);
-  fftx::array_t<DIM, std::complex<double>> outImpulse(outputDomain); // FIXME
-  fftx::array_t<DIM, std::complex<double>> outCheck(outputDomain); // FIXME
+  fftx::array_t<DIM, std::complex<double>> outImpulse(outputDomain);
+  fftx::array_t<DIM, std::complex<double>> outCheck(outputDomain);
   double errtest2impulseRandom = 0.;
   fftx::point_t<DIM> fullExtents = a_tfm.size();
   for (int itn = 1; itn <= a_rounds; itn++)

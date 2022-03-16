@@ -110,6 +110,7 @@ function ( create_generator_file _codefor prefix stem )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
 	            ${_gen} ${_preamble} ${_plan} ${_postfix}
+	    COMMAND rm -f ${prefix}.${stem}.source.${_suffix}
             DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -118,6 +119,7 @@ function ( create_generator_file _codefor prefix stem )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
 	            ${_gen} ${_preamble} ${_plan} ${_postfix}
+	    COMMAND rm -f ${prefix}.${stem}.source.${_suffix}
 	    DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -158,17 +160,17 @@ endfunction ()
 
 function ( add_includes_libs_to_target _target _stem _prefixes )
     ##  Test _codegen and setup accordingly
-    if ( ${_codegen} STREQUAL "HIP" )
-	## run hipify-perl on the test driver
-	run_hipify_perl ( ${_target} ${_suffix} )
-	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
-	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
-	foreach ( _pref ${_prefixes} )
-	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
-	endforeach ()
-    else ()
+    # if ( ${_codegen} STREQUAL "HIP" )
+    # 	## run hipify-perl on the test driver
+    # 	run_hipify_perl ( ${_target} ${_suffix} )
+    # 	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
+    # 	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
+    # 	foreach ( _pref ${_prefixes} )
+    # 	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
+    # 	endforeach ()
+    # else ()
 	list ( APPEND _all_build_srcs ${_target}.${_suffix} )
-    endif ()
+    # endif ()
 
     add_executable   ( ${_target} ${_all_build_srcs} )
     ##  message ( STATUS "executable added: target = ${_target}, depends: = ${_all_build_srcs}" )
@@ -218,14 +220,15 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	message ( FATAL_ERROR "manage_deps_codegen() requires at least 1 prefix" )
     endif ()
     
-    if ( ( ${_codefor} STREQUAL "CUDA" ) OR ( ${_codefor} STREQUAL "HIP" ) )
+    ##  if ( ( ${_codefor} STREQUAL "CUDA" ) OR ( ${_codefor} STREQUAL "HIP" ) )
+    if ( ${_codefor} STREQUAL "CUDA" )
 	set ( _suffix cu PARENT_SCOPE )
 	set ( _suffix cu )
     else ()
 	set ( _suffix cpp PARENT_SCOPE )
 	set ( _suffix cpp )
     endif ()
-       
+
     foreach ( _prefix ${_prefixes} ) 
 	run_driver_program ( ${_prefix} ${_stem} )
 	set ( _driver ${PROJECT_NAME}.${${_prefix}_driver} )

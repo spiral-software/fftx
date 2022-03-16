@@ -39,6 +39,10 @@ endif ()
 set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )
 
+##  Setup CMAKE_INSTALL_RPATH to point to CMAKE_INSTALL_PREFIX/lib
+set ( CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib )
+message ( STATUS "Defined: INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}, INSTALL_RPATH = ${CMAKE_INSTALL_RPATH}" )
+
 ##  Walk the following subdirectories...
 
 add_subdirectory ( src )

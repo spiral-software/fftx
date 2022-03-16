@@ -19,6 +19,14 @@ and **Xcode Command Line Tools**.
 
 ### Installing Pre-requisites
 
+#### spiral-software
+=======
+Tools required on the target machine in order to build SPIRAL and FFTX, include:
+<br>
+**cmake**, version 3.14 or higher
+<br>
+**python**, version 3.6 or higher
+
 Clone **spiral-software** to a location on you computer.  E.g., do:
 ```
 cd ~/work
@@ -27,11 +35,12 @@ git clone https://www.github.com/spiral-software/spiral-software
 This location is known as *SPIRAL HOME* and you must set an environment variable
 **SPIRAL_HOME** to point to this location later.
 
-To install the two spiral packages do the following:
+To install the spiral packages do the following:
 ```
 cd ~/work/spiral-software/namespaces/packages
 git clone https://www.github.com/spiral-software/spiral-package-fftx fftx
 git clone https://www.github.com/spiral-software/spiral-package-simt simt
+git clone https://www.github.com/spiral-software/spiral-package-mpi mpi
 ```
 **NOTE:** The spiral packages must be installed under directory
 **$SPIRAL_HOME/namespaces/packages** and must be placed in folders with the
@@ -39,6 +48,19 @@ prefix *spiral-package* removed.
 
 Follow the build instructions for **spiral-software** (see the **README**
 [**here**](https://github.com/spiral-software/spiral-software/blob/master/README.md) ).
+
+#### Python 3
+
+FFTX, like SPIRAL, requires **Python 3**.
+
+On macOS, `/usr/bin/python` usually links to Python 2.7, but
+`/usr/bin/python3` is also present.  Now macOS doesn't allow you to
+link `/usr/bin/python` to `/usr/bin/python3`, even with `sudo`.
+So you will need to make a link like
+```
+sudo ln -s /usr/bin/python3 /usr/local/bin/python
+```
+and then change your `$path` so that `/usr/local/bin` comes *before* `/usr/bin`.
 
 ### Installing FFTX
 
@@ -49,6 +71,9 @@ git clone https://www.github.com/spiral-software/fftx
 ```
 **NOTE:** Before attempting to build ensure you have set environment variable
 **SPIRAL_HOME** to point to your **spiral-software** instance.
+
+Also set the environment variable **FFTX_HOME** to point to the directory where
+you have cloned **FFTX** (so `~/work/fftx` if following the exact commands above).
 
 #### Building on Linux or Linux-like Systems
 
