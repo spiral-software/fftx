@@ -3,6 +3,7 @@
 // #include "rconv2.fftx.codegen.hpp"
 #include "rconv3.fftx.codegen.hpp"
 #include "fftx3utilities.h"
+#include "device_macros.h"
 #include "rconv.h"
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
@@ -52,17 +53,17 @@ void convolutionDevice(fftx::handle_t (a_transform)
   auto symbol_bytes = symbol_size * sizeof(double);
   
   double* bufferPtr;
-  cudaMalloc(&bufferPtr, input_bytes + output_bytes + symbol_bytes);
+  DEVICE_MALLOC(&bufferPtr, input_bytes + output_bytes + symbol_bytes);
   double* inputPtr = bufferPtr;
   bufferPtr += input_size;
   double* outputPtr = bufferPtr;
   bufferPtr += output_size;
   double* symbolPtr = bufferPtr;
   
-  cudaMemcpy(inputPtr, a_input.m_data.local(), input_bytes,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(symbolPtr, a_symbol.m_data.local(), symbol_bytes,
-             cudaMemcpyHostToDevice);
+  DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
+                  MEM_COPY_HOST_TO_DEVICE);
+  DEVICE_MEM_COPY(symbolPtr, a_symbol.m_data.local(), symbol_bytes,
+                  MEM_COPY_HOST_TO_DEVICE);
   
   fftx::array_t<DIM, double> inputDevice(fftx::global_ptr<double>
                                          (inputPtr, 0, 1), inputDomain);
@@ -73,8 +74,8 @@ void convolutionDevice(fftx::handle_t (a_transform)
 
   a_transform(inputDevice, outputDevice, symbolDevice);
 
-  cudaMemcpy(a_output.m_data.local(), outputPtr, output_bytes,
-             cudaMemcpyDeviceToHost);
+  DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
+                  MEM_COPY_DEVICE_TO_HOST);
 }
 
 

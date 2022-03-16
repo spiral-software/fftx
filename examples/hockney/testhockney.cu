@@ -1,6 +1,7 @@
 
 
 #include "hockney.fftx.codegen.hpp"
+#include "device_macros.h"
 
 using namespace fftx;
 
@@ -40,12 +41,17 @@ int main(int argc, char* argv[])
   double* inputPtr;
   double* symbolPtr;
   double* outputPtr;
-  cudaMalloc(&bufferPtr, (sbox.size()+2+dbox.size()+2+freq.size())*sizeof(double));
+  DEVICE_MALLOC(&bufferPtr,
+                (sbox.size()+2+dbox.size()+2+freq.size())*sizeof(double));
   inputPtr = bufferPtr;
   symbolPtr = bufferPtr+sbox.size()+2;
   outputPtr = symbolPtr+dbox.size()+2;
-  cudaMemcpy(inputPtr, inputH.m_data.local(), sbox.size()*sizeof(double),cudaMemcpyHostToDevice);
-  cudaMemcpy(symbolPtr, symbolH.m_data.local(), freq.size()*sizeof(double),cudaMemcpyHostToDevice);
+  DEVICE_MEM_COPY(inputPtr, inputH.m_data.local(),
+                  sbox.size()*sizeof(double),
+                  MEM_COPY_HOST_TO_DEVICE);
+  DEVICE_MEM_COPY(symbolPtr, symbolH.m_data.local(),
+                  freq.size()*sizeof(double),
+                  MEM_COPY_HOST_TO_DEVICE);
 
   array_t<3, double> input(global_ptr<double>(inputPtr,0,1), sbox);
   array_t<3, double> output(global_ptr<double>(outputPtr,0,1), dbox);
