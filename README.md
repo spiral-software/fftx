@@ -51,9 +51,9 @@ On macOS, `/usr/bin/python` usually links to Python 2.7, but
 link `/usr/bin/python` to `/usr/bin/python3`, even with `sudo`.
 So you will need to make a link like
 ```
-sudo ln -s /usr/local/bin/python /usr/bin/python3
+sudo ln -s /usr/bin/python3 /usr/local/bin/python
 ```
-and then change your `$path` so that `/usr/local/bin` *precedes* `/usr/bin`.
+and then change your `$path` so that `/usr/local/bin` comes *before* `/usr/bin`.
 
 ### Installing FFTX
 
@@ -64,6 +64,9 @@ git clone https://www.github.com/spiral-software/fftx
 ```
 **NOTE:** Before attempting to build ensure you have set environment variable
 **SPIRAL_HOME** to point to your **spiral-software** instance.
+
+Also set the environment variable **FFTX_HOME** to point to the directory where
+you have cloned **FFTX** (so `~/work/fftx` if following the exact commands above).
 
 #### Building on Linux or Linux-like Systems
 
