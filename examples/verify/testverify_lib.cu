@@ -19,8 +19,6 @@
 
 enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   
-// using namespace fftx;
-
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).
 std::uniform_real_distribution<double> unifRealDist;
@@ -218,10 +216,9 @@ void setRotator(fftx::array_t<DIM, std::complex<double>>& a_arr,
 }
 
 template<int DIM, typename T_IN, typename T_OUT, class Transformer>
-void TransformDevice(Transformer& a_tfm,
-                     fftx::array_t<DIM, T_IN>& a_input, // make this const?
-                     fftx::array_t<DIM, T_OUT>& a_output)
-
+void TransformCall(Transformer& a_tfm,
+                   fftx::array_t<DIM, T_IN>& a_input, // make this const?
+                   fftx::array_t<DIM, T_OUT>& a_output)
 {
   auto inputDomain = a_input.m_domain;
   auto outputDomain = a_output.m_domain;
@@ -240,7 +237,7 @@ void TransformDevice(Transformer& a_tfm,
 
   DEVICE_MALLOC(&inputDevicePtr, input_bytes);
   DEVICE_MALLOC(&outputDevicePtr, output_bytes);
- 
+
   fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
                                        (inputDevicePtr, 0, 1), inputDomain);
   fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
@@ -286,10 +283,10 @@ double test1Transform(Transformer& a_tfm,
       unifArray(inB);
       sumArrays(LCin, inA, inB, alphaIn, betaIn);
 
-      TransformDevice(a_tfm, inA, outA);
-      TransformDevice(a_tfm, inB, outB);
+      TransformCall(a_tfm, inA, outA);
+      TransformCall(a_tfm, inB, outB);
       sumArrays(LCout, outA, outB, alphaOut, betaOut);
-      TransformDevice(a_tfm, LCin, outLCin);
+      TransformCall(a_tfm, LCin, outLCin);
       double err = absMaxDiffArray(outLCin, LCout);
       updateMax(errtest1, err);
       if (a_verbosity >= SHOW_ROUNDS)
@@ -317,7 +314,7 @@ double test2impulse1(Transformer& a_tfm,
   fftx::array_t<DIM, T_OUT> all1out(outputDomain);
   setUnitImpulse(inImpulse, inputDomain.lo);
   setConstant(all1out, scalarVal<T_OUT>(1.));
-  TransformDevice(a_tfm, inImpulse, outImpulse);
+  TransformCall(a_tfm, inImpulse, outImpulse);
   double errtest2impulse1 = absMaxDiffArray(outImpulse, all1out);
   if (a_verbosity >= SHOW_SUBTESTS)
     {
@@ -340,7 +337,7 @@ double test2impulsePlus(Transformer& a_tfm,
   fftx::array_t<DIM, T_OUT> all1out(outputDomain);
   setUnitImpulse(inImpulse, inputDomain.lo);
   setConstant(all1out, scalarVal<T_OUT>(1.));
-  TransformDevice(a_tfm, inImpulse, outImpulse);
+  TransformCall(a_tfm, inImpulse, outImpulse);
 
   fftx::array_t<DIM, T_IN> inRand(inputDomain);
   fftx::array_t<DIM, T_IN> inImpulseMinusRand(inputDomain);
@@ -355,9 +352,9 @@ double test2impulsePlus(Transformer& a_tfm,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifArray(inRand);
-      TransformDevice(a_tfm, inRand, outRand);
+      TransformCall(a_tfm, inRand, outRand);
       diffArrays(inImpulseMinusRand, inImpulse, inRand);
-      TransformDevice(a_tfm, inImpulseMinusRand, outImpulseMinusRand);
+      TransformCall(a_tfm, inImpulseMinusRand, outImpulseMinusRand);
       sumArrays(mysum, outRand, outImpulseMinusRand);
       double err = absMaxDiffArray(mysum, all1out);
       updateMax(errtest2impulsePlus, err);
@@ -390,7 +387,7 @@ double test2constant(Transformer& a_tfm,
   setUnitImpulse(magImpulse, outputDomain.lo, mag);
 
   fftx::array_t<DIM, T_OUT> outImpulse(outputDomain);
-  TransformDevice(a_tfm, all1in, outImpulse);
+  TransformCall(a_tfm, all1in, outImpulse);
 
   double errtest2constant = absMaxDiffArray(outImpulse, magImpulse);
   if (a_verbosity >= SHOW_SUBTESTS)
@@ -429,10 +426,10 @@ double test2constantPlus(Transformer& a_tfm,
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       unifArray(inRand);
-      TransformDevice(a_tfm, inRand, outRand);
+      TransformCall(a_tfm, inRand, outRand);
 
       diffArrays(inConstantMinusRand, all1in, inRand);
-      TransformDevice(a_tfm, inConstantMinusRand, outConstantMinusRand);
+      TransformCall(a_tfm, inConstantMinusRand, outConstantMinusRand);
 
       sumArrays(outSum, outRand, outConstantMinusRand);
       
@@ -476,15 +473,15 @@ double test2impulseRandom(Transformer& a_tfm,
   fftx::box_t<DIM> outputDomain = domainFromSize(a_tfm.outputSize());
 
   fftx::array_t<DIM, T_IN> inImpulse(inputDomain);
-  fftx::array_t<DIM, std::complex<double>> outImpulse(outputDomain); // FIXME
-  fftx::array_t<DIM, std::complex<double>> outCheck(outputDomain); // FIXME
+  fftx::array_t<DIM, std::complex<double>> outImpulse(outputDomain);
+  fftx::array_t<DIM, std::complex<double>> outCheck(outputDomain);
   double errtest2impulseRandom = 0.;
   fftx::point_t<DIM> fullExtents = a_tfm.size();
   for (int itn = 1; itn <= a_rounds; itn++)
     {
       fftx::point_t<DIM> rpoint = unifPoint<DIM>();
       setUnitImpulse(inImpulse, rpoint);
-      TransformDevice(a_tfm, inImpulse, outImpulse);
+      TransformCall(a_tfm, inImpulse, outImpulse);
       // Recall inputDomain is whole domain,
       // but outputDomain may be truncated;
       // waves defined on outputDomain,
@@ -574,8 +571,8 @@ double test3time(Transformer& a_tfm,
           
           // time-shift test in dimension d
           rotate(inRandRot, inRand, d, 1); // +1 for MDDFT, +1 for IMDDFT, +1 for PRDFT
-          TransformDevice(a_tfm, inRand, outRand);
-          TransformDevice(a_tfm, inRandRot, outRandRot);
+          TransformCall(a_tfm, inRand, outRand);
+          TransformCall(a_tfm, inRandRot, outRandRot);
           productArrays(outRandRotMult, outRandRot, rotator);
           double err = absMaxDiffArray(outRandRotMult, outRand);
           updateMax(errtest3timeDim[d], err);
@@ -636,8 +633,8 @@ double test3frequency(Transformer& a_tfm,
           unifComplexArray(inRand);
 
           productArrays(inRandMult, inRand, rotatorUp);
-          TransformDevice(a_tfm, inRand, outRand);
-          TransformDevice(a_tfm, inRandMult, outRandMult);
+          TransformCall(a_tfm, inRand, outRand);
+          TransformCall(a_tfm, inRandMult, outRandMult);
           rotate(outRandMultRot, outRandMult, d, a_sign);
           double err = absMaxDiffArray(outRandMultRot, outRand);
           updateMax(errtest3frequencyDim[d], err);
