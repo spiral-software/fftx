@@ -22,7 +22,7 @@ if [ $? -eq 0 ]; then
 	trypy="python3"
     elif [ $vpy -eq "3" ]; then
 	##  found python is version 3...
-	pyexe = $trypy
+	pyexe=$trypy
     fi
 else
     ##  $trypy NOT FOUND, look for python3...
