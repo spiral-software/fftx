@@ -47,13 +47,13 @@ int main(int argc, char* argv[])
          }, GHost);
 
   fftx::array_t<3, std::complex<double>> GhatComplexHost(hockney::freq);
-  const std::complex<double>* GhatComplexHostPtr =
+  std::complex<double>* GhatComplexHostPtr =
     GhatComplexHost.m_data.local();
 
 #ifdef FFTX_HIP
   double* GDevicePtr;
   auto Gbytes = hockney::rdomain.size() * sizeof(double);
-  DEVICE_MALLOC(&GDevicePtr, GDevicebytes);
+  DEVICE_MALLOC(&GDevicePtr, Gbytes);
   fftx::array_t<3, double> GDevice
     (fftx::global_ptr<double>(GDevicePtr, 0, 1),
      hockney::rdomain);
@@ -114,15 +114,16 @@ int main(int argc, char* argv[])
   }
 
 #ifdef FFTX_HIP
-  fftx::array_t<3, double>* GhatRealDevicePtr;
+  double* GhatRealDevicePtr;
   auto GhatRealbytes = hockney::freq.size() * sizeof(double);
   DEVICE_MALLOC(&GhatRealDevicePtr, GhatRealbytes);
-  fftx::array_t<3, double> GhatRealDevice
-    (fftx::global_ptr<double>(GhatRealDevicePtr, 0, 1),
-     hockney::freq);
+  fftx::array_t<3, double>
+    GhatRealDevice(fftx::global_ptr<double>(GhatRealDevicePtr, 0, 1),
+                   hockney::freq);
   DEVICE_MEM_COPY(GhatRealDevicePtr, GhatRealHostPtr,
                   GhatRealbytes,
                   MEM_COPY_HOST_TO_DEVICE);
+  fftx::array_t<3, double>& GhatReal = GhatRealDevice;
 #else
   fftx::array_t<3, double>& GhatReal = GhatRealHost;
 #endif
