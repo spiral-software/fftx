@@ -1,12 +1,9 @@
-
-#! /bin/sh
+#! /bin/bash
 
 ##  Script to generate the source code for the libraries
 
-##  Exit code indicates the appropriate code gen flag for cmake:
-##  0 ==> -D_codegen=CPU | 1 ==> -D_codegen=CUDA | 2 ==> -D_codegen=HIP
-
-retc=0
+##  Expects either 0 or 1 argument:  no arg ==> build CPU code only
+##  arg1 = { CUDA | HIP } ==> build code for the respective GPU type
 
 ##  A user may have both python & python3 in their PATH; try to find a python version 3...
 
@@ -40,6 +37,23 @@ fi
 
 echo "Python executable is $pyexe"
 
+if [ $# -eq 0 ]; then
+    build_type="CPU"
+else
+    if [ $1 = "CPU" ] || [ $1 = "CUDA" ] || [ $1 = "HIP" ]; then
+	build_type=$1
+    else
+	echo "$1 -- build type parameter not recognized, terminating"
+	exit 9
+    fi
+fi
+
+echo -n "Build library for CPU "
+if [ $build_type != 'CPU' ]; then
+    echo -n "and $build_type"
+fi
+echo ""
+
 ##  Use a file named build-lib-code-failures.txt to note any files that fail to
 ##  generate -- failures are noted & written by the python drivers: gen_{files|dftbat}.py
 
@@ -65,36 +79,28 @@ $pyexe gen_dftbat.py fftx_prdftbat cpu false &
 
 wait
 
-##  Create code for a GPU if we find an appropriate compiler ...
+##  Create code for a GPU if requested (parameter 1 is { CUDA | HIP })
 
-which nvcc
-if [ $? -eq 0 ]; then
-    ##  nvcc found -- generate Nvidia GPU (CUDA) code
-    echo "nvcc found ... generate CUDA code ... commands:"
+if [ $build_type = "CUDA" ]; then
+    ##  Generate Nvidia GPU (CUDA) code
+    echo "Generate CUDA code ..."
     $pyexe gen_files.py fftx_mddft cuda true &
     $pyexe gen_files.py fftx_mddft cuda false &
     $pyexe gen_files.py fftx_mdprdft cuda true &
     $pyexe gen_files.py fftx_mdprdft cuda false &
     $pyexe gen_files.py fftx_rconv cuda true &
     wait
-    retc=1
-else
-    echo "NVCC was not found -- DO NOT generate CUDA code"
 fi
 
-which hipcc
-if [ $? -eq 0 ]; then
-    ##  hipcc found -- generate AMD GPU (HIP) code
-    echo "hipcc found ... generate HIP code ... commands:"
+if [ $build_type = "HIP" ]; then
+    ##  Generate AMD GPU (HIP) code
+    echo "Generate HIP code ..."
     $pyexe gen_files.py fftx_mddft hip true &
     $pyexe gen_files.py fftx_mddft hip false &
     $pyexe gen_files.py fftx_mdprdft hip true &
     $pyexe gen_files.py fftx_mdprdft hip false &
     $pyexe gen_files.py fftx_rconv hip true &
     wait
-    retc=2
-else
-    echo "HIPCC was not found -- DO NOT generate HIP code"
 fi
 
-exit $retc
+exit 0

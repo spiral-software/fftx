@@ -84,25 +84,24 @@ running on CPU only or also utilizing a GPU.  If you create all the source code
 (and related **cmake** scripts and library APIs) for GPU and then try building
 for CPU only you may encounter compiler errors or unexpected results.
 
-NOTE: If you plan to build FFTX for CPU (i.e., use the -D_codegen=CPU switch
-with **cmake**) ensure that the compiler for GPU (nvcc for CUDA or hipcc for HIP)
-**is not** in your path.  Typically, on a supercomputer, this is easily
-accomplished by unloading the relevant module: e.g., ```module unload cuda``` or
-```module unload rocm```.
+The shell script **build-lib-code.sh** builds the library code.  The script
+takes one optional argument to specify what code to build.  Serial code (CPU) is
+always built, GPU code is built when the argument passed is either **CUDA** or
+**HIP**.  Serial code is built is no argument is given or if the argument is
+**CPU**.
 
 To create the library source code do the following:
 ```
-cd fftx			## your FFTX install directory
+cd fftx				## your FFTX install directory
 cd examples/library
-./build-lib-code.sh
+./build-lib-code.sh CUDA	## build CUDA code
 cd ../..
 ```
 This step can take quite a long time depending on the number of transforms and
-set of sizes to create.  The code is targeted to run on the CPU,
-**additionally**, code is created targeted to run on an NVIDIA GPU (CUDA,
-assuming **nvcc** is found in the PATH) or on an AMD GPU (HIP, assuming
-**hipcc** is found in the PATH).  Depending on the number of sizes being built
-for each transform this process can take a considerable amount of time.
+set of sizes to create.  The code is targeted to run on the CPU, and code is
+created targeted to run on a GPU (CUDA or HIP) depending on the argument given
+to the build script.  Depending on the number of sizes being built for each
+transform this process can take a considerable amount of time.
 
 Next, run **cmake** and build the software:
 ```
@@ -124,7 +123,7 @@ following:
 ```
 cd fftx
 cd examples/library
-./build-lib-code.sh
+./build-lib-code.sh CUDA
 cd ../..
 mkdir build
 cd build
