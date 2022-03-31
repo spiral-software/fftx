@@ -24,9 +24,15 @@ namespace rconv
   #define fftx_nz 40
   #endif
   
+#if FFTX_COMPLEX_TRUNC_LAST
+  const int fx = fftx_nx;
+  const int fy = fftx_ny;
+  const int fz = fftx_nz/2 + 1;
+#else
   const int fx = fftx_nx/2 + 1;
   const int fy = fftx_ny;
   const int fz = fftx_nz;
+#endif
 
   box_t<1> empty1(point_t<1>({{1}}),
                   point_t<1>({{0}}));

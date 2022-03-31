@@ -7,20 +7,26 @@ namespace verify
   const int offz = 11;
   
   #ifndef fftx_nx
-  #define fftx_nx 24
+  #define fftx_nx 80
   #endif
 
   #ifndef fftx_ny
-  #define fftx_ny 32
+  #define fftx_ny 80
   #endif
 
   #ifndef fftx_nz
-  #define fftx_nz 40
+  #define fftx_nz 374
   #endif
 
+#if FFTX_COMPLEX_TRUNC_LAST
+  const int fx = fftx_nx;
+  const int fy = fftx_ny;
+  const int fz = fftx_nz/2 + 1;
+#else
   const int fx = fftx_nx/2 + 1;
   const int fy = fftx_ny;
   const int fz = fftx_nz;
+#endif
 
   box_t<1> empty1(point_t<1>({{1}}),
                   point_t<1>({{0}}));

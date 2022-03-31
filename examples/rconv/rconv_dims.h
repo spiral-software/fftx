@@ -8,20 +8,26 @@ namespace rconv_dims
   const int offz = 11;
 
   #ifndef fftx_nx
-  #define fftx_nx 96
+  #define fftx_nx 24
   #endif
 
   #ifndef fftx_ny
-  #define fftx_ny 96
+  #define fftx_ny 32
   #endif
 
   #ifndef fftx_nz
-  #define fftx_nz 96
+  #define fftx_nz 40
   #endif
   
+#if FFTX_COMPLEX_TRUNC_LAST
+  const int fx = fftx_nx;
+  const int fy = fftx_ny;
+  const int fz = fftx_nz/2 + 1;
+#else
   const int fx = fftx_nx/2 + 1;
   const int fy = fftx_ny;
   const int fz = fftx_nz;
+#endif
 
   box_t<3> empty3(point_t<3>({{1, 1, 1}}),
                   point_t<3>({{0, 0, 0}}));
