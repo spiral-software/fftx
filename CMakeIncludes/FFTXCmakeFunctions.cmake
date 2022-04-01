@@ -372,6 +372,7 @@ function ( FFTX_find_libraries )
     foreach ( _lib ${_libs} )
 	string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
 	string ( REGEX REPLACE ".so.*$" "" _lib ${_lib} )	## strip trailing stuff
+	string ( REGEX REPLACE ".dll.*$" "" _lib ${_lib} )	## strip trailing stuff
 	list ( FIND _libraries_added "${_lib}" _posnlist )
 	if ( ${_posnlist} EQUAL -1 )
 	    ##  message ( STATUS "${_lib} not in list -- adding" )

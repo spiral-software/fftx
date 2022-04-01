@@ -6,9 +6,9 @@ This is the public repository for the FFTX API source, examples, and documentati
 ## Building FFTX
 
 To use and build FFTX you must install the following pre-requisites:<br><br>
-    1.  **spiral-software**, available [here.](https://www.github.com/spiral-software/spiral-software)<br>
-    2.  **spiral-package-fftx**, available [here.](https://www.github.com/spiral-software/spiral-package-fftx)<br>
-    3.  **spiral-package-simt**, available [here.](https://www.github.com/spiral-software/spiral-package-simt)<br>
+    1.  **spiral-software**, available [**here**.](https://www.github.com/spiral-software/spiral-software)<br>
+    2.  **spiral-package-fftx**, available [**here**.](https://www.github.com/spiral-software/spiral-package-fftx)<br>
+    3.  **spiral-package-simt**, available [**here**.](https://www.github.com/spiral-software/spiral-package-simt)<br>
 
 ### C Compiler and Build Tools
 
@@ -20,7 +20,6 @@ and **Xcode Command Line Tools**.
 ### Installing Pre-requisites
 
 #### spiral-software
-=======
 Tools required on the target machine in order to build SPIRAL and FFTX, include:
 <br>
 **cmake**, version 3.14 or higher
@@ -53,10 +52,9 @@ Follow the build instructions for **spiral-software** (see the **README**
 
 FFTX, like SPIRAL, requires **Python 3**.
 
-On macOS, `/usr/bin/python` usually links to Python 2.7, but
-`/usr/bin/python3` is also present.  Now macOS doesn't allow you to
-link `/usr/bin/python` to `/usr/bin/python3`, even with `sudo`.
-So you will need to make a link like
+On macOS, `/usr/bin/python` usually links to Python 2.7, but `/usr/bin/python3`
+is also present.  Now macOS doesn't allow you to link `/usr/bin/python` to
+`/usr/bin/python3`, even with `sudo`.  So you will need to make a link like:
 ```
 sudo ln -s /usr/bin/python3 /usr/local/bin/python
 ```
@@ -133,6 +131,8 @@ cmake --build . --target install --config Release
 This shows an example building for CUDA on Windows, you can also build for CPU
 or AMD HIP as shown above (under Building for Linux).
 
+#### Running FFTX Example Programs
+
 Currently, **FFTX** builds a number of example programs; the programs will be
 installed in the location specified by **CMAKE_INSTALL_PREFIX**.  This often
 defaults to a system location, such as /usr/local, to which you may not have
@@ -152,7 +152,101 @@ applications to leverage FFTX transforms.  To access the necessary include files
 and libraries an external application's **cmake** should include
 **CMakeInclude/FFTXCmakeFunctions.cmake**.  A full example of an external
 application linking with FFTX libraries is available in the
-[fftx-demo-extern-app](https://www.github.com/spiral-software/fftx-demo-extern-app).
+[**fftx-demo-extern-app**](https://www.github.com/spiral-software/fftx-demo-extern-app).
+
+### FFTX Libraries Built
+
+FFTX builds libraries for 1D and 3D FFTs for a single device.  FFTs are built
+for specific sizes, thus not all possible sizes will be found in the libraries.
+The sizes built for 3D FFTs are defined in the file **cube-sizes.txt** (in the
+examples/library folder).  The sizes built for 1D FFTs are defined in the file
+**dftbatch-sizes.txt** (in the examples/library folder).  The following
+libraries are built:
+
+|Type|Name|Description|Include Header File|
+|:-----:|:-----|:-----|:-----:|
+|3D FFT|fftx_mddft|Forward 3D FFT complex to complex |fftx_mddft_public.h|
+|3D FFT|fftx_imddft|Inverse 3D FFT complex to complex |fftx_imddft_public.h|
+|3D FFT|fftx_mdprdft|Forward 3D FFT real to complex |fftx_mdprdft_public.h|
+|3D FFT|fftx_imdprdft|Inverse 3D FFT complex to real |fftx_imdprdft_public.h|
+|3D Convolution|fftx_rconv|3D real convolution (in development) |fftx_rconv_public.h|
+|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex|fftx_dftbat_public.h|
+|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex|fftx_idftbat_public.h|
+|1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex|fftx_prdftbat_public.h|
+|1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real|fftx_iprdftbat_public.h|
+
+### Library API
+
+Each library has code serial code (CPU) and optionally GPU code (assuming either
+CUDA or HIP code was built when the libraries were generated).  There are API
+calls to do the following:
+* Determine (get) the mode for the library (serial or GPU)
+* Specify (set) whether the library should operate in serial or GPU mode
+* Get the list of sizes built in the library
+* Get a tuple containing pointers to the init, destroy, and run functions for a particular size
+* Run an specific size transform once
+
+The following example shows usage of the 3D FFT complex to complex transform
+(others are similar, just use the appropriate names and header file(s) from the
+table above).  The user (calling application) is responsible for setting up
+memory buffers and allocations as required (i.e., host memory for serial code
+and device memory for GPU code).
+
+```
+#include "fftx3.hpp"
+#include "fftx_mddft_public.h"
+
+    int libmode = fftx_mddft_GetLibraryMode ();   // get the library mode
+    fftx_mddft_SetLibraryMode ( LIB_MODE_CUDA );  // specify CUDA mode (default)
+    
+    fftx::point_t<3> *wcube, curr;
+    wcube = fftx_mddft_QuerySizes ();             // Get a list of sizes in library
+
+    transformTuple_t *tupl;
+    for ( int iloop = 0; ; iloop++ ) {
+        if ( wcube[iloop].x[0] == 0 ) break;      // last entry in list is zero
+        tupl = fftx_mddft_Tuple ( wcube[iloop] );
+
+        ( * tupl->initfp )();                    // init function for transform
+
+        ( * tupl->runfp )( outbuf, input, symbol );  // run the transform (may call multiple times)
+
+        ( * tupl->destroyfp )();
+    }
+```
+
+### Linking Against FFTX Libraries
+
+FFTX provides a **cmake** include file, **FFTXCmakeFunctions.cmake**, that
+provides functions to facilitate compiling and linking external applications
+with the FFTX libraries.  An external application should include this file
+(**$FFTX_HOME/CMakeIncludes/FFTXCmakeFunctions.cmake**) in order to access the
+following helper functions to compile/link with the FFTX libraries.  Two
+functions are available:
+
+1.  **FFTX_find_libraries**() -- this function finds the FFTX libraries, linker
+library path, and include file paths and exposes the following variables:
+|CMake Variable Name|Description|
+|:-----|:-----|
+|**FFTX_LIB_INCLUDE_PATHS**|Include paths for FFTX include & library headers|
+|**FFTX_LIB_NAMES**|List of FFTX libraries|
+|**FFTX_LIB_LIBRARY_PATH**|Path to libraries (for linker)|
+2.  **FFTX_add_includes_libs_to_target** ( target ) -- this function adds the
+include file paths, the linker library path, and the library names to the
+specified target.
+
+An application typically need only call the second function and let FFTX handle
+the assignment of paths, etc. to the target.  Only if an application
+specifically needs to access the named variables above is it necessary to call
+the first function.
+
+### External Application Linking With FFTX
+
+A complete example of an external application that builds test programs
+utilizing the FFTX libraries is available at 
+[**fftx-demo-extern-app**](https://www.github.com/spiral-software/fftx-demo-extern-app).
+If you're interested in how to link an external application with FFTX please
+download this example and review the **CMakeLists.txt** therein for specific details.
 
 ## Examples Structure
 
