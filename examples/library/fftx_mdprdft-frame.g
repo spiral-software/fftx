@@ -41,7 +41,8 @@ if 1 = 1 then
     ## This line from mddft-frame-cuda.g :
     ##    t := TFCall(TRC(MDDFT(szcube, 1)), 
     ##                rec(fname := name, params := []));
-    ##  szrevcube := Reversed(szcube);
+    szrevcube := Reversed(szcube);
+    ## This assumes FFTX_COMPLEX_TRUNC_LAST==0
     szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
     ##  szhalfcube := [szcube[1]/2+1]::Drop(szcube,1);
     var_1:= var("var_1", BoxND([0,0,0], TReal));
@@ -51,7 +52,7 @@ if 1 = 1 then
     var_3:= Y;
     symvar := var("sym", TPtr(TReal));
     t := TFCall(TDecl(TDAG([
-           TDAGNode(TTensorI(prdft(szcube,sign),1,APar, APar), var_3,var_2),
+           TDAGNode(TTensorI(prdft(szrevcube,sign),1,APar, APar), var_3,var_2),
                   ]),
             [var_1]
             ),

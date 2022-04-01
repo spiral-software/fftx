@@ -39,6 +39,7 @@ if 1 = 1 then
     ## This line from mddft-frame-cuda.g :
     ##    t := TFCall(TRC(MDDFT(szcube, 1)), 
     ##                rec(fname := name, params := []));
+    szrevcube := Reversed(szcube);
     var_1:= var("var_1", BoxND([0,0,0], TReal));
     var_2:= var("var_2", BoxND(szcube, TReal));
     var_3:= var("var_3", BoxND(szcube, TReal));
@@ -46,7 +47,7 @@ if 1 = 1 then
     var_3:= Y;
     symvar := var("sym", TPtr(TReal));
     t := TFCall(TDecl(TDAG([
-           TDAGNode(TTensorI(MDDFT(szcube,sign),1,APar, APar), var_3,var_2),
+           TDAGNode(TTensorI(MDDFT(szrevcube,sign),1,APar, APar), var_3,var_2),
                   ]),
             [var_1]
             ),
