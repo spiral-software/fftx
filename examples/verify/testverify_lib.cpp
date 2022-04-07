@@ -50,44 +50,50 @@ int main(int argc, char* argv[])
       fftx::point_t<3> sz = ents[ind];
 
       {
-        // fftx::mddft<3> tfm(sz);
-        fftx::mddft<3>* tfmPtr = new fftx::mddft<3>(sz);
-        TransformFunction<3, std::complex<double>, std::complex<double>>
-          fun(tfmPtr, -1);
-        VerifyTransform<3, std::complex<double>, std::complex<double>>
-          (fun, rounds, verbosity);
-        delete tfmPtr;
+        fftx::mddft<3> tfm(sz);
+        if (tfm.isDefined())
+          {
+            TransformFunction<3, std::complex<double>, std::complex<double>>
+              fun(&tfm, -1);
+            VerifyTransform<3, std::complex<double>, std::complex<double>>
+              (fun, rounds, verbosity);
+          }
         // verifyTransform(tfm, -1, rounds, verbosity);
        }
 
       {
-        // fftx::imddft<3> tfm(sz);
-        fftx::imddft<3>* tfmPtr = new fftx::imddft<3>(sz);
-        TransformFunction<3, std::complex<double>, std::complex<double>>
-          fun(tfmPtr, 1);
-        VerifyTransform<3, std::complex<double>, std::complex<double>>
-          (fun, rounds, verbosity);
-        delete tfmPtr;
+        fftx::imddft<3> tfm(sz);
+        if (tfm.isDefined())
+          {
+            TransformFunction<3, std::complex<double>, std::complex<double>>
+              fun(&tfm, 1);
+            VerifyTransform<3, std::complex<double>, std::complex<double>>
+              (fun, rounds, verbosity);
+          }
         // verifyTransform(tfm, 1, rounds, verbosity);
        }
 
       {
-        fftx::mdprdft<3>* tfmPtr = new fftx::mdprdft<3>(sz);
-        TransformFunction<3, double, std::complex<double>>
-          fun(tfmPtr, -1);
-        VerifyTransform<3, double, std::complex<double>>
-          (fun, rounds, verbosity);
-        delete tfmPtr;
+        fftx::mdprdft<3> tfm(sz);
+        if (tfm.isDefined())
+          {
+            TransformFunction<3, double, std::complex<double>>
+              fun(&tfm, -1);
+            VerifyTransform<3, double, std::complex<double>>
+              (fun, rounds, verbosity);
+          }
         // verifyTransform(tfm, -1, rounds, verbosity);
       }
 
       {
-        fftx::imdprdft<3>* tfmPtr = new fftx::imdprdft<3>(sz);
-        TransformFunction<3, std::complex<double>, double>
-          fun(tfmPtr, 1);
-        VerifyTransform<3, std::complex<double>, double>
-          (fun, rounds, verbosity);
-        delete tfmPtr;
+        fftx::imdprdft<3> tfm(sz);
+        if (tfm.isDefined())
+          {
+            TransformFunction<3, std::complex<double>, double>
+              fun(&tfm, 1);
+            VerifyTransform<3, std::complex<double>, double>
+              (fun, rounds, verbosity);
+          }
         // verifyTransform(tfm, 1, rounds, verbosity);
       }
     }
