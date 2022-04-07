@@ -201,7 +201,7 @@ public:
   }
 
   // constructor with FFTX handle
-  TransformFunction(fftx::handle_t (*afunctionPtr)
+  TransformFunction(fftx::handle_t (*a_functionPtr)
                    (fftx::array_t<DIM, T_IN>&,
                     fftx::array_t<DIM, T_OUT>&),
                     fftx::box_t<DIM> a_inDomain,
@@ -210,7 +210,7 @@ public:
                     std::string& a_name,
                     int a_sign)
   {
-    mfunctionPtr = afunctionPtr;
+    m_functionPtr = a_functionPtr;
     m_inDomain = a_inDomain;
     m_outDomain = a_outDomain;
     m_fullExtents = a_fullExtents;
@@ -330,7 +330,7 @@ public:
                                                    m_outDomain);
             if (m_tp == FFTX_HANDLE)
               {          
-                (*mfunctionPtr)(inputDevice, outputDevice);
+                (*m_functionPtr)(inputDevice, outputDevice);
               }
             else if (m_tp == FFTX_LIB)
               {
@@ -346,7 +346,7 @@ public:
         // on CPU
         if (m_tp == FFTX_HANDLE)
           {          
-            (*mfunctionPtr)(a_inArray, a_outArray);
+            (*m_functionPtr)(a_inArray, a_outArray);
           }
         else if (m_tp == FFTX_LIB)
           {
@@ -369,7 +369,7 @@ protected:
   std::string m_name;
   
   // case FFTX_HANDLE
-  fftx::handle_t (*mfunctionPtr) (fftx::array_t<DIM, T_IN>&,
+  fftx::handle_t (*m_functionPtr) (fftx::array_t<DIM, T_IN>&,
                                   fftx::array_t<DIM, T_OUT>&);
   
   // case FFTX_LIB
@@ -499,12 +499,6 @@ protected:
   
   fftx::box_t<DIM> m_inDomain;
   fftx::box_t<DIM> m_outDomain;
-
-  /*
-  std::mt19937 generator;
-  // m_unifRealDist is uniform over the reals in (-1/2, 1/2).
-  std::uniform_real_distribution<double> m_unifRealDist;
-  */
 
   // m_unifInt[d] is uniform over the integers in domain.lo[d] : domain.hi[d]
   std::uniform_int_distribution<int> m_unifInt[DIM];
