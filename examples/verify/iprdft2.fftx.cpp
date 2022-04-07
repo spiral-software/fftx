@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
   setOutputs(outputs);
   
   openScalarDAG();
-  IPRDFT(verify::domain2.extents().flipped(), outputs, inputs);
+  IPRDFT(verify::domain2.extents(), outputs, inputs);
 
   closeScalarDAG(intermediates, "iprdft2");
 }
