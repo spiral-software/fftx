@@ -24,9 +24,9 @@ int main(int argc, char* argv[])
  
   openScalarDAG();
 
-  PRDFT(rconv::domain3.extents().flipped(), intermediates[0], inputs);
+  PRDFT(rconv::domain3.extents(), intermediates[0], inputs);
   kernel(symbol, intermediates[1], intermediates[0]);
-  IPRDFT(rconv::domain3.extents().flipped(), outputs, intermediates[1]);
+  IPRDFT(rconv::domain3.extents(), outputs, intermediates[1]);
   
   closeScalarDAG(intermediates, "rconv3");
   
