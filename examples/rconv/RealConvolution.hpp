@@ -163,7 +163,7 @@ public:
 #else
         // on CPU
         if (m_tp == FFTX_HANDLE)
-          {          
+          {
             (*m_functionPtr)(a_input, a_output, a_symbol);
           }
         else if (m_tp == FFTX_LIB)
@@ -246,7 +246,10 @@ protected:
 
   double testConstantSymbol()
   {
-    printf("calling testConstantSymbol<%d>\n", DIM);
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        printf("calling testConstantSymbol<%d>\n", DIM);
+      }
     fftx::array_t<DIM, double> input(m_domain);
     fftx::array_t<DIM, double> output(m_domain);
     fftx::array_t<DIM, double> symbol(m_fdomain);
@@ -276,7 +279,10 @@ protected:
 
   double testDelta()
   {
-    printf("calling testDelta<%d>\n", DIM);
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        printf("calling testDelta<%d>\n", DIM);
+      }
     fftx::array_t<DIM, double> input(m_domain);
     fftx::array_t<DIM, double> output(m_domain);
     fftx::array_t<DIM, double> symbol(m_fdomain);
@@ -315,7 +321,10 @@ protected:
 
   double testPoisson()
   {
-    printf("calling testPoisson<%d>\n", DIM);
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        printf("calling testPoisson<%d>\n", DIM);
+      }
     fftx::array_t<DIM, double> input(m_domain);
     fftx::array_t<DIM, double> output(m_domain);
     fftx::array_t<DIM, double> symbol(m_fdomain);
