@@ -36,9 +36,9 @@ void convolutionDevice(fftx::handle_t (a_transform)
                        (fftx::array_t<DIM, double>&,
                         fftx::array_t<DIM, double>&,
                         fftx::array_t<DIM, double>&),
-                       array_t<DIM, double>& a_input,
-                       array_t<DIM, double>& a_output,
-                       array_t<DIM, double>& a_symbol)
+                       fftx::array_t<DIM, double>& a_input,
+                       fftx::array_t<DIM, double>& a_output,
+                       fftx::array_t<DIM, double>& a_symbol)
 {
   auto inputDomain = a_input.m_domain;
   auto outputDomain = a_output.m_domain;
@@ -90,9 +90,9 @@ double testConstantSymbol(fftx::handle_t (a_transform)
                           int a_verbosity)
 {
   printf("calling testConstantSymbol<%d>\n", DIM);
-  array_t<DIM, double> input(a_domain);
-  array_t<DIM, double> output(a_domain);
-  array_t<DIM, double> symbol(a_fdomain);
+  fftx::array_t<DIM, double> input(a_domain);
+  fftx::array_t<DIM, double> output(a_domain);
+  fftx::array_t<DIM, double> symbol(a_fdomain);
 
   double scaling = 1. / (a_domain.size()*1.);
   setConstant(symbol, scaling);
@@ -126,14 +126,15 @@ double testDelta(fftx::handle_t (a_transform)
                  int a_verbosity)
 {
   printf("calling testDelta<%d>\n", DIM);
-  array_t<DIM, double> input(a_domain);
-  array_t<DIM, double> output(a_domain);
-  array_t<DIM, double> symbol(a_fdomain);
+  fftx::array_t<DIM, double> input(a_domain);
+  fftx::array_t<DIM, double> output(a_domain);
+  fftx::array_t<DIM, double> symbol(a_fdomain);
 
   setConstant(input, 2.);
 
-  point_t<DIM> cornerLo = a_domain.lo;
+  fftx::point_t<DIM> cornerLo = a_domain.lo;
   double scaling = 1. / (a_domain.size()*1.);
+  /*
   forall([cornerLo, scaling](double(&v), const fftx::point_t<DIM>& p)
            {
              if (p == cornerLo)
@@ -145,6 +146,12 @@ double testDelta(fftx::handle_t (a_transform)
                  v = 0.;
                }
            }, symbol);
+  */
+  // Substitute for forall.
+  setConstant(symbol, 0.);
+  auto symbolPtr = symbol.m_data.local();
+  auto indCornerLo = positionInBox(cornerLo, a_fdomain);
+  symbolPtr[indCornerLo] = scaling;
 
   convolutionDevice(a_transform, input, output, symbol);
   double errDelta = absMaxDiffArray(input, output);
@@ -165,9 +172,9 @@ double testPoisson(fftx::handle_t (a_transform)
                    int a_verbosity)
 {
   printf("calling testPoisson<%d>\n", DIM);
-  array_t<DIM, double> input(a_domain);
-  array_t<DIM, double> output(a_domain);
-  array_t<DIM, double> symbol(a_fdomain);
+  fftx::array_t<DIM, double> input(a_domain);
+  fftx::array_t<DIM, double> output(a_domain);
+  fftx::array_t<DIM, double> symbol(a_fdomain);
 
   fftx::point_t<DIM> lo = a_domain.lo;
   fftx::point_t<DIM> hi = a_domain.hi;
@@ -184,6 +191,7 @@ double testPoisson(fftx::handle_t (a_transform)
     }
   // Set radius to extentMin/sqrt(2)/2.
   double radius2 = (extentMin * extentMin) * (1./8.);
+  /*
   forall([center, radius2](double(&v), const fftx::point_t<DIM>& p)
          {
            double dist2 = 0.;
@@ -204,8 +212,34 @@ double testPoisson(fftx::handle_t (a_transform)
                v = 0.;
              }
          }, input);
+  */
+  // Substitute for forall.
+  auto inputPtr = input.m_data.local();
+  auto input_size = a_domain.size();
+  for (size_t ind = 0; ind < input_size; ind++)
+    {
+      fftx::point_t<DIM> p = pointFromPositionBox(ind, a_domain);
+      double dist2 = 0.;
+      for (int d = 0; d < DIM; d++)
+        {
+          double displacement2 = p[d] - center[d];
+          displacement2 *= displacement2;
+          dist2 += displacement2;
+        }
+      if (dist2 < radius2)
+        {
+          // v = 1.;
+          // For periodicity, need sum of rhs over all points to be zero.
+          inputPtr[ind] = p[0] - center[0];
+        }
+      else
+        {
+          inputPtr[ind] = 0.;
+        }
+    }
 
-  point_t<DIM> cornerLo = a_domain.lo;
+  fftx::point_t<DIM> cornerLo = a_domain.lo;
+  /*
   size_t normalize = a_domain.size();
   forall([cornerLo, extents, normalize](double(&v), const fftx::point_t<DIM>& p)
          {
@@ -224,10 +258,32 @@ double testPoisson(fftx::handle_t (a_transform)
                v = -1. / ((4 * normalize) * sin2sum);
              }
          }, symbol);
+  */
+  // Substitute for forall.
+  auto symbolPtr = symbol.m_data.local();
+  auto symbol_size = a_fdomain.size();
+  for (size_t ind = 0; ind < symbol_size; ind++)
+    {
+      fftx::point_t<DIM> p = pointFromPositionBox(ind, a_fdomain);
+      if (p == cornerLo)
+        {
+          symbolPtr[ind] = 0.;
+        }
+      else
+        {
+          double sin2sum = 0.;
+          for (int d = 0; d < DIM; d++)
+            {
+              double sin1 = sin((p[d]-cornerLo[d])*M_PI/(extents[d]*1.));
+              sin2sum += sin1 * sin1;
+            }
+          symbolPtr[ind] = -1. / ((4*input_size) * sin2sum);
+        }
+    }
   
   convolutionDevice(a_transform, input, output, symbol);
 
-  array_t<DIM,double> lap2output(a_domain);
+  fftx::array_t<DIM,double> lap2output(a_domain);
   laplacian2periodic(lap2output, output);
   
   double errPoisson = absMaxDiffArray(lap2output, input);
@@ -273,6 +329,7 @@ int main(int argc, char* argv[])
 {
   // { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
   printf("Usage:  %s [verbosity=0] [rounds=20]\n", argv[0]);
+  printf("verbosity 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations\n");
   int verbosity = 0;
   int rounds = 20;
   if (argc > 1)
