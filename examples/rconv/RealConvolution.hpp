@@ -141,11 +141,11 @@ public:
                         MEM_COPY_HOST_TO_DEVICE);
 
         fftx::array_t<DIM, double> inputDevice(fftx::global_ptr<double>
-                                               (inputPtr, 0, 1), inputDomain);
+                                               (inputPtr, 0, 1), m_domain);
         fftx::array_t<DIM, double> outputDevice(fftx::global_ptr<double>
-                                                (outputPtr, 0, 1), outputDomain);
+                                                (outputPtr, 0, 1), m_domain);
         fftx::array_t<DIM, double> symbolDevice(fftx::global_ptr<double>
-                                                (symbolPtr, 0, 1), symbolDomain);
+                                                (symbolPtr, 0, 1), m_fdomain);
 
         if (m_tp == FFTX_HANDLE)
           {
