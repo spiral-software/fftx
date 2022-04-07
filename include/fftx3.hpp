@@ -43,10 +43,10 @@
  */
 
 // Set this to 1 for row-major order, 0 for column-major order.
-#define FFTX_ROW_MAJOR_ORDER 0
+#define FFTX_ROW_MAJOR_ORDER 1
 
 // Set this to 1 if truncating complex array in last dimension, 0 if in first.
-#define FFTX_COMPLEX_TRUNC_LAST 0
+#define FFTX_COMPLEX_TRUNC_LAST 1
 
 namespace fftx
 {
