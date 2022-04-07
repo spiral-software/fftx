@@ -13,15 +13,15 @@ namespace rconv_once
   //  const int nz = 40;
 
   #ifndef fftx_nx
-  #define fftx_nx 24
+  #define fftx_nx 128 // 24
   #endif
 
   #ifndef fftx_ny
-  #define fftx_ny 32
+  #define fftx_ny 128 // 32
   #endif
 
   #ifndef fftx_nz
-  #define fftx_nz 40
+  #define fftx_nz 360 // 40
   #endif
   
 #if FFTX_COMPLEX_TRUNC_LAST
