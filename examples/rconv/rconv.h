@@ -1,6 +1,6 @@
 using namespace fftx;
 
-namespace rconv
+namespace rconv_once
 {
   const int offx = 3;
   const int offy = 5;
