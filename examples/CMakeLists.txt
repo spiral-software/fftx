@@ -29,7 +29,6 @@ manage_add_subdir ( compare       FALSE     TRUE )
 
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
-##  Don't build rconv -- still in development
 manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
 manage_add_subdir ( warpx         TRUE      FALSE )
