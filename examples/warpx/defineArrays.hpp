@@ -30,14 +30,14 @@ inline void defineBigBoxes(std::array<fftx::array_t<4, double>,4>& a_bigBoxes)
 #else
   /*  Fortran ordering */
   fftx::box_t<4> bigBox0(fftx::point_t<4>({{1,1,1,1}}),
-                         fftx::point_t<4>({{nx, ny, nz, 11}}));
+                         fftx::point_t<4>({{11, nx, ny, nz}}));
   fftx::box_t<4> bigBox1(fftx::point_t<4>({{1,1,1,1}}),
-                         fftx::point_t<4>({{nx+2,ny,nz,11}}));
+                         fftx::point_t<4>({{11, nx+2,ny,nz}}));
 
   fftx::box_t<4> bigBox2(fftx::point_t<4>({{1,1,1,1}}),
-                         fftx::point_t<4>({{nx+2,ny,nz,6}}));
+                         fftx::point_t<4>({{6,nx+2,ny,nz}}));
   fftx::box_t<4> bigBox3(fftx::point_t<4>({{1,1,1,1}}),
-                         fftx::point_t<4>({{nx,ny,nz,6}}));
+                         fftx::point_t<4>({{6,nx,ny,nz}}));
 #endif
   
   std::array<fftx::array_t<4, double>,4> bigBoxes = {bigBox0,

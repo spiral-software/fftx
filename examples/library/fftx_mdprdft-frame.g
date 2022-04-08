@@ -42,8 +42,11 @@ if 1 = 1 then
     ##    t := TFCall(TRC(MDDFT(szcube, 1)), 
     ##                rec(fname := name, params := []));
     ##  szrevcube := Reversed(szcube);
-    szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
+    ## This assumes FFTX_COMPLEX_TRUNC_LAST==0
+    ##szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
     ##  szhalfcube := [szcube[1]/2+1]::Drop(szcube,1);
+    ## This assumes FFTX_COMPLEX_TRUNC_LAST==1
+    szhalfcube := DropLast(szcube,1)::[Int(Last(szcube)/2)+1];
     var_1:= var("var_1", BoxND([0,0,0], TReal));
     var_2:= var("var_2", BoxND(szcube, TReal));
     var_3:= var("var_3", BoxND(szhalfcube, TReal));
