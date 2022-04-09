@@ -584,7 +584,7 @@ with open ( 'dftbatch-sizes.txt', 'r' ) as fil:
         _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = 'python ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
+        cmdstr = sys.executable + ' ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
         result = subprocess.run ( cmdstr, shell=True, check=True )
         res = result.returncode
 

@@ -52,9 +52,6 @@ if ( APPLE )
 	set ( ADDL_COMPILE_FLAGS -arch arm64 )
         message ( STATUS " set addl compile flags: ${ADDL_COMPILE_FLAGS}" )
     endif ()
-else ()
-    set ( ADDL_COMPILE_FLAGS -arch non-apple )
-    message ( STATUS "Not Apple / MAC:  set addl compile flags: ${ADDL_COMPILE_FLAGS}" )
 endif ()	
 
 ##  Define CMake include directory and include the setup information
