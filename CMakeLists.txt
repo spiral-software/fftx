@@ -20,7 +20,7 @@ endif ()
 set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel")
 
 project (FFTX_PROJECT
-         VERSION 0.9.1
+         VERSION 1.0.3
                 DESCRIPTION "FFTX Project"
                 LANGUAGES C CXX )
 
@@ -34,6 +34,25 @@ if ( DISALLOW_COMPILE_INPLACE )
                  cmake ..
                  make | make install")
 endif ()
+
+##  NOTE: We use ADDL_COMPILE_FLAGS to hold additional ad-hoc compile time
+##  flags.  Any child cmake lists should APPEND to the list (i.e., don't assume
+##  it is empty).
+
+##  Check if we're on Apple/MAC
+if ( APPLE )
+    ##  Check if arch should be x86_64 or arm64
+    message ( STATUS "Running on Apple / MAC" )
+    message ( STATUS "CMAKE_OSX_ARCHITECTURES = ${CMAKE_OSX_ARCHITECTURES}" )
+    message ( STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}" )
+    if ( ${CMAKE_OSX_ARCHITECTURES} MATCHES "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64.*")
+	set ( ADDL_COMPILE_FLAGS -arch x86_64 )
+        message ( STATUS "Set addl compile flags: ${ADDL_COMPILE_FLAGS}" )
+    elseif ( ${CMAKE_OSX_ARCHITECTURES} MATCHES "arm64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64.*" )
+	set ( ADDL_COMPILE_FLAGS -arch arm64 )
+        message ( STATUS " set addl compile flags: ${ADDL_COMPILE_FLAGS}" )
+    endif ()
+endif ()	
 
 ##  Define CMake include directory and include the setup information
 set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
