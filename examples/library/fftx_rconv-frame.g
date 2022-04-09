@@ -32,9 +32,13 @@ if 1 = 1 then
     ## This line from mddft-frame-cuda.g :
     ##    t := TFCall(TRC(MDDFT(szcube, 1)), 
     ##                rec(fname := name, params := []));
-    szrevcube := Reversed(szcube);
-    szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
+    ##  szrevcube := Reversed(szcube);
+    ## This assumes FFTX_COMPLEX_TRUNC_LAST==0
+    ##szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
     ##  szhalfcube := [szcube[1]/2+1]::Drop(szcube,1);
+    ## This assumes FFTX_COMPLEX_TRUNC_LAST==1
+    szhalfcube := DropLast(szcube,1)::[Int(Last(szcube)/2)+1];
+    ##  szhalfcube := DropLast(szcube,1)::[Last(szcube)/2+1];
     var_1:= var("var_1", BoxND(szhalfcube, TReal));
     var_2:= var("var_2", BoxND(szhalfcube, TReal));
     var_3:= var("var_3", BoxND(szcube, TReal));
@@ -44,9 +48,9 @@ if 1 = 1 then
     var_4:= Y;
     symvar := var("sym", TPtr(TReal));
     t := TFCall(TDecl(TDAG([
-        TDAGNode(MDPRDFT(szrevcube,-1), var_1,var_3),
+        TDAGNode(MDPRDFT(szcube,-1), var_1,var_3),
         TDAGNode(Diag(diagTensor(FDataOfs(symvar,Product(szhalfcube),0),fConst(TReal, 2, 1))), var_2,var_1),
-        TDAGNode(IMDPRDFT(szrevcube,1), var_4,var_2),
+        TDAGNode(IMDPRDFT(szcube,1), var_4,var_2),
                   ]),
             [var_1,var_2]
             ),

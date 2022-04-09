@@ -13,10 +13,10 @@ int main(int argc, char* argv[])
 
   tracing=true;
   
-  std::array<array_t<3,std::complex<double>>,2> intermediates {rconv::fdomain3, rconv::fdomain3};
-  array_t<3,double> inputs(rconv::domain3);
-  array_t<3,double> outputs(rconv::domain3);
-  array_t<3,double> symbol(rconv::fdomain3);
+  std::array<array_t<3,std::complex<double>>,2> intermediates {rconv_once::fdomain3, rconv_once::fdomain3};
+  array_t<3,double> inputs(rconv_once::domain3);
+  array_t<3,double> outputs(rconv_once::domain3);
+  array_t<3,double> symbol(rconv_once::fdomain3);
 
 
   setInputs(inputs);
@@ -24,9 +24,9 @@ int main(int argc, char* argv[])
  
   openScalarDAG();
 
-  PRDFT(rconv::domain3.extents().flipped(), intermediates[0], inputs);
+  PRDFT(rconv_once::domain3.extents(), intermediates[0], inputs);
   kernel(symbol, intermediates[1], intermediates[0]);
-  IPRDFT(rconv::domain3.extents().flipped(), outputs, intermediates[1]);
+  IPRDFT(rconv_once::domain3.extents(), outputs, intermediates[1]);
   
   closeScalarDAG(intermediates, "rconv3");
   
