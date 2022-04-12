@@ -35,8 +35,8 @@ add_includes_libs_to_target ( ${BUILD_PROGRAM_DEVICE} ${_stem} "${_prefixes_devi
 set ( BUILD_PROG_LIB test${PROJECT_NAME}_lib )
 set ( _prefixes_lib )
 
-message ( STATUS "${BUILD_PROG_LIB}: Library include dirs = ${_library_includes}" )
-message ( STATUS "${BUILD_PROG_LIB}: Library names = ${_library_names}" )
+##  message ( STATUS "${BUILD_PROG_LIB}: Library include dirs = ${_library_includes}" )
+##  message ( STATUS "${BUILD_PROG_LIB}: Library names = ${_library_names}" )
 
 manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes_lib}" )
 add_includes_libs_to_target ( ${BUILD_PROG_LIB} ${_stem} "${_prefixes_lib}" )

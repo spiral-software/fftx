@@ -5,7 +5,9 @@
 ##  See LICENSE file for full information
 ##
 
-include ( ../../examples/ExamplesCommon.cmake )
+if ( ${_codegen} STREQUAL "CUDA" )
+    set ( _lang_add LANGUAGES CUDA )
+endif ()
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 

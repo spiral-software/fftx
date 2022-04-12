@@ -30,7 +30,7 @@ function ( run_driver_program prefix stem )
     if ( ${ARGC} GREATER 2 )
 	##  received optional include directories -- add to target
 	foreach ( _fil ${ARGN} )
-	    message ( "add ${_fil} to include directories for ${_driver}" )
+	    ##  message ( "add ${_fil} to include directories for ${_driver}" )
 	    target_include_directories ( ${_driver} PRIVATE ${_fil} )
 	endforeach ()
     endif ()
@@ -194,7 +194,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     if ( NOT "X{_library_names}" STREQUAL "X" )
 	##  Some libraries were built -- add them for linker
 	target_link_libraries      ( ${_target} ${_library_names} )
-	message ( STATUS "${_target}: Libraries added = ${_library_names}" )
+	##  message ( STATUS "${_target}: Libraries added = ${_library_names}" )
     endif ()
 
     ##  set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )

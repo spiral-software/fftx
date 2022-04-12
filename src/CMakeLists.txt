@@ -23,11 +23,11 @@ set ( _library_includes ${CMAKE_CURRENT_SOURCE_DIR}/include )
 include_directories ( ${_library_includes} )
 
 manage_add_subdir ( library       TRUE      TRUE )
-message ( STATUS "Library include dirs = ${_library_includes}" )
-message ( STATUS "Library names = ${_library_names}" )
+
+##  message ( STATUS "Library include dirs = ${_library_includes}" )
+##  message ( STATUS "Library names = ${_library_names}" )
 
 set ( _library_names ${_library_names} PARENT_SCOPE )
 set ( _library_includes ${_library_includes} PARENT_SCOPE )
-##  message ( STATUS "Library include dirs = ${_library_includes}" )
 
 manage_add_subdir ( include       TRUE      TRUE )
