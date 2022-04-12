@@ -30,7 +30,7 @@ function ( run_driver_program prefix stem )
     if ( ${ARGC} GREATER 2 )
 	##  received optional include directories -- add to target
 	foreach ( _fil ${ARGN} )
-	    message ( "add ${_fil} to include directories for ${_driver}" )
+	    ##  message ( "add ${_fil} to include directories for ${_driver}" )
 	    target_include_directories ( ${_driver} PRIVATE ${_fil} )
 	endforeach ()
     endif ()
@@ -183,7 +183,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     target_compile_options ( ${_target} PRIVATE ${ADDL_COMPILE_FLAGS} )
  
     target_include_directories ( ${_target} PRIVATE
-	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )
+	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${_library_includes} )
 
     if ( ${_codegen} STREQUAL "HIP" )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
@@ -194,7 +194,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     if ( NOT "X{_library_names}" STREQUAL "X" )
 	##  Some libraries were built -- add them for linker
 	target_link_libraries      ( ${_target} ${_library_names} )
-	message ( STATUS "${_target}: Libraries added = ${_library_names}" )
+	##  message ( STATUS "${_target}: Libraries added = ${_library_names}" )
     endif ()
 
     ##  set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
@@ -230,7 +230,7 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
     endif ()
 
     foreach ( _prefix ${_prefixes} ) 
-	run_driver_program ( ${_prefix} ${_stem} )
+	run_driver_program ( ${_prefix} ${_stem} ${_library_includes} )
 	set ( _driver ${PROJECT_NAME}.${${_prefix}_driver} )
 	set ( _plan ${${_prefix}_plan} )
 	set ( _hdr  ${_prefix}.${_stem}.codegen.hpp )
@@ -356,7 +356,7 @@ function ( FFTX_find_libraries )
 	set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
     endif ()
 
-    ##  Find the build directory containing the libraries
+    ##  Find the 'installed' directory containing the libraries
     set (_root_folder "${FFTX_SOURCE_DIR}" )
     if ( NOT IS_DIRECTORY ${_root_folder}/lib )
 	message ( SEND_ERROR "${_root_folder}/lib is not a directory -- no libraries found, CANNOT build" )
@@ -364,11 +364,11 @@ function ( FFTX_find_libraries )
     
     set ( _add_link_directory )
     set ( _libraries_added )
-    set ( _includes_added ${FFTX_SOURCE_DIR}/include ${FFTX_SOURCE_DIR}/examples/library )
+    set ( _includes_added ${FFTX_SOURCE_DIR}/include )
     
     set ( _lib_found FALSE )
     file ( GLOB _libs RELATIVE ${_root_folder}/lib ${_root_folder}/lib/*fftx_* )
-    ##  message ( STATUS "Check for libs in: ${_libs}" )
+    message ( STATUS "Check for libs in: ${_libs}" )      ##  comment
     foreach ( _lib ${_libs} )
 	string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
 	string ( REGEX REPLACE ".so.*$" "" _lib ${_lib} )	## strip trailing stuff - Linux
@@ -378,7 +378,7 @@ function ( FFTX_find_libraries )
 	if ( ${_posnlist} EQUAL -1 )
 	    ##  message ( STATUS "${_lib} not in list -- adding" )
 	    list ( APPEND _libraries_added "${_lib}" )
-	    list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
+	    ##  list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
 	    set ( _lib_found TRUE )
 	endif ()
     endforeach ()

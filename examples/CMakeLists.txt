@@ -17,20 +17,19 @@ project ( examples )
 
 ##                  subdir name   CPU       GPU
 
-set ( _library_includes library)
-manage_add_subdir ( library       TRUE      TRUE )
+# set ( _library_includes library)
+# manage_add_subdir ( library       TRUE      TRUE )
 
-message ( STATUS "Library include dirs = ${_library_includes}" )
-message ( STATUS "Library names = ${_library_names}" )
+# message ( STATUS "Library include dirs = ${_library_includes}" )
+# message ( STATUS "Library names = ${_library_names}" )
 
-include_directories ( ${_library_includes} )
+# include_directories ( ${_library_includes} )
 
 manage_add_subdir ( compare       FALSE     TRUE )
 
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
-##  Don't build rconv -- still in development
-##  manage_add_subdir ( rconv         TRUE      TRUE )
+manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
 manage_add_subdir ( warpx         TRUE      FALSE )
 ##  manage_add_subdir ( warpx_basic   FALSE     TRUE )

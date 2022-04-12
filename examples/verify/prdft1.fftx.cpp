@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
   setOutputs(outputs);
   
   openScalarDAG();
-  PRDFT(verify::domain1.extents().flipped(), outputs, inputs);
+  PRDFT(verify::domain1.extents(), outputs, inputs);
 
   closeScalarDAG(intermediates, "prdft1");
 }
