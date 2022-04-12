@@ -66,6 +66,7 @@ message ( STATUS "Defined: INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}, INSTALL_RPA
 
 add_subdirectory ( src )
 add_subdirectory ( examples )
+add_subdirectory ( CMakeIncludes )
 
 ##  We will only build the documentation if the following conditions are satisfied:
 ##    FFTX_MAKE_DOCS is defined when cmake is invoked (e.g., cmake -DFFTX_MAKE_DOCS=True ..)
