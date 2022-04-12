@@ -5,7 +5,7 @@
 ##  See LICENSE file for full information
 ##
 
-include ( ../ExamplesCommon.cmake )
+include ( ../../examples/ExamplesCommon.cmake )
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
@@ -16,7 +16,7 @@ project ( ${PROJECT} library ${_lang_add} ${_lang_base} )
 
 ##
 ##  Build the pre-compiled libraries...
-##  Assume the code generation (by Spiral) is complete (see create_lib_code.sh)
+##  Assume the code generation (by Spiral) is complete (see build-lib-code.sh)
 ##  There'll be sub-folders named lib_<transform> and any valid such folder will
 ##  contain a CMakeLists.txt.
 ##  Get the list of such folders and traverse them to build the libraries.
@@ -40,5 +40,5 @@ foreach ( _dir ${_pkg_names} )
 endforeach ()
 
 set ( _library_names ${_library_names} PARENT_SCOPE )
-set ( _library_includes ${_lib_include_dirs} PARENT_SCOPE )
+set ( _library_includes ${_library_includes} ${_lib_include_dirs} PARENT_SCOPE )
 ##  message ( STATUS "Library include dirs = ${_lib_include_dirs}" )

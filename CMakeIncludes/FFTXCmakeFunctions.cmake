@@ -183,7 +183,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     target_compile_options ( ${_target} PRIVATE ${ADDL_COMPILE_FLAGS} )
  
     target_include_directories ( ${_target} PRIVATE
-	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )
+	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${_library_includes} )
 
     if ( ${_codegen} STREQUAL "HIP" )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
@@ -230,7 +230,7 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
     endif ()
 
     foreach ( _prefix ${_prefixes} ) 
-	run_driver_program ( ${_prefix} ${_stem} )
+	run_driver_program ( ${_prefix} ${_stem} ${_library_includes} )
 	set ( _driver ${PROJECT_NAME}.${${_prefix}_driver} )
 	set ( _plan ${${_prefix}_plan} )
 	set ( _hdr  ${_prefix}.${_stem}.codegen.hpp )
