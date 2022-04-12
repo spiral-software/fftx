@@ -356,7 +356,7 @@ function ( FFTX_find_libraries )
 	set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
     endif ()
 
-    ##  Find the build directory containing the libraries
+    ##  Find the 'installed' directory containing the libraries
     set (_root_folder "${FFTX_SOURCE_DIR}" )
     if ( NOT IS_DIRECTORY ${_root_folder}/lib )
 	message ( SEND_ERROR "${_root_folder}/lib is not a directory -- no libraries found, CANNOT build" )
@@ -364,11 +364,11 @@ function ( FFTX_find_libraries )
     
     set ( _add_link_directory )
     set ( _libraries_added )
-    set ( _includes_added ${FFTX_SOURCE_DIR}/include ${FFTX_SOURCE_DIR}/examples/library )
+    set ( _includes_added ${FFTX_SOURCE_DIR}/include )
     
     set ( _lib_found FALSE )
     file ( GLOB _libs RELATIVE ${_root_folder}/lib ${_root_folder}/lib/*fftx_* )
-    ##  message ( STATUS "Check for libs in: ${_libs}" )
+    message ( STATUS "Check for libs in: ${_libs}" )      ##  comment
     foreach ( _lib ${_libs} )
 	string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
 	string ( REGEX REPLACE ".so.*$" "" _lib ${_lib} )	## strip trailing stuff - Linux
@@ -378,7 +378,7 @@ function ( FFTX_find_libraries )
 	if ( ${_posnlist} EQUAL -1 )
 	    ##  message ( STATUS "${_lib} not in list -- adding" )
 	    list ( APPEND _libraries_added "${_lib}" )
-	    list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
+	    ##  list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
 	    set ( _lib_found TRUE )
 	endif ()
     endforeach ()

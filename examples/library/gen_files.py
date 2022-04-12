@@ -526,6 +526,10 @@ def cmake_library ( type ):
         _str = _str + 'list    ( APPEND _source_files ${_lib_root}_' + type + '_libentry' + _file_suffix + ' )\n\n'
     ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
 
+    _str = _str + 'set ( _incl_files ${_lib_root}_public.h ${_lib_root}_CPU_public.h )\n'
+    if type == 'CUDA' or type == 'HIP':
+        _str = _str + 'list    ( APPEND _incl_files ${_lib_root}_' + type + '_public.h )\n\n'
+
     _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'
     if type == 'CUDA':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${CUDA_COMPILE_FLAGS} ${GPU_COMPILE_DEFNS} )\n'
@@ -541,6 +545,9 @@ def cmake_library ( type ):
     _str = _str + 'install ( TARGETS\n'
     _str = _str + '          ${_lib_name}\n'
     _str = _str + '          DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )\n\n'
+
+    _str = _str + 'install ( FILES ${_incl_files}\n'
+    _str = _str + '          DESTINATION ${CMAKE_INSTALL_PREFIX}/include )\n\n'
 
     return _str;
 
