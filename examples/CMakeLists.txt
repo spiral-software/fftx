@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
+## Copyright (c) 2018-2022, Carnegie Mellon University
 ## All rights reserved.
 ##
 ## See LICENSE file for full information
@@ -16,14 +16,6 @@ project ( examples )
 ##  HIP) depending on the toolchain/compilers present
 
 ##                  subdir name   CPU       GPU
-
-# set ( _library_includes library)
-# manage_add_subdir ( library       TRUE      TRUE )
-
-# message ( STATUS "Library include dirs = ${_library_includes}" )
-# message ( STATUS "Library names = ${_library_names}" )
-
-# include_directories ( ${_library_includes} )
 
 manage_add_subdir ( compare       FALSE     TRUE )
 
