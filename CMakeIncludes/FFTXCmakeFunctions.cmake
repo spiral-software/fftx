@@ -368,7 +368,7 @@ function ( FFTX_find_libraries )
     
     set ( _lib_found FALSE )
     file ( GLOB _libs RELATIVE ${_root_folder}/lib ${_root_folder}/lib/*fftx_* )
-    message ( STATUS "Check for libs in: ${_libs}" )      ##  comment
+    ##  message ( STATUS "Check for libs in: ${_libs}" )
     foreach ( _lib ${_libs} )
 	string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
 	string ( REGEX REPLACE ".so.*$" "" _lib ${_lib} )	## strip trailing stuff - Linux
