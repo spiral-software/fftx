@@ -529,6 +529,7 @@ def cmake_library ( type ):
     _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'
     if type == 'CUDA':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${CUDA_COMPILE_FLAGS} ${GPU_COMPILE_DEFNS} )\n'
+        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n'
         _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n'
     else:
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
@@ -588,7 +589,7 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
         _spiralhome = os.environ.get('SPIRAL_HOME')
         _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = 'python ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
+        cmdstr = sys.executable + ' ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
         result = subprocess.run ( cmdstr, shell=True, check=True )
         res = result.returncode
 
