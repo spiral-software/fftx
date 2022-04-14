@@ -1,9 +1,10 @@
 #ifndef transformer_PRECOMPILE_H
 #define transformer_PRECOMPILE_H
 
-#ifdef FFTX_HIP
-#include <hip/hip_runtime.h>
-#endif
+// This is included in device_macros.h
+//#ifdef FFTX_HIP
+//#include <hip/hip_runtime.h>
+//#endif
 
 #include "fftx3.hpp"
 #include "device_macros.h"

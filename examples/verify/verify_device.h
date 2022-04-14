@@ -7,15 +7,15 @@ namespace verify
   const int offz = 11;
   
   #ifndef fftx_nx
-  #define fftx_nx 128 // 80
+  #define fftx_nx 80
   #endif
 
   #ifndef fftx_ny
-  #define fftx_ny 128 // 80
+  #define fftx_ny 80
   #endif
 
   #ifndef fftx_nz
-  #define fftx_nz 360 // 374
+  #define fftx_nz 374
   #endif
 
 #if FFTX_COMPLEX_TRUNC_LAST

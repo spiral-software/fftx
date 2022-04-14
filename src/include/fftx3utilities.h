@@ -1,3 +1,6 @@
+#ifndef FFTX_UTILITIES_HEADER
+#define FFTX_UTILITIES_HEADER
+
 template<int DIM>
 inline fftx::point_t<DIM> Zero()
 {
@@ -238,13 +241,25 @@ void rotate(fftx::array_t<DIM, T>& a_arrOut,
     }
   shift[a_dim] = a_shift;
   auto inPtr = a_arrIn.m_data.local();
+  /*
   forall([inPtr, shift, dom](T(&v),
                              const fftx::point_t<DIM>& p)
          {
            fftx::point_t<DIM> pRot = shiftInBox(p, shift, dom);
            size_t indRot = positionInBox(pRot, dom);
            v = inPtr[indRot];
-         }, a_arrOut);
+           }, a_arrOut);
+  */
+  // Substitute for forall.
+  auto npts = dom.size();
+  auto outPtr = a_arrOut.m_data.local();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      fftx::point_t<DIM> p = pointFromPositionBox(ind, dom);
+      fftx::point_t<DIM> pRot = shiftInBox(p, shift, dom);
+      size_t indRot = positionInBox(pRot, dom);
+      outPtr[ind] = inPtr[indRot];
+    }
 }
 
 // Set 2nd-order discrete laplacian of periodic array.
@@ -254,6 +269,7 @@ void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
 {
   auto dom = a_arr.m_domain;
   auto inPtr = a_arr.m_data.local();
+  /*
   forall([inPtr, dom](T(&laplacianElem),
                       const T(&inElem),
                       const fftx::point_t<DIM>& p)
@@ -262,7 +278,7 @@ void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
            for (int d = 0; d < DIM; d++)
              {
                for (int sgn = -1; sgn <= 1; sgn += 2)
-                 {
+                 {p
                    fftx::point_t<DIM> shift = Zero<DIM>();
                    shift[d] = sgn;
                    fftx::point_t<DIM> pShift = shiftInBox(p, shift, dom);
@@ -271,6 +287,29 @@ void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
                  }
              }
          }, a_laplacian, a_arr);
+  */
+  // Substitute for forall.
+  auto arrPtr = a_arr.m_data.local();
+  auto laplacianPtr = a_laplacian.m_data.local();
+  auto npts = dom.size();
+  for (size_t ind = 0; ind < npts; ind++)
+    {
+      auto p = pointFromPositionBox(ind, dom);
+      auto arrElem = arrPtr[ind];
+      auto laplacianElem = scalarVal<T>(0.);
+      for (int d = 0; d < DIM; d++)
+        {
+          for (int sgn = -1; sgn <= 1; sgn += 2)
+            {
+              fftx::point_t<DIM> shift = Zero<DIM>();
+              shift[d] = sgn;
+              fftx::point_t<DIM> pShift = shiftInBox(p, shift, dom);
+              size_t indShift = positionInBox(pShift, dom);
+              laplacianElem += arrPtr[indShift] - arrElem;
+            }
+        }
+      laplacianPtr[ind] = laplacianElem;
+    }
 }
 
 inline int sym_index(int i, int lo, int hi)
@@ -324,7 +363,7 @@ void symmetrizeHermitian(fftx::array_t<DIM, std::complex<double> >& a_arrIn,
 
   fftx::box_t<DIM> outputDomain = a_arrOut.m_domain;
   fftx::point_t<DIM> lo = outputDomain.lo;
-  fftx::point_t<DIM> hi = outputDomain.hi;
+  // fftx::point_t<DIM> hi = outputDomain.hi;
   fftx::point_t<DIM> extent = outputDomain.extents();
 
   auto npts = inputDomain.size();
@@ -464,3 +503,5 @@ void fillSymmetric(fftx::array_t<DIM, std::complex<double> >& a_arrOut,
         }
     }
 }
+
+#endif /*  end include guard FFTX_UTILITIES_HEADER */
