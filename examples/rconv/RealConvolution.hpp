@@ -5,33 +5,9 @@
 #include <random>
 
 #include "fftx3.hpp"
-// #include "fftx3utilities.h"
+#include "fftx3utilities.h"
 
-// Define {init|destroy|run}TransformFunc and transformTuple if undefined.
-#ifndef INITTRANSFORMFUNC
-#define INITTRANSFORMFUNC
-typedef void ( * initTransformFunc ) ( void );
-#endif
-
-#ifndef DESTROYTRANSFORMFUNC
-#define DESTROYTRANSFORMFUNC
-typedef void ( * destroyTransformFunc ) ( void );
-#endif
-
-#ifndef RUNTRANSFORMFUNC
-#define RUNTRANSFORMFUNC
-typedef void ( * runTransformFunc )
-( double *output, double *input, double *sym );
-#endif
-
-#ifndef TRANSFORMTUPLE_T
-#define TRANSFORMTUPLE_T
-typedef struct transformTuple {
-    initTransformFunc    initfp;
-    destroyTransformFunc destroyfp;
-    runTransformFunc     runfp;
-} transformTuple_t;
-#endif
+#include "fftx_rconv_public.h"
 
 #include "device_macros.h"
 #include "rconv.fftx.precompile.hpp"

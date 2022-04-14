@@ -2,21 +2,10 @@
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
 
-#include "device_macros.h"
-
-// #include "fftx_mddft_public.h"
-// #include "fftx_imddft_public.h"
-#include "fftx_rconv_public.h"
-
-// #include "mddft.fftx.precompile.hpp"
-// #include "imddft.fftx.precompile.hpp"
-#include "rconv.fftx.precompile.hpp"
-#include "transformer.fftx.precompile.hpp"
-
-#include "fftx3utilities.h"
 #include "rconv_dims.h"
 
 #include "RealConvolution.hpp"
+#include "fftx3utilities.h"
 
 template<int DIM>
 void rconvDimension(fftx::rconv<DIM>& a_transformer,
