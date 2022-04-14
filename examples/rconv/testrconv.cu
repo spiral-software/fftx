@@ -2,11 +2,10 @@
 #include <random>
 // #include "rconv2.fftx.codegen.hpp"
 #include "rconv3.fftx.codegen.hpp"
-#include "fftx3utilities.h"
-#include "device_macros.h"
 #include "rconv.h"
 
 #include "RealConvolution.hpp"
+#include "fftx3utilities.h"
   
 // using namespace fftx;
 
