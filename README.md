@@ -52,13 +52,11 @@ Follow the build instructions for **spiral-software** (see the **README**
 
 FFTX, like SPIRAL, requires **Python 3**.
 
-On macOS, `/usr/bin/python` usually links to Python 2.7, but `/usr/bin/python3`
-is also present.  Now macOS doesn't allow you to link `/usr/bin/python` to
-`/usr/bin/python3`, even with `sudo`.  So you will need to make a link like:
-```
-sudo ln -s /usr/bin/python3 /usr/local/bin/python
-```
-and then change your `$path` so that `/usr/local/bin` comes *before* `/usr/bin`.
+On some systems both **python** (usually version 2.7) and **python3** exist.
+The scripts used to create the FFTX library source code check the version of
+**python**, and if it is version 2.X it will try to run **python3** instead.  A
+user therefore, should not have to worry whether **python** or **python3** come
+first in the user's path.
 
 ### Installing FFTX
 
@@ -85,13 +83,13 @@ for CPU only you may encounter compiler errors or unexpected results.
 The shell script **build-lib-code.sh** builds the library code.  The script
 takes one optional argument to specify what code to build.  Serial code (CPU) is
 always built, GPU code is built when the argument passed is either **CUDA** or
-**HIP**.  Serial code is built is no argument is given or if the argument is
+**HIP**.  Serial code is built if no argument is given or if the argument is
 **CPU**.
 
 To create the library source code do the following:
 ```
 cd fftx				## your FFTX install directory
-cd examples/library
+cd src/library
 ./build-lib-code.sh CUDA	## build CUDA code
 cd ../..
 ```
@@ -120,7 +118,7 @@ Cygwin or msys will also work).  To build FFTX, open a shell and do the
 following:
 ```
 cd fftx
-cd examples/library
+cd src/library
 ./build-lib-code.sh CUDA
 cd ../..
 mkdir build
@@ -140,7 +138,9 @@ write priviliges; thus it is best to specify **CMAKE_INSTALL_PREFIX** explicitly
 on the **cmake** command line (as shown above).  A reasonable option is the root
 of your FFTX tree (e.g., ~/work/fftx).  The example programs are written to a
 **bin** folder and the libraries created are written to a **lib** folder.  To
-run the programs simply do (you may need to add the **lib** folder to LD_LIBRARY_PATH):
+run the programs simply do (we set RPATH to point to where the libraries are
+installed so you likelly will not need to adjust the library path variable,
+typically **LD_LIBRARY_PATH**):
 ```
 cd bin
 ./testcompare_device
@@ -177,14 +177,14 @@ libraries are built:
 
 ### Library API
 
-Each library has code serial code (CPU) and optionally GPU code (assuming either
+Each library has serial code (CPU) and optionally GPU code (assuming either
 CUDA or HIP code was built when the libraries were generated).  There are API
 calls to do the following:
 * Determine (get) the mode for the library (serial or GPU)
 * Specify (set) whether the library should operate in serial or GPU mode
 * Get the list of sizes built in the library
 * Get a tuple containing pointers to the init, destroy, and run functions for a particular size
-* Run an specific size transform once
+* Run a specific size transform once
 
 The following example shows usage of the 3D FFT complex to complex transform
 (others are similar, just use the appropriate names and header file(s) from the
@@ -246,7 +246,19 @@ A complete example of an external application that builds test programs
 utilizing the FFTX libraries is available at 
 [**fftx-demo-extern-app**](https://www.github.com/spiral-software/fftx-demo-extern-app).
 If you're interested in how to link an external application with FFTX please
-download this example and review the **CMakeLists.txt** therein for specific details.
+download this example and review the **CMakeLists.txt** therein for specific
+details.
+
+When FFTX is built, the final step (of *make install*) creates a tree structure
+(at the location specified by **CMAKE_INSTALL_PREFIX**).  The following
+directories will be created/populated:
+
+|Directory Name|Description|
+|:-----|:-----|
+|**./CMakeIncludes**|CMake include files and functions to ease integration with FFTX|
+|**./bin**|Example programs built as part of the FFTX distribution|
+|**./lib**|FFTX libraries|
+|**./include**|Include files for using FFTX libraries|
 
 ## Examples Structure
 
@@ -302,7 +314,7 @@ on the **cmake** command line (or defaults to CPU); do **not** override it in th
 &nbsp;&nbsp;**1.**&nbsp;&nbsp;
 Set the project name.  The preferred name is the same name as the example folder, e.g., **mddft**<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-project ( mddft ${\_lang\_add} )
+project ( mddft ${\_lang\_add} ${\_lang\_base} )
 
 &nbsp;&nbsp;**2.**&nbsp;&nbsp;
 As noted above, the file naming convention for the *driver* programs is *prefix.stem*.**cpp**.
