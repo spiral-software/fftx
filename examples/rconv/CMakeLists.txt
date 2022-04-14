@@ -23,8 +23,8 @@ set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
-##  manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
-##  add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
+manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
+add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
 
 ## Now for the version with _lib suffix.
 
