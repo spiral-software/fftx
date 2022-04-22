@@ -44,3 +44,16 @@ endforeach ()
 set ( _library_names ${_library_names} PARENT_SCOPE )
 set ( _library_includes ${_library_includes} ${_lib_include_dirs} PARENT_SCOPE )
 ##  message ( STATUS "Library include dirs = ${_lib_include_dirs}" )
+
+
+##  List of header files to be copies to .../include on 'make install'
+set ( _incl_files imddft.fftx.precompile.hpp
+	imdprdft.fftx.precompile.hpp
+	mddft.fftx.precompile.hpp
+	mdprdft.fftx.precompile.hpp
+	rconv.fftx.precompile.hpp
+	transformer.fftx.precompile.hpp
+    )
+
+install ( FILES ${_incl_files}
+	  DESTINATION ${CMAKE_INSTALL_PREFIX}/include )
