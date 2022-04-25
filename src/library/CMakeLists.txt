@@ -53,6 +53,7 @@ set ( _incl_files imddft.fftx.precompile.hpp
 	mdprdft.fftx.precompile.hpp
 	rconv.fftx.precompile.hpp
 	transformer.fftx.precompile.hpp
+	device_macros.h
     )
 
 install ( FILES ${_incl_files}
