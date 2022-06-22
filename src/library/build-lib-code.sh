@@ -62,20 +62,20 @@ touch build-lib-code-failures.txt
 
 echo "Always create the CPU code ... commands:"
 
-$pyexe gen_files.py fftx_mddft cpu true &
-$pyexe gen_files.py fftx_mddft cpu false &
-$pyexe gen_files.py fftx_mdprdft cpu true &
-$pyexe gen_files.py fftx_mdprdft cpu false &
-$pyexe gen_files.py fftx_rconv cpu true &
+$pyexe gen_files.py fftx_mddft cube-sizes-cpu.txt cpu true &
+$pyexe gen_files.py fftx_mddft cube-sizes-cpu.txt cpu false &
+$pyexe gen_files.py fftx_mdprdft cube-sizes-cpu.txt cpu true &
+$pyexe gen_files.py fftx_mdprdft cube-sizes-cpu.txt cpu false &
+$pyexe gen_files.py fftx_rconv cube-sizes-cpu.txt cpu true &
 
 wait		##  wait for the chile processes to complete
 
 ##  Build DFT batch for CPU
 
-$pyexe gen_dftbat.py fftx_dftbat cpu true &
-$pyexe gen_dftbat.py fftx_dftbat cpu false &
-$pyexe gen_dftbat.py fftx_prdftbat cpu true &
-$pyexe gen_dftbat.py fftx_prdftbat cpu false &
+$pyexe gen_dftbat.py fftx_dftbat dftbatch-sizes.txt cpu true &
+$pyexe gen_dftbat.py fftx_dftbat dftbatch-sizes.txt cpu false &
+$pyexe gen_dftbat.py fftx_prdftbat dftbatch-sizes.txt cpu true &
+$pyexe gen_dftbat.py fftx_prdftbat dftbatch-sizes.txt cpu false &
 
 wait
 
@@ -84,22 +84,22 @@ wait
 if [ $build_type = "CUDA" ]; then
     ##  Generate Nvidia GPU (CUDA) code
     echo "Generate CUDA code ..."
-    $pyexe gen_files.py fftx_mddft cuda true &
-    $pyexe gen_files.py fftx_mddft cuda false &
-    $pyexe gen_files.py fftx_mdprdft cuda true &
-    $pyexe gen_files.py fftx_mdprdft cuda false &
-    $pyexe gen_files.py fftx_rconv cuda true &
+    $pyexe gen_files.py fftx_mddft cube-sizes-gpu.txt cuda true &
+    $pyexe gen_files.py fftx_mddft cube-sizes-gpu.txt cuda false &
+    $pyexe gen_files.py fftx_mdprdft cube-sizes-gpu.txt cuda true &
+    $pyexe gen_files.py fftx_mdprdft cube-sizes-gpu.txt cuda false &
+    $pyexe gen_files.py fftx_rconv cube-sizes-gpu.txt cuda true &
     wait
 fi
 
 if [ $build_type = "HIP" ]; then
     ##  Generate AMD GPU (HIP) code
     echo "Generate HIP code ..."
-    $pyexe gen_files.py fftx_mddft hip true &
-    $pyexe gen_files.py fftx_mddft hip false &
-    $pyexe gen_files.py fftx_mdprdft hip true &
-    $pyexe gen_files.py fftx_mdprdft hip false &
-    $pyexe gen_files.py fftx_rconv hip true &
+    $pyexe gen_files.py fftx_mddft cube-sizes-gpu.txt hip true &
+    $pyexe gen_files.py fftx_mddft cube-sizes-gpu.txt hip false &
+    $pyexe gen_files.py fftx_mdprdft cube-sizes-gpu.txt hip true &
+    $pyexe gen_files.py fftx_mdprdft cube-sizes-gpu.txt hip false &
+    $pyexe gen_files.py fftx_rconv cube-sizes-gpu.txt hip true &
     wait
 fi
 
