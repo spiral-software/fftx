@@ -5,9 +5,13 @@
 #include <complex>
 #include "gpu.h"
 
-#include "cuda_runtime.h"
+#define FFTX_CUDA 1
+#include "../common/device_macros.h"
+
+
+// #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "cufft.h"
+// #include "cufft.h"
 
 using namespace std;
 
@@ -36,7 +40,7 @@ __global__ void __pack(
 	}
 }
 
-cudaError_t pack(
+DEVICE_ERROR_T pack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a_dim,
@@ -49,12 +53,12 @@ cudaError_t pack(
 	size_t batch
 ) {
 	__pack<<<dim3(a_dim, b_dim, batch), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size, batch);
-	cudaError_t cudaStatus = cudaDeviceSynchronize();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-    return cudaStatus;
+	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
+  if (device_status != DEVICE_SUCCESS) {
+    fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+    return device_status;
   }
-	return cudaSuccess;
+	return DEVICE_SUCCESS;
 }
 
 
@@ -70,7 +74,7 @@ void execute_packing(size_t cp_size,
       size_t b_i_stride = a_dim * cp_size;
       size_t b_o_stride =     1 * cp_size;
 		
-      cudaError_t err = pack(
+      DEVICE_ERROR_T err = pack(
 			     dst,
 			     src,
         a_dim, a_i_stride, a_o_stride,
@@ -78,7 +82,7 @@ void execute_packing(size_t cp_size,
         cp_size,
         1
       );
-      if (err != cudaSuccess) {
+      if (err != DEVICE_SUCCESS) {
           fprintf(stderr, "pack failed!\n");
       }
     }
