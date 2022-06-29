@@ -75,7 +75,7 @@ echo "Build for CPU = $BUILD_FOR_CPU"
 if [ "$BUILD_FOR_CPU" = true ]; then
     ##  Build the libraries for CPU
     pushd src/library
-    ./faux-build.sh "CPU"
+    ./build-lib-code.sh "CPU"
     popd
 fi
 
@@ -83,7 +83,7 @@ echo "Build for CUDA = $BUILD_FOR_CUDA"
 if [ "$BUILD_FOR_CUDA" = true ]; then
     ##  Build the libraries for CUDA
     pushd src/library
-    ./faux-build.sh "CUDA"
+    ./build-lib-code.sh "CUDA"
     popd
 fi
 
@@ -91,7 +91,7 @@ echo "Build for HIP = $BUILD_FOR_HIP"
 if [ "$BUILD_FOR_HIP" = true ]; then
     ##  Build the libraries for HIP
     pushd src/library
-    ./faux-build.sh "HIP"
+    ./build-lib-code.sh "HIP"
     popd
 fi
 
