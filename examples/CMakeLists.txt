@@ -15,14 +15,32 @@ project ( examples )
 ##  CPU and GPU.  Building for GPU will build for the GPU type (e.g., CUDA or
 ##  HIP) depending on the toolchain/compilers present
 
+##  Setup dependent options for those examples that depend on FFTX libraries.  If a
+##  pre-requisite library is not configured and built then don't attempt to build that
+##  example (NOTE: not all examples depend on libraries)
+
+include ( CMakeDependentOption )
+cmake_dependent_option ( BLD_COMPARE_EX "Build compare example" ON "MDDFT_LIB;PRMDDFT_LIB" OFF )
+cmake_dependent_option ( BLD_RCONV_EX "Build rconv example" ON "RCONV_LIB" OFF )
+cmake_dependent_option ( BLD_VERIFY_EX "Build verify example" ON "MDDFT_LIB;PRMDDFT_LIB" OFF )
+
 ##                  subdir name   CPU       GPU
 
-manage_add_subdir ( compare       FALSE     TRUE )
+if ( BLD_COMPARE_EX )
+    manage_add_subdir ( compare       FALSE     TRUE )
+endif ()
 
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
-manage_add_subdir ( rconv         TRUE      TRUE )
-manage_add_subdir ( verify        TRUE      TRUE )
+
+if ( BLD_RCONV_EX )
+    manage_add_subdir ( rconv         TRUE      TRUE )
+endif ()
+
+if ( BLD_VERIFY_EX )
+    manage_add_subdir ( verify        TRUE      TRUE )
+endif ()
+
 manage_add_subdir ( warpx         TRUE      FALSE )
 ##  manage_add_subdir ( warpx_basic   FALSE     TRUE )
 manage_add_subdir ( compare_cufft FALSE     TRUE )

@@ -54,7 +54,6 @@ if re.match ( '^.*_.*_', _file_stem ):
     _xform_pref = _dims[0]
     _xform_name = _dims[1]
     _xform_root = _dims[1]
-    _xform_name = _xform_name + '_'
     _xform_pref = _xform_pref + '_'
 
 _orig_file_stem = _file_stem
@@ -89,7 +88,7 @@ if len ( sys.argv ) >= 5:
     ##  Forward/Inverse parameter specified -- anything except false ==> true
     if re.match ( 'false', sys.argv[4], re.IGNORECASE ):
         _fwd = 'false'
-        _file_stem =  _xform_pref + 'i' + _xform_name
+        _file_stem =  _xform_pref + 'i' + _xform_name + '_'
         _xform_root = 'i' + _xform_root
         ##  print ( 'File stem = ' + _file_stem )
 
@@ -97,8 +96,10 @@ if len ( sys.argv ) >= 5:
 
 if _code_type == 'CPU':
     _decor = 'cpu_'
+    _decor_notrail = 'cpu'
 else:
     _decor = 'gpu_'
+    _decor_notrail = 'gpu'
 
 _srcs_dir  = 'lib_' + _file_stem + _decor + 'srcs'
 isdir = os.path.isdir ( _srcs_dir )
@@ -203,6 +204,12 @@ def body_public_header ( codefor ):
 
     _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<3> req );\n'
     _str = _str + '#define ' + _file_stem + 'Tuple ' + _file_stem + codefor + 'Tuple\n\n'
+
+    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
+    _str = _str + '//  without having to load the library).\n'
+    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+
+    _str = _str + 'char * ' + _file_stem + codefor + 'GetMetaData ();\n\n'
 
     _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
     _str = _str + 'extern "C" {\n\n'
@@ -530,6 +537,32 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     return _str;
 
 
+def create_metadata ( decor ):
+    "Create a compileable module to be added to the library that contains the metadata for the library"
+
+    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str = _str + '//  See LICENSE for details\n\n'
+
+    _str = _str + '#include <stdio.h>\n'
+    _str = _str + '#include <stdlib.h>\n'
+    _str = _str + '#include <string.h>\n\n'
+
+    _str = _str + _metadata + '</Sizes>\\n\\\n</libmd>\";\n\n'
+
+    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
+    _str = _str + '//  without having to load the library).\n'
+    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+
+    _str = _str + 'char * ' + _file_stem + decor + 'GetMetaData ()\n{\n'
+    _str = _str + '    char * wp = (char *) malloc ( strlen ( ' + _file_stem + 'MetaData ) + 1 );\n'
+    _str = _str + '    if ( wp != NULL )\n'
+    _str = _str + '        strcpy ( wp, ' + _file_stem + 'MetaData );\n\n'
+    _str = _str + '    return wp;\n'
+    _str = _str + '}\n\n'
+
+    return _str;
+
+
 def cmake_library ( decor, type ):
     _str =        '##\n## Copyright (c) 2018-2022, Carnegie Mellon University\n'
     _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
@@ -550,6 +583,7 @@ def cmake_library ( decor, type ):
 
     # _str = _str + 'list    ( APPEND _source_files ${_lib_root}_CPU_libentry.cpp' + ' )\n'
     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_metadata' + _file_suffix + ' )\n'
     # if type == 'CUDA' or type == 'HIP':
     #     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_' + type + '_libentry' + _file_suffix + ' )\n\n'
     ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
@@ -585,6 +619,11 @@ def cmake_library ( decor, type ):
 _extern_decls  = ''
 _all_cubes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
+
+_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"<libmd> lib' + _file_stem + _decor_notrail + '\\n\\\n'
+_metadata     += '<transform> ' + _xform_pref + _xform_name + ' </transform>\\n\\\n'
+_metadata     += '<targetclass> ' + _decor_notrail + ' <target> ' + _code_type + ' </target></targetclass>\\n\\\n'
+_metadata     += '<Sizes>\\n\\\n'
 
 
 with open ( _sizesfil, 'r' ) as fil:
@@ -662,6 +701,7 @@ with open ( _sizesfil, 'r' ) as fil:
             _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
+            _metadata += '<size> { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' } </size>\\n\\\n'
 
         else:
             ## Failed to generate file -- note it in build-lib-code-failures.txt
@@ -740,6 +780,14 @@ with open ( _sizesfil, 'r' ) as fil:
     # _filebody = _filebody + python_cuda_api ( False, _decor, _code_type, _xform_root )
     # _api_file.write ( _filebody )
     # _api_file.close ()
+
+    ##  Create the metadata file.
+
+    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'metadata' + _file_suffix
+    _api_file = open ( _hfil, 'w' )
+    _filebody = create_metadata ( _decor )
+    _api_file.write ( _filebody )
+    _api_file.close ()
 
     ##  Create the CMakeLists.txt file
     _hfil = _srcs_dir + '/CMakeLists.txt'
