@@ -10,26 +10,16 @@
 
 #include <stdlib.h>     /* srand, rand */
 
-#include "include/fftx_mpi_int.h"
+#include "fftx3.hpp"
+#include "fftx_mpi_int.h"
+#include "fftx_distdft_gpu_public.h"
 
 #define FFTX_CUDA 1
-#include "../common/device_macros.h"
+#include "device_macros.h"
 
 #define CHECK_WITH_CUFFT 1
 #if CHECK_WITH_CUFFT
-// #include ""
 #endif
-
-// dims are fastest to slowest
-//        [Local         ] [Distri]
-// Init:  [xl, yl, zl, zr] [xr, yr]
-// A2A:   [xl, yl, zl, xr] [zr, yr]
-// Perm:  [yl, zl, xl, xr] [zr, yr]
-// A2A:   [yl, zl, xl, yr] [zr, xr]
-// Perm:  [zl, xl, yl, yr] [zr, xr]
-// Gather:
-//  In:   [xl, yl, zl, zr, xr, yr]
-//  Out:  [zl, xl, yl, yr, zr, xr]
 
 using namespace std;
 
@@ -49,7 +39,7 @@ int main(int argc, char* argv[]) {
   int N = NN;
   int K = KK;
 
-  bool is_embedded = true; // TODO: get embedded testing working
+  bool is_embedded = false; // TODO: get embedded testing working
   int r = PP;
   int c = PP;
 
@@ -116,27 +106,36 @@ int main(int argc, char* argv[]) {
 
   DEVICE_SYNCHRONIZE();
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  double start_time = MPI_Wtime();
+  fftx::point_t<5> req({{r,c,M,N,K}});
+  transformTuple_t *tupl;
+  
+  if (tupl = fftx_distdft_Tuple(req))
+    {
+      MPI_Barrier(MPI_COMM_WORLD);
 
-  INIT_FN_NAME();
+      (* tupl->initfp)();
+      
+      double start_time = MPI_Wtime();
 
-  __FILEROOT__((double*)out_buffer, (double*)in_buffer);
 
-  DESTROY_FN_NAME();
+      (*tupl->runfp)(out_buffer, in_buffer);
+                  
+      //      fftx_distdft_Run(req, out_buffer, in_buffer);
 
-  double end_time = MPI_Wtime();
+      (* tupl->destroyfp)();
 
-  double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
-  double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
+      double end_time = MPI_Wtime();
+      
+      double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
+      double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
-  if (commRank == 0) {
-    printf("%lf %lf\n", min_time, max_time);
-  }
+      if (commRank == 0) {
+	printf("%lf %lf\n", min_time, max_time);
+      }
   
 
   // Check correctness against local compute.
-#if CHECK_WITH_CUFFT
+#if CHECK_WITH_CUFFT 
   {
     // can rewrite this bit..
     // int M = shape[0] * shape[1];
@@ -206,10 +205,10 @@ int main(int argc, char* argv[]) {
 
       // TODO: device_macros.h doesn't have cufftCreate or cufftMakePlan3d.
       // https://hipfft.readthedocs.io/en/rocm-5.1.3/api.html
-      res = cufftCreate(&plan);
+      res = DEVICE_FFT_CREATE(&plan);
       if (res != DEVICE_FFT_SUCCESS) { printf ("*Create failed\n"); }
       size_t worksize[1]; // 1 GPU.
-      res = cufftMakePlan3d(
+      res = DEVICE_FFT_MAKE_PLAN_3D(
         plan,
         Ko, No, Mo,
         DEVICE_FFT_Z2Z,
@@ -291,57 +290,9 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
-
-
-  destroy_2d_comms();
-  
+    }
   MPI_Finalize();
   
-  delete in_buff;
+  delete[] in_buff;
   return 0;
 }
-
-
-/*
-
-array([[[ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j]],
-
-       [[ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 2.+0.j, -1.-1.j,  0.+0.j, -1.+1.j],
-        [ 2.+0.j, -1.-1.j,  0.+0.j, -1.+1.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j]],
-
-       [[ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 2.+0.j, -1.-1.j,  0.+0.j, -1.+1.j],
-        [ 2.+0.j, -1.-1.j,  0.+0.j, -1.+1.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j]],
-
-       [[ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j],
-        [ 0.+0.j,  0.-0.j,  0.+0.j,  0.+0.j]]])
->>> np.fft.fftn(x)
-
-array([[[ 8.+0.j, -4.-4.j,  0.+0.j, -4.+4.j],
-        [-4.-4.j,  0.+4.j,  0.+0.j,  4.-0.j],
-        [ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j],
-        [-4.+4.j,  4.+0.j,  0.+0.j,  0.-4.j]],
-
-       [[-4.-4.j,  0.+4.j,  0.+0.j,  4.-0.j],
-        [ 0.+4.j,  2.-2.j,  0.+0.j, -2.-2.j],
-        [ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j],
-        [ 4.+0.j, -2.-2.j,  0.+0.j, -2.+2.j]],
-
-       [[ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j],
-        [ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j],
-        [ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j],
-        [ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j]],
-
-       [[-4.+4.j,  4.+0.j,  0.+0.j,  0.-4.j],
-        [ 4.+0.j, -2.-2.j,  0.+0.j, -2.+2.j],
-        [ 0.+0.j,  0.+0.j,  0.+0.j,  0.-0.j],
-        [ 0.-4.j, -2.+2.j,  0.+0.j,  2.+2.j]]])
-*/

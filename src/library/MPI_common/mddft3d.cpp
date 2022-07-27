@@ -112,8 +112,8 @@ void fftx_mpi_rcperm(double * _Y, double *_X, int stage, bool is_embedded)
         }
         if (is_embedded) {
           // TODO: device_macros.h doesn't have memset
-          cudaMemset(Y + 0*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
-          cudaMemset(Y + 3*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
+          DEVICE_MEM_SET(Y + 0*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
+          DEVICE_MEM_SET(Y + 3*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
           Y += 1*buffer_size/2; 
         }
         DEVICE_MEM_COPY(Y, send_buffer, buffer_size * sizeof(complex<double>), MEM_COPY_HOST_TO_DEVICE);
@@ -123,8 +123,8 @@ void fftx_mpi_rcperm(double * _Y, double *_X, int stage, bool is_embedded)
           // layout is now      ml, (nl, 2kl), mr
           // want output to be  (nl, 2kl), ml, mr
           // size_t buffer_size = shape[2] * 2*shape[4] * shape[0] * shape[1];
-          // cudaMemset(Y+(0*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>)); // embed packed buffer in twice as many zeros.
-          // cudaMemset(Y+(3*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>));
+          // DEVICE_MEM_SET(Y+(0*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>)); // embed packed buffer in twice as many zeros.
+          // DEVICE_MEM_SET(Y+(3*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>));
 
           size_t batch   = shape[1];
 
@@ -203,8 +203,8 @@ void fftx_mpi_rcperm(double * _Y, double *_X, int stage, bool is_embedded)
           }
         }
         if (is_embedded) {
-          cudaMemset(Y + 0*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
-          cudaMemset(Y + 3*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
+          DEVICE_MEM_SET(Y + 0*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
+          DEVICE_MEM_SET(Y + 3*buffer_size/2, 0, buffer_size/2 * sizeof(complex<double>));
           Y += 1*buffer_size/2; 
         }
         DEVICE_MEM_COPY(Y, send_buffer, buffer_size * sizeof(complex<double>), MEM_COPY_HOST_TO_DEVICE);
@@ -213,8 +213,8 @@ void fftx_mpi_rcperm(double * _Y, double *_X, int stage, bool is_embedded)
           // layout is now      nl, (2kl, 2ml), nr
           // want output to be  (2kl, 2ml), nl, nr
           // size_t buffer_size = 2*shape[4] * 2*shape[0] * shape[2] * shape[3];
-          // cudaMemset(Y+(0*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>)); // embed packed buffer in twice as many zeros.
-          // cudaMemset(Y+(3*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>));
+          // DEVICE_MEM_SET(Y+(0*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>)); // embed packed buffer in twice as many zeros.
+          // DEVICE_MEM_SET(Y+(3*buffer_size/2), 0, buffer_size/2 * sizeof(complex<double>));
 
           size_t batch   = shape[3];
           size_t cp_size = 1;
