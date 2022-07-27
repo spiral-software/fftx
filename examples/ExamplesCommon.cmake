@@ -33,8 +33,8 @@ if ( "x${CMAKE_MINIMUM_REQUIRED_VERSION}" STREQUAL "x" )
     message ( STATUS "FFTXSetup.cmake included; CMAKE_MINIMUM_REQUIRED_VERSION = ${CMAKE_MINIMUM_REQUIRED_VERSION}" ) 
 endif ()
 
-##  _codegen specifies CPU | GPU | HIP code generation.  Will be set in parent.
+##  _codegen specifies CPU | CUDA | HIP code generation.  Will be set in parent.
 
-if ( ${_codegen} STREQUAL "GPU" )
+if ( ${_codegen} STREQUAL "CUDA" )
     set ( _lang_add LANGUAGES CUDA )
 endif ()

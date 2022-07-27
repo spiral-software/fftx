@@ -38,7 +38,7 @@
 #define DEVICE_FFT_INVERSE HIPFFT_BACKWARD
 #elif defined(__CUDACC__) || defined(FFTX_CUDA)
 #include <cufft.h>
-#include "helper_cuda.h"
+#include <helper_cuda.h>
 #define DEVICE_SUCCESS cudaSuccess
 #define DEVICE_EVENT_T cudaEvent_t
 #define DEVICE_EVENT_CREATE cudaEventCreate

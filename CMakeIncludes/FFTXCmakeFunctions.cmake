@@ -30,7 +30,7 @@ function ( run_driver_program prefix stem )
     if ( ${ARGC} GREATER 2 )
 	##  received optional include directories -- add to target
 	foreach ( _fil ${ARGN} )
-	    message ( "add ${_fil} to include directories for ${_driver}" )
+	    ##  message ( "add ${_fil} to include directories for ${_driver}" )
 	    target_include_directories ( ${_driver} PRIVATE ${_fil} )
 	endforeach ()
     endif ()
@@ -72,22 +72,22 @@ endfunction ()
 ##  the plan and codegen header files).  For example:
 ##      create_generator_file ( _codefor "mddft" "fftx" )
 ##  will create script mddft.fftx.generator.g, _codefor indicates if code should
-##  be generated for CPU or GPU.  This script may be consumed in a subsequent
-##  step to create a source code file (e.g., see RunSpiral.cmake).
+##  be generated for CPU or GPU (CUDA or HIP).  This script may be consumed in a
+##  subsequent step to create a source code file (e.g., see RunSpiral.cmake).
 ##  Additionally, the variable ${mddft_gen} = "mddft.fftx.generator.g" is
 ##  defined.
     
 ##  define standard files... (may need to customize this later)
 
 set ( BACKEND_SPIRAL_CPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_cpu_serial )
-set ( BACKEND_SPIRAL_GPU_DIR      ${BACKEND_SOURCE_DIR}/spiral_gpu )
+set ( BACKEND_SPIRAL_CUDA_DIR     ${BACKEND_SOURCE_DIR}/spiral_gpu )
 set ( BACKEND_SPIRAL_HIP_DIR      ${BACKEND_SOURCE_DIR}/spiral_hip )
 
 set ( SPIRAL_BACKEND_CPU_PREAMBLE ${BACKEND_SPIRAL_CPU_DIR}/preamble.g )
-set ( SPIRAL_BACKEND_GPU_PREAMBLE ${BACKEND_SPIRAL_GPU_DIR}/preamble.g )
+set ( SPIRAL_BACKEND_CUDA_PREAMBLE ${BACKEND_SPIRAL_CUDA_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_HIP_PREAMBLE ${BACKEND_SPIRAL_HIP_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_CPU_CODEGEN  ${BACKEND_SPIRAL_CPU_DIR}/codegen.g  )
-set ( SPIRAL_BACKEND_GPU_CODEGEN  ${BACKEND_SPIRAL_GPU_DIR}/codegen.g  )
+set ( SPIRAL_BACKEND_CUDA_CODEGEN  ${BACKEND_SPIRAL_CUDA_DIR}/codegen.g  )
 set ( SPIRAL_BACKEND_HIP_CODEGEN  ${BACKEND_SPIRAL_HIP_DIR}/codegen.g  )
 
 function ( create_generator_file _codefor prefix stem )
@@ -110,6 +110,7 @@ function ( create_generator_file _codefor prefix stem )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
 	            ${_gen} ${_preamble} ${_plan} ${_postfix}
+	    COMMAND rm -f ${prefix}.${stem}.source.${_suffix}
             DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -118,6 +119,7 @@ function ( create_generator_file _codefor prefix stem )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
 	            ${_gen} ${_preamble} ${_plan} ${_postfix}
+	    COMMAND rm -f ${prefix}.${stem}.source.${_suffix}
 	    DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -158,17 +160,17 @@ endfunction ()
 
 function ( add_includes_libs_to_target _target _stem _prefixes )
     ##  Test _codegen and setup accordingly
-    if ( ${_codegen} STREQUAL "HIP" )
-	## run hipify-perl on the test driver
-	run_hipify_perl ( ${_target} ${_suffix} )
-	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
-	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
-	foreach ( _pref ${_prefixes} )
-	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
-	endforeach ()
-    else ()
+    # if ( ${_codegen} STREQUAL "HIP" )
+    # 	## run hipify-perl on the test driver
+    # 	run_hipify_perl ( ${_target} ${_suffix} )
+    # 	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
+    # 	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
+    # 	foreach ( _pref ${_prefixes} )
+    # 	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
+    # 	endforeach ()
+    # else ()
 	list ( APPEND _all_build_srcs ${_target}.${_suffix} )
-    endif ()
+    # endif ()
 
     add_executable   ( ${_target} ${_all_build_srcs} )
     ##  message ( STATUS "executable added: target = ${_target}, depends: = ${_all_build_srcs}" )
@@ -181,18 +183,18 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     target_compile_options ( ${_target} PRIVATE ${ADDL_COMPILE_FLAGS} )
  
     target_include_directories ( ${_target} PRIVATE
-	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )
+	${${PROJECT_NAME}_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${_library_includes} )
 
     if ( ${_codegen} STREQUAL "HIP" )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
 	target_link_libraries      ( ${_target} ${LIBS_FOR_HIP} )
-    elseif ( ${_codegen} STREQUAL "GPU" )
+    elseif ( ${_codegen} STREQUAL "CUDA" )
 	target_link_libraries      ( ${_target} ${LIBS_FOR_CUDA} )
     endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
 	##  Some libraries were built -- add them for linker
 	target_link_libraries      ( ${_target} ${_library_names} )
-	message ( STATUS "${_target}: Libraries added = ${_library_names}" )
+	##  message ( STATUS "${_target}: Libraries added = ${_library_names}" )
     endif ()
 
     ##  set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
@@ -206,7 +208,7 @@ endfunction ()
 ##  intermediate files (targets) for codegen and build the list of dependencies
 ##  for a test program.  The following conventions are assumed:
 ##  File naming convention is: <prefix>.<stem>.xxxxx (e.g., <prefix>.<stem>.cpp)
-##  The function is passed a codegen flag (create CPU/GPU/HIP code), a stem, a list
+##  The function is passed a codegen flag (create CPU/CUDA/HIP code), a stem, a list
 ##  of prefixes (1 or more) and builds lists of all source code files for the
 ##  test program and a list of dependency names (to ensure cmake builds all
 ##  targets in the right order).
@@ -218,16 +220,17 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	message ( FATAL_ERROR "manage_deps_codegen() requires at least 1 prefix" )
     endif ()
     
-    if ( ( ${_codefor} STREQUAL "GPU" ) OR ( ${_codefor} STREQUAL "HIP" ) )
+    ##  if ( ( ${_codefor} STREQUAL "CUDA" ) OR ( ${_codefor} STREQUAL "HIP" ) )
+    if ( ${_codefor} STREQUAL "CUDA" )
 	set ( _suffix cu PARENT_SCOPE )
 	set ( _suffix cu )
     else ()
 	set ( _suffix cpp PARENT_SCOPE )
 	set ( _suffix cpp )
     endif ()
-       
+
     foreach ( _prefix ${_prefixes} ) 
-	run_driver_program ( ${_prefix} ${_stem} )
+	run_driver_program ( ${_prefix} ${_stem} ${_library_includes} )
 	set ( _driver ${PROJECT_NAME}.${${_prefix}_driver} )
 	set ( _plan ${${_prefix}_plan} )
 	set ( _hdr  ${_prefix}.${_stem}.codegen.hpp )
@@ -270,11 +273,17 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
     if ( ${_buildForCpu} AND ${_codegen} STREQUAL "CPU" )
 	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
 	add_subdirectory ( ${_subdir} )
+	if ( NOT "X${_library_includes}" STREQUAL "X" )
+	    set ( _library_includes ${_library_includes} PARENT_SCOPE )
+	endif () 
+	if ( NOT "X${_library_names}" STREQUAL "X" )
+	    set ( _library_names ${_library_names} PARENT_SCOPE )
+	endif () 
     elseif ( NOT ${_buildForCpu} AND ${_codegen} STREQUAL "CPU" )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
-    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
+    if ( ${_buildForGpu} AND ( ${_codegen} STREQUAL "CUDA"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Adding subdirectory ${_subdir} to build for ${_codegen}" )
 	add_subdirectory ( ${_subdir} )
 	if ( NOT "X${_library_includes}" STREQUAL "X" )
@@ -283,7 +292,7 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 	if ( NOT "X${_library_names}" STREQUAL "X" )
 	    set ( _library_names ${_library_names} PARENT_SCOPE )
 	endif () 
-    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "GPU"  OR ${_codegen} STREQUAL "HIP" ) )
+    elseif ( NOT ${_buildForGpu} AND ( ${_codegen} STREQUAL "CUDA"  OR ${_codegen} STREQUAL "HIP" ) )
 	message ( STATUS "Do NOT build subdirectory ${_subdir} for ${_codegen}" )
     endif ()
 
@@ -329,10 +338,9 @@ endfunction ()
 ##  of transforms built by FFTX.  It relies on FFTX_HOME being set (typically an
 ##  external application would need this in order to include
 ##  $FFTX_HOME/CMakeInclude/FFTXCmakeFunctions.cmake in a CMake file anyway).
-##  The build directory name need not be known (we look for a folder in FFTX_HOME
-##  with a 'lib' subfolder).  All libraries in the 'lib' subfolder are noted, and
-##  the include path directive for the library is derived from the library name
-##  (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
+##  The libraries must be in the 'lib' folder (under $FFTX_HOME).  All libraries
+##  found are noted and the include path directive for the library is derived
+##  from the library name (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
 
 function ( FFTX_find_libraries )
 
@@ -348,42 +356,39 @@ function ( FFTX_find_libraries )
 	set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
     endif ()
 
-    ##  Find the build directory containing the libraries
+    ##  Find the 'installed' directory containing the libraries
     set (_root_folder "${FFTX_SOURCE_DIR}" )
+    if ( NOT IS_DIRECTORY ${_root_folder}/lib )
+	message ( SEND_ERROR "${_root_folder}/lib is not a directory -- no libraries found, CANNOT build" )
+    endif ()
+    
     set ( _add_link_directory )
     set ( _libraries_added )
-    set ( _includes_added ${FFTX_SOURCE_DIR}/include ${FFTX_SOURCE_DIR}/examples/library )
-    file ( GLOB _root_names RELATIVE ${_root_folder} CONFIGURE_DEPENDS ${_root_folder}/* )
+    set ( _includes_added ${FFTX_SOURCE_DIR}/include )
     
-    foreach ( _dir ${_root_names} )
-	if ( IS_DIRECTORY ${_root_folder}/${_dir} AND IS_DIRECTORY ${_root_folder}/${_dir}/lib )
-	    ##  this is the folder...
-	    message ( STATUS "Folder ${_root_folder}/${_dir}/lib may have installed libraries" )
-	    set ( _lib_found FALSE )
-	
-	    file ( GLOB _libs RELATIVE ${_root_folder}/${_dir}/lib
-		${_root_folder}/${_dir}/lib/*fftx_*_precomp* )
-	    ##  message ( STATUS "Check for libs in: ${_libs}" )
- 	    foreach ( _lib ${_libs} )
-		string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
-		string ( REGEX REPLACE "_precomp.*$" "" _lib ${_lib} )	## strip trailing stuff
-		list ( FIND _libraries_added "${_lib}_precomp" _posnlist )
-		if ( ${_posnlist} EQUAL -1 )
-		    ##  message ( STATUS "${_lib}_precomp not in list -- adding" )
-		    list ( APPEND _libraries_added "${_lib}_precomp" )
-		    list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
-		    set ( _lib_found TRUE )
-		endif ()
-	    endforeach ()
-	    if ( ${_lib_found} )
-		list ( APPEND _add_link_directory ${_root_folder}/${_dir}/lib )
-		message ( STATUS "Add linker dir: ${_add_link_directory}" )
-	    endif ()
+    set ( _lib_found FALSE )
+    file ( GLOB _libs RELATIVE ${_root_folder}/lib ${_root_folder}/lib/*fftx_* )
+    ##  message ( STATUS "Check for libs in: ${_libs}" )
+    foreach ( _lib ${_libs} )
+	string ( REGEX REPLACE "^lib"  "" _lib ${_lib} )	## strip leading 'lib' if present
+	string ( REGEX REPLACE ".so.*$" "" _lib ${_lib} )	## strip trailing stuff - Linux
+	string ( REGEX REPLACE ".dll.*$" "" _lib ${_lib} )	## strip trailing stuff - Windows
+	string ( REGEX REPLACE ".dylib.*$" "" _lib ${_lib} )	## strip trailing stuff - MAC
+	list ( FIND _libraries_added "${_lib}" _posnlist )
+	if ( ${_posnlist} EQUAL -1 )
+	    ##  message ( STATUS "${_lib} not in list -- adding" )
+	    list ( APPEND _libraries_added "${_lib}" )
+	    ##  list ( APPEND _includes_added  "${_root_folder}/examples/library/lib_${_lib}_srcs" )
+	    set ( _lib_found TRUE )
 	endif ()
     endforeach ()
+    if ( ${_lib_found} )
+	list ( APPEND _add_link_directory ${_root_folder}/lib )
+	message ( STATUS "Add linker dir: ${_add_link_directory}" )
+    endif ()
 
     ##  message ( STATUS "Include paths: ${_includes_added}" )
-    ##  message ( STATUS "Libraires found: ${_libraries_added}" )
+    ##  message ( STATUS "Libraries found: ${_libraries_added}" )
     ##  message ( STATUS "Library path is: ${_add_link_directory}" )
     
     ##  setup FFTX variables in parent scope for include dirs, library path, and library names

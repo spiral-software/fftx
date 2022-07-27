@@ -1,9 +1,10 @@
 #ifndef transformer_PRECOMPILE_H
 #define transformer_PRECOMPILE_H
 
-#ifdef FFTX_HIP
-#include <hip/hip_runtime.h>
-#endif
+// This is included in device_macros.h
+//#ifdef FFTX_HIP
+//#include <hip/hip_runtime.h>
+//#endif
 
 #include "fftx3.hpp"
 #include "device_macros.h"
@@ -26,6 +27,7 @@ namespace fftx {
       // May change these in derived class.
       m_inputSize = m_size;
       m_outputSize = m_size;
+      m_defined = false;
       // Do this in the derived class:
       // transformTuple_t* tupl = fftx_transformer_Tuple ( m_size );
       // setInit(tuple);
@@ -133,6 +135,8 @@ namespace fftx {
       return rtn;
     }
 
+    bool isDefined() { return m_defined; }
+
     double CPU_milliseconds() { return m_CPU_milliseconds; }
     double GPU_milliseconds() { return m_GPU_milliseconds; }
 
@@ -143,7 +147,11 @@ namespace fftx {
     point_t<DIM> sizeHalf()
     {
       point_t<DIM> ret = m_size;
+#if FFTX_COMPLEX_TRUNC_LAST
+      ret[DIM-1] = m_size[DIM-1]/2 + 1;
+#else
       ret[0] = m_size[0]/2 + 1;
+#endif
       return ret;
     }
 
@@ -160,6 +168,8 @@ namespace fftx {
       
   protected:
 
+    bool m_defined;
+
     point_t<DIM> m_size;
 
     point_t<DIM> m_inputSize;
@@ -175,7 +185,7 @@ namespace fftx {
       // a_tupl = fftx_transformer_Tuple ( m_size );
       if (a_tupl == nullptr)
         {
-          // printf("transformer: this size is not in the library.\n");
+          m_defined = false;
           printf("%s is not in the library.\n", name().c_str());
         }
       else
@@ -196,6 +206,7 @@ namespace fftx {
           DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_stop),
                        "device event create stop in setInit");
 #endif
+          m_defined = true;
         }
     }
 

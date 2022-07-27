@@ -42,6 +42,12 @@
  * etc...
  */
 
+// Set this to 1 for row-major order, 0 for column-major order.
+#define FFTX_ROW_MAJOR_ORDER 1
+
+// Set this to 1 if truncating complex array in last dimension, 0 if in first.
+#define FFTX_COMPLEX_TRUNC_LAST 1
+
 namespace fftx
 {
 
@@ -168,15 +174,37 @@ namespace fftx
     array_t(global_ptr<T>&& p, const box_t<DIM>& a_box)
       :m_data(p), m_domain(a_box) {;}
     array_t(const box_t<DIM>& m_box):m_domain(m_box)
-    { if(tracing)
+    {
+      if(tracing)
         {
           m_data = global_ptr<T>((T*)ID);
           std::cout<<"var_"<<ID<<":= var(\"var_"<<ID<<"\", BoxND("<<m_box.extents()<<", TReal));\n";
           ID++;
         }
-      else m_data = global_ptr<T>(new T[m_box.size()]);
+      else
+        {
+          m_local_data = new T[m_domain.size()];
+          m_data = global_ptr<T>(m_local_data);
+        }
     }
-    
+
+    ~array_t()
+    {
+      if (m_local_data != nullptr)
+        {
+          delete[] m_local_data;
+        }
+    }
+
+    friend void swap(array_t& first, array_t& second)
+    {
+      using std::swap;
+      swap(first.m_local_data, second.m_local_data);
+      swap(first.m_data, second.m_data);
+      swap(first.m_domain, second.m_domain);
+    }
+
+    T* m_local_data = nullptr;
     global_ptr<T> m_data;
     box_t<DIM>    m_domain;
     array_t<DIM, T> subArray(box_t<DIM>&& subbox);
@@ -709,7 +737,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
     point_t<DIM> lo = a_bx.lo;
     point_t<DIM> lengths = lengthsBox(a_bx);
 
-    /*
+#if FFTX_ROW_MAJOR_ORDER
     // Row-major order: Last dimension changes fastest.
     size_t disp = a_pt[0] - lo[0];
     for (int d = 1; d < DIM; d++)
@@ -717,8 +745,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
         disp *= lengths[d];
         disp += a_pt[d] - lo[d];
       }
-    */
-
+#else
     // Column-major order: First dimension changes fastest.
     size_t disp = a_pt[DIM-1] - lo[DIM-1];
     for (int d = DIM-2; d >= 0; d--)
@@ -726,6 +753,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
         disp *= lengths[d];
         disp += a_pt[d] - lo[d];
       }
+#endif
 
     return disp;
   }
@@ -739,7 +767,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
 
     point_t<DIM> pt;
 
-    /*
+#if FFTX_ROW_MAJOR_ORDER
     // Row-major order: Last dimension changes fastest.
     size_t disp = a_ind;
     for (int d = DIM-1; d >= 0; d--)
@@ -747,8 +775,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
           pt[d] = lo[d] + disp % lengths[d];
           disp = (disp - (pt[d] - lo[d])) / lengths[d];
        }
-    */
-
+#else
     // Column-major order: First dimension changes fastest.
     size_t disp = a_ind;
     for (int d = 0; d < DIM; d++)
@@ -756,6 +783,7 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
           pt[d] = lo[d] + disp % lengths[d];
           disp = (disp - (pt[d] - lo[d])) / lengths[d];
        }
+#endif
 
     return pt;
   }

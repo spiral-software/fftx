@@ -1,10 +1,10 @@
-
-
 #include "mddft.fftx.codegen.hpp"
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
+#include <string>
+#include "device_macros.h"
 
-#include <chrono>
+// #include <chrono>
 
 int main(int argc, char* argv[])
 {
@@ -17,29 +17,39 @@ int main(int argc, char* argv[])
     }
   // Does not work:
   //  fftx::box_t<3> domain(lo, hi);
-  
-  fftx::array_t<3,std::complex<double>> inputH(test_plan::domain);
-  fftx::array_t<3,std::complex<double>> outputH(test_plan::domain);
+
+  fftx::array_t<3,std::complex<double>> inputHost(test_plan::domain);
+  fftx::array_t<3,std::complex<double>> outputHost(test_plan::domain);
 
   forall([](std::complex<double>(&v), const fftx::point_t<3>& p)
          {
            v=std::complex<double>(2.0,0.0);
-         },inputH);
-  // additional code for GPU programs
-  std::complex<double> * bufferPtr;
-  std::complex<double> * inputPtr;
-  std::complex<double> * outputPtr;
-  cudaMalloc(&bufferPtr, test_plan::domain.size()*sizeof(std::complex<double>)*2);
-  inputPtr = bufferPtr;
-  outputPtr = bufferPtr + test_plan::domain.size();
-  cudaMemcpy(inputPtr, inputH.m_data.local(), test_plan::domain.size()*sizeof(std::complex<double>),
-             cudaMemcpyHostToDevice);
-  fftx::array_t<3,std::complex<double>> input(fftx::global_ptr<std::complex<double>>(inputPtr,0,1), test_plan::domain);
-  fftx::array_t<3,std::complex<double>> output(fftx::global_ptr<std::complex<double>>(outputPtr,0,1), test_plan::domain);
-  //  end special code for GPU
-  
+         },inputHost);
+
   double* mddft_cpu = new double[iterations];
+  double* imddft_cpu = new double[iterations];
+  // additional code for GPU programs
   float* mddft_gpu = new float[iterations];
+  float* imddft_gpu = new float[iterations];
+  std::string descrip = "CPU and GPU";
+
+  std::complex<double> * bufferDevicePtr;
+  std::complex<double> * inputDevicePtr;
+  std::complex<double> * outputDevicePtr;
+  DEVICE_MALLOC(&bufferDevicePtr,
+                test_plan::domain.size()*sizeof(std::complex<double>)*2);
+  inputDevicePtr = bufferDevicePtr;
+  outputDevicePtr = bufferDevicePtr + test_plan::domain.size();
+  DEVICE_MEM_COPY(inputDevicePtr, inputHost.m_data.local(),
+                  test_plan::domain.size()*sizeof(std::complex<double>),
+                  MEM_COPY_HOST_TO_DEVICE);
+  fftx::array_t<3,std::complex<double>> inputDevice(fftx::global_ptr<std::complex<double>>(inputDevicePtr,0,1), test_plan::domain);
+  fftx::array_t<3,std::complex<double>> outputDevice(fftx::global_ptr<std::complex<double>>(outputDevicePtr,0,1), test_plan::domain);
+
+  fftx::array_t<3,std::complex<double>>& input = inputDevice;
+  fftx::array_t<3,std::complex<double>>& output = outputDevice;
+  // end special code for GPU
+  
   printf("call mddft::init()\n");
   mddft::init();
 
@@ -52,17 +62,8 @@ int main(int argc, char* argv[])
       mddft_cpu[itn] = mddft::CPU_milliseconds;
     }
 
-  // printf("mddft for size 32 32 32 took  %.7e milliseconds wrt CPU\n", mddft::CPU_milliseconds);
-  // printf("mddft for size %d %d %d took  %.7e milliseconds wrt CPU\n",
-  // nx, ny, nz, mddft::CPU_milliseconds);
-  // printf("mddft for size 32 32 32 took  %.7e milliseconds wrt GPU\n", mddft::GPU_milliseconds);
-  // printf("mddft for size %d %d %d took  %.7e milliseconds wrt CPU\n",
-  // nx, ny, nz, mddft::GPU_milliseconds);
-
   mddft::destroy();
 
-  double* imddft_cpu = new double[iterations];
-  float* imddft_gpu = new float[iterations];
   printf("call imddft::init()\n");
   imddft::init();
 
@@ -76,26 +77,25 @@ int main(int argc, char* argv[])
 
   imddft::destroy();
 
-  printf("Times in milliseconds for CPU and GPU on mddft on %d trials of size %d %d %d:\n",
-         iterations, fftx_nx, fftx_ny, fftx_nz);
+  printf("Times in milliseconds for %s on mddft on %d trials of size %d %d %d:\n",
+         descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
   for (int itn = 0; itn < iterations; itn++)
     {
       printf("%.7e  %.7e\n", mddft_cpu[itn], mddft_gpu[itn]);
     }
-  delete[] mddft_cpu;
-  delete[] mddft_gpu;
 
-  printf("Times in milliseconds for CPU and GPU on imddft on %d trials of size %d %d %d:\n",
-         iterations, fftx_nx, fftx_ny, fftx_nz);
+  printf("Times in milliseconds for %s on imddft on %d trials of size %d %d %d:\n",
+         descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
   for (int itn = 0; itn < iterations; itn++)
     {
       printf("%.7e  %.7e\n", imddft_cpu[itn], imddft_gpu[itn]);
     }
 
+  delete[] mddft_cpu;
   delete[] imddft_cpu;
+  delete[] mddft_gpu;
   delete[] imddft_gpu;
 
   printf("%s: All done, exiting\n", argv[0]);
-
   return 0;
 }

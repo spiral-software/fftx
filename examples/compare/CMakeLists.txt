@@ -18,12 +18,12 @@ project ( compare ${_lang_add} ${_lang_base} )
 
 set ( _stem fftx )
 set ( _prefixes )
-set ( BUILD_PROGS testcompare_device testrconv_lib testverify_lib )
+set ( BUILD_PROGS testcompare_device testconstant testimpulse )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
-message ( STATUS "${BUILD_PROGRAM}: Library include dirs = ${_library_includes}" )
-message ( STATUS "${BUILD_PROGRAM}: Library names = ${_library_names}" )
+##  message ( STATUS "${BUILD_PROGS}: Library include dirs = ${_library_includes}" )
+##  message ( STATUS "${BUILD_PROGS}: Library names = ${_library_names}" )
 
 foreach ( _prog ${BUILD_PROGS} )
     ##  Build the dependencies and get the include directories / libraries for each program
