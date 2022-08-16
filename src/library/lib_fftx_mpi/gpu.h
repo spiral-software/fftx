@@ -5,10 +5,6 @@
 
 #include <complex>
 
-// #include "cuda_runtime.h"
-// #include "device_launch_parameters.h"
-// #include "cufft.h"
-
 #include "device_macros.h"
 
 DEVICE_ERROR_T pack(

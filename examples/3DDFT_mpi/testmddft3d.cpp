@@ -4,13 +4,12 @@
 #include <float.h>
 #include <unistd.h>
 #include <string>
-#include "gpu.h
+#include "gpu.h"
 #include "util.h"
-#include "mpi.h"
 #include "fftx3.hpp"
 #include "fftx_mpi.hpp"
 
-#include "fftx_distdft_gpu_decls.h"
+#include "fftx_distdft_gpu_public.h"
 
 #include <stdlib.h>     /* srand, rand */
 
@@ -34,12 +33,13 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
   const int root = 0;
 
-  // 3d fft sizes
-  int M = 60;
-  int N = 60;
-  int K = 60;
-
   bool is_embedded = true; // TODO: get embedded testing working
+
+  // 3d fft sizes
+  int M = 30 * (is_embedded ? 2 : 1);
+  int N = 30 * (is_embedded ? 2 : 1);
+  int K = 30 * (is_embedded ? 2 : 1);
+  
   int r = 2;
   int c = 2;
 
@@ -109,17 +109,14 @@ int main(int argc, char* argv[]) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  fftx::point_t<5> req({PP, PP, MM, NN, KK}) ;
+  fftx::point_t<5> req({r, c, M, N, K}) ;
   transformTuple_t *tptr = fftx_distdft_gpu_Tuple(req);
 
   (* tptr->initfp)();
   
   for (int t = 0; t < 1; t++) {
-    //    INIT_FN_NAME();
-
     double start_time = MPI_Wtime();
 
-    //    __FILEROOT__((double*)out_buffer, (double*)in_buffer);
     (* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
 
     double end_time = MPI_Wtime();
@@ -130,11 +127,11 @@ int main(int argc, char* argv[]) {
     if (commRank == 0) {
       printf("%lf %lf\n", min_time, max_time);
     }
-    //    DESTROY_FN_NAME();
+
   }
-  (* tptr->destroyfp)();
+
   
-  /*
+  
   // Check correctness against local compute.
 #if CHECK_WITH_CUFFT
   {
@@ -302,13 +299,9 @@ int main(int argc, char* argv[]) {
       printf("%lu miscompares, %f%% correct\n", miscompares, ((double ) Mo*No*Ko - miscompares) / (Mo*No*Ko) * 100.0);
     }
   }
-#endif
+#endif  
 
-
-
-  destroy_2d_comms();
-
-  */
+  (* tptr->destroyfp)();
   
   MPI_Finalize();
   

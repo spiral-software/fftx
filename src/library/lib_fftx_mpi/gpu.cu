@@ -8,11 +8,6 @@
 #define FFTX_CUDA 1
 #include "device_macros.h"
 
-
-// #include "cuda_runtime.h"
-// #include "device_launch_parameters.h"
-// #include "cufft.h"
-
 using namespace std;
 
 __global__ void __pack(

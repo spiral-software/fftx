@@ -11,7 +11,7 @@
 #define FFTX_MPI_EMBED_2 2
 
 #define FFTX_CUDA 1
-#include "../common/device_macros.h"
+#include "device_macros.h"
 
 
 using namespace std;
