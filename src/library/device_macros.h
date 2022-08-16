@@ -15,6 +15,7 @@
 #define DEVICE_EVENT_SYNCHRONIZE hipEventSynchronize
 #define DEVICE_FREE hipFree
 #define DEVICE_MEM_COPY hipMemcpy
+#define DEVICE_MEM_SET hipMemset
 #define MEM_COPY_DEVICE_TO_HOST hipMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE hipMemcpyHostToDevice
 #define DEVICE_ERROR_T hipError_t
@@ -23,7 +24,10 @@
 #define DEVICE_FFT_TYPE hipfftType
 #define DEVICE_FFT_RESULT hipfftResult
 #define DEVICE_FFT_HANDLE hipfftHandle
+#define DEVICE_FFT_CREATE hipfftCreate
+#define DEVICE_FFT_MAKE_PLAN_3D hipfftMakePlan3d
 #define DEVICE_FFT_PLAN3D hipfftPlan3d
+#define DEVICE_FFT_PLAN_MANY hipfftPlanMany
 #define DEVICE_FFT_EXECZ2Z hipfftExecZ2Z
 #define DEVICE_FFT_EXECD2Z hipfftExecD2Z
 #define DEVICE_FFT_EXECZ2D hipfftExecZ2D
@@ -36,9 +40,12 @@
 #define DEVICE_FFT_SUCCESS HIPFFT_SUCCESS
 #define DEVICE_FFT_FORWARD HIPFFT_FORWARD
 #define DEVICE_FFT_INVERSE HIPFFT_BACKWARD
-#elif defined(__CUDACC__)
+#elif defined(__CUDACC__) || defined(FFTX_CUDA)
 #include <cufft.h>
-#include <helper_cuda.h>
+#include "cuda_runtime.h"
+#if defined(__CUDACC__)
+#include "helper_cuda.h"
+#endif
 #define DEVICE_SUCCESS cudaSuccess
 #define DEVICE_EVENT_T cudaEvent_t
 #define DEVICE_EVENT_CREATE cudaEventCreate
@@ -50,6 +57,7 @@
 #define DEVICE_EVENT_SYNCHRONIZE cudaEventSynchronize
 #define DEVICE_FREE cudaFree
 #define DEVICE_MEM_COPY cudaMemcpy
+#define DEVICE_MEM_SET cudaMemset
 #define MEM_COPY_DEVICE_TO_HOST cudaMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE cudaMemcpyHostToDevice
 #define DEVICE_ERROR_T cudaError_t
@@ -58,7 +66,10 @@
 #define DEVICE_FFT_TYPE cufftType
 #define DEVICE_FFT_RESULT cufftResult
 #define DEVICE_FFT_HANDLE cufftHandle
+#define DEVICE_FFT_CREATE cufftCreate
+#define DEVICE_FFT_MAKE_PLAN_3D cufftMakePlan3d
 #define DEVICE_FFT_PLAN3D cufftPlan3d
+#define DEVICE_FFT_PLAN_MANY cufftPlanMany
 #define DEVICE_FFT_EXECZ2Z cufftExecZ2Z
 #define DEVICE_FFT_EXECD2Z cufftExecD2Z
 #define DEVICE_FFT_EXECZ2D cufftExecZ2D
