@@ -28,16 +28,16 @@ manage_add_subdir ( warpx         TRUE      FALSE )
 manage_add_subdir ( compare_cufft FALSE     TRUE )
 
 ##  MPI examples depend on MPI being installed & accessable
-
-find_package ( MPI COMPONENTS MPICXX )
+##  Looked for MPI at top level CMake
+##  find_package ( MPI COMPONENTS MPICXX )
 if ( ${MPI_FOUND} )
     ##  MPI installation found
-    setup_mpi_variables ()
+    ##  setup_mpi_variables ()
 
     if ( ${_codegen} STREQUAL "HIP" )
 	message ( STATUS "MPI example is not built for HIP" )
     else ()
-	manage_add_subdir ( MPI/3DFFT     FALSE     FALSE )
+	manage_add_subdir ( 3DDFT_mpi     FALSE     TRUE )
     endif ()
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )

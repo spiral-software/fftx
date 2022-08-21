@@ -62,6 +62,16 @@ include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )
 set ( CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib )
 message ( STATUS "Defined: INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}, INSTALL_RPATH = ${CMAKE_INSTALL_RPATH}" )
 
+##  MPI library and example depend on MPI being installed & accessable
+
+find_package ( MPI COMPONENTS MPICXX )
+if ( ${MPI_FOUND} )
+    ##  MPI installation found
+    setup_mpi_variables ()
+else ()
+    message ( STATUS "MPI NOT found: No MPI examples will be built" )
+endif ()
+
 ##  Walk the following subdirectories...
 
 add_subdirectory ( src )

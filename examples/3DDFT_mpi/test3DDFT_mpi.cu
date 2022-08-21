@@ -13,7 +13,6 @@
 
 #include <stdlib.h>     /* srand, rand */
 
-#define FFTX_CUDA 1
 #include "device_macros.h"
 
 #define CHECK_WITH_CUFFT 1

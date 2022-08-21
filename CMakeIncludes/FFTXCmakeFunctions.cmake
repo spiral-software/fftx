@@ -197,12 +197,28 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 	##  message ( STATUS "${_target}: Libraries added = ${_library_names}" )
     endif ()
 
-    ##  set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
     set ( INSTALL_DIR_TARGET ${CMAKE_INSTALL_PREFIX}/bin )
     install ( TARGETS ${_target} DESTINATION ${INSTALL_DIR_TARGET} )
 
 endfunction ()
-    
+
+##  add_mpi_decorations_to_target() -- Add MPI include directories, compile flags,
+##  link options, and libraries to target
+
+function ( add_mpi_decorations_to_target _target )
+    if (${MPI_FOUND} )
+	##  MPI installation found -- add the libraries and include for this target
+	target_include_directories ( ${_target} PRIVATE ${MPI_CXX_INCLUDE_DIRS} )
+	##  target_compile_options     ( ${_target} PRIVATE ${MPI_CXX_COMPILE_OPTIONS} )
+	##  target_link_options        ( ${_target} PRIVATE ${MPI_CXX_LINK_FLAGS} )
+	##  link flags are wrong on thom, setting manually
+	set ( _my_link_opts -Wl,--enable-new-dtags )
+	target_link_libraries      ( ${_target} ${MPI_CXX_LIBRARIES} )
+    else ()
+	message ( STATUS "MPI was not found -- cannot add decorations for target = ${_target}" )
+    endif ()
+endfunction ()
+
 
 ##  manage_deps_codegen() is a function called to orchestrate creating the
 ##  intermediate files (targets) for codegen and build the list of dependencies

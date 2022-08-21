@@ -3,10 +3,9 @@
 #include <sys/time.h>
 #include <malloc.h>
 #include <complex>
-#include "gpu.h"
 
-#define FFTX_CUDA 1
 #include "device_macros.h"
+#include "gpu.h"
 
 using namespace std;
 
