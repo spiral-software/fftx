@@ -20,6 +20,8 @@
 #if CHECK_WITH_CUFFT
 #endif
 
+#include "test_header.h"
+
 using namespace std;
 
 int main(int argc, char* argv[]) {
@@ -33,12 +35,12 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
   const int root = 0;
 
-  bool is_embedded = true; // TODO: get embedded testing working
+  bool is_embedded = false; // TODO: get embedded testing working
 
   // 3d fft sizes
-  int M = 30 * (is_embedded ? 2 : 1);
-  int N = 30 * (is_embedded ? 2 : 1);
-  int K = 30 * (is_embedded ? 2 : 1);
+  int M = 60 * (is_embedded ? 2 : 1);
+  int N = 60 * (is_embedded ? 2 : 1);
+  int K = 60 * (is_embedded ? 2 : 1);
   
   int r = 2;
   int c = 2;
@@ -113,10 +115,12 @@ int main(int argc, char* argv[]) {
   transformTuple_t *tptr = fftx_distdft_gpu_Tuple(req);
 
   (* tptr->initfp)();
+  //init_fftx_distdft_g2x2_c60x60x60_CUDA();
   
   for (int t = 0; t < 1; t++) {
     double start_time = MPI_Wtime();
 
+    //fftx_distdft_g2x2_c60x60x60_CUDA((double*)out_buffer, (double*)in_buffer);
     (* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
 
     double end_time = MPI_Wtime();
@@ -301,7 +305,8 @@ int main(int argc, char* argv[]) {
   }
 #endif  
 
-  (* tptr->destroyfp)();
+  //destroy_fftx_distdft_g2x2_c60x60x60_CUDA();
+  (* tptr->destroyfp)();  
   
   MPI_Finalize();
   
