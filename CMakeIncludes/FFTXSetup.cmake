@@ -118,9 +118,7 @@ set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 11)
 set ( CMAKE_CXX_STANDARD 11)
 
-##  Don't add ${FFTX_INCLUDE} to the list of include_directories
-
-include_directories ( ${SPIRAL_SOURCE_DIR}/profiler/targets
+include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets
     ${SPIRAL_SOURCE_DIR}/profiler/targets/include )
 
 if ( (NOT DEFINED CMAKE_BUILD_TYPE) OR (NOT CMAKE_BUILD_TYPE) )

@@ -9,7 +9,7 @@ cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
 project ( examples )
 
-##  All examples are expected to support CPU code generation, and ultimately
+##  Examples are generally expected to support CPU code generation, and ultimately
 ##  most (if not all) will support GPU code generation also.  Call
 ##  manage_add_subdir with the directory name and True/False for building for
 ##  CPU and GPU.  Building for GPU will build for the GPU type (e.g., CUDA or
@@ -50,13 +50,8 @@ manage_add_subdir ( compare_cufft FALSE     TRUE )
 find_package ( MPI COMPONENTS MPICXX )
 if ( ${MPI_FOUND} )
     ##  MPI installation found
-    setup_mpi_variables ()
-
-    if ( ${_codegen} STREQUAL "HIP" )
-	message ( STATUS "MPI example is not built for HIP" )
-    else ()
-	manage_add_subdir ( MPI/3DFFT     FALSE     FALSE )
-    endif ()
+    ##  setup_mpi_variables ()
+    manage_add_subdir ( 3DDFT_mpi     FALSE     TRUE )
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()

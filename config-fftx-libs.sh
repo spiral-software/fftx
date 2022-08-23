@@ -39,13 +39,13 @@ GPU_SIZES_FILE="cube-sizes-gpu.txt"
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
 
 ##  Build FFTX for CPU
-BUILD_FOR_CPU=true
+BUILD_FOR_CPU=false
 
 ##  Build FFTX for CUDA
-BUILD_FOR_CUDA=true
+BUILD_FOR_CUDA=false
 
 ##  Build FFTX for HIP
-BUILD_FOR_HIP=false
+BUILD_FOR_HIP=true
 
 #############################################################################################
 ##
