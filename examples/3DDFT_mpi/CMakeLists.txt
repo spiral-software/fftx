@@ -21,6 +21,16 @@ set ( _stem fftx )
 set ( _prefixes )
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
+##  One .cu file is coded with device_macros and should build for CUDA & HIP
+set ( _desired_suffix cu )
+if ( ${_codegen} STREQUAL "HIP" )
+    set_source_files_properties ( ${BUILD_PROGRAM}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
+    list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_HIP )
+elseif ( ${_codegen} STREQUAL "CUDA" )
+    set_source_files_properties ( ${BUILD_PROGRAM}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
+    list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
+endif ()
+
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
 manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )

@@ -31,6 +31,7 @@ endif ()
 
 add_library                ( ${_lib_name} SHARED ${_source_files} )
 target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )
+add_mpi_decorations_to_target ( ${_lib_name} )
 
 if ( ${_codegen} STREQUAL "CUDA" )
     set_property    ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )
