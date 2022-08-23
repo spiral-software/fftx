@@ -46,8 +46,8 @@ manage_add_subdir ( warpx         TRUE      FALSE )
 manage_add_subdir ( compare_cufft FALSE     TRUE )
 
 ##  MPI examples depend on MPI being installed & accessable
-
-find_package ( MPI COMPONENTS MPICXX )
+##  Looked for MPI at top level CMake
+##  find_package ( MPI COMPONENTS MPICXX )
 if ( ${MPI_FOUND} )
     ##  MPI installation found
     ##  setup_mpi_variables ()
