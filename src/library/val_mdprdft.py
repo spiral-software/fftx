@@ -11,8 +11,8 @@ import os
 import numpy as np
 
 if len(sys.argv) < 2:
-    print ('Usage: ' + sys.argv[0] + ': libdir [-c cube_size] [-f sizes_file]' )
-    sys.exit ('missing argument(s), NOTE: Only one of -c or -f should be specified')
+    print ('Usage: ' + sys.argv[0] + ': libdir [-s cube_size] [-f sizes_file]' )
+    sys.exit ('missing argument(s), NOTE: Only one of -s or -f should be specified')
 
 _under = '_'
 _libdir = sys.argv[1]
@@ -162,7 +162,7 @@ _sizesfile = 'cube-sizes.txt'
 
 if len(sys.argv) > 2:
     ##  Optional problem size or file specified:
-    if sys.argv[2] == '-c':
+    if sys.argv[2] == '-s':
         ##  problem size is specified:  e.g., 80x80x80
         _probsz = sys.argv[3]
         _probsz = _probsz.rstrip()                  ##  remove training newline
