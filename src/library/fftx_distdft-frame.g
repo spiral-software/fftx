@@ -49,7 +49,7 @@ if 1 = 1 then
     Yglobal := tcast ( TPtr ( dataLayout ), Y );
 
     t := TFCall ( TCompose ( [
-                         TTensorII ( DFT ( szcube[2], sign ), [szcube[3], szcube[1]], ACubeRot_ZXY, ACubeRot_XYZ ),
+                         TTensorII ( DFT ( szcube[2], sign ), [szcube[3], szcube[1]], ACubeRot_XYZ, ACubeRot_XYZ ),
                          TPrm ( fCubeTranspose ( Product (szcube),
                                                  "FFTX_MPI_3D_CUFFT_STAGE2", [ Product ( szcube ), false ] ) ),
                          TTensorII ( DFT ( szcube[1], sign ), [szcube[2], szcube[3]], ACubeRot_ZXY, ACubeRot_XYZ ),

@@ -32,12 +32,12 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
   const int root = 0;
 
-  bool is_embedded = true; // TODO: get embedded testing working
+  bool is_embedded = false; // TODO: get embedded testing working
 
   // 3d fft sizes
-  int M = 30 * (is_embedded ? 2 : 1);
-  int N = 30 * (is_embedded ? 2 : 1);
-  int K = 30 * (is_embedded ? 2 : 1);
+  int M = 60 * (is_embedded ? 2 : 1);
+  int N = 60 * (is_embedded ? 2 : 1);
+  int K = 60 * (is_embedded ? 2 : 1);
   
   int r = 2;
   int c = 2;
@@ -111,25 +111,23 @@ int main(int argc, char* argv[]) {
   fftx::point_t<5> req({r, c, M, N, K}) ;
   transformTuple_t *tptr = fftx_distdft_gpu_Tuple(req);
 
-  (* tptr->initfp)();
+  if ( tptr != NULL ) {
+	  (* tptr->initfp)();
   
-  for (int t = 0; t < 1; t++) {
-    double start_time = MPI_Wtime();
+	  for (int t = 0; t < 1; t++) {
+		  double start_time = MPI_Wtime();
 
-    (* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
+		  (* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
 
-    double end_time = MPI_Wtime();
+		  double end_time = MPI_Wtime();
     
-    double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
-    double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
+		  double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
+		  double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
-    if (commRank == 0) {
-      printf("%lf %lf\n", min_time, max_time);
-    }
-
-  }
-
-  
+		  if (commRank == 0) {
+			  printf("%lf %lf\n", min_time, max_time);
+		  }
+	  }
   
   // Check correctness against local compute.
 #if CHECK_WITH_CUFFT
@@ -300,7 +298,12 @@ int main(int argc, char* argv[]) {
   }
 #endif  
 
-  (* tptr->destroyfp)();
+      (* tptr->destroyfp)();
+  }
+  else {
+	  printf ( "Distributed library entry for req = { %d, %d, %d, %d, %d } not found ... skipping\n",
+			   req[0], req[1], req[2], req[3], req[4] );
+  }
   
   MPI_Finalize();
   

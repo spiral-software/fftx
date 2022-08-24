@@ -71,9 +71,11 @@ else
     MDDFT_LIB=true
     PRMDDFT_LIB=true
     RCONV_LIB=true
+    DISTDFT_LIB=true
     CPU_SIZES_FILE="cube-sizes-cpu.txt"
     GPU_SIZES_FILE="cube-sizes-gpu.txt"
     DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
+    DISTDFT_SIZES_FILE="distdft-sizes.txt"
 fi
 
 if [ $build_type = "CPU" ]; then
@@ -115,7 +117,8 @@ if [ $build_type = "CPU" ]; then
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
-    fi    
+    fi
+    ##  Not attempting to build Distributed DFT (MPI) for CPU
 fi
 
 if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
@@ -136,6 +139,13 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py fftx_rconv $GPU_SIZES_FILE $build_type true &
+    fi
+    if [ "$waitspiral" = true ]; then
+	wait		##  wait for the child processes to complete
+    fi    
+    if [ "$DISTDFT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true &
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete

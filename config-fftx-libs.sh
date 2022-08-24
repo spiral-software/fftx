@@ -29,6 +29,9 @@ PRMDDFT_LIB=true
 ##  Build the Real Convolution library
 RCONV_LIB=false
 
+##  Build the MPI distributed FFT library (MPI is required to build examples)
+DISTDFT_LIB=true
+
 ##  File containing the sizes to build for the CPU version of MDDFT, PRMDDFT, and RCONV
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
 
@@ -37,6 +40,9 @@ GPU_SIZES_FILE="cube-sizes-gpu.txt"
 
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
+
+##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
+DISTDFT_SIZES_FILE="distdft-sizes.txt"
 
 ##  Build FFTX for CPU
 BUILD_FOR_CPU=false
@@ -65,9 +71,11 @@ echo "PRDFTBAT_LIB=$PRDFTBAT_LIB" >> build-lib-code-options.sh
 echo "MDDFT_LIB=$MDDFT_LIB" >> build-lib-code-options.sh
 echo "PRMDDFT_LIB=$PRMDDFT_LIB" >> build-lib-code-options.sh
 echo "RCONV_LIB=$RCONV_LIB" >> build-lib-code-options.sh
+echo "DISTDFT_LIB=$DISTDFT_LIB" >> build-lib-code-options.sh
 echo "CPU_SIZES_FILE=$CPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "GPU_SIZES_FILE=$GPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "DFTBAT_SIZES_FILE=$DFTBAT_SIZES_FILE" >> build-lib-code-options.sh
+echo "DISTDFT_SIZES_FILE=$DISTDFT_SIZES_FILE" >> build-lib-code-options.sh
 
 popd
 
@@ -140,3 +148,9 @@ else
 fi
 echo "option ( RCONV_LIB \"Build the Real Convolution library\" $setopt )" >> options.cmake
 
+if [ "$DISTDFT_LIB" = true ]; then
+    setopt="ON"
+else
+    setopt="OFF"
+fi
+echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
