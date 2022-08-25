@@ -28,7 +28,8 @@ elif codefor = "CPU" then
     conf := LocalConfig.fftx.defaultConf();
 elif codefor = "HIP" then
 ##  conf := LocalConfig.mpi.??? ( procGrid );
-    conf := FFTXGlobals.defaultHIPConf();
+##    conf := FFTXGlobals.defaultHIPConf();
+    conf := LocalConfig.mpi.confMPIGPUDevice(procGrid);    
 fi;
 
 name := "fftx_default_name";
