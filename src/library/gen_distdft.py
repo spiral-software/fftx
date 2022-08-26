@@ -40,7 +40,7 @@ import shutil
 if len ( sys.argv ) < 4:
     ##  Must specify transform sizes_file target
     print ( sys.argv[0] + ': Missing args, usage:', flush = True )
-    print ( sys.argv[0] + ': transform sizes_file target [direction] [nogen]', flush = True)
+    print ( sys.argv[0] + ': transform sizes_file target [direction] [embed] [nogen]', flush = True)
     sys.exit (-1)
     
 _file_stem = sys.argv[1]
@@ -94,6 +94,15 @@ if len ( sys.argv ) >= 5:
         _xform_root = 'i' + _xform_root
         ##  print ( 'File stem = ' + _file_stem )
 
+##  Embedded defaults to 'false', override if specified as a parameter
+_embed = 'false'
+
+if len ( sys.argv ) >= 6:
+    ##  Embedded parameter specified -- anything except true ==> false
+    if re.match ( 'true', sys.argv[5], re.IGNORECASE ):
+        _embed = 'true'
+        _file_stem =  _file_stem + 'embed_'
+    
 ##  Create the library sources directory (if it doesn't exist)
 
 if _code_type == 'CPU':
@@ -518,6 +527,7 @@ with open ( _sizesfil, 'r' ) as fil:
         testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
         testscript.write ( 'fwd := ' + _fwd + '; \n' )
         testscript.write ( 'codefor := "' + _code_type + '"; \n' )
+        testscript.write ( 'embed := ' + _embed + '; \n' )
         testscript.close()
 
         _dims = re.sub ( '.*grid :=', '', line )        ## get grid size
@@ -554,13 +564,13 @@ with open ( _sizesfil, 'r' ) as fil:
         _func_stem = _func_stem + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2] + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
-        if len ( sys.argv ) < 6:
+        if len ( sys.argv ) >= 7:
+            ##  Just print a message and skip copde gen (test python process/logic)
+            print ( 'run spiral to create source file: ' + _file_name, flush = True )
+        else:
             ##  No optional argument, generate the code
             result = subprocess.run ( cmdstr, shell=True, check=True )
             res = result.returncode
-        else:
-            ##  Just print a message and skip copde gen (test python process/logic)
-            print ( 'run spiral to create source file: ' + _file_name, flush = True )
 
         ##  Add the file name to the list of sources, update declarations etc. if file exists
         if os.path.exists ( src_file_path ):

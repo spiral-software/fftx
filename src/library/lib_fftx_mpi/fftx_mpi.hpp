@@ -12,8 +12,8 @@
 #define FFTX_MPI_EMBED_1 1
 #define FFTX_MPI_EMBED_2 2
 
-#define FFTX_MPI_3D_CUFFT_STAGE2 2
 #define FFTX_MPI_3D_CUFFT_STAGE1 1
+#define FFTX_MPI_3D_CUFFT_STAGE2 2
 
 
 using namespace std;

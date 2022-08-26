@@ -146,6 +146,7 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     if [ "$DISTDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true &
+	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true true &
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
