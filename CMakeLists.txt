@@ -54,6 +54,7 @@ if ( APPLE )
     endif ()
 endif ()	
 
+add_compile_options(-std=c++17 -g)
 ##  Define CMake include directory and include the setup information
 set ( FFTX_CMAKE_INCLUDE_DIR ${FFTX_PROJECT_SOURCE_DIR}/CMakeIncludes )
 include ( "${FFTX_CMAKE_INCLUDE_DIR}/FFTXSetup.cmake" )

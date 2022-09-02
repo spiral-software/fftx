@@ -1,61 +1,56 @@
-#ifndef INTERFACE_H
-#define INTERFACE_H
+class MDDFTProblem: public GBTLXProblem {
 
-#include <cstdlib>
-#include <vector>
-#include <functional>
-#include <iostream>
-#include <fstream>
-#include <any>
-
-
-class Signature{
 public:
-    Signature() {
-
+    using GBTLXProblem::GBTLXProblem;
+    void randomProblemInstance() {
     }
-
-    // std::vector<std::any> in;
-    // std::vector<std::any> out;
-    // std::vector<std::any> in_out;
-    std::vector<fftx::array_t<3,std::complex<double>>> in;
-    std::vector<fftx::array_t<3,std::complex<double>>> out;
-    std::vector<fftx::array_t<3,std::complex<double>>> in_out;
-
 };
 
-class GBTLXProblem {
+class MDDFTSolver: public GBTLXSolver {
 public:
+    void semantics(GBTLXProblem &p) {
+        std::string descrip = "CPU";
+        int iterations = 20;
+        float* mddft_cpu = new float[iterations];
+        float* imddft_cpu = new float[iterations];
+        mddft::init();
+        printf("call mddft::transform()\n");
 
-    Signature sig;
+        for (int itn = 0; itn < iterations; itn++)
+            {
+            mddft::transform(p.sig.in[0], p.sig.out[0]);
+            mddft_cpu[itn] = mddft::CPU_milliseconds;
+            }
 
-    GBTLXProblem(){
-//set input/output = null
+        mddft::destroy();
 
+        printf("call imddft::init()\n");
+        imddft::init();
+
+        printf("call imddft::transform()\n");
+        for (int itn = 0; itn < iterations; itn++)
+            {
+            imddft::transform(p.sig.in[0], p.sig.out[0]);
+            imddft_cpu[itn] = imddft::CPU_milliseconds;
+            }
+
+        imddft::destroy();
+
+        printf("Times in milliseconds for %s on mddft on %d trials of size %d %d %d:\n",
+                descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
+        for (int itn = 0; itn < iterations; itn++)
+            {
+                printf("%.7e\n", mddft_cpu[itn]);
+            }
+
+        printf("Times in milliseconds for %s on imddft on %d trials of size %d %d %d:\n",
+                descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
+        for (int itn = 0; itn < iterations; itn++)
+            {
+                printf("%.7e\n", imddft_cpu[itn]);
+            }
+
+        delete[] mddft_cpu;
+        delete[] imddft_cpu;
     }
-
-
-    GBTLXProblem(Signature Sig){
-        sig= Sig;
-    }
-
-    virtual void randomProblemInstance() = 0;
-
-private:
 };
-
-class GBTLXSolver {
-public:
-    virtual void semantics(GBTLXProblem &p) = 0;
-    void Apply(GBTLXProblem &p);
-};
-
-void GBTLXSolver::Apply(GBTLXProblem &p){
-
-        //printf("semantics called\n");
-        semantics(p);
-
-}
-
-//FFTX_REFERENCE_TEST_TRITEST_HPP
-#endif 
