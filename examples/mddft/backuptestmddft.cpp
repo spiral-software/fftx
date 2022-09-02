@@ -1,8 +1,6 @@
 #include "mddft.fftx.codegen.hpp"
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
-#include "interface.hpp"
-#include "mddftObj.hpp"
 #include <string>
 #ifdef FFTX_HIP
 #include "device_macros.h"
@@ -58,79 +56,65 @@ int main(int argc, char* argv[])
   fftx::array_t<3,std::complex<double>>& output = outputHost;
 #endif  
 
-  std::vector<fftx::array_t<3,std::complex<double>>> inList;
-  std::vector<fftx::array_t<3,std::complex<double>>> outList;
+  printf("call mddft::init()\n");
+  mddft::init();
 
-  inList.push_back(input);
-  outList.push_back(output);
+  printf("call mddft::transform()\n");
 
-  Signature Sig;
-  Sig.in = inList;
-  Sig.out = outList;
+  for (int itn = 0; itn < iterations; itn++)
+    {
+      mddft::transform(input, output);
+#ifdef FFTX_HIP
+      mddft_gpu[itn] = mddft::GPU_milliseconds;
+#endif
+      mddft_cpu[itn] = mddft::CPU_milliseconds;
+    }
 
-  MDDFTProblem mdp(Sig);
-  MDDFTSolver mds;
-  mds.Apply(mdp);
+  mddft::destroy();
 
-//   printf("call mddft::init()\n");
-//   mddft::init();
+  printf("call imddft::init()\n");
+  imddft::init();
 
-//   printf("call mddft::transform()\n");
+  printf("call imddft::transform()\n");
+  for (int itn = 0; itn < iterations; itn++)
+    {
+      imddft::transform(input, output);
+#ifdef FFTX_HIP
+      imddft_gpu[itn] = imddft::GPU_milliseconds;
+#endif
+      imddft_cpu[itn] = imddft::CPU_milliseconds;
+    }
 
-//   for (int itn = 0; itn < iterations; itn++)
-//     {
-//       mddft::transform(input, output);
-// #ifdef FFTX_HIP
-//       mddft_gpu[itn] = mddft::GPU_milliseconds;
-// #endif
-//       mddft_cpu[itn] = mddft::CPU_milliseconds;
-//     }
+  imddft::destroy();
 
-//   mddft::destroy();
+  printf("Times in milliseconds for %s on mddft on %d trials of size %d %d %d:\n",
+         descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
+  for (int itn = 0; itn < iterations; itn++)
+    {
+#ifdef FFTX_HIP
+        printf("%.7e  %.7e\n", mddft_cpu[itn], mddft_gpu[itn]);
+#else
+      printf("%.7e\n", mddft_cpu[itn]);
+#endif
+    }
 
-//   printf("call imddft::init()\n");
-//   imddft::init();
+  printf("Times in milliseconds for %s on imddft on %d trials of size %d %d %d:\n",
+         descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
+  for (int itn = 0; itn < iterations; itn++)
+    {
+#ifdef FFTX_HIP
+      printf("%.7e  %.7e\n", imddft_cpu[itn], imddft_gpu[itn]);
+#else
+      printf("%.7e\n", imddft_cpu[itn]);
+#endif
+    }
 
-//   printf("call imddft::transform()\n");
-//   for (int itn = 0; itn < iterations; itn++)
-//     {
-//       imddft::transform(input, output);
-// #ifdef FFTX_HIP
-//       imddft_gpu[itn] = imddft::GPU_milliseconds;
-// #endif
-//       imddft_cpu[itn] = imddft::CPU_milliseconds;
-//     }
-
-//   imddft::destroy();
-
-//   printf("Times in milliseconds for %s on mddft on %d trials of size %d %d %d:\n",
-//          descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
-//   for (int itn = 0; itn < iterations; itn++)
-//     {
-// #ifdef FFTX_HIP
-//         printf("%.7e  %.7e\n", mddft_cpu[itn], mddft_gpu[itn]);
-// #else
-//       printf("%.7e\n", mddft_cpu[itn]);
-// #endif
-//     }
-
-//   printf("Times in milliseconds for %s on imddft on %d trials of size %d %d %d:\n",
-//          descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
-//   for (int itn = 0; itn < iterations; itn++)
-//     {
-// #ifdef FFTX_HIP
-//       printf("%.7e  %.7e\n", imddft_cpu[itn], imddft_gpu[itn]);
-// #else
-//       printf("%.7e\n", imddft_cpu[itn]);
-// #endif
-//     }
-
-//   delete[] mddft_cpu;
-//   delete[] imddft_cpu;
-// #ifdef FFTX_MPI
-//   delete[] mddft_gpu;
-//   delete[] imddft_gpu;
-// #endif
+  delete[] mddft_cpu;
+  delete[] imddft_cpu;
+#ifdef FFTX_MPI
+  delete[] mddft_gpu;
+  delete[] imddft_gpu;
+#endif
 
   printf("%s: All done, exiting\n", argv[0]);
   return 0;
