@@ -27,7 +27,7 @@ MDDFT_LIB=true
 PRMDDFT_LIB=true
 
 ##  Build the Real Convolution library
-RCONV_LIB=false
+RCONV_LIB=true
 
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
 DISTDFT_LIB=true
@@ -44,7 +44,13 @@ DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DISTDFT_SIZES_FILE="distdft-sizes.txt"
 
-##  Build FFTX for CPU
+##  Skip all examples: If set true none of the FFTX example programs will be built.  When
+##  set false only those example programs which have their dependent libraries will be
+##  built.  Some examples do not depend on any of the libraries and these will also be
+##  built.
+SKIP_EXAMPLES=false
+
+##Build FFTX for CPU
 BUILD_FOR_CPU=false
 
 ##  Build FFTX for CUDA
@@ -52,6 +58,8 @@ BUILD_FOR_CUDA=false
 
 ##  Build FFTX for HIP
 BUILD_FOR_HIP=true
+
+##  Can we add options to options.cmake to specify what to build: e.g., define _codegen and CXX_COMPILER?
 
 #############################################################################################
 ##
@@ -154,3 +162,11 @@ else
     setopt="OFF"
 fi
 echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
+
+if [ "SKIP_EXAMPLES" = true ]; then
+    setopt="ON"
+else
+    setopt="OFF"
+fi
+echo "option ( SKIP_EXAMPLES \"Skip (i.e., don't build) the FFTX example programs\" $setopt )" >> options.cmake
+

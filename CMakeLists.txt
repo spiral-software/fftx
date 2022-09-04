@@ -78,7 +78,15 @@ endif ()
 ##  Walk the following subdirectories...
 
 add_subdirectory ( src )
-add_subdirectory ( examples )
+
+include ( CMakeDependentOption )
+cmake_dependent_option ( BLD_EXAMPLES "Build examples tree" ON "SKIP_EXAMPLES" OFF )
+
+if ( NOT BLD_EXAMPLES )
+    ##  Skip examples is not set -- traverse the examples sub-directlry
+    add_subdirectory ( examples )
+endif ()
+
 add_subdirectory ( CMakeIncludes )
 
 ##  We will only build the documentation if the following conditions are satisfied:

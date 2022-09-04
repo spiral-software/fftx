@@ -368,8 +368,8 @@ endfunction ()
 ##  external application would need this in order to include
 ##  $FFTX_HOME/CMakeInclude/FFTXCmakeFunctions.cmake in a CMake file anyway).
 ##  The libraries must be in the 'lib' folder (under $FFTX_HOME).  All libraries
-##  found are noted and the include path directive for the library is derived
-##  from the library name (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
+##  found are noted and the include path directive for the library is set to
+##  $FFTX_HOME/include (all FFTX public headers are installed there).
 
 function ( FFTX_find_libraries )
 
