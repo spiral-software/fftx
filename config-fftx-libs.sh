@@ -24,7 +24,7 @@ PRDFTBAT_LIB=true
 MDDFT_LIB=true
 
 ##  Build the 3D DFT (real to complex, complex to real) library
-PRMDDFT_LIB=true
+MDPRDFT_LIB=true
 
 ##  Build the Real Convolution library
 RCONV_LIB=true
@@ -32,10 +32,10 @@ RCONV_LIB=true
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
 DISTDFT_LIB=true
 
-##  File containing the sizes to build for the CPU version of MDDFT, PRMDDFT, and RCONV
+##  File containing the sizes to build for the CPU version of MDDFT, MDPRDFT, and RCONV
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
 
-##  File containing the sizes to build for the GPU version of MDDFT, PRMDDFT, and RCONV
+##  File containing the sizes to build for the GPU version of MDDFT, MDPRDFT, and RCONV
 GPU_SIZES_FILE="cube-sizes-gpu.txt"
 
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
@@ -59,8 +59,6 @@ BUILD_FOR_CUDA=false
 ##  Build FFTX for HIP
 BUILD_FOR_HIP=true
 
-##  Can we add options to options.cmake to specify what to build: e.g., define _codegen and CXX_COMPILER?
-
 #############################################################################################
 ##
 ##  DO NOT make changes below this line when configuring the FFTX build options
@@ -77,7 +75,7 @@ echo "#!/bin/bash" >> build-lib-code-options.sh
 echo "DFTBAT_LIB=$DFTBAT_LIB" >> build-lib-code-options.sh
 echo "PRDFTBAT_LIB=$PRDFTBAT_LIB" >> build-lib-code-options.sh
 echo "MDDFT_LIB=$MDDFT_LIB" >> build-lib-code-options.sh
-echo "PRMDDFT_LIB=$PRMDDFT_LIB" >> build-lib-code-options.sh
+echo "MDPRDFT_LIB=$MDPRDFT_LIB" >> build-lib-code-options.sh
 echo "RCONV_LIB=$RCONV_LIB" >> build-lib-code-options.sh
 echo "DISTDFT_LIB=$DISTDFT_LIB" >> build-lib-code-options.sh
 echo "CPU_SIZES_FILE=$CPU_SIZES_FILE" >> build-lib-code-options.sh
@@ -142,12 +140,12 @@ else
 fi
 echo "option ( MDDFT_LIB \"Build the 3D DFT (complex to complex) library\" $setopt )" >> options.cmake
 
-if [ "$PRMDDFT_LIB" = true ]; then
+if [ "$MDPRDFT_LIB" = true ]; then
     setopt="ON"
 else
     setopt="OFF"
 fi
-echo "option ( PRMDDFT_LIB \"Build the 3D DFT (real to complex, complex to real) library\" $setopt )" >> options.cmake
+echo "option ( MDPRDFT_LIB \"Build the 3D DFT (real to complex, complex to real) library\" $setopt )" >> options.cmake
 
 if [ "$RCONV_LIB" = true ]; then
     setopt="ON"
@@ -169,4 +167,6 @@ else
     setopt="OFF"
 fi
 echo "option ( SKIP_EXAMPLES \"Skip (i.e., don't build) the FFTX example programs\" $setopt )" >> options.cmake
+
+##  Can we add options to options.cmake to specify what to build: e.g., define _codegen and CXX_COMPILER?
 

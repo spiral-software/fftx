@@ -20,9 +20,9 @@ project ( examples )
 ##  example (NOTE: not all examples depend on libraries)
 
 include ( CMakeDependentOption )
-cmake_dependent_option ( BLD_COMPARE_EX "Build compare example" ON "MDDFT_LIB;PRMDDFT_LIB" OFF )
+cmake_dependent_option ( BLD_COMPARE_EX "Build compare example" ON "MDDFT_LIB;MDPRDFT_LIB" OFF )
 cmake_dependent_option ( BLD_RCONV_EX "Build rconv example" ON "RCONV_LIB" OFF )
-cmake_dependent_option ( BLD_VERIFY_EX "Build verify example" ON "MDDFT_LIB;PRMDDFT_LIB" OFF )
+cmake_dependent_option ( BLD_VERIFY_EX "Build verify example" ON "MDDFT_LIB;MDPRDFT_LIB" OFF )
 cmake_dependent_option ( BLD_DISTDFT_MPI_EX "Build distributed DFT MPI example" ON "DISTDFT_LIB" OFF )
 
 ##                  subdir name   CPU       GPU

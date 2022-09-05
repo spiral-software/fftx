@@ -69,7 +69,7 @@ else
     DFTBAT_LIB=true
     PRDFTBAT_LIB=true
     MDDFT_LIB=true
-    PRMDDFT_LIB=true
+    MDPRDFT_LIB=true
     RCONV_LIB=true
     DISTDFT_LIB=true
     CPU_SIZES_FILE="cube-sizes-cpu.txt"
@@ -106,7 +106,7 @@ if [ $build_type = "CPU" ]; then
 	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type true &
 	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type false &
     fi
-    if [ "$PRMDDFT_LIB" = true ]; then
+    if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type true &
 	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type false &
@@ -131,7 +131,7 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
 	$pyexe gen_files.py fftx_mddft $GPU_SIZES_FILE $build_type true &
 	$pyexe gen_files.py fftx_mddft $GPU_SIZES_FILE $build_type false &
     fi
-    if [ "$PRMDDFT_LIB" = true ]; then
+    if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py fftx_mdprdft $GPU_SIZES_FILE $build_type true &
 	$pyexe gen_files.py fftx_mdprdft $GPU_SIZES_FILE $build_type false &
