@@ -35,6 +35,27 @@ import os, stat
 import re
 import shutil
 
+################  Definitions pulled from SnowWhite __init__.py  ############
+
+SW_METADATA_START   = '!!START_METADATA!!'
+SW_METADATA_END     = '!!END_METADATA!!'
+SW_STR_DOUBLE       = 'Double'
+SW_STR_FORWARD      = 'Forward'
+SW_STR_INVERSE      = 'Inverse'
+SW_KEY_DESTROY          = 'Destroy'
+SW_KEY_DIMENSIONS       = 'Dimensions'
+SW_KEY_DIRECTION        = 'Direction'
+SW_KEY_EXEC             = 'Exec'
+SW_KEY_INIT             = 'Init'
+SW_KEY_NAMES            = 'Names'
+SW_KEY_PLATFORM         = 'Platform'
+SW_KEY_PRECISION        = 'Precision'
+SW_KEY_TRANSFORMS       = 'Transforms'
+SW_KEY_TRANSFORMTYPE    = 'TransformType'
+SW_KEY_TRANSFORMTYPES   = 'TransformTypes'
+
+###################################
+
 ##  Process the command line args...
 if len ( sys.argv ) < 4:
     ##  Must specify transform sizes_file target
@@ -547,7 +568,10 @@ def create_metadata ( decor ):
     _str = _str + '#include <stdlib.h>\n'
     _str = _str + '#include <string.h>\n\n'
 
-    _str = _str + _metadata + '</Sizes>\\n\\\n</libmd>\";\n\n'
+    ##  remove last 3 chars of _metadata (they are an unwanted ',\\n')
+    _str = _str + _metadata
+    _str = _str[:-3]
+    _str = _str + '    ]\\\n}\\\n' + SW_METADATA_END + '";\n\n'
 
     _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
     _str = _str + '//  without having to load the library).\n'
@@ -620,10 +644,9 @@ _extern_decls  = ''
 _all_cubes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
 
-_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"<libmd> lib' + _file_stem + _decor_notrail + '\\n\\\n'
-_metadata     += '<transform> ' + _xform_pref + _xform_name + ' </transform>\\n\\\n'
-_metadata     += '<targetclass> ' + _decor_notrail + ' <target> ' + _code_type + ' </target></targetclass>\\n\\\n'
-_metadata     += '<Sizes>\\n\\\n'
+_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SW_METADATA_START + '\\\n{\\\n'
+_metadata     += '    \\"' + SW_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_name.upper() + '\\" ],\\\n'
+_metadata     += '    \\"' + SW_KEY_TRANSFORMS + '\\": [ \\\n'
 
 
 with open ( _sizesfil, 'r' ) as fil:
@@ -659,7 +682,6 @@ with open ( _sizesfil, 'r' ) as fil:
         if re.match ( 'rconv', _xform_root ) and _code_type == 'CPU' and int ( _dimx ) > 260:
             continue
 
-        ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
         ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
         _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
@@ -701,7 +723,22 @@ with open ( _sizesfil, 'r' ) as fil:
             _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
-            _metadata += '<size> { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' } </size>\\n\\\n'
+            _metadata += '        {    \\"' + SW_KEY_DIMENSIONS + '\\": [ ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' ],\\\n'
+            _metadata += '             \\"' + SW_KEY_DIRECTION + '\\": \\"'
+            if _fwd == 'true':
+                _metadata += SW_STR_FORWARD
+            else:
+                _metadata += SW_STR_INVERSE
+            _metadata += '\\",\\\n'
+            _metadata += '             \\"' + SW_KEY_NAMES + '\\": {\\\n'
+            _metadata += '                 \\"' + SW_KEY_DESTROY + '\\": \\"destroy_' + _func_stem + '\\",\\\n'
+            _metadata += '                 \\"' + SW_KEY_EXEC + '\\": \\"' + _func_stem + '\\",\\\n'
+            _metadata += '                 \\"' + SW_KEY_INIT + '\\": \\"init_' + _func_stem + '\\" },\\\n'
+            _metadata += '             \\"' + SW_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
+            ##  For now all libs generated are double precision -- maybe look at this in future
+            _metadata += '             \\"' + SW_KEY_PRECISION + '\\": \\"' + SW_STR_DOUBLE + '\\",\\\n'
+            _metadata += '             \\"' + SW_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_name.upper() + '\\"\\\n'
+            _metadata += '        },\\\n'
 
         else:
             ## Failed to generate file -- note it in build-lib-code-failures.txt
