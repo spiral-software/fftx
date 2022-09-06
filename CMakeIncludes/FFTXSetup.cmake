@@ -93,14 +93,15 @@ if ( ${_codegen} STREQUAL "CUDA" )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
 	set ( LIBS_FOR_CUDA cufft )
 	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
+	set ( CMAKE_CUDA_ARCHITECTURES 52 )
     else ()
 	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
 	##  Don't use -dc (library code can't be relocatable)
 	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
 	set ( LIBS_FOR_CUDA cufft culibos )
+	set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
     endif ()
-
-    set ( CMAKE_CUDA_ARCHITECTURES 52 )
+    list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
 endif ()
 
 if ( "x${DIM_X}" STREQUAL "x" )
@@ -118,7 +119,8 @@ set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
 set ( CMAKE_C_STANDARD 11)
 set ( CMAKE_CXX_STANDARD 11)
 
-include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets
+##  Don't add ${FFTX_INCLUDE} to the list of include_directories
+include_directories ( ${SPIRAL_SOURCE_DIR}/profiler/targets
     ${SPIRAL_SOURCE_DIR}/profiler/targets/include )
 
 if ( (NOT DEFINED CMAKE_BUILD_TYPE) OR (NOT CMAKE_BUILD_TYPE) )

@@ -34,39 +34,13 @@ foreach ( _prog ${BUILD_PROGS} )
     elseif ( ${_codegen} STREQUAL "CUDA" )
 	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
     endif ()
+
     if ( ${_prog} STREQUAL "test${PROJECT_NAME}" )
 	set ( _pref ${_prefixes} )
     else ()
 	set ( _pref ${_prefixes_lib} )
     endif ()
+
     manage_deps_codegen ( ${_codegen} ${_stem} "${_pref}" )
     add_includes_libs_to_target ( ${_prog} ${_stem} "${_pref}" )
 endforeach ()
-    
-# manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
-# add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
-
-# ## Now for the version with _lib suffix.
-
-# set ( BUILD_PROG_LIB test${PROJECT_NAME}_lib )
-# set ( _prefixes_lib )
-
-# ##  message ( STATUS "${BUILD_PROG_LIB}: Library include dirs = ${_library_includes}" )
-# ##  message ( STATUS "${BUILD_PROG_LIB}: Library names = ${_library_names}" )
-
-# manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes_lib}" )
-# add_includes_libs_to_target ( ${BUILD_PROG_LIB} ${_stem} "${_prefixes_lib}" )
-
-# ##  ===== For most examples you should not need to modify anything BELOW this line =====
-
-# foreach ( _prog ${BUILD_PROGS} )
-#     ##  Build the dependencies and get the include directories / libraries for each program
-#     if ( ${_codegen} STREQUAL "HIP" )
-# 	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
-#     elseif ( ${_codegen} STREQUAL "CUDA" )
-# 	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
-#     endif ()
-#     manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
-#     add_includes_libs_to_target ( ${_prog} ${_stem} "${_prefixes}" )
-#     add_mpi_decorations_to_target ( ${_prog} )
-# endforeach ()

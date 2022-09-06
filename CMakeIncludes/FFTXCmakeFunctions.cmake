@@ -88,6 +88,7 @@ set ( SPIRAL_BACKEND_CUDA_PREAMBLE ${BACKEND_SPIRAL_CUDA_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_HIP_PREAMBLE ${BACKEND_SPIRAL_HIP_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_CPU_CODEGEN  ${BACKEND_SPIRAL_CPU_DIR}/codegen.g  )
 set ( SPIRAL_BACKEND_CUDA_CODEGEN  ${BACKEND_SPIRAL_CUDA_DIR}/codegen.g  )
+set ( SPIRAL_BACKEND_CUDA_CODEGEN_CPP  ${BACKEND_SPIRAL_CUDA_DIR}/codegen_cpp.g  )
 set ( SPIRAL_BACKEND_HIP_CODEGEN  ${BACKEND_SPIRAL_HIP_DIR}/codegen.g  )
 
 function ( create_generator_file _codefor prefix stem )
@@ -98,6 +99,9 @@ function ( create_generator_file _codefor prefix stem )
 
     set ( _preamble ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} )
     set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN} )
+    if ( ${_codefor} STREQUAL "CUDA" AND ${_suffix} STREQUAL "cpp" )
+	set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN_CPP} )
+    endif ()
     if ( "X${_generator_script}" STREQUAL "X" )
 	##  The complete script is not defined -- no action required
     elseif ( ${_generator_script} STREQUAL "COMPLETE" )
@@ -274,6 +278,10 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	set                ( _ccode ${_prefix}.${_stem}.source.${_suffix} )
 	file               ( TO_NATIVE_PATH ${${PROJECT_NAME}_BINARY_DIR}/${_gen} _gfile )
 	create_source_file ( ${_gfile} ${_ccode} )
+	##  message ( STATUS "Create source file ${_ccode} from script ${_gfile}" )
+	if ( ${_codefor} STREQUAL "CUDA" )
+	    set_source_files_properties ( ${_ccode} PROPERTIES LANGUAGE CUDA )
+	endif ()
 
 	##  append to our running lists
 	list ( APPEND _all_build_srcs ${_hdr} ${_ccode} )

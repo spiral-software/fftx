@@ -27,9 +27,10 @@ set ( _desired_suffix cpp )
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
 if ( ${_codegen} STREQUAL "HIP" )
-    set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
+    set_source_files_properties ( ${BUILD_PROGRAM}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
 elseif ( ${_codegen} STREQUAL "CUDA" )
-    set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
+    set_source_files_properties ( ${BUILD_PROGRAM}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
 endif ()
+
 manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
 add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
