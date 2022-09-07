@@ -1,8 +1,8 @@
 #! python
 
-##  Validate FFTX built libraries against numpy (scipy) computed versions of the transforms
-##  Exercise all the sizes in the library (read cube-sizes or dftbatch-sizes) and call both
-##  forward and inverse transforms
+##  Validate FFTX built libraries against numpy computed versions of the transforms.
+##  Exercise all the sizes in the library (read cube-sizes file) and call both forward and
+##  inverse transforms.  Optionally, specify a single cube size to validate.
 
 import ctypes
 import sys
@@ -36,14 +36,17 @@ if re.match ( '^.*_.*_', _xform ):
 if sys.platform == 'win32':
     _libfwd = _libfwd + '.dll'
     _libinv = _libinv + '.dll'
+    _libext = '.dll'
 elif sys.platform == 'darwin':
     _libfwd = 'lib' + _libfwd + '.dylib'
     _libinv = 'lib' + _libinv + '.dylib'
+    _libext = '.dylib'
 else:
     _libfwd = 'lib' + _libfwd + '.so'
     _libinv = 'lib' + _libinv + '.so'
+    _libext = '.so'
 
-print ( 'library for fwd xform = ' + _libfwd + ' inv xform = ' + _libinv, flush = True )
+print ( 'library stems for fwd/inv xforms = ' + _libfwd + ' / ' + _libinv + ' lib ext = ' + _libext, flush = True )
 
 
 def exec_xform ( segnams, dims, fwd, libext, typecode ):
@@ -73,6 +76,10 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
         uselib = _libsegs[0] + libext + '.' + _libsegs[1]
 
     _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
+    if not os.path.exists ( _sharedLibPath ):
+        print ( 'library file: ' + uselib + ' does not exist - continue', flush = True )
+        return
+
     _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
 
     func = pywrap + 'init' + _under + 'wrapper'
