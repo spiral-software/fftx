@@ -18,9 +18,10 @@ project ( rconv ${_lang_add} ${_lang_base} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes rconv3 )
-set ( _prefixes_lib )
-set ( BUILD_PROGS test${PROJECT_NAME} test${PROJECT_NAME}_lib )
+set ( _prefixes rconv3 )	##  prefixes only required for test${PROJECT_NAME}
+
+set (         BUILD_PROGS test${PROJECT_NAME}_lib )
+list ( APPEND BUILD_PROGS test${PROJECT_NAME} )
 
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
@@ -38,7 +39,7 @@ foreach ( _prog ${BUILD_PROGS} )
     if ( ${_prog} STREQUAL "test${PROJECT_NAME}" )
 	set ( _pref ${_prefixes} )
     else ()
-	set ( _pref ${_prefixes_lib} )
+	set ( _pref )
     endif ()
 
     manage_deps_codegen ( ${_codegen} ${_stem} "${_pref}" )

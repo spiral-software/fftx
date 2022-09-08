@@ -19,24 +19,34 @@ project ( verify ${_lang_add} ${_lang_base} )
 
 set ( _stem fftx )
 set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
-set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
-set ( _prefixes_device )
-set ( BUILD_PROGRAM_DEVICE test${PROJECT_NAME}_device )
+##  prefixes are only required for test${PROJECT_NAME}
+
+set  (        BUILD_PROGS test${PROJECT_NAME}_device )
+list ( APPEND BUILD_PROGS test${PROJECT_NAME}_lib )
+list ( APPEND BUILD_PROGS test${PROJECT_NAME} )
+
+##  One .cpp file is coded with device_macros and should build for CUDA & HIP
+set ( _desired_suffix cpp )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
-manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
-add_includes_libs_to_target ( ${BUILD_PROGRAM} ${_stem} "${_prefixes}" )
-add_includes_libs_to_target ( ${BUILD_PROGRAM_DEVICE} ${_stem} "${_prefixes_device}" )
+##  Build the executables *with no prefix dependencies* first (because the list of dependencies is cumulative)
 
-## Now for the version with _lib suffix.
+foreach ( _prog ${BUILD_PROGS} )
+    ##  Build the dependencies and get the include directories / libraries for each program
+    if ( ${_codegen} STREQUAL "HIP" )
+	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
+    elseif ( ${_codegen} STREQUAL "CUDA" )
+	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
+    endif ()
 
-set ( BUILD_PROG_LIB test${PROJECT_NAME}_lib )
-set ( _prefixes_lib )
+    if ( ${_prog} STREQUAL "test${PROJECT_NAME}" )
+	set ( _pref ${_prefixes} )
+    else ()
+	set ( _pref )
+    endif ()
 
-##  message ( STATUS "${BUILD_PROG_LIB}: Library include dirs = ${_library_includes}" )
-##  message ( STATUS "${BUILD_PROG_LIB}: Library names = ${_library_names}" )
-
-manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes_lib}" )
-add_includes_libs_to_target ( ${BUILD_PROG_LIB} ${_stem} "${_prefixes_lib}" )
+    manage_deps_codegen ( ${_codegen} ${_stem} "${_pref}" )
+    add_includes_libs_to_target ( ${_prog} ${_stem} "${_pref}" )
+endforeach ()
