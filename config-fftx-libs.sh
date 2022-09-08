@@ -161,7 +161,7 @@ else
 fi
 echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
 
-if [ "BUILD_EXAMPLES" = true ]; then
+if [ "$BUILD_EXAMPLES" = true ]; then
     setopt="ON"
 else
     setopt="OFF"
