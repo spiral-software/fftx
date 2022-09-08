@@ -4,8 +4,8 @@
 #include <float.h>
 #include <unistd.h>
 #include <string>
-#include "gpu.h"
-#include "util.h"
+#include "fftx_gpu.h"
+#include "fftx_util.h"
 #include "fftx3.hpp"
 #include "fftx_mpi.hpp"
 

@@ -41,7 +41,7 @@ if ( WIN32 )
     set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )
 endif ()
 
-set ( _incl_files fftx_mpi.hpp gpu.h util.h )
+set ( _incl_files fftx_mpi.hpp fftx_gpu.h fftx_util.h )
 
 install ( TARGETS
           ${_lib_name}

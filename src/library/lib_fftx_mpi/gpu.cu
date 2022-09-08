@@ -5,7 +5,7 @@
 #include <complex>
 
 #include "device_macros.h"
-#include "gpu.h"
+#include "fftx_gpu.h"
 
 using namespace std;
 
