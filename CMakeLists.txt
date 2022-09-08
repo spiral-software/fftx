@@ -79,12 +79,11 @@ endif ()
 
 add_subdirectory ( src )
 
-include ( CMakeDependentOption )
-cmake_dependent_option ( BLD_EXAMPLES "Build examples tree" ON "SKIP_EXAMPLES" OFF )
-
-if ( NOT BLD_EXAMPLES )
-    ##  Skip examples is not set -- traverse the examples sub-directlry
+if ( BUILD_EXAMPLES )
+    ##  Build the FFTX example programs -- traverse the examples sub-directlry
     add_subdirectory ( examples )
+else ()
+    message ( "Build examples option = ${BUILD_EXAMPLES}; no example programs will be built" )
 endif ()
 
 add_subdirectory ( CMakeIncludes )
