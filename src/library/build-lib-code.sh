@@ -145,7 +145,7 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     fi    
     if [ "$DISTDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true &
+	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true false &
 	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true true &
     fi
     if [ "$waitspiral" = true ]; then
