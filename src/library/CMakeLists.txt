@@ -11,9 +11,6 @@ endif ()
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
-##  ===== For most examples you should not need to modify anything ABOVE this line =====
-
-##  Set the project name.  Preferred name is just the *name* of the example folder 
 project ( ${PROJECT} library ${_lang_add} ${_lang_base} )
 
 ##
@@ -30,14 +27,17 @@ file ( GLOB _pkg_names RELATIVE ${_pkg_folder} CONFIGURE_DEPENDS ${_pkg_folder}/
 set ( _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR} )
 set ( _library_names )
 
-##  Don't attempt MPI libraray unless: MPI found, codegen != CPU
+##  Don't attempt MPI library unless: MPI found, codegen != CPU
+##  lib_fftx_mpi is not generated code, want to get the header path and library first
 set ( _fftxmpi_libname )
+
 if ( ${MPI_FOUND} )
-    ##  lib_fftx_mpi is not generated code, want to get the header path and library first
-    manage_add_subdir ( lib_fftx_mpi     FALSE    TRUE )
-    set ( _fftxmpi_libname ${_lib_name} )
-    include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
-    list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+    if ( NOT ${_codegen} STREQUAL "CPU" )
+	add_subdirectory ( lib_fftx_mpi )
+	set ( _fftxmpi_libname ${_lib_name} )
+	include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+	list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+    endif ()
 endif ()
 
 foreach ( _dir ${_pkg_names} )
@@ -57,6 +57,7 @@ list ( APPEND _library_names ${_fftxmpi_libname} )
 set ( _library_names ${_library_names} PARENT_SCOPE )
 set ( _library_includes ${_library_includes} ${_lib_include_dirs} PARENT_SCOPE )
 message ( STATUS "Library include dirs = ${_lib_include_dirs}" )
+message ( STATUS "Library names = ${_library_names}" )
 
 
 ##  List of header files to be copies to .../include on 'make install'
