@@ -30,12 +30,15 @@ file ( GLOB _pkg_names RELATIVE ${_pkg_folder} CONFIGURE_DEPENDS ${_pkg_folder}/
 set ( _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR} )
 set ( _library_names )
 
-##  lib_fftx_mpi is not generated code, want to get the header path and library first
-add_subdirectory ( lib_fftx_mpi )
-set ( _fftxmpi_libname ${_lib_name} )
-include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
-list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
-##  list ( APPEND _library_names ${_lib_name} )
+##  Don't attempt MPI libraray unless: MPI found, codegen != CPU
+set ( _fftxmpi_libname )
+if ( ${MPI_found} )
+    ##  lib_fftx_mpi is not generated code, want to get the header path and library first
+    manage_add_subdir ( lib_fftx_mpi     FALSE    TRUE )
+    set ( _fftxmpi_libname ${_lib_name} )
+    include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+    list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+endif ()
 
 foreach ( _dir ${_pkg_names} )
     if ( IS_DIRECTORY ${_pkg_folder}/${_dir} AND EXISTS "${_pkg_folder}/${_dir}/CMakeLists.txt" )

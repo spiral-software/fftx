@@ -22,7 +22,10 @@ set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
 
 ##  prefixes are only required for test${PROJECT_NAME}
 
-set  (        BUILD_PROGS test${PROJECT_NAME}_device )
+if ( ( ${_codegen} STREQUAL "CUDA" ) OR ( ${_codegen} STREQUAL "HIP" ) )
+    set  (        BUILD_PROGS test${PROJECT_NAME}_device )
+endif ()
+
 list ( APPEND BUILD_PROGS test${PROJECT_NAME}_lib )
 list ( APPEND BUILD_PROGS test${PROJECT_NAME} )
 
