@@ -19,7 +19,7 @@ project ( src )
 
 ##                  subdir name   CPU       GPU
 
-set ( _library_includes ${CMAKE_CURRENT_SOURCE_DIR}/include )
+set ( _library_includes ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/library )
 include_directories ( ${_library_includes} )
 
 manage_add_subdir ( library       TRUE      TRUE )

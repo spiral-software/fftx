@@ -1,8 +1,8 @@
 #! python
 
-##  Validate FFTX built libraries against numpy (scipy) computed versions of the transforms
-##  Exercise all the sizes in the library (read cube-sizes or dftbatch-sizes) and call both
-##  forward and inverse transforms
+##  Validate FFTX built libraries against numpy computed versions of the transforms.
+##  Exercise all the sizes in the library (read cube-sizes file) and call both forward and
+##  inverse transforms.  Optionally, specify a single cube size to validate.
 
 import ctypes
 import sys
@@ -10,15 +10,21 @@ import re
 import os
 import numpy as np
 
-if len(sys.argv) < 3:
-    print ('Usage: ' + sys.argv[0] + ' libdir xform_name' )
-    sys.exit ('missing argument(s)')
-
-_libdir = sys.argv[1]
-_xform  = sys.argv[2]
-_xform  = _xform.rstrip()                             ## remove training newline
+if len(sys.argv) < 2:
+    print ('Usage: ' + sys.argv[0] + ': libdir [-s cube_size] [-f sizes_file]' )
+    sys.exit ('missing argument(s), NOTE: Only one of -s or -f should be specified')
 
 _under = '_'
+_libdir = sys.argv[1]
+fftxpre = 'fftx_'
+myvar   = sys.argv[0]
+if re.match ( 'val_', myvar ):
+    _xfmseg = re.split ( _under, myvar )
+    _xfmseg = re.split ( '\.', _xfmseg[1] )
+    _xform  = fftxpre + _xfmseg[0]
+
+_xform  = _xform.rstrip()                             ## remove training newline
+
 if not re.match ( '_$', _xform ):                ## append an underscore if one is not present
     _xform = _xform + _under
 
@@ -30,21 +36,20 @@ if re.match ( '^.*_.*_', _xform ):
 if sys.platform == 'win32':
     _libfwd = _libfwd + '.dll'
     _libinv = _libinv + '.dll'
+    _libext = '.dll'
 elif sys.platform == 'darwin':
     _libfwd = 'lib' + _libfwd + '.dylib'
     _libinv = 'lib' + _libinv + '.dylib'
+    _libext = '.dylib'
 else:
     _libfwd = 'lib' + _libfwd + '.so'
     _libinv = 'lib' + _libinv + '.so'
+    _libext = '.so'
 
-print ( 'library for fwd xform = ' + _libfwd + ' inv xform = ' + _libinv, flush = True )
+print ( 'library stems for fwd/inv xforms = ' + _libfwd + ' / ' + _libinv + ' lib ext = ' + _libext, flush = True )
 
-##  Default mode for library (get by calling the library <root>GetLibraryMode() func
-_def_libmode = 0
-_do_once = True
-lmode = [ 'CPU', 'CUDA', 'HIP' ]
 
-def exec_xform ( segnams, dims, fwd, libmode ):
+def exec_xform ( segnams, dims, fwd, libext, typecode ):
     "Run a transform specified by segment names and fwd flag of size dims"
 
     dx = int ( dims[0] )
@@ -60,56 +65,23 @@ def exec_xform ( segnams, dims, fwd, libmode ):
     froot = segnams[0] + _under
     if not fwd:
         froot = froot + 'i'
-    froot = froot + segnams[1] + _under
-    pywrap = froot + 'python' + _under
+    froot = froot + segnams[1]
+    pywrap = froot + libext + _under + 'python' + _under
 
     if fwd:
-        uselib = _libfwd
+        _libsegs = re.split ( '\.', _libfwd )
+        uselib = _libsegs[0] + libext + '.' + _libsegs[1]
     else:
-        uselib = _libinv
+        _libsegs = re.split ( '\.', _libinv )
+        uselib = _libsegs[0] + libext + '.' + _libsegs[1]
 
     _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
+    if not os.path.exists ( _sharedLibPath ):
+        print ( 'library file: ' + uselib + ' does not exist - continue', flush = True )
+        return
+
     _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
 
-    global _do_once
-    global _def_libmode
-    if _do_once:
-        func = froot + 'GetLibraryMode'
-        _libFuncAttr = getattr ( _sharedLibAccess, func, None)
-        if _libFuncAttr is None:
-            ##  No library mode functions -- just run without attempting to set CPU/GPU
-            msg = 'Could not find function: ' + func
-            ##  raise RuntimeError(msg)
-            print ( msg + ';  No CPU/GPU switching available', flush = True )
-        
-        _status = _libFuncAttr ( )
-        ##  print ( 'Initial, default Library mode = ' + str ( _status ) )
-        _def_libmode = _status
-        _do_once = False
-        
-    if libmode == 'CPU':
-        setlibmode = 0
-    else:
-        setlibmode = _def_libmode
-        ##  Want to run library default mode (will be CUDA / HIP if available)
-        ##  Only do so if present
-        if _def_libmode == 0:
-            ##  No GPU functions in library
-            print ( 'Library only has CPU code - no GPU function available' )
-            return
-
-    func = froot + 'SetLibraryMode'
-    _libFuncAttr = getattr ( _sharedLibAccess, func, None)
-    if _libFuncAttr is None:
-        ##  No library mode functions -- just run without attempting to set CPU/GPU
-        msg = 'Could not find function: ' + func
-        ##  raise RuntimeError(msg)
-        print ( msg + ';  No CPU/GPU switching available', flush = True )
-
-    global lmode
-    _libFuncAttr ( setlibmode )
-    ##  print ( 'Library mode set to ' + lmode[setlibmode] )
-    
     func = pywrap + 'init' + _under + 'wrapper'
     _libFuncAttr = getattr ( _sharedLibAccess, func, None)
     if _libFuncAttr is None:
@@ -168,27 +140,39 @@ def exec_xform ( segnams, dims, fwd, libmode ):
     else:
         dir = 'inverse'
 
-    print ( 'Difference between Python / Spiral(' + lmode[setlibmode] + ') [' + dir + '] transforms = ' + str ( diff ), flush = True )
+    print ( 'Difference between Python / Spiral(' + typecode + ') [' + dir + '] transforms = ' + str ( diff ), flush = True )
 
     return;
 
 
-if len(sys.argv) == 4:
-    ##  Optional problem size is specified:  e.g., 80x80x80
-    _probsz = sys.argv[3]
-    _probsz = _probsz.rstrip()                  ##  remove training newline
-    _dims = re.split ( 'x', _probsz )
+_sizesfile = 'cube-sizes.txt'
 
-    print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
-    exec_xform ( _xfmseg, _dims, True, 'CPU' )
-    exec_xform ( _xfmseg, _dims, False, 'CPU' )
-    exec_xform ( _xfmseg, _dims, True, '' )
-    exec_xform ( _xfmseg, _dims, False, '' )
+if len(sys.argv) > 2:
+    ##  Optional problem size or file specified:
+    if sys.argv[2] == '-s':
+        ##  problem size is specified:  e.g., 80x80x80
+        _probsz = sys.argv[3]
+        _probsz = _probsz.rstrip()                  ##  remove training newline
+        _dims = re.split ( 'x', _probsz )
 
-    exit ()
+        print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
+        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
+        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
+        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
+        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
 
-    
-with open ( 'cube-sizes.txt', 'r' ) as fil:
+        exit ()
+
+    elif sys.argv[2] == '-f':
+        ##  Option sizes file is specified:  use the supplied filename to loop over desired sizes
+        _sizesfile = sys.argv[3]
+        _sizesfile = _sizesfile.rstrip()
+
+    else:
+        print ( 'Unrecognized argument: ' + sys.argv[2] + ' ignoring remainder of command line', flush = True )
+
+
+with open ( _sizesfile, 'r' ) as fil:
     for line in fil.readlines():
         ##  print ( 'Line read = ' + line )
         if re.match ( '[ \t]*#', line ):                ## ignore comment lines
@@ -204,9 +188,9 @@ with open ( 'cube-sizes.txt', 'r' ) as fil:
         _dims = re.split ( ',', line )
 
         print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
-        exec_xform ( _xfmseg, _dims, True, 'CPU' )
-        exec_xform ( _xfmseg, _dims, False, 'CPU' )
-        exec_xform ( _xfmseg, _dims, True, '' )
-        exec_xform ( _xfmseg, _dims, False, '' )
+        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
+        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
+        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
+        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
 
     exit()
