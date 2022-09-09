@@ -32,7 +32,7 @@ set ( _library_names )
 
 ##  Don't attempt MPI libraray unless: MPI found, codegen != CPU
 set ( _fftxmpi_libname )
-if ( ${MPI_found} )
+if ( ${MPI_FOUND} )
     ##  lib_fftx_mpi is not generated code, want to get the header path and library first
     manage_add_subdir ( lib_fftx_mpi     FALSE    TRUE )
     set ( _fftxmpi_libname ${_lib_name} )
