@@ -478,6 +478,9 @@ def cmake_library ( decor, type ):
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n'
         _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n'
         _str = _str + 'add_mpi_decorations_to_target ( ${_lib_name} )\n\n'
+        _str = _str + 'if ( WIN32 )\n'
+        _str = _str + '    target_link_libraries ( ${_lib_name} PRIVATE ${LIBS_FOR_CUDA} ${_fftxmpi_libname} )\n'
+        _str = _str + 'endif ()\n\n'
     elif type == 'HIP':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n'
         _str = _str + 'add_mpi_decorations_to_target ( ${_lib_name} )\n\n'
