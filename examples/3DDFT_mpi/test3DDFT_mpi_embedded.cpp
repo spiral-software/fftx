@@ -2,7 +2,6 @@
 #include <limits.h>
 #include <complex>
 #include <float.h>
-#include <unistd.h>
 #include <string>
 #include "fftx_gpu.h"
 #include "fftx_util.h"
