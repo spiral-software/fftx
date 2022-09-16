@@ -114,7 +114,7 @@ function ( create_generator_file _codefor prefix stem )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
 	            ${_gen} ${_preamble} ${_plan} ${_postfix}
-	    COMMAND rm -f ${prefix}.${stem}.source.${_suffix}
+	    COMMAND IF EXIST ${prefix}.${stem}.source.${_suffix} ( DEL /F ${prefix}.${stem}.source.${_suffix} )
             DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
