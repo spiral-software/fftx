@@ -2,6 +2,7 @@
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
 #include "interface.hpp"
+#include <any>
 #include "mddftObj.hpp"
 #include <string>
 #ifdef FFTX_HIP
@@ -10,6 +11,7 @@
 
 int main(int argc, char* argv[])
 {
+  std::cout <<"this is my program \n";
   printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
 
   int iterations = 20;
@@ -58,8 +60,10 @@ int main(int argc, char* argv[])
   fftx::array_t<3,std::complex<double>>& output = outputHost;
 #endif  
 
-  std::vector<fftx::array_t<3,std::complex<double>>> inList;
-  std::vector<fftx::array_t<3,std::complex<double>>> outList;
+  std::vector<std::any> inList;
+  std::vector<std::any> outList;
+  std::vector<std::any> arglist;
+  arglist.push_back(argv);
 
   inList.push_back(input);
   outList.push_back(output);
@@ -67,6 +71,7 @@ int main(int argc, char* argv[])
   Signature Sig;
   Sig.in = inList;
   Sig.out = outList;
+  Sig.inputargs = arglist;
 
   MDDFTProblem mdp(Sig);
   MDDFTSolver mds;

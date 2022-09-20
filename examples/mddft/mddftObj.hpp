@@ -11,14 +11,14 @@ public:
     void semantics(GBTLXProblem &p) {
         std::string descrip = "CPU";
         int iterations = 20;
-        float* mddft_cpu = new float[iterations];
-        float* imddft_cpu = new float[iterations];
+        double* mddft_cpu = new double[iterations];
+        double* imddft_cpu = new double[iterations];
         mddft::init();
         printf("call mddft::transform()\n");
 
         for (int itn = 0; itn < iterations; itn++)
             {
-            mddft::transform(p.sig.in[0], p.sig.out[0]);
+            mddft::transform(std::any_cast<fftx::array_t<3,std::complex<double>>&>(p.sig.in[0]), std::any_cast<fftx::array_t<3,std::complex<double>>&>(p.sig.out[0]));
             mddft_cpu[itn] = mddft::CPU_milliseconds;
             }
 
@@ -30,7 +30,7 @@ public:
         printf("call imddft::transform()\n");
         for (int itn = 0; itn < iterations; itn++)
             {
-            imddft::transform(p.sig.in[0], p.sig.out[0]);
+            imddft::transform(std::any_cast<fftx::array_t<3,std::complex<double>>&>(p.sig.in[0]), std::any_cast<fftx::array_t<3,std::complex<double>>&>(p.sig.out[0]));
             imddft_cpu[itn] = imddft::CPU_milliseconds;
             }
 

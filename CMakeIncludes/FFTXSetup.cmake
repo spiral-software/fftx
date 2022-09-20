@@ -115,9 +115,9 @@ endif ()
 ##  Set include paths and require C++ 11 standard
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
-set ( CMAKE_C_STANDARD 11)
-set ( CMAKE_CXX_STANDARD 11)
-
+set ( CMAKE_C_STANDARD 17)
+set ( CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_FLAGS "-I /usr/local/cuda-11.7/include -L /usr/local/cuda-11.7/lib -L /usr/local/cuda-11.7/lib64/ -lnvrtc -lcuda -Wl,-rpath,/usr/local/cuda-11.7/lib64")
 include_directories ( ${FFTX_INCLUDE} ${SPIRAL_SOURCE_DIR}/profiler/targets
     ${SPIRAL_SOURCE_DIR}/profiler/targets/include )
 

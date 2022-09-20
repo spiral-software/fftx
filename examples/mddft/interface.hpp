@@ -1,13 +1,11 @@
-#ifndef INTERFACE_H
-#define INTERFACE_H
-
 #include <cstdlib>
 #include <vector>
 #include <functional>
 #include <iostream>
 #include <fstream>
 #include <any>
-
+#include "newinterface.hpp"
+#pragma once
 
 class Signature{
 public:
@@ -15,12 +13,13 @@ public:
 
     }
 
-    // std::vector<std::any> in;
-    // std::vector<std::any> out;
-    // std::vector<std::any> in_out;
-    std::vector<fftx::array_t<3,std::complex<double>>> in;
-    std::vector<fftx::array_t<3,std::complex<double>>> out;
-    std::vector<fftx::array_t<3,std::complex<double>>> in_out;
+    std::vector<std::any> in;
+    std::vector<std::any> out;
+    std::vector<std::any> in_out;
+    std::vector<std::any> inputargs;
+    // std::vector<fftx::array_t<3,std::complex<double>>> in;
+    // std::vector<fftx::array_t<3,std::complex<double>>> out;
+    // std::vector<fftx::array_t<3,std::complex<double>>> in_out;
 
 };
 
@@ -53,9 +52,14 @@ public:
 void GBTLXSolver::Apply(GBTLXProblem &p){
 
         //printf("semantics called\n");
-        semantics(p);
-
+        if(FILE * file = fopen("testinput.txt", "r")) {
+            std::cout << "found file to parse\n";
+            exit(1);
+            Executor e;
+            e.execute(inputargs.at(0));
+        }
+        else {
+            std::cout << "file not found or cached\n";
+            semantics(p);
+        }
 }
-
-//FFTX_REFERENCE_TEST_TRITEST_HPP
-#endif 
