@@ -1,15 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+//  #include <sys/time.h>
 #include <malloc.h>
 
 #include <complex>
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-#include "cufft.h"
+#include "device_macros.h"
 
-cudaError_t pack(
+DEVICE_ERROR_T pack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a_dim,
@@ -21,6 +19,18 @@ cudaError_t pack(
 	size_t copy_size,
 	size_t batch_size
 );
+
+
+// slowest to fastest
+// [a, b, c] -> [b, a, 2c]
+DEVICE_ERROR_T pack_embedded(
+	std::complex<double> *dst,
+	std::complex<double> *src,
+	size_t a,
+	size_t b,
+	size_t c
+);
+
 
 void execute_packing(size_t cp_size,
 		     size_t a_dim, size_t b_dim,

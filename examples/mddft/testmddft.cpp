@@ -2,7 +2,7 @@
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
 #include <string>
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "device_macros.h"
 #endif
 
@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 
   double* mddft_cpu = new double[iterations];
   double* imddft_cpu = new double[iterations];
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
   // additional code for GPU programs
   float* mddft_gpu = new float[iterations];
   float* imddft_gpu = new float[iterations];
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
   for (int itn = 0; itn < iterations; itn++)
     {
       mddft::transform(input, output);
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
       mddft_gpu[itn] = mddft::GPU_milliseconds;
 #endif
       mddft_cpu[itn] = mddft::CPU_milliseconds;
@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
   for (int itn = 0; itn < iterations; itn++)
     {
       imddft::transform(input, output);
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
       imddft_gpu[itn] = imddft::GPU_milliseconds;
 #endif
       imddft_cpu[itn] = imddft::CPU_milliseconds;
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
          descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
   for (int itn = 0; itn < iterations; itn++)
     {
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
         printf("%.7e  %.7e\n", mddft_cpu[itn], mddft_gpu[itn]);
 #else
       printf("%.7e\n", mddft_cpu[itn]);
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
          descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
   for (int itn = 0; itn < iterations; itn++)
     {
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
       printf("%.7e  %.7e\n", imddft_cpu[itn], imddft_gpu[itn]);
 #else
       printf("%.7e\n", imddft_cpu[itn]);
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 
   delete[] mddft_cpu;
   delete[] imddft_cpu;
-#ifdef FFTX_MPI
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
   delete[] mddft_gpu;
   delete[] imddft_gpu;
 #endif
