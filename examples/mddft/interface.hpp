@@ -3,8 +3,10 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
-#include <any>
+//#include <any>
 #include "newinterface.hpp"
+// #include <nvrtc.h>
+// #include <cuda.h>
 #pragma once
 
 class Signature{
@@ -13,13 +15,13 @@ public:
 
     }
 
-    std::vector<std::any> in;
-    std::vector<std::any> out;
-    std::vector<std::any> in_out;
-    std::vector<std::any> inputargs;
-    // std::vector<fftx::array_t<3,std::complex<double>>> in;
-    // std::vector<fftx::array_t<3,std::complex<double>>> out;
-    // std::vector<fftx::array_t<3,std::complex<double>>> in_out;
+    // std::vector<std::any> in;
+    // std::vector<std::any> out;
+    // std::vector<std::any> in_out;
+    std::vector<char**> inputargs;
+    std::vector<fftx::array_t<3,std::complex<double>>> in;
+    std::vector<fftx::array_t<3,std::complex<double>>> out;
+    std::vector<fftx::array_t<3,std::complex<double>>> in_out;
 
 };
 
@@ -54,9 +56,10 @@ void GBTLXSolver::Apply(GBTLXProblem &p){
         //printf("semantics called\n");
         if(FILE * file = fopen("testinput.txt", "r")) {
             std::cout << "found file to parse\n";
-            exit(1);
+            //exit(1);
             Executor e;
-            e.execute(inputargs.at(0));
+            //e.execute(std::any_cast<int>(p.sig.inputargs.at(0)), std::any_cast<char**>(p.sig.inputargs.at(1)));
+            e.execute(4, p.sig.inputargs.at(0));
         }
         else {
             std::cout << "file not found or cached\n";

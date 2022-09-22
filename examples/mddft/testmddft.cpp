@@ -2,6 +2,7 @@
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
 #include "interface.hpp"
+#include "newinterface.hpp"
 #include <any>
 #include "mddftObj.hpp"
 #include <string>
@@ -11,7 +12,7 @@
 
 int main(int argc, char* argv[])
 {
-  std::cout <<"this is my program \n";
+  std::cout <<"this is my program X3\n";
   printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
 
   int iterations = 20;
@@ -63,6 +64,7 @@ int main(int argc, char* argv[])
   std::vector<std::any> inList;
   std::vector<std::any> outList;
   std::vector<std::any> arglist;
+  arglist.push_back(argc);
   arglist.push_back(argv);
 
   inList.push_back(input);
