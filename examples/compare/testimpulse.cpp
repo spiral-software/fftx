@@ -2,11 +2,19 @@
 
 #include "device_macros.h"
 
-#include "fftx_mddft_public.h"
-#include "fftx_imddft_public.h"
-#include "fftx_mdprdft_public.h"
-#include "fftx_imdprdft_public.h"
-// #include "fftx_rconv_public.h"
+#if defined(__CUDACC__) || defined(FFTX_HIP)
+#include "fftx_mddft_gpu_public.h"
+#include "fftx_imddft_gpu_public.h"
+#include "fftx_mdprdft_gpu_public.h"
+#include "fftx_imdprdft_gpu_public.h"
+// #include "fftx_rconv_gpu_public.h"
+#else
+#include "fftx_mddft_cpu_public.h"
+#include "fftx_imddft_cpu_public.h"
+#include "fftx_mdprdft_cpu_public.h"
+#include "fftx_imdprdft_cpu_public.h"
+// #include "fftx_rconv_cpu_public.h"
+#endif
 
 #include "mddft.fftx.precompile.hpp"
 #include "imddft.fftx.precompile.hpp"

@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+//  #include <sys/time.h>
 #include <malloc.h>
 #include <complex>
-#include "gpu.h"
 
-#define FFTX_CUDA 1
 #include "device_macros.h"
+#include "fftx_gpu.h"
 
 using namespace std;
 
@@ -44,20 +43,16 @@ __global__ void __pack_embed(
 	size_t b,
 	size_t c
 ) {
-	size_t a_id = blockIdx.x; // index into dim_out
-	size_t b_id = blockIdx.y; // index into dim_in
-	size_t src_offset = a_id * 1*b*c + b_id * c;
-	src += src_offset;
-	size_t off = a_id < a/2 ? 0 : 3*a/2;
-	double2 *dst_zero   = dst + b_id * 2*a*c + (a_id + off) * c;
-	double2 *dst_offset = dst + b_id * 2*a*c + (a_id + a/2) * c;
-
-	for (size_t c_id = threadIdx.x; c_id < c; c_id += blockDim.x) {
-		double2 zero = {};
-		dst_zero  [c_id] = zero;
-		dst_offset[c_id] = src[c_id];
-	}
-
+ 
+    int ia = blockIdx.y;
+    int ib = blockIdx.x;
+    src += (ia - a/2) *   b*c + ib * c;
+    dst +=         ib * 2*c*a + ia * c;
+   
+    double2 zero = {};
+    for (int ic = threadIdx.x; ic < c; ic += blockDim.x) {
+        dst[ic] = a/2 <= ia && ia < 3*a/2 ? src[ic] : zero;
+    }
 }
 
 
@@ -89,7 +84,7 @@ DEVICE_ERROR_T pack_embedded(
 	size_t b,
 	size_t c
 ) {
-	__pack_embed<<<dim3(a, b), dim3(min(c, (size_t) 1024))>>>((double2 *) dst, (double2 *) src, a, b, c);
+	__pack_embed<<<dim3(b, 2*a), dim3(min(c, (size_t) 1024))>>>((double2 *) dst, (double2 *) src, a, b, c);
 	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
 		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
@@ -97,28 +92,3 @@ DEVICE_ERROR_T pack_embedded(
 	}
 	return DEVICE_SUCCESS;
 }
-
-
-void execute_packing(size_t cp_size,
-		     size_t a_dim, size_t b_dim,
-		     std::complex<double> *src,
-		     std::complex<double> *dst     )
-      {
-      size_t a_i_stride =     1 * cp_size;
-      size_t a_o_stride = b_dim * cp_size;
-
-      size_t b_i_stride = a_dim * cp_size;
-      size_t b_o_stride =     1 * cp_size;
-		
-      DEVICE_ERROR_T err = pack(
-			     dst,
-			     src,
-        a_dim, a_i_stride, a_o_stride,
-        b_dim, b_i_stride, b_o_stride,
-        cp_size,
-        1
-      );
-      if (err != DEVICE_SUCCESS) {
-          fprintf(stderr, "pack failed!\n");
-      }
-    }

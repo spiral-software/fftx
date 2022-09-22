@@ -6,7 +6,7 @@
 #include <any>
 #include "mddftObj.hpp"
 #include <string>
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "device_macros.h"
 #endif
 
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 
   double* mddft_cpu = new double[iterations];
   double* imddft_cpu = new double[iterations];
-#ifdef FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
   // additional code for GPU programs
   float* mddft_gpu = new float[iterations];
   float* imddft_gpu = new float[iterations];

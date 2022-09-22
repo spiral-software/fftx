@@ -1,126 +1,156 @@
 FFTX Project
 ============
 
-This is the public repository for the FFTX API source, examples, and documentation.
+This is the public repository for the **FFTX** API source, examples, and documentation.
 
 ## Building FFTX
 
-To use and build FFTX you must install the following pre-requisites:<br><br>
-    1.  **spiral-software**, available [**here**.](https://www.github.com/spiral-software/spiral-software)<br>
-    2.  **spiral-package-fftx**, available [**here**.](https://www.github.com/spiral-software/spiral-package-fftx)<br>
-    3.  **spiral-package-simt**, available [**here**.](https://www.github.com/spiral-software/spiral-package-simt)<br>
+### Prerequisites
 
-### C Compiler and Build Tools
+There are several pre-requisites that must be installed prior to building and
+using **FFTX**.  You will need:
 
-SPIRAL builds on Linux/Unix with **gcc** and **make**, on Windows it builds with **Visual Studio**.
+* **CMake**, minimum version 3.14; however, a more-modern version is preferred
+as some deprecated features must be used with older versions.
+* if on Linux/Unix, **gcc** and **make**.
+* if on Windows, **Visual Studio**, and an ability to run **bash** shell
+scripts.  You can use the Git Bash shell available with **git**, but other
+shells such as Cygwin or msys will also work.
+* if on macOS, version 10.14 (Mojave) or later of macOS, with a compatible
+version of **Xcode** and **Xcode Command Line Tools**.
+* **python**, version 3.6 or higher.  On some systems, both **python** (usually
+version 2.7) and **python3** exist.  The scripts used to create the **FFTX** library
+source code check the version of **python**, and if it is version 2.X it will
+try to run **python3** instead.  A user, therefore, should not have to worry
+whether **python** or **python3** comes first in the user's path.
 
-For macOS SPIRAL requires version 10.14 (Mojave) or later of macOS, with a compatible version of **Xcode** and
-and **Xcode Command Line Tools**. 
+To build and use **FFTX**, follow these steps:
+1. [Install **SPIRAL** and associated packages.](#1-install-spiral-and-associated-packages)
+2. [Clone the **FFTX** repository.](#2-clone-the-fftx-repository)
+3. [Generate library source code.](#3-generate-library-source-code)
+4. [Compile library source code and examples.](#4-compile-library-source-code-and-examples)
 
-### Installing Pre-requisites
+### 1. Install SPIRAL and associated packages
 
-#### spiral-software
-Tools required on the target machine in order to build SPIRAL and FFTX, include:
-<br>
-**cmake**, version 3.14 or higher
-<br>
-**python**, version 3.6 or higher
-
-Clone **spiral-software** to a location on you computer.  E.g., do:
+Clone **spiral-software** (available [**here**](https://www.github.com/spiral-software/spiral-software))
+to a location on your computer.  E.g.,:
 ```
 cd ~/work
 git clone https://www.github.com/spiral-software/spiral-software
 ```
-This location is known as *SPIRAL HOME* and you must set an environment variable
-**SPIRAL_HOME** to point to this location later.
+This location is known as *SPIRAL HOME*, and you must set an environment variable
+**SPIRAL_HOME** (here, **`~/work/spiral-software`**) to point to this location later.
 
-To install the spiral packages do the following:
+**FFTX** requires the **SPIRAL** packages
+[**fftx**](https://www.github.com/spiral-software/spiral-package-fftx),
+[**simt**](https://www.github.com/spiral-software/spiral-package-simt), and
+[**mpi**](https://www.github.com/spiral-software/spiral-package-mpi).
+
+You need to download these separately, as follows:
 ```
-cd ~/work/spiral-software/namespaces/packages
+cd $SPIRAL_HOME/namespaces/packages
 git clone https://www.github.com/spiral-software/spiral-package-fftx fftx
 git clone https://www.github.com/spiral-software/spiral-package-simt simt
 git clone https://www.github.com/spiral-software/spiral-package-mpi mpi
 ```
-**NOTE:** The spiral packages must be installed under directory
-**$SPIRAL_HOME/namespaces/packages** and must be placed in folders with the
-prefix *spiral-package* removed. 
+**NOTES:**
+* The **SPIRAL** packages must be installed under directory **$SPIRAL_HOME/namespaces/packages**
+and must be placed in folders with the prefix *spiral-package-* removed. 
+* If you already have **spiral-software** installed, please refresh the
+installation to ensure you're up-to-date, especially for the **SPIRAL** packages.
+* It is preferable to download the **SPIRAL** packages *before* performing
+the **SPIRAL** build steps.
 
 Follow the build instructions for **spiral-software** (see the **README**
 [**here**](https://github.com/spiral-software/spiral-software/blob/master/README.md) ).
 
-#### Python 3
+### 2. Clone the FFTX repository.
 
-FFTX, like SPIRAL, requires **Python 3**.
-
-On some systems both **python** (usually version 2.7) and **python3** exist.
-The scripts used to create the FFTX library source code check the version of
-**python**, and if it is version 2.X it will try to run **python3** instead.  A
-user therefore, should not have to worry whether **python** or **python3** come
-first in the user's path.
-
-### Installing FFTX
-
-Clone **FFTX** to a location on your computer.  E.g., do:
+Clone **FFTX** to a location on your computer.  E.g.,
 ```
 cd ~/work
 git clone https://www.github.com/spiral-software/fftx
 ```
-**NOTE:** Before attempting to build ensure you have set environment variable
-**SPIRAL_HOME** to point to your **spiral-software** instance.
+Set the environment variable **FFTX_HOME** to point to the directory where
+you want to install **FFTX** (which is not necessarily the same directory
+where you have cloned **FFTX**; you may want to have separate installation
+directories for different backends).
 
-Also set the environment variable **FFTX_HOME** to point to the directory where
-you have cloned **FFTX** (so `~/work/fftx` if following the exact commands above).
+### 3. Generate library source code.
 
-#### Building on Linux or Linux-like Systems
+**FFTX** builds libraries of transforms for a set of different sizes.  The library
+source code is generated from **SPIRAL** script specifications, and must be
+created before building **FFTX** itself.
 
-FFTX builds libraries of transforms for different sizes.  The library source
-code is generated from Spiral script specifications, and must be created before
-building FFTX.  Before creating the library source code consider if you will be
-running on CPU only or also utilizing a GPU.  If you create all the source code
+Before creating the library source code consider if you will be
+running on CPU only, or also utilizing a GPU.  If you create all the source code
 (and related **cmake** scripts and library APIs) for GPU and then try building
 for CPU only you may encounter compiler errors or unexpected results.
 
-The shell script **build-lib-code.sh** builds the library code.  The script
-takes one optional argument to specify what code to build.  Serial code (CPU) is
-always built, GPU code is built when the argument passed is either **CUDA** or
-**HIP**.  Serial code is built if no argument is given or if the argument is
-**CPU**.
+The shell script **config-fftx-libs.sh** is a utility script in the **FFTX** home
+directory that allows you to configure which libraries (and by extension, which
+examples) are to be built.  Each library has a flag (true/false) stating whether
+it will be built or not.  There is also a flag allowing the building of the
+example programs to be skipped (useful when you only need to build the libraries
+for an external application).  The script is self-documenting; edit the script
+to set the flags for the libraries either **true** or **false**.  Once you have
+made the appropriate choices simply run the script:
+```
+./config-fftx-libs.sh
+```
+No arguments are required for this script.  This script runs the
+**build-lib-code.sh** script in the **src/library** directory and will marshall
+the resources and options needed for the set of libraries selected.  This step
+can take quite a long time depending on the number of transforms and set of
+sizes to create.  The code is targeted to run on a CPU, a GPU (either CUDA or
+HIP) depending on the selections made in the configure script.  Depending on the
+number of sizes being built for each transform this process can take a
+considerable amount of time.
 
-To create the library source code do the following:
-```
-cd fftx				## your FFTX install directory
-cd src/library
-./build-lib-code.sh CUDA	## build CUDA code
-cd ../..
-```
-This step can take quite a long time depending on the number of transforms and
-set of sizes to create.  The code is targeted to run on the CPU, and code is
-created targeted to run on a GPU (CUDA or HIP) depending on the argument given
-to the build script.  Depending on the number of sizes being built for each
-transform this process can take a considerable amount of time.
+The text file **`build-lib-code-failures.txt`** will contain a list of all library
+transforms that failed to generate in this step.
 
-Next, run **cmake** and build the software:
+Running **config-fftx-libs.sh** also creates a file called **options.cmake**.
+The options defined in this file indicate the library choices made in the shell
+script and are used by **CMake** to determine which examples are to be built; as
+a rule, one should not attempt to build an example whose dependent libraries are
+not built.
+
+### 4. Compile library source code and examples.
+
+From your **FFTX** home directory, set up a **build** folder (which can be given
+any name, and you may want to have separate ones for different backends).  When
+you configure using **CMake** you must specify the install prefix that **CMake**
+should use (the default location for **CMake** may be a directory for which you
+do not have write privilidges).  Do that by setting the environment variable
+**FFTX_HOME** and specifying either the directory path or the environment
+variable on the **CMake** command line.
+
+**NOTES:**
+* You will need **FFTX_HOME** set in order to use or reference **FFTX** artifacts externally.<br>
+* **FFTX_HOME** may be, but does not have to be, the same as your **FFTX** home directory.
+* Some tips for building on a supercomputing platform at NERSC or OLCF are available
+[**here**.](https//github.com/spiral-software/spiral-software/blob/master/supercomputer-README.md)
+
 ```
+export FFTX_HOME=~/work/fftx
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CPU ..      # build for CPU, *or*
-cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..     # build for CUDA, *or*
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME  -D_codegen=CUDA ..     # build for CUDA, *or*
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -DCMAKE_CXX_COMPILER=hipcc -D_codegen=HIP ..      # build for HIP
 make install
 ```
 
 #### Building on Windows
 
-FFTX can be built on Windows, however, you need to be able to run a [bash] shell
-script to build the library source code.  The easiest option to accomplish this
-may be using the Git Bash shell available with **git** (other shells such as
-Cygwin or msys will also work).  To build FFTX, open a shell and do the
-following:
+**FFTX** can be built on Windows, however, you need to be able to run a [bash]
+shell script as mentioned above to build the library source code.  To build
+**FFTX**, edit **config-fftx-libs.sh** as described above, then open a shell and
+do the following:
 ```
 cd fftx
-cd src/library
-./build-lib-code.sh CUDA
-cd ../..
+./config-fftx-libs.sh
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..
@@ -129,76 +159,100 @@ cmake --build . --target install --config Release
 This shows an example building for CUDA on Windows, you can also build for CPU
 or AMD HIP as shown above (under Building for Linux).
 
-#### Running FFTX Example Programs
+When **FFTX** is built, the final step (of *make install*) creates a tree structure
+(at the location specified by **CMAKE_INSTALL_PREFIX**).  The following
+directories will be created/populated:
 
-Currently, **FFTX** builds a number of example programs; the programs will be
-installed in the location specified by **CMAKE_INSTALL_PREFIX**.  This often
-defaults to a system location, such as /usr/local, to which you may not have
-write priviliges; thus it is best to specify **CMAKE_INSTALL_PREFIX** explicitly
-on the **cmake** command line (as shown above).  A reasonable option is the root
-of your FFTX tree (e.g., ~/work/fftx).  The example programs are written to a
-**bin** folder and the libraries created are written to a **lib** folder.  To
-run the programs simply do (we set RPATH to point to where the libraries are
-installed so you likelly will not need to adjust the library path variable,
-typically **LD_LIBRARY_PATH**):
+|Directory Name|Description|
+|:-----|:-----|
+|**./CMakeIncludes**|CMake include files and functions to ease integration with **FFTX**|
+|**./bin**|Executables for example programs built as part of the **FFTX** distribution|
+|**./lib**|**FFTX** libraries, that can be called by external applications|
+|**./include**|Include files for using **FFTX** libraries|
+
+## Running FFTX Example Programs
+
+After building **FFTX**, to run the programs that are in the **examples** subtree, simply do:
 ```
-cd bin
+cd $FFTX_HOME/bin
 ./testcompare_device
 ./testverify
 ```
+etc.  Since we set **RPATH** to point to where the libraries are installed, you
+likely will not need to adjust the library path variable, typically
+**LD_LIBRARY_PATH**.
 
-The libraries built and copied to the **lib** folder can be used by external
-applications to leverage FFTX transforms.  To access the necessary include files
-and libraries an external application's **cmake** should include
-**CMakeInclude/FFTXCmakeFunctions.cmake**.  A full example of an external
-application linking with FFTX libraries is available in the
+The README in the **examples** folder
+[**here**](https://github.com/spiral-software/fftx/blob/master/examples/README.md)
+contains a list of examples, how to run them, and how to add a new example.
+
+## Libraries
+
+The libraries built and copied to the **$FFTX_HOME/lib** folder can be used by
+external applications to leverage **FFTX** transforms.  To access the necessary
+include files and libraries, an external application's **CMakeLists.txt** should
+include **CMakeInclude/FFTXCmakeFunctions.cmake**.  A full example of an
+external application linking with **FFTX** libraries is available in the
 [**fftx-demo-extern-app**](https://www.github.com/spiral-software/fftx-demo-extern-app).
 
 ### FFTX Libraries Built
 
-FFTX builds libraries for 1D and 3D FFTs for a single device.  FFTs are built
-for specific sizes, thus not all possible sizes will be found in the libraries.
-The sizes built for 3D FFTs are defined in the file **cube-sizes.txt** (in the
-examples/library folder).  The sizes built for 1D FFTs are defined in the file
-**dftbatch-sizes.txt** (in the examples/library folder).  The following
-libraries are built:
+**FFTX** builds libraries for 1D and 3D FFTs for a single device.  FFTs are
+built for a set of specific sizes, thus not all possible sizes will be found in
+the libraries.  There are default files specifying the sizes to build for each
+of: 1D FFTs, 3D FFTS, and distributed FFTs (defaults file names below).  You can
+customize the set of sizes to build by either editing these files **or** provide
+your own files -- just override the default file name in the
+**config-fftx-libs.sh** script.  If you provide your own file(s) just follow the
+format shown in the default file(s).  The default files specifying the sizes to
+build for each group of transforms are (all files are in the src/library
+folder):
+
+|Type|File Name|Description|
+|:-----:|:-----|:-----|
+|1D FFT|dftbatch-sizes.txt|Batch of 1D FFTs|
+|3D FFT|cube-sizes-cpu.txt|3D FFTs for CPU| 
+|3D FFT|cube-sizes-gpu.txt|3D FFTs for GPU| 
+|Distributed FFT|distdft_sizes.txt|Distributed FFTs|
+
+The following is a list of libraries potentially built (NOTE: most libraries may
+be built for CPU or GPU; the header file name differs accordingly):
 
 |Type|Name|Description|Include Header File|
 |:-----:|:-----|:-----|:-----:|
-|3D FFT|fftx_mddft|Forward 3D FFT complex to complex |fftx_mddft_public.h|
-|3D FFT|fftx_imddft|Inverse 3D FFT complex to complex |fftx_imddft_public.h|
-|3D FFT|fftx_mdprdft|Forward 3D FFT real to complex |fftx_mdprdft_public.h|
-|3D FFT|fftx_imdprdft|Inverse 3D FFT complex to real |fftx_imdprdft_public.h|
-|3D Convolution|fftx_rconv|3D real convolution (in development) |fftx_rconv_public.h|
-|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex|fftx_dftbat_public.h|
-|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex|fftx_idftbat_public.h|
-|1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex|fftx_prdftbat_public.h|
-|1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real|fftx_iprdftbat_public.h|
+|3D FFT|fftx_mddft|Forward 3D FFT complex to complex|fftx_mddft_cpu_public.h or fftx_mddft_gpu_public.h|
+|3D FFT|fftx_imddft|Inverse 3D FFT complex to complex|fftx_imddft_cpu_public.h or fftx_imddft_gpu_public.h|
+|3D FFT|fftx_mdprdft|Forward 3D FFT real to complex|fftx_mdprdft_cpu_public.h or fftx_mdprdft_gpu_public.h|
+|3D FFT|fftx_imdprdft|Inverse 3D FFT complex to real|fftx_imdprdft_cpu_public.h or fftx_imdprdft_cpu_public.h|
+|3D Convolution|fftx_rconv|3D real convolution (in development)|fftx_rconv_cpu_public.h or fftx_rconv_gpu_public.h|
+|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex|fftx_dftbat_cpu_public.h (only built for CPU)|
+|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex|fftx_idftbat_cpu_public.h (only built for CPU)|
+|1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex|fftx_prdftbat_cpu_public.h (only built for CPU)|
+|1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real|fftx_iprdftbat_cpu_public.h (only built for CPU)|
+|Distributed FFT|fftx_distdft|Distributed 3D FFT complex to complex|fftx_distdft_gpu_public.h (only built for GPU)|
+|Distributed embedded FFT|fftx_distdft|Distributed embedded 3D FFT complex to complex|fftx_distdft_embed_gpu_public.h (only built for GPU)|
 
 ### Library API
 
-Each library has serial code (CPU) and optionally GPU code (assuming either
-CUDA or HIP code was built when the libraries were generated).  There are API
-calls to do the following:
-* Determine (get) the mode for the library (serial or GPU)
-* Specify (set) whether the library should operate in serial or GPU mode
-* Get the list of sizes built in the library
-* Get a tuple containing pointers to the init, destroy, and run functions for a particular size
-* Run a specific size transform once
+Each library contains code for either a CPU or a GPU (either CUDA or HIP
+depending on how/where the library was generated).  There are API calls to do
+the following:
+* Get the list of sizes built in the library.
+* Get a tuple containing pointers to the init, destroy, and run functions for a particular size.
+* Run a specific size transform once.
 
-The following example shows usage of the 3D FFT complex to complex transform
-(others are similar, just use the appropriate names and header file(s) from the
+The following example shows usage of the 3D FFT complex-to-complex transform
+(others are similar; just use the appropriate names and header file(s) from the
 table above).  The user (calling application) is responsible for setting up
-memory buffers and allocations as required (i.e., host memory for serial code
-and device memory for GPU code).
+memory buffers and allocations as required (i.e., host memory for serial code,
+device memory for GPU code).  The following abstract assumes device memory
+buffers are already allocated/initialized as needed; error checking is omitted
+for clarity and brevity:
 
 ```
 #include "fftx3.hpp"
-#include "fftx_mddft_public.h"
+#include "fftx_mddft_gpu_public.h"
 
-    int libmode = fftx_mddft_GetLibraryMode ();   // get the library mode
-    fftx_mddft_SetLibraryMode ( LIB_MODE_CUDA );  // specify CUDA mode (default)
-    
     fftx::point_t<3> *wcube, curr;
     wcube = fftx_mddft_QuerySizes ();             // Get a list of sizes in library
 
@@ -217,127 +271,35 @@ and device memory for GPU code).
 
 ### Linking Against FFTX Libraries
 
-FFTX provides a **cmake** include file, **FFTXCmakeFunctions.cmake**, that
+**FFTX** provides a **cmake** include file, **FFTXCmakeFunctions.cmake**, that
 provides functions to facilitate compiling and linking external applications
-with the FFTX libraries.  An external application should include this file
+with the **FFTX** libraries.  An external application should include this file
 (**$FFTX_HOME/CMakeIncludes/FFTXCmakeFunctions.cmake**) in order to access the
-following helper functions to compile/link with the FFTX libraries.  Two
+following helper functions to compile/link with the **FFTX** libraries.  Two
 functions are available:
 
-1.  **FFTX_find_libraries**() -- this function finds the FFTX libraries, linker
+1.  **FFTX_find_libraries**() -- This function finds the **FFTX** libraries, linker
 library path, and include file paths and exposes the following variables:
 |CMake Variable Name|Description|
 |:-----|:-----|
-|**FFTX_LIB_INCLUDE_PATHS**|Include paths for FFTX include & library headers|
-|**FFTX_LIB_NAMES**|List of FFTX libraries|
+|**FFTX_LIB_INCLUDE_PATHS**|Include paths for **FFTX** include & library headers|
+|**FFTX_LIB_NAMES**|List of **FFTX** libraries|
 |**FFTX_LIB_LIBRARY_PATH**|Path to libraries (for linker)|
-2.  **FFTX_add_includes_libs_to_target** ( target ) -- this function adds the
+2.  **FFTX_add_includes_libs_to_target** ( target ) -- This function adds the
 include file paths, the linker library path, and the library names to the
 specified target.
 
-An application typically need only call the second function and let FFTX handle
-the assignment of paths, etc. to the target.  Only if an application
-specifically needs to access the named variables above is it necessary to call
-the first function.
+An application will typically need only call
+**FFTX_add_includes_libs_to_target**(), and let **FFTX** handle the assignment
+of paths, etc. to the target.  Only if an application specifically needs to
+access the named variables above is it necessary to call
+**FFTX_find_libraries**().
 
 ### External Application Linking With FFTX
 
 A complete example of an external application that builds test programs
-utilizing the FFTX libraries is available at 
+utilizing the **FFTX** libraries is available at 
 [**fftx-demo-extern-app**](https://www.github.com/spiral-software/fftx-demo-extern-app).
-If you're interested in how to link an external application with FFTX please
-download this example and review the **CMakeLists.txt** therein for specific
+If you're interested in how to link an external application with **FFTX** please
+download this example and review the **`CMakeLists.txt`** therein for specific
 details.
-
-When FFTX is built, the final step (of *make install*) creates a tree structure
-(at the location specified by **CMAKE_INSTALL_PREFIX**).  The following
-directories will be created/populated:
-
-|Directory Name|Description|
-|:-----|:-----|
-|**./CMakeIncludes**|CMake include files and functions to ease integration with FFTX|
-|**./bin**|Example programs built as part of the FFTX distribution|
-|**./lib**|FFTX libraries|
-|**./include**|Include files for using FFTX libraries|
-
-## Examples Structure
-
-The **examples** tree holds several examples.  Each example follows a structure
-and naming conventions (described below).  The process to follow when adding a
-new example is also described.
-
-### Structure Of An Example Program
-
-Each example is expected to reside in its own directory; the directory should be
-named for the transform or problem it illustrates or tests.   At its most basic
-an example consists of a driver program that defines the transform, a test
-harness to exercise the transform and a **cmake** file to build the example.
-
-### Naming Conventions For Examples
-
-The folder containing the example should be named for the transform or problem
-being illustrated, e.g., **mddft**.  This name will be used as the *project*
-name in the **cmake** file (details below).
-
-Within each folder there should be one (or possibly several) file(s) defining
-transforms to be tested.  These *driver* programs are named as
-*prefix*.*stem*.**cpp**, where *prefix* is the transform name, e.g., **mddft**;
-*stem* is the root or stem, currently always **fftx**.
-
-There should also be one test harness program used to exercise the transform(s)
-defined.  The naming convention for the test harness is
-**test**_project_.**cpp**.  There may be two flavours of the test harness: one
-named with a **.cpp** suffix used to exercise a CPU version of the transform(s)
-and one named with a **.cu** suffix used to exercise a GPU version of the
-transform(s).
-
-The **cmake** file is named in the usual standard way as: **CMakeLists.txt**.
-
-### How To Add A New Example
-
-To add a new example to **FFTX**, simply create a folder in **fftx/examples**,
-called *project*.  Then in the newly created folder add your transform
-definition(s), named *prefix*.**fftx.cpp**.  Add a test harness named
-**test**_project_; with either, or both, suffixes: **.cpp**, or **.cu**.
-
-Add (or copy and edit) a **cmake** file (instructions for editing below).
-
-### Setting Up The CMakeLists.txt File
-
-The **CMakeLists.txt** file has a section in the beginning to specifiy a few names;
-most of the rules and targets are defined automatically and few, if any, changes
-should be required.  The **cmake** file uses the varaible **\_codegen** to determine
-whether to build for CPU or GPU (either CUDA or HIP).  This variable is defined
-on the **cmake** command line (or defaults to CPU); do **not** override it in the
-**cmake** file.
-
-&nbsp;&nbsp;**1.**&nbsp;&nbsp;
-Set the project name.  The preferred name is the same name as the example folder, e.g., **mddft**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-project ( mddft ${\_lang\_add} ${\_lang\_base} )
-
-&nbsp;&nbsp;**2.**&nbsp;&nbsp;
-As noted above, the file naming convention for the *driver* programs is *prefix.stem*.**cpp**.
-Specify the *stem* and *prefix(es)* used; e.g., from the **mddft** example:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-set ( \_stem fftx )<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-set ( \_prefixes mddft imddft )
-
-&nbsp;&nbsp;**3.**&nbsp;&nbsp;
-Check the test harness program name: you won't need to modify this if you've
-followed the recommended conventions:  The test harness program name is expected
-to be **test**_project<br> 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    set ( BUILD\_PROGRAM test${PROJECT\_NAME} )
-<br>
-
-Finally add an entry to the **CMakeLists.txt** file in the **examples** folder.  We use a **cmake**
-function, **manage_add_subdir,** to control this.  Call the function with
-parameters: example directory name and True/False flags for building for CPU and GPU, for
-example:
-```
-##                  subdir name   CPU       GPU
-manage_add_subdir ( hockney       TRUE      FALSE )
-manage_add_subdir ( mddft         TRUE      TRUE  )
-```

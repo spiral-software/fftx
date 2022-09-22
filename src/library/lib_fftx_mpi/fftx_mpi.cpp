@@ -4,14 +4,13 @@
 #include <vector>
 #include <mpi.h>
 #include <iostream>
-#include "gpu.h"
-#include "util.h"
+
+#include "device_macros.h"
+#include "fftx_gpu.h"
+#include "fftx_util.h"
 
 #define FFTX_MPI_EMBED_1 1
 #define FFTX_MPI_EMBED_2 2
-
-#define FFTX_CUDA 1
-#include "device_macros.h"
 
 
 using namespace std;

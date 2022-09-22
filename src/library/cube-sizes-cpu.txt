@@ -1,0 +1,117 @@
+##
+##  Sizes of examples to build
+##  Hash (#) as first non-white space indicates a comment
+##  Lines containing white space only are ignored
+##  All other lines must be valid size specs in the form:
+##  szcube := [ x, y, z ]
+##
+
+szcube := [  48,  48,  48 ];
+szcube := [  64,  64,  64 ];
+szcube := [  80 , 80,  80 ];
+szcube := [  81 , 81,  81 ];
+
+szcube := [  96,  96,  96 ];
+szcube := [ 112, 112, 112 ];
+szcube := [ 128, 128, 128 ];
+szcube := [  80 , 80,  374 ];
+
+szcube := [ 144, 144, 144 ];
+szcube := [  96,  96,  374 ];
+szcube := [ 160, 160, 160 ];
+szcube := [ 162, 162, 162 ];
+
+szcube := [  80 , 80,  680 ];
+szcube := [ 128, 128, 360 ];
+szcube := [ 224, 224, 120 ];
+szcube := [ 128, 128, 680 ];
+
+szcube := [ 256, 256, 256 ];
+szcube := [ 272, 272, 272 ];
+szcube := [ 288, 288, 288 ];
+
+##  szcube := [ 189, 189, 130 ];
+##  szcube := [ 168, 168, 168 ];
+##  szcube := [ 100, 224, 224 ];
+
+##  szcube := [ 224, 224, 110 ];
+##  szcube := [ 180, 180, 180 ];
+##  szcube := [ 130, 224, 224 ];
+##  szcube := [ 189, 189, 189 ];
+##  szcube := [ 192, 192, 192 ];
+
+##  szcube := [ 196, 196, 196 ];
+##  szcube := [ 225, 225, 169 ];
+##  szcube := [ 210, 210, 210 ];
+##  szcube := [ 224, 224, 224 ];
+##  szcube := [ 225, 225, 225 ];
+
+##  szcube := [ 240, 240, 240 ];
+##  szcube := [ 270, 270, 270 ];
+##  szcube := [ 280, 280, 280 ];
+
+##  szcube := [ 294, 294, 294 ];
+##  szcube := [ 300, 300, 300 ];
+##  szcube := [ 315, 315, 315 ];
+##  szcube := [ 320, 320, 320 ];
+
+
+##  szcube := [ 32, 32, 48 ];
+##  szcube := [ 32, 32, 64 ];
+##  szcube := [ 32, 32, 96 ];
+##  szcube := [ 32, 32, 128 ];
+##  szcube := [ 32, 48, 32 ];
+##  szcube := [ 32, 48, 48 ];
+##  szcube := [ 32, 48, 64 ];
+##  szcube := [ 32, 48, 96 ];
+##  szcube := [ 32, 48, 128 ];
+##  szcube := [ 32, 64, 32 ];
+##  szcube := [ 32, 64, 48 ];
+##  szcube := [ 32, 64, 64 ];
+##  szcube := [ 32, 64, 96 ];
+##  szcube := [ 32, 64, 128 ];
+##  szcube := [ 32, 96, 32 ];
+##  szcube := [ 32, 96, 48 ];
+##  szcube := [ 32, 96, 64 ];
+##  szcube := [ 32, 96, 96 ];
+##  szcube := [ 32, 96, 128 ];
+##  szcube := [ 32, 128, 32 ];
+##  szcube := [ 32, 128, 48 ];
+##  szcube := [ 32, 128, 64 ];
+##  szcube := [ 32, 128, 96 ];
+
+##  szcube := [ 48, 32, 32 ];
+##  szcube := [ 48, 48, 32 ];
+##  szcube := [ 48, 64, 32 ];
+##  szcube := [ 48, 96, 32 ];
+##  szcube := [ 48, 128, 32 ];
+##  szcube := [ 64, 32, 32 ];
+##  szcube := [ 64, 48, 32 ];
+##  szcube := [ 64, 64, 32 ];
+##  szcube := [ 64, 96, 32 ];
+##  szcube := [ 64, 128, 32 ];
+##  szcube := [ 96, 32, 32 ];
+##  szcube := [ 96, 48, 32 ];
+##  szcube := [ 96, 64, 32 ];
+##  szcube := [ 96, 96, 32 ];
+##  szcube := [ 96, 128, 32 ];
+##  szcube := [ 128, 32, 32 ];
+##  szcube := [ 128, 48, 32 ];
+##  szcube := [ 128, 64, 32 ];
+##  szcube := [ 128, 96, 32 ];
+
+##  szcube := [ 48, 32, 48 ];
+##  szcube := [ 64, 32, 48 ];
+##  szcube := [ 96, 32, 48 ];
+##  szcube := [ 128, 32, 48 ];
+##  szcube := [ 48, 32, 64 ];
+##  szcube := [ 64, 32, 64 ];
+##  szcube := [ 96, 32, 64 ];
+##  szcube := [ 128, 32, 64 ];
+##  szcube := [ 48, 32, 96 ];
+##  szcube := [ 64, 32, 96 ];
+##  szcube := [ 96, 32, 96 ];
+##  szcube := [ 128, 32, 96 ];
+##  szcube := [ 48, 32, 128 ];
+##  szcube := [ 64, 32, 128 ];
+##  szcube := [ 96, 32, 128 ];
