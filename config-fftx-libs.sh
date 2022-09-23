@@ -15,22 +15,22 @@
 ##  Whenever a library is built both the forward and inverse transforms (when applicable)
 ##  are built
 ##  Build the batch 1D DFT (complex to complex) library
-DFTBAT_LIB=true
+DFTBAT_LIB=false
 
 ##  Build the batch 1D packed real DFT (real to complex, complex to real) library
-PRDFTBAT_LIB=true
+PRDFTBAT_LIB=false
 
 ##  Build the 3D DFT (complex to complex) library
-MDDFT_LIB=true
+MDDFT_LIB=false
 
 ##  Build the 3D DFT (real to complex, complex to real) library
-MDPRDFT_LIB=true
+MDPRDFT_LIB=false
 
 ##  Build the Real Convolution library
-RCONV_LIB=true
+RCONV_LIB=false
 
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
-DISTDFT_LIB=true
+DISTDFT_LIB=false
 
 ##  File containing the sizes to build for the CPU version of MDDFT, MDPRDFT, and RCONV
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
@@ -51,13 +51,13 @@ DISTDFT_SIZES_FILE="distdft-sizes.txt"
 BUILD_EXAMPLES=true
 
 ##Build FFTX for CPU
-BUILD_FOR_CPU=false
+BUILD_FOR_CPU=true
 
 ##  Build FFTX for CUDA
-BUILD_FOR_CUDA=false
+BUILD_FOR_CUDA=true
 
 ##  Build FFTX for HIP
-BUILD_FOR_HIP=true
+BUILD_FOR_HIP=false
 
 #############################################################################################
 ##
