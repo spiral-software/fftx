@@ -3,7 +3,7 @@
 #include "test_plan.h"
 #include "interface.hpp"
 #include "newinterface.hpp"
-#include <any>
+//#include <any>
 #include "mddftObj.hpp"
 #include <string>
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
@@ -61,10 +61,10 @@ int main(int argc, char* argv[])
   fftx::array_t<3,std::complex<double>>& output = outputHost;
 #endif  
 
-  std::vector<std::any> inList;
-  std::vector<std::any> outList;
-  std::vector<std::any> arglist;
-  arglist.push_back(argc);
+  std::vector<fftx::array_t<3,std::complex<double>>> inList;
+  std::vector<fftx::array_t<3,std::complex<double>>> outList;
+  std::vector<void*> arglist;
+  arglist.push_back(&argc);
   arglist.push_back(argv);
 
   inList.push_back(input);

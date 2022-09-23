@@ -18,7 +18,7 @@ public:
     // std::vector<std::any> in;
     // std::vector<std::any> out;
     // std::vector<std::any> in_out;
-    std::vector<char**> inputargs;
+    std::vector<void *> inputargs;
     std::vector<fftx::array_t<3,std::complex<double>>> in;
     std::vector<fftx::array_t<3,std::complex<double>>> out;
     std::vector<fftx::array_t<3,std::complex<double>>> in_out;
@@ -59,7 +59,7 @@ void GBTLXSolver::Apply(GBTLXProblem &p){
             //exit(1);
             Executor e;
             //e.execute(std::any_cast<int>(p.sig.inputargs.at(0)), std::any_cast<char**>(p.sig.inputargs.at(1)));
-            e.execute(4, p.sig.inputargs.at(0));
+            e.execute((int)p.sig.inputargs.at(0), (char**)p.sig.inputargs.at(1));
         }
         else {
             std::cout << "file not found or cached\n";
