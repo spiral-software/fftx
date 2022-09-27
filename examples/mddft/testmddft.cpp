@@ -33,51 +33,65 @@ int main(int argc, char* argv[])
 
   double* mddft_cpu = new double[iterations];
   double* imddft_cpu = new double[iterations];
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  // additional code for GPU programs
-  float* mddft_gpu = new float[iterations];
-  float* imddft_gpu = new float[iterations];
-  std::string descrip = "CPU and GPU";
+// #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+//   // additional code for GPU programs
+//   float* mddft_gpu = new float[iterations];
+//   float* imddft_gpu = new float[iterations];
+//   std::string descrip = "CPU and GPU";
 
-  std::complex<double> * bufferDevicePtr;
-  std::complex<double> * inputDevicePtr;
-  std::complex<double> * outputDevicePtr;
-  DEVICE_MALLOC(&bufferDevicePtr,
-                test_plan::domain.size()*sizeof(std::complex<double>)*2);
-  inputDevicePtr = bufferDevicePtr;
-  outputDevicePtr = bufferDevicePtr + test_plan::domain.size();
-  DEVICE_MEM_COPY(inputDevicePtr, inputHost.m_data.local(),
-                  test_plan::domain.size()*sizeof(std::complex<double>),
-                  MEM_COPY_HOST_TO_DEVICE);
-  fftx::array_t<3,std::complex<double>> inputDevice(fftx::global_ptr<std::complex<double>>(inputDevicePtr,0,1), test_plan::domain);
-  fftx::array_t<3,std::complex<double>> outputDevice(fftx::global_ptr<std::complex<double>>(outputDevicePtr,0,1), test_plan::domain);
+//   std::complex<double> * bufferDevicePtr;
+//   std::complex<double> * inputDevicePtr;
+//   std::complex<double> * outputDevicePtr;
+//   DEVICE_MALLOC(&bufferDevicePtr,
+//                 test_plan::domain.size()*sizeof(std::complex<double>)*2);
+//   inputDevicePtr = bufferDevicePtr;
+//   outputDevicePtr = bufferDevicePtr + test_plan::domain.size();
+//   DEVICE_MEM_COPY(inputDevicePtr, inputHost.m_data.local(),
+//                   test_plan::domain.size()*sizeof(std::complex<double>),
+//                   MEM_COPY_HOST_TO_DEVICE);
+//   fftx::array_t<3,std::complex<double>> inputDevice(fftx::global_ptr<std::complex<double>>(inputDevicePtr,0,1), test_plan::domain);
+//   fftx::array_t<3,std::complex<double>> outputDevice(fftx::global_ptr<std::complex<double>>(outputDevicePtr,0,1), test_plan::domain);
 
-  fftx::array_t<3,std::complex<double>>& input = inputDevice;
-  fftx::array_t<3,std::complex<double>>& output = outputDevice;
-  // end special code for GPU
-#else
+//   fftx::array_t<3,std::complex<double>>& input = inputDevice;
+//   fftx::array_t<3,std::complex<double>>& output = outputDevice;
+//   // end special code for GPU
+// #else
   std::string descrip = "CPU";
   fftx::array_t<3,std::complex<double>>& input = inputHost;
   fftx::array_t<3,std::complex<double>>& output = outputHost;
-#endif  
+//#endif  
 
   std::vector<fftx::array_t<3,std::complex<double>>> inList;
   std::vector<fftx::array_t<3,std::complex<double>>> outList;
-  std::vector<void*> arglist;
-  arglist.push_back(&argc);
+  std::vector<char**> arglist;
+  // arglist.push_back(&argc);
   arglist.push_back(argv);
 
+
+  
+  // inList.push_back(input);
+  //   for(int i = 0; i < inList.at(0).m_domain.size(); i++){
+  //       std::cout << "index: " << i << std::endl;
+  //       std::cout << inList.at(0).m_data.local()[i] << std::endl;
+  //       std::cout << std::endl;
+  //   }
+  //std::cout << test_plan::domain.size() << std::endl;
   inList.push_back(input);
   outList.push_back(output);
 
-  Signature Sig;
-  Sig.in = inList;
-  Sig.out = outList;
-  Sig.inputargs = arglist;
-
-  MDDFTProblem mdp(Sig);
+  // Signature Sig;
+  // Sig.in = inList;
+  // Sig.out = outList;
+  // Sig.counts = argc;
+  // Sig.args = arglist;
+  MDDFTProblem mdp;
+  mdp.sig.in = inList;
+  mdp.sig.out = outList;
+  mdp.sig.counts = argc;
+  mdp.sig.args = arglist;
   MDDFTSolver mds;
   mds.Apply(mdp);
+
 
 //   printf("call mddft::init()\n");
 //   mddft::init();
@@ -140,5 +154,6 @@ int main(int argc, char* argv[])
 // #endif
 
   printf("%s: All done, exiting\n", argv[0]);
+  
   return 0;
 }

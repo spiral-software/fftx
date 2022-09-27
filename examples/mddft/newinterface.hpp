@@ -6,8 +6,14 @@
 #include <sstream>
 #include <fstream>
 //#include <charconv>
+//#include "interface.hpp"
 #include <tuple>
 #include <iomanip>
+#include <cstdio>      // perror
+#include <unistd.h>    // dup2
+#include <sys/types.h> // rest for open/close
+#include <sys/stat.h>
+#include <fcntl.h>
 #pragma once
 #define NVRTC_SAFE_CALL(x) \
  do { \
@@ -31,7 +37,6 @@
  } while(0)
 
 
-
 class Executor {
     private:
         int x;
@@ -39,6 +44,7 @@ class Executor {
             zero,
             one,
             two,
+            constant,
             mone
         };
         nvrtcProgram prog;
@@ -70,18 +76,24 @@ class Executor {
         void getLogsAndPTX(char * args);
         void initializeVars();
         void destoryProg();
-        void initAndLaunch();
-        void execute(int count, char ** args);
+        void initAndLaunch(std::vector<fftx::array_t<3,std::complex<double>>> in,
+        std::vector<fftx::array_t<3,std::complex<double>>> out);
+        void execute(std::vector<fftx::array_t<3,std::complex<double>>> in,
+        std::vector<fftx::array_t<3,std::complex<double>>> out,
+        int counts,
+        std::vector<char**> inputargs);
 };
 
 Executor::string_code Executor::hashit(std::string const& inString) {
     if(inString == "int") return zero;
     if(inString == "float") return one;
     if(inString == "double") return two;
+    if(inString == "constant") return constant;
     return mone;
 }
 
 void Executor::parseDataStructure(char * input) {
+    std::cout << input << std::endl;
     std::ifstream t(input);
     std::stringstream ds;
     ds << t.rdbuf();
@@ -95,7 +107,7 @@ void Executor::parseDataStructure(char * input) {
         }
         std::istringstream ss(line);
         std::string s;
-        int counter = 0;
+        //int counter = 0;
         std::vector<std::string> words;
         while(std::getline(ss,s,delim)) {
             words.push_back(s);
@@ -109,6 +121,7 @@ void Executor::parseDataStructure(char * input) {
                 in_params.push_back(std::make_tuple(words.at(1), atoi(words.at(2).c_str()), words.at(3)));
                 break;
             case 2:
+                std::cout << "the kernel name is " << words.at(1) << "\n";
                 kernel_name = words.at(1);
                 break;
             case 3:
@@ -118,6 +131,7 @@ void Executor::parseDataStructure(char * input) {
                 int size = atoi(words.at(2).c_str());
                 int dt = atoi(words.at(3).c_str());
                 //std::cout << "the case is " << dt << std::endl;
+                //convert this to a string because spiral prints string type
                 switch(dt) {
                     case 0: //int
                     {
@@ -166,6 +180,14 @@ void Executor::parseDataStructure(char * input) {
                             break;    
                         }
                     }
+                    case 3: //constant
+                    {
+                        if(words.size() < 5) {
+                            double data1[size] = {0};
+                            data.push_back(&data1);
+                        }
+                        break;
+                    }
                 }
                 break;
         }
@@ -196,9 +218,9 @@ void Executor::getVars() {
 }
 
 void Executor::compileProg() {
-    const char *opts[] = {"--relocatable-device-code=true","--gpu-architecture=compute_70"};
+    const char *opts[] = {"--device-debug", "--relocatable-device-code=true","--gpu-architecture=compute_70"};
     compileResult = nvrtcCompileProgram(prog, 
-    2, 
+    3, 
     opts); 
 }
 
@@ -282,6 +304,10 @@ void Executor::initializeVars() {
                 CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
                 break;
             }
+            case constant:
+            {
+                break;
+            }
         }
     }
 }
@@ -290,60 +316,82 @@ void Executor::destoryProg() {
     NVRTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
-void Executor::initAndLaunch() {
+void Executor::initAndLaunch(std::vector<fftx::array_t<3,std::complex<double>>> in,
+        std::vector<fftx::array_t<3,std::complex<double>>> out) {
+    std::cout << "the kernel name is " << kernel_name << std::endl;
+    std::cout << in.at(0).m_domain.size() << std::endl;
     CUDA_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
-    double *X = new double[64];
-    double *Y = new double[64];
-    // for(int i = 0; i < params.size(); i++){
-    //     CUdeviceptr dX;
-    //     CUDA_SAFE_CALL(cuMemAlloc(&dX, 64* sizeof(double)));
-    //     CUDA_SAFE_CALL(cuMemcpyHtoD(dX, X, 64* sizeof(double)));
-    //     params.push_back(&dX);
-    // } 
-    for(int i = 0; i < 64; i++) {
-        X[i] = 1;
-        Y[i] = -1;
-    }
-    for (int i = 0; i < 64; i++) {
-        std::cout << X[i] << "\n";
-    }
+    // double *X = new double[64];
+    // double *Y = new double[64];
+    // // for(int i = 0; i < params.size(); i++){
+    // //     CUdeviceptr dX;
+    // //     CUDA_SAFE_CALL(cuMemAlloc(&dX, 64* sizeof(double)));
+    // //     CUDA_SAFE_CALL(cuMemcpyHtoD(dX, X, 64* sizeof(double)));
+    // //     params.push_back(&dX);
+    // // } 
+    // for(int i = 0; i < 64; i++) {
+    //     X[i] = 1;
+    //     Y[i] = -1;
+    // }
+    // for (int i = 0; i < 64; i++) {
+    //     std::cout << X[i] << "\n";
+    // }
     // std::cout << "\n";
     // std::cout << "numBlocks " << numBlocks << std::endl;
     // std::cout << "X in host is " << X[10] << std::endl;
-    CUdeviceptr dX, dY;
+    CUdeviceptr dX, dY, dsym;
     //double  *hp1 = new double[512];
-    CUDA_SAFE_CALL(cuMemAlloc(&dX, 64* sizeof(double)));
-    CUDA_SAFE_CALL(cuMemcpyHtoD(dX, X, 64* sizeof(double)));
-    CUDA_SAFE_CALL(cuMemAlloc(&dY, 64* sizeof(double)));
-    CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+    std::cout << "allocating memory\n";
+    CUDA_SAFE_CALL(cuMemAlloc(&dX, in.at(0).m_domain.size() * sizeof(std::complex<double>)));
+    std::cout << "allocated X\n";
+    CUDA_SAFE_CALL(cuMemcpyHtoD(dX, in.at(0).m_data.local(),  in.at(0).m_domain.size() * sizeof(std::complex<double>)));
+    std::cout << "copied X\n";
+    CUDA_SAFE_CALL(cuMemAlloc(&dY, out.at(0).m_domain.size() * sizeof(std::complex<double>)));
+    std::cout << "allocated Y\n";
+    // //CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+    CUDA_SAFE_CALL(cuMemAlloc(&dsym, 64* sizeof(double)));
     //init_grid_dft2d_cont(kernel, module);
     // Execute parent kernel.
-    void *args[] = { &dY, &dX};
+    void *args[] = { &dY, &dX, &dsym};
     //init_grid_dft2d_cont();
-    CUDA_SAFE_CALL(
-    cuLaunchKernel(kernel,
-    1, 1, 1, // grid dim
-    1, 1, 1, // block dim
-    0, NULL, // shared mem and stream
-    args, 0)); // arguments
-    CUDA_SAFE_CALL(cuCtxSynchronize());
-    CUDA_SAFE_CALL(cuMemcpyDtoH(X, dX, 64*sizeof(double)));
-    CUDA_SAFE_CALL(cuMemcpyDtoH(Y, dY, 64*sizeof(double)));
-    std::cout << "\n\n\n\nOutput is" << std::endl;
-     for (int i = 0; i < 64; i++) {
-        std::cout << Y[i] << "\n";
-    }
+    //for(int i = 0; i < 1; i++) {
+        std::cout << "launched kernel\n";
+        CUDA_SAFE_CALL(
+        cuLaunchKernel(kernel,
+        1, 1, 1, // grid dim
+        1, 1, 1, // block dim
+        0, NULL, // shared mem and stream
+        args, 0)); // arguments
+        CUDA_SAFE_CALL(cuCtxSynchronize());
+        //CUDA_SAFE_CALL(cuMemcpyDtoH(X, dX, 64*sizeof(double)));
+        std::cout << "copying data back\n";
+        CUDA_SAFE_CALL(cuMemcpyDtoH(out.at(0).m_data.local(), dY, out.at(0).m_domain.size()*sizeof(std::complex<double>)));
+        std::cout << "\n\n\n\nOutput is" << std::endl;
+        // for (int i = 0; i < out.at(0).m_domain.size(); i++) {
+        //     std::cout << out.at(0).m_data.local()[i] << "\n";
+        // }
+    //}
 
 }
 
-void Executor::execute(int count, char ** args) {
-    parseDataStructure(args[count-1]);
+void Executor::execute(std::vector<fftx::array_t<3,std::complex<double>>> in, 
+                        std::vector<fftx::array_t<3,std::complex<double>>> out,
+                        int counts,
+                        std::vector<char**> inputargs) {
+    //int count = *((int*)inputargs.at(0));
+    // std::cout << "count is" << counts << std::endl;
+    // std::cout << (char*)inputargs.at(inputargs.size()-1) << std::endl;
+    // std::cout << (inputargs.at(inputargs.size()-2))[counts-1] << std::endl;
+    std::cout << in.at(0).m_domain.size() << std::endl;
+    std::cout << "begin executing code\n";
+    parseDataStructure((char*)inputargs.at(inputargs.size()-1));
+    std::cout << "finsihed parsing\n";
     createProg();
     getVars();
     compileProg();
-    getLogsAndPTX(args[count-2]);
+    getLogsAndPTX((inputargs.at(inputargs.size()-2))[counts-1]);
     initializeVars();
     destoryProg();
     std::cout << "begin kernel launch\n";
-    initAndLaunch();
+    initAndLaunch(in, out);
 }
