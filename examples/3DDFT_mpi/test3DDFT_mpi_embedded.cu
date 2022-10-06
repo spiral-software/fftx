@@ -34,12 +34,23 @@ int main(int argc, char* argv[]) {
 
   bool is_embedded = true; 
 
-  int sizes[] = {30};
-  int total_size = 1;
+
+  fftx::point_t<5> *wcube = fftx_distdft_embed_gpu_QuerySizes();
+  if (wcube == NULL) {
+    printf ( "Failed to get list of available sizes\n");
+    exit (-1);
+  }
   
-  for (int cur_size = 0; cur_size != total_size; ++cur_size)
+  //  int sizes[] = {30};
+  //  int total_size = 1;
+  //int cur_size = 0; cur_size != total_size; ++cur_size)
+  
+  for (fftx::point_t<5> req* = wcube;
+       (*req).x[0] != 0 && (*req).x[1] != 0 && (*req).x[2] != 0 && (*req).x[3] != 0 && (*req).x[4] != 0;
+       req += 1)
   {
   // 3d fft sizes
+    /*
     int M = sizes[cur_size];
     int N = sizes[cur_size];
     int K = sizes[cur_size];
@@ -53,13 +64,13 @@ int main(int argc, char* argv[]) {
     int Mo = M * (is_embedded ? 2 : 1);
     int No = N * (is_embedded ? 2 : 1);
     int Ko = K * (is_embedded ? 2 : 1);
-    
+    */
     int check = 1;
     
     MPI_Barrier(MPI_COMM_WORLD);
     
-    fftx::point_t<5> req({r, c, Mo, No, Ko}) ;
-    transformTuple_t *tptr = fftx_distdft_embed_gpu_Tuple(req);  
+    //    fftx::point_t<5> req = ({r, c, Mo, No, Ko}) ;
+    transformTuple_t *tptr = fftx_distdft_embed_gpu_Tuple(*req);  
     
     if (tptr != NULL){
       //init_mddft3d();
