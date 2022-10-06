@@ -88,6 +88,7 @@ set ( SPIRAL_BACKEND_CUDA_PREAMBLE ${BACKEND_SPIRAL_CUDA_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_HIP_PREAMBLE ${BACKEND_SPIRAL_HIP_DIR}/preamble.g )
 set ( SPIRAL_BACKEND_CPU_CODEGEN  ${BACKEND_SPIRAL_CPU_DIR}/codegen.g  )
 set ( SPIRAL_BACKEND_CUDA_CODEGEN  ${BACKEND_SPIRAL_CUDA_DIR}/codegen.g  )
+set ( SPIRAL_BACKEND_CUDA_CODEGEN_CPP  ${BACKEND_SPIRAL_CUDA_DIR}/codegen_cpp.g  )
 set ( SPIRAL_BACKEND_HIP_CODEGEN  ${BACKEND_SPIRAL_HIP_DIR}/codegen.g  )
 
 function ( create_generator_file _codefor prefix stem )
@@ -98,6 +99,9 @@ function ( create_generator_file _codefor prefix stem )
 
     set ( _preamble ${SPIRAL_BACKEND_${_codefor}_PREAMBLE} )
     set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN} )
+    if ( ${_codefor} STREQUAL "CUDA" AND ${_suffix} STREQUAL "cpp" )
+	set ( _postfix  ${SPIRAL_BACKEND_${_codefor}_CODEGEN_CPP} )
+    endif ()
     if ( "X${_generator_script}" STREQUAL "X" )
 	##  The complete script is not defined -- no action required
     elseif ( ${_generator_script} STREQUAL "COMPLETE" )
@@ -110,7 +114,7 @@ function ( create_generator_file _codefor prefix stem )
 	add_custom_command ( OUTPUT ${_gen}
 	    COMMAND ${Python3_EXECUTABLE} ${SPIRAL_SOURCE_DIR}/gap/bin/catfiles.py
 	            ${_gen} ${_preamble} ${_plan} ${_postfix}
-	    COMMAND rm -f ${prefix}.${stem}.source.${_suffix}
+	    COMMAND IF EXIST ${prefix}.${stem}.source.${_suffix} ( DEL /F ${prefix}.${stem}.source.${_suffix} )
             DEPENDS ${_plan}
 	    VERBATIM
 	    COMMENT "Generating ${_gen}" )
@@ -187,22 +191,37 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 
     if ( ${_codegen} STREQUAL "HIP" )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
-	target_link_libraries      ( ${_target} ${LIBS_FOR_HIP} )
+	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_HIP} )
     elseif ( ${_codegen} STREQUAL "CUDA" )
-	target_link_libraries      ( ${_target} ${LIBS_FOR_CUDA} )
+	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_CUDA} )
     endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
 	##  Some libraries were built -- add them for linker
-	target_link_libraries      ( ${_target} ${_library_names} )
+	target_link_libraries      ( ${_target} PRIVATE ${_library_names} )
 	##  message ( STATUS "${_target}: Libraries added = ${_library_names}" )
     endif ()
 
-    ##  set ( INSTALL_DIR_TARGET ${CMAKE_BINARY_DIR}/bin )
     set ( INSTALL_DIR_TARGET ${CMAKE_INSTALL_PREFIX}/bin )
     install ( TARGETS ${_target} DESTINATION ${INSTALL_DIR_TARGET} )
 
 endfunction ()
-    
+
+##  add_mpi_decorations_to_target() -- Add MPI include directories, compile flags,
+##  link options, and libraries to target
+
+function ( add_mpi_decorations_to_target _target )
+    if (${MPI_FOUND} )
+	##  MPI installation found -- add the libraries and include for this target
+	target_include_directories ( ${_target} PRIVATE MPI::MPI_CXX )
+	##  target_compile_options     ( ${_target} PRIVATE ${MPI_CXX_COMPILE_OPTIONS} )
+	##  target_link_options        ( ${_target} PRIVATE ${MPI_CXX_LINK_FLAGS} )
+	##  link flags are wrong on thom
+	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX ${ADDL_MPI_LIBS} )
+    else ()
+	message ( STATUS "MPI was not found -- cannot add decorations for target = ${_target}" )
+    endif ()
+endfunction ()
+
 
 ##  manage_deps_codegen() is a function called to orchestrate creating the
 ##  intermediate files (targets) for codegen and build the list of dependencies
@@ -222,11 +241,25 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
     
     ##  if ( ( ${_codefor} STREQUAL "CUDA" ) OR ( ${_codefor} STREQUAL "HIP" ) )
     if ( ${_codefor} STREQUAL "CUDA" )
-	set ( _suffix cu PARENT_SCOPE )
-	set ( _suffix cu )
+	if ( "X${_desired_suffix}" STREQUAL "X" )
+	    ##  desired suffix is not set -- use defaults
+	    set ( _suffix cu PARENT_SCOPE )
+	    set ( _suffix cu )
+	else ()
+	    ##  desired suffix is set -- use it
+	    set ( _suffix ${_desired_suffix} PARENT_SCOPE )
+	    set ( _suffix ${_desired_suffix} )
+	endif ()
     else ()
-	set ( _suffix cpp PARENT_SCOPE )
-	set ( _suffix cpp )
+	if ( "X${_desired_suffix}" STREQUAL "X" )
+	    ##  desired suffix is not set -- use defaults
+	    set ( _suffix cpp PARENT_SCOPE )
+	    set ( _suffix cpp )
+	else ()
+	    ##  desired suffix is set -- use it
+	    set ( _suffix ${_desired_suffix} PARENT_SCOPE )
+	    set ( _suffix ${_desired_suffix} )
+	endif ()
     endif ()
 
     foreach ( _prefix ${_prefixes} ) 
@@ -245,6 +278,10 @@ function ( manage_deps_codegen _codefor _stem _prefixes )
 	set                ( _ccode ${_prefix}.${_stem}.source.${_suffix} )
 	file               ( TO_NATIVE_PATH ${${PROJECT_NAME}_BINARY_DIR}/${_gen} _gfile )
 	create_source_file ( ${_gfile} ${_ccode} )
+	##  message ( STATUS "Create source file ${_ccode} from script ${_gfile}" )
+	if ( ${_codefor} STREQUAL "CUDA" )
+	    set_source_files_properties ( ${_ccode} PROPERTIES LANGUAGE CUDA )
+	endif ()
 
 	##  append to our running lists
 	list ( APPEND _all_build_srcs ${_hdr} ${_ccode} )
@@ -339,8 +376,8 @@ endfunction ()
 ##  external application would need this in order to include
 ##  $FFTX_HOME/CMakeInclude/FFTXCmakeFunctions.cmake in a CMake file anyway).
 ##  The libraries must be in the 'lib' folder (under $FFTX_HOME).  All libraries
-##  found are noted and the include path directive for the library is derived
-##  from the library name (as $FFTX_HOME/examples/library/lib_<lib-root>_srcs).
+##  found are noted and the include path directive for the library is set to
+##  $FFTX_HOME/include (all FFTX public headers are installed there).
 
 function ( FFTX_find_libraries )
 
@@ -411,6 +448,6 @@ function ( FFTX_add_includes_libs_to_target _target )
     target_compile_options     ( ${_target} PRIVATE ${ADDL_COMPILE_FLAGS} )
     target_include_directories ( ${_target} PRIVATE ${FFTX_LIB_INCLUDE_PATHS} )
     target_link_directories    ( ${_target} PRIVATE ${FFTX_LIB_LIBRARY_PATH} )
-    target_link_libraries      ( ${_target} ${FFTX_LIB_NAMES} )
+    target_link_libraries      ( ${_target} PRIVATE ${FFTX_LIB_NAMES} )
 
 endfunction ()

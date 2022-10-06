@@ -3,8 +3,9 @@
 ##  Copyright (c) 2018-2022, Carnegie Mellon University
 ##  See LICENSE for details
 
-##  This script reads a file of cube sizes (command line arg), that contains several size
-##  specifications for batch 1D DFTs.  This script will:
+##  This script reads a file of grid and cube sizes (command line arg), that contains size
+##  specifications for distributed 3D DFTs.  The grid is a 2D spec (dim1, dim2) across
+##  which a 3D DFT (x, y, z) will be distributed.  This script will:
 ##      Generate a list of source file names for CMake to build
 ##      Create the source files (by running Spiral), writing them
 ##      to directory lib_<transform>_srcs
@@ -13,16 +14,16 @@
 ##  Compiling the library is handled by CMake.
 ##
 ##  Usage:
-##    python gen_dftbat.py transform sizes_file target [direction] [nogen]
+##    python gen_distdft.py transform sizes_file target [direction] [nogen]
 ##  where:
-##    transform is the base transform to use for the library (e.g., fftx_dftbat)
-##    sizes_file is the file specifying the sizes to build for transform/target
+##    transform is the base transform to use for the library (e.g., fftx_distdft)
+##    sizes_file is the file specifying the grid & cube sizes to build
 ##    target specifies the target, e.g., cpu | cuda | hip
 ##    direction specifies the direction -- forward or inverse, specified as true | false
 ##    nogen when present tells python to skip the Spiral code generation -- initially for
 ##          debugging, but also may be used to update header and CMake files when the code exists
 
-##  gen_dftbat will build a separate library for each transform by option (e.g., separate
+##  gen_distdft will build a separate library for each transform by option (e.g., separate
 ##  libraries are built for forward and inverse transforms; for CPU and GPU code (NOTE: We
 ##  only consider the case where a system will have GPUs of one type, thus any GPU target
 ##  (cuda | hip | sycl [later]) will be built in a 'gpu' library).  The intent is to have
@@ -39,7 +40,7 @@ import shutil
 if len ( sys.argv ) < 4:
     ##  Must specify transform sizes_file target
     print ( sys.argv[0] + ': Missing args, usage:', flush = True )
-    print ( sys.argv[0] + ': transform sizes_file target [direction] [nogen]', flush = True)
+    print ( sys.argv[0] + ': transform sizes_file target [direction] [embed] [nogen]', flush = True)
     sys.exit (-1)
     
 _file_stem = sys.argv[1]
@@ -93,12 +94,23 @@ if len ( sys.argv ) >= 5:
         _xform_root = 'i' + _xform_root
         ##  print ( 'File stem = ' + _file_stem )
 
+##  Embedded defaults to 'false', override if specified as a parameter
+_embed = 'false'
+
+if len ( sys.argv ) >= 6:
+    ##  Embedded parameter specified -- anything except true ==> false
+    if re.match ( 'true', sys.argv[5], re.IGNORECASE ):
+        _embed = 'true'
+        _file_stem =  _file_stem + 'embed_'
+    
 ##  Create the library sources directory (if it doesn't exist)
 
 if _code_type == 'CPU':
     _decor = 'cpu_'
+    _decor_notrail = 'cpu'
 else:
     _decor = 'gpu_'
+    _decor_notrail = 'gpu'
 
 _srcs_dir  = 'lib_' + _file_stem + _decor + 'srcs'
 isdir = os.path.isdir ( _srcs_dir )
@@ -115,9 +127,6 @@ _cmake_srcs.write ( 'set ( _source_files ${_source_files} \n' )
 def start_header_file ( type, codefor ):
     "Sets up the common stuff for header files"
 
-    # if codefor != '':
-    #     codefor = codefor + '_'
-        
     _str = '#ifndef ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n'
     _str = _str + '#define ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n\n'
     _str = _str + '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
@@ -150,56 +159,41 @@ def start_header_file ( type, codefor ):
     _str = _str + '} transformTuple_t;\n'
     _str = _str + '#endif\n\n'
 
-    # else:
-    #     _str = _str + '#include "' + _file_stem + 'CPU_public.h"\n'
-    #     if _code_type == 'CUDA' or _code_type == 'HIP':
-    #         _str = _str + '#include "' + _file_stem + _code_type + '_public.h"\n\n'
-
-    #     _str = _str + '#ifndef LIB_MODE_CPU\n'
-    #     _str = _str + '#define LIB_MODE_CPU 0                   //  run CPU Spiral code\n'
-    #     _str = _str + '#define LIB_MODE_CUDA 1                  //  run NVIDIA GPU Spiral code\n'
-    #     _str = _str + '#define LIB_MODE_HIP 2                   //  run AMD HIP Spiral code \n'
-    #     _str = _str + '#endif\n\n'
-
-    #     _str = _str + 'static int ' + _file_stem + 'LibraryMode = LIB_MODE_' + _code_type + ';\n\n'
-    #     _str = _str + 'extern "C" {\n'
-    #     _str = _str + '//  Get the library code mode\n'
-    #     _str = _str + 'int ' + _file_stem + 'GetLibraryMode ();\n\n'
-    #     _str = _str + '//  Set the library code mode -- specify which code to run = { CPU | CUDA | HIP }\n'
-    #     _str = _str + 'void ' + _file_stem + 'SetLibraryMode ( int );\n}\n\n'
-
     return _str;
 
 
 def body_public_header ( codefor ):
     "Add the body details for the public header file"
 
-    # if codefor != '':
-    #     codefor = codefor + '_'
-
     _str =        '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of length N + 1, where N is the number of unique instances of the\n'
     _str = _str + '//  transform in the library.  Each element is a struct of type\n'
-    _str = _str + '//  fftx::point_t<2> specifying the number of batches and the transform dimension\n\n'
+    _str = _str + '//  fftx::point_t<5> specifying the grid dimensions and the transform dimension\n\n'
 
-    _str = _str + 'fftx::point_t<2> * ' + _file_stem + codefor + 'QuerySizes ();\n'
+    _str = _str + 'fftx::point_t<5> * ' + _file_stem + codefor + 'QuerySizes ();\n'
     _str = _str + '#define ' + _file_stem + 'QuerySizes ' + _file_stem + codefor + 'QuerySizes\n\n'
 
     _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the,\n'
     _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-    _str = _str + '//  Accepts fftx::point_t<2> specifying size, and pointers to the output\n'
+    _str = _str + '//  Accepts fftx::point_t<5> specifying grid & size, and pointers to the output\n'
     _str = _str + '//  (returned) data and the input data.\n\n'
 
-    _str = _str + 'void ' + _file_stem + codefor + 'Run ( fftx::point_t<2> req, double * output, double * input );\n'
+    _str = _str + 'void ' + _file_stem + codefor + 'Run ( fftx::point_t<5> req, double * output, double * input );\n'
     _str = _str + '#define ' + _file_stem + 'Run ' + _file_stem + codefor + 'Run\n\n'
 
     _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
-    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this\n'
+    _str = _str + '//  functions for a specific grid/size ' + _file_stem + ' transform.  Using this\n'
     _str = _str + '//  information the user may call the init function to setup for the transform,\n'
     _str = _str + '//  then run the transform repeatedly, and finally tear down (using destroy function).\n\n'
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<2> req );\n'
+    _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<5> req );\n'
     _str = _str + '#define ' + _file_stem + 'Tuple ' + _file_stem + codefor + 'Tuple\n\n'
+
+    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
+    _str = _str + '//  without having to load the library).\n'
+    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+
+    _str = _str + 'char * ' + _file_stem + codefor + 'GetMetaData ();\n\n'
 
     _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
     _str = _str + 'extern "C" {\n\n'
@@ -235,14 +229,14 @@ def library_api ( mkvers, decor, type ):
         _str = _str + '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  exit(-1); } }\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
-    _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<2> specifying\n'
-    _str = _str + '//  the number of batches and the transform dimension.  The final entry in the list\n'
+    _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<5> specifying\n'
+    _str = _str + '//  the grid dimensions and the transform dimensions.  The final entry in the list\n'
     _str = _str + '//  is a zero entry.\n\n'
 
-    _str = _str + 'fftx::point_t<2> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
-    _str = _str + '    fftx::point_t<2> *wp = (fftx::point_t<2> *) malloc ( sizeof ( AllSizes2_' + type + ' ) );\n'
+    _str = _str + 'fftx::point_t<5> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
+    _str = _str + '    fftx::point_t<5> *wp = (fftx::point_t<5> *) malloc ( sizeof ( AllSizes5_' + type + ' ) );\n'
     _str = _str + '    if ( wp != NULL)\n'
-    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes2_' + type + ', sizeof ( AllSizes2_' + type + ' ) );\n\n'
+    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes5_' + type + ', sizeof ( AllSizes5_' + type + ' ) );\n\n'
     _str = _str + '    return wp;\n'
     _str = _str + '}\n\n'
 
@@ -252,15 +246,18 @@ def library_api ( mkvers, decor, type ):
     _str = _str + '//  then run the transform repeatedly, and finally tear down (using the destroy\n'
     _str = _str + '//  function).  Returns NULL if requested size is not found\n\n'
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<2> req )\n'
+    _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<5> req )\n'
     _str = _str + '{\n'
     _str = _str + '    int indx;\n'
-    _str = _str + '    int numentries = sizeof ( AllSizes2_' + type + ' ) / sizeof ( fftx::point_t<2> ) - 1;    // last entry is { 0, 0 }\n'
+    _str = _str + '    int numentries = sizeof ( AllSizes5_' + type + ' ) / sizeof ( fftx::point_t<5> ) - 1;    // last entry is { 0, 0, 0, 0, 0 }\n'
     _str = _str + '    transformTuple_t *wp = NULL;\n\n'
 
     _str = _str + '    for ( indx = 0; indx < numentries; indx++ ) {\n'
-    _str = _str + '        if ( req[0] == AllSizes2_' + type + '[indx][0] &&\n'
-    _str = _str + '             req[1] == AllSizes2_' + type + '[indx][1] ) {\n'
+    _str = _str + '        if ( req[0] == AllSizes5_' + type + '[indx][0] &&\n'
+    _str = _str + '             req[1] == AllSizes5_' + type + '[indx][1] &&\n'
+    _str = _str + '             req[2] == AllSizes5_' + type + '[indx][2] &&\n'
+    _str = _str + '             req[3] == AllSizes5_' + type + '[indx][3] &&\n'
+    _str = _str + '             req[4] == AllSizes5_' + type + '[indx][4] ) {\n'
     _str = _str + '            // found a match\n'
     _str = _str + '            wp = (transformTuple_t *) malloc ( sizeof ( transformTuple_t ) );\n'
     _str = _str + '            if ( wp != NULL) {\n'
@@ -275,10 +272,10 @@ def library_api ( mkvers, decor, type ):
 
     _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the\n'
     _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-    _str = _str + '//  Accepts fftx::point_t<2> specifying size, and pointers to the output\n'
+    _str = _str + '//  Accepts fftx::point_t<5> specifying grid & size, and pointers to the output\n'
     _str = _str + '//  (returned) data and the input data.\n\n'
 
-    _str = _str + 'void ' + _file_stem + decor + 'Run ( fftx::point_t<2> req, double * output, double * input )\n'
+    _str = _str + 'void ' + _file_stem + decor + 'Run ( fftx::point_t<5> req, double * output, double * input )\n'
     _str = _str + '{\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( req );\n'
     _str = _str + '    if ( wp == NULL )\n'
@@ -299,58 +296,6 @@ def library_api ( mkvers, decor, type ):
 
     _str = _str + '    return;\n'
     _str = _str + '}\n\n'
-
-    # else:
-    #     _str = _str + 'extern "C" {\n'
-    #     _str = _str + '//  Get the library code mode\n\n'
-    #     _str = _str + 'int ' + _file_stem + 'GetLibraryMode ()\n{\n'
-    #     _str = _str + '    return ' + _file_stem + 'LibraryMode;\n}\n\n'
-
-    #     _str = _str + '//  Set the library code mode -- specify which code to run = { CPU | CUDA | HIP }\n\n'
-    #     _str = _str + 'void ' + _file_stem + 'SetLibraryMode ( int reqmode )\n{\n'
-    #     _str = _str + '    if ( reqmode < LIB_MODE_CPU || reqmode > LIB_MODE_HIP ) return;      //  ignore invalid requests\n'
-    #     _str = _str + '    ' + _file_stem + 'LibraryMode = reqmode;\n'
-    #     _str = _str + '    return;\n}\n\n}\n\n'
-
-    #     _str = _str + '//  Call the specific version of each public API function based on library mode...\n\n'
-    #     _str = _str + '//  Get the list of sizes defined in the library.\n\n'
-    #     _str = _str + 'fftx::point_t<2> * ' + _file_stem + 'QuerySizes ()\n{\n'
-    #     _str = _str + '    fftx::point_t<2> *wp = NULL;\n'
-    #     _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_CPU )\n'
-    #     _str = _str + '        wp = ' + _file_stem + 'CPU_QuerySizes();\n\n'
-
-    #     if type == 'CUDA' or type == 'HIP':
-    #         _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_' + type + ' )\n'
-    #         _str = _str + '        wp = ' + _file_stem + codefor + 'QuerySizes();\n\n'
-
-    #     _str = _str + '    return wp;\n'
-    #     _str = _str + '}\n\n'
-
-    #     _str = _str + '//  Get a transform tuple.\n\n'
-    #     _str = _str + 'transformTuple_t * ' + _file_stem + 'Tuple ( fftx::point_t<2> req )\n{\n'
-    #     _str = _str + '    transformTuple_t *wp = NULL;\n'
-    #     _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_CPU )\n'
-    #     _str = _str + '        wp = ' + _file_stem + 'CPU_Tuple( req );\n\n'
-
-    #     if type == 'CUDA' or type == 'HIP':
-    #         _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_' + type + ' )\n'
-    #         _str = _str + '        wp = ' + _file_stem + codefor + 'Tuple( req );\n\n'
-
-    #     _str = _str + '    return wp;\n'
-    #     _str = _str + '}\n\n'
-
-    #     _str = _str + '//  Run an ' + _file_stem + ' transform once.\n\n'
-    #     _str = _str + 'void ' + _file_stem + 'Run ( fftx::point_t<2> req, double * output, double * input )\n{\n'
-    #     _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_CPU )\n'
-    #     _str = _str + '        ' + _file_stem + 'CPU_Run ( req, output, input );\n\n'
-
-    #     if type == 'CUDA' or type == 'HIP':
-    #         _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_' + type + ' )\n'
-    #         _str = _str + '        ' + _file_stem + codefor + 'Run ( req, output, input );\n\n'
-
-    #     _str = _str + '    return;\n'
-    #     _str = _str + '}\n\n'
-
 
     return _str;
 
@@ -373,8 +318,8 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'int  ' + _file_stem + decor + 'python_init_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<2> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];\n'
+    _str = _str + '    fftx::point_t<5> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];  rsz[3] = req[3];  rsz[4] = req[4];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- return false\n'
@@ -396,27 +341,26 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _memfree = 'hipFree'
 
     if type == 'CUDA' or type == 'HIP':
-        ##  Adjust for batches / dimension
+        ##  Adjust for dimensions (Note grid = req[0, 1] and dimensions = req[2, 3, 4]
         ##  Amount of data space to malloc depends on transform:
         ##     MDDFT/IMDDFT:   x * y * z * 2 doubles (for C2C, both input & output)
         ##     MDPRDFT:        x * y * z     doubles (for R2C, input)
         ##                     x * y * ((z/2) + 1) * 2 doubles (for R2C, output)
         ##     IMDPRDFT:       x * y * ((z/2) + 1) * 2 doubles (for C2R, input)
         ##                     x * y * z     doubles (for C2R, output)
-        if xfm == 'mddft' or xfm == 'imddft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
-        elif xfm == 'mdprdft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-        elif xfm == 'imdprdft' or xfm == 'rconv':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
+        if xfm == 'distdft' or xfm == 'idistdft':
+            _str = _str + '    int ndoubin  = (int)(req[2] * req[3] * req[4] * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[2] * req[3] * req[4] * 2);\n'
+        elif xfm == 'distprdft':
+            _str = _str + '    int ndoubin  = (int)(req[2] * req[3] * req[4] );\n'
+            _str = _str + '    int ndoubout = (int)(req[2] * req[3] * ((int)(req[4]/2) + 1) * 2);\n'
+        elif xfm == 'idistprdft' or xfm == 'distrconv':
+            _str = _str + '    int ndoubin  = (int)(req[2] * req[3] * ((int)(req[4]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[2] * req[3] * req[4] );\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
         _str = _str + '    ' + _mmalloc + ' ( &dev_in,  sizeof(double) * ndoubin  );\n'
         _str = _str + '    ' + _mmalloc + ' ( &dev_out, sizeof(double) * ndoubout );\n'
-        _str = _str + '    ' + _mmalloc + ' ( &dev_sym, sizeof(double) * 1000 );\n'
         _str = _str + '    ' + _errchk +  '\n\n'
 
     _str = _str + '    //  Call the init function\n'
@@ -428,23 +372,23 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'void ' + _file_stem + decor + 'python_run_wrapper ( int * req, double * output, double * input )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<2> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];\n'
+    _str = _str + '    fftx::point_t<5> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];  rsz[3] = req[3];  rsz[4] = req[4];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
     if type == 'CUDA' or type == 'HIP':
-        if xfm == 'mddft' or xfm == 'imddft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
-        elif xfm == 'mdprdft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-        elif xfm == 'imdprdft' or xfm == 'rconv':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
+        if xfm == 'distdft' or xfm == 'idistdft':
+            _str = _str + '    int ndoubin  = (int)(req[2] * req[3] * req[4] * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[2] * req[3] * req[4] * 2);\n'
+        elif xfm == 'distprdft':
+            _str = _str + '    int ndoubin  = (int)(req[2] * req[3] * req[4] );\n'
+            _str = _str + '    int ndoubout = (int)(req[2] * req[3] * ((int)(req[4]/2) + 1) * 2);\n'
+        elif xfm == 'idistprdft' or xfm == 'distrconv':
+            _str = _str + '    int ndoubin  = (int)(req[2] * req[3] * ((int)(req[4]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[2] * req[3] * req[4] );\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return;\n\n'
         _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
@@ -461,8 +405,8 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'void ' + _file_stem + decor + 'python_destroy_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<2> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];\n'
+    _str = _str + '    fftx::point_t<5> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];  rsz[3] = req[3];  rsz[4] = req[4];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
@@ -478,48 +422,33 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _str = _str + '    ' + _errchk + '\n\n'
 
     _str = _str + '    return;\n}\n\n}\n'
-
-    # else:
-    #     ##  Generic wrapper calls that choose the appropriate version based on library mode
-    #     ##  ???_python_init_wrapper
-
-    #     _str = _str + 'int  ' + _file_stem + 'python_init_wrapper ( int * req )\n{\n'
-    #     _str = _str + '    int res = 0;\n'
-    #     _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_CPU )\n'
-    #     _str = _str + '        res = ' + _file_stem + 'CPU_python_init_wrapper ( req );\n\n'
-
-    #     if type == 'CUDA' or type == 'HIP':
-    #         _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_' + type + ' )\n'
-    #         _str = _str + '        res = ' + _file_stem + codefor + 'python_init_wrapper ( req );\n\n'
         
-    #     _str = _str + '    return res;\n'
-    #     _str = _str + '}\n\n'
+    return _str;
 
-    #     ##  ???_python_run_wrapper
 
-    #     _str = _str + 'void ' + _file_stem + 'python_run_wrapper ( int * req, double * output, double * input )\n{\n'
-    #     _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_CPU )\n'
-    #     _str = _str + '        ' + _file_stem + 'CPU_python_run_wrapper ( req, output, input );\n\n'
+def create_metadata ( decor ):
+    "Create a compileable module to be added to the library that contains the metadata for the library"
 
-    #     if type == 'CUDA' or type == 'HIP':
-    #         _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_' + type + ' )\n'
-    #         _str = _str + '        ' + _file_stem + codefor + 'python_run_wrapper ( req, output, input );\n\n'
-        
-    #     _str = _str + '    return;\n'
-    #     _str = _str + '}\n\n'
+    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str = _str + '//  See LICENSE for details\n\n'
 
-    #     ##  ???_python_destroy_wrapper
+    _str = _str + '#include <stdio.h>\n'
+    _str = _str + '#include <stdlib.h>\n'
+    _str = _str + '#include <string.h>\n\n'
 
-    #     _str = _str + 'void ' + _file_stem + 'python_destroy_wrapper ( int * req )\n{\n'
-    #     _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_CPU )\n'
-    #     _str = _str + '        ' + _file_stem + 'CPU_python_destroy_wrapper ( req );\n\n'
+    _str = _str + _metadata + '</Sizes>\\n\\\n</libmd>\";\n\n'
 
-    #     if type == 'CUDA' or type == 'HIP':
-    #         _str = _str + '    if ( ' + _file_stem + 'LibraryMode == LIB_MODE_' + type + ' )\n'
-    #         _str = _str + '        ' + _file_stem + codefor + 'python_destroy_wrapper ( req );\n\n'
-        
-    #     _str = _str + '    return;\n}\n\n}\n'
-        
+    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
+    _str = _str + '//  without having to load the library).\n'
+    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+
+    _str = _str + 'char * ' + _file_stem + decor + 'GetMetaData ()\n{\n'
+    _str = _str + '    char * wp = (char *) malloc ( strlen ( ' + _file_stem + 'MetaData ) + 1 );\n'
+    _str = _str + '    if ( wp != NULL )\n'
+    _str = _str + '        strcpy ( wp, ' + _file_stem + 'MetaData );\n\n'
+    _str = _str + '    return wp;\n'
+    _str = _str + '}\n\n'
+
     return _str;
 
 
@@ -538,26 +467,23 @@ def cmake_library ( decor, type ):
         _str = _str + 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n'
 
     _str = _str + 'include ( SourceList.cmake )\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'include ( SourceList' + type + '.cmake )\n'
-
-    # _str = _str + 'list    ( APPEND _source_files ${_lib_root}_CPU_libentry.cpp' + ' )\n'
     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_' + type + '_libentry' + _file_suffix + ' )\n\n'
-    ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_metadata' + _file_suffix + ' )\n'
 
     _str = _str + 'set ( _incl_files ${_lib_root}_public.h )\n\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'list    ( APPEND _incl_files ${_lib_root}_' + type + '_public.h )\n\n'
 
     _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'
     if type == 'CUDA':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${CUDA_COMPILE_FLAGS} ${GPU_COMPILE_DEFNS} )\n'
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n'
-        _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n'
+        _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n'
+        _str = _str + 'add_mpi_decorations_to_target ( ${_lib_name} )\n\n'
+        _str = _str + 'if ( WIN32 )\n'
+        _str = _str + '    target_link_libraries ( ${_lib_name} PRIVATE ${LIBS_FOR_CUDA} ${_fftxmpi_libname} )\n'
+        _str = _str + 'endif ()\n\n'
     elif type == 'HIP':
-        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
+        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n'
+        _str = _str + 'add_mpi_decorations_to_target ( ${_lib_name} )\n\n'
     elif type == 'CPU':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n\n'
         
@@ -576,8 +502,13 @@ def cmake_library ( decor, type ):
 
 
 _extern_decls  = ''
-_all_sizes     = 'static fftx::point_t<2> AllSizes2_' + _code_type + '[] = {\n'
+_all_sizes     = 'static fftx::point_t<5> AllSizes5_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
+
+_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"<libmd> lib' + _file_stem + _decor_notrail + '\\n\\\n'
+_metadata     += '<transform> ' + _xform_pref + _xform_name + ' </transform>\\n\\\n'
+_metadata     += '<targetclass> ' + _decor_notrail + ' <target> ' + _code_type + ' </target></targetclass>\\n\\\n'
+_metadata     += '<Sizes>\\n\\\n'
 
 
 with open ( _sizesfil, 'r' ) as fil:
@@ -599,19 +530,22 @@ with open ( _sizesfil, 'r' ) as fil:
         testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
         testscript.write ( 'fwd := ' + _fwd + '; \n' )
         testscript.write ( 'codefor := "' + _code_type + '"; \n' )
+        testscript.write ( 'embed := ' + _embed + '; \n' )
         testscript.close()
 
-        _dims = re.sub ( '.*nbatch :=', '', line )      ## get number batches
+        _dims = re.sub ( '.*grid :=', '', line )        ## get grid size
         _dims = re.sub ( ';.*', '', _dims )
+        _dims = re.sub ( '.*\[', '', _dims )
+        _dims = re.sub ( '\].*', '', _dims )
         _dims = re.sub ( ' *', '', _dims )              ## compress out white space
         _dims = _dims.rstrip()                          ## remove training newline
-        _nbat = _dims
+        _grid = re.split ( ',', _dims )
         
-        line = re.sub ( '.*\[', '', line )              ## drop "szns := ["
+        line = re.sub ( '.*\[', '', line )              ## drop everything up to "szcube := ["
         line = re.sub ( '\].*', '', line )              ## drop "];"
         line = re.sub ( ' *', '', line )                ## compress out white space
         line = line.rstrip()                            ## remove training newline
-        _dims = line
+        _dims = re.split ( ',', line )
 
         ##  TODO: Allow a way to specify different gap file(s)
         ##  Assume gap file is named {_orig_file_stem}-frame.g
@@ -629,16 +563,17 @@ with open ( _sizesfil, 'r' ) as fil:
         else:
             cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
-        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d' + '_' + _code_type
+        _func_stem = _file_stem + 'g' + _grid[0] + 'x' + _grid[1] + '_c'
+        _func_stem = _func_stem + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2] + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
-        if len ( sys.argv ) < 6:
+        if len ( sys.argv ) >= 7:
+            ##  Just print a message and skip copde gen (test python process/logic)
+            print ( 'run spiral to create source file: ' + _file_name, flush = True )
+        else:
             ##  No optional argument, generate the code
             result = subprocess.run ( cmdstr, shell=True, check=True )
             res = result.returncode
-        else:
-            ##  Just print a message and skip copde gen (test python process/logic)
-            print ( 'run spiral to create source file: ' + _file_name, flush = True )
 
         ##  Add the file name to the list of sources, update declarations etc. if file exists
         if os.path.exists ( src_file_path ):
@@ -654,9 +589,11 @@ with open ( _sizesfil, 'r' ) as fil:
             ##  _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input, double *sym );  }\n\n'
 
             ##  Identify transform by # batches and xform size
-            _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _dims + ' },\n'
+            _gcspec = _grid[0] + ', ' + _grid[1] + ', ' + _dims[0] + ', ' + _dims[1] + ', ' + _dims[2]
+            _all_sizes = _all_sizes + '    { ' + _gcspec + ' },\n'
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
+            _metadata += '<size> { ' + _gcspec + ' } </size>\\n\\\n'
 
         else:
             ## Failed to generate file -- note it in build-lib-code-failures.txt
@@ -678,20 +615,9 @@ with open ( _sizesfil, 'r' ) as fil:
     _header_fil.write ( _filebody )
     _header_fil.write ( _extern_decls )
     _header_fil.write ( _tuple_funcs + '    { NULL, NULL, NULL }\n};\n\n' )
-    _header_fil.write ( _all_sizes + '    { 0, 0 }\n};\n\n' )
+    _header_fil.write ( _all_sizes + '    { 0, 0, 0, 0, 0 }\n};\n\n' )
     _header_fil.write ( '#endif\n\n' )
     _header_fil.close ()
-
-    # ##  Create (or append) the <transform>_decls.h file with the name of the file just built
-    # _hfil = _srcs_dir + '/' + _file_stem + 'decls.h'
-    # if _code_type == 'CPU':
-    #     _omode = 'w'
-    # else:
-    #     _omode = 'a'
-
-    # _header_fil = open ( _hfil, _omode )
-    # _header_fil.write ( '#include "' + _file_stem + _code_type + '_decls.h"\n\n' )
-    # _header_fil.close ()
 
     ##  Create the public header file
     
@@ -701,16 +627,6 @@ with open ( _sizesfil, 'r' ) as fil:
     _filebody = _filebody + body_public_header ( _decor )
     _header_fil.write ( _filebody )
     _header_fil.close ()
-
-    # ##  Create the public header file (i.e., the generic public API, e.g., <transform>_public.h).
-    # ##  This file automatically includes the target specific headers.
-
-    # _hfil = _srcs_dir + '/' + _file_stem + 'public.h'
-    # _header_fil = open ( _hfil, 'w' )
-    # _filebody = start_header_file ( 'PUBLIC_',  '' )
-    # _filebody = _filebody + body_public_header ( '' )
-    # _header_fil.write ( _filebody )
-    # _header_fil.close ()
 
     ##  Create the _code_type library API file.  This is the public API for the target (or
     ##  set or targets, e.g., gpu)
@@ -722,19 +638,13 @@ with open ( _sizesfil, 'r' ) as fil:
     _api_file.write ( _filebody )
     _api_file.close ()
 
-    # ##  Create (or recreate) the public API file.  When _code_type is a GPU (CUDA or HIP) then both
-    # ##  CPU and GPU specific function will be added.  The public API does *not* embed the target in
-    # ##  the function names.
-    # _hfil = _srcs_dir + '/' + _file_stem + 'libentry.cpp'
-    # if os.path.exists ( _hfil ):
-    #     os.remove ( _hfil )
-        
-    # _hfil = _srcs_dir + '/' + _file_stem + 'libentry' + _file_suffix
-    # _api_file = open ( _hfil, 'w' )
-    # _filebody = library_api ( False, _decor, _code_type )
-    # _filebody = _filebody + python_cuda_api ( False, _decor, _code_type, _xform_root )
-    # _api_file.write ( _filebody )
-    # _api_file.close ()
+    ##  Create the metadata file.
+
+    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'metadata' + _file_suffix
+    _api_file = open ( _hfil, 'w' )
+    _filebody = create_metadata ( _decor )
+    _api_file.write ( _filebody )
+    _api_file.close ()
 
     ##  Create the CMakeLists.txt file
     _hfil = _srcs_dir + '/CMakeLists.txt'

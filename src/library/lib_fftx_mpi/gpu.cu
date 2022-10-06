@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+//  #include <sys/time.h>
 #include <malloc.h>
 #include <complex>
-#include "gpu.h"
 
-#include "../common/device_macros.h"
+#include "device_macros.h"
+#include "fftx_gpu.h"
 
 using namespace std;
 

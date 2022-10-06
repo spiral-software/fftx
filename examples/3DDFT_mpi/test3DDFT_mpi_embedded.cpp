@@ -2,14 +2,13 @@
 #include <limits.h>
 #include <complex>
 #include <float.h>
-#include <unistd.h>
 #include <string>
-#include "gpu.h"
-#include "util.h"
+#include "fftx_gpu.h"
+#include "fftx_util.h"
 #include "fftx3.hpp"
 #include "fftx_mpi.hpp"
 
-#include "fftx_embed_distdft_gpu_public.h"
+#include "fftx_distdft_embed_gpu_public.h"
 
 
 #include <stdlib.h>     /* srand, rand */
@@ -107,18 +106,15 @@ int main(int argc, char* argv[]) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  fftx::point_t<5> req({r, c, M, N, K}) ;
-  transformTuple_t *tptr = fftx_embed_distdft_gpu_Tuple(req);
+  fftx::point_t<5> req({r, c, Mo, No, Ko}) ;
+  transformTuple_t *tptr = fftx_distdft_embed_gpu_Tuple(req);
   
   if ( tptr != NULL ) {
-
-    //init_mddft3d();
-    (* tptr->initfp)();
+	  (* tptr->initfp)();
   
 	  for (int t = 0; t < 1; t++) {
 		  double start_time = MPI_Wtime();
 
-		  //mddft3d((double*)out_buffer, (double*)in_buffer);
 		  (* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
 
 		  double end_time = MPI_Wtime();
@@ -286,8 +282,7 @@ int main(int argc, char* argv[]) {
   }
 #endif  
 
-  //destroy_mddft3d();
-  (* tptr->destroyfp)();
+      (* tptr->destroyfp)();
   }
   else {
 	  printf ( "Distributed library entry for req = { %d, %d, %d, %d, %d } not found ... skipping\n",
