@@ -216,7 +216,7 @@ function ( add_mpi_decorations_to_target _target )
 	##  target_compile_options     ( ${_target} PRIVATE ${MPI_CXX_COMPILE_OPTIONS} )
 	##  target_link_options        ( ${_target} PRIVATE ${MPI_CXX_LINK_FLAGS} )
 	##  link flags are wrong on thom
-	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX )
+	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX ${ADDL_MPI_LIBS} )
     else ()
 	message ( STATUS "MPI was not found -- cannot add decorations for target = ${_target}" )
     endif ()
