@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   
   for (fftx::point_t<5> req* = wcube;
        (*req).x[0] != 0 && (*req).x[1] != 0 && (*req).x[2] != 0 && (*req).x[3] != 0 && (*req).x[4] != 0;
-       req += 1)
+       req++)
   {
   // 3d fft sizes
     /*
