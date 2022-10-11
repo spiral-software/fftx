@@ -446,7 +446,10 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         elif xfm == 'imdprdft' or xfm == 'rconv':
             _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
             _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
-
+        elif xfm == 'psatd':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+            
         _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
         _str = _str + '    ' + _mmalloc + ' ( &dev_in,  sizeof(double) * ndoubin  );\n'
         _str = _str + '    ' + _mmalloc + ' ( &dev_out, sizeof(double) * ndoubout );\n'
@@ -479,6 +482,9 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         elif xfm == 'imdprdft' or xfm == 'rconv':
             _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
             _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
+        elif xfm == 'psatd':
+            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
+            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return;\n\n'
         _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
