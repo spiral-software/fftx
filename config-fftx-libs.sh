@@ -32,6 +32,9 @@ RCONV_LIB=true
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
 DISTDFT_LIB=true
 
+##  Build the PSATD fixed sizes library
+PSATD_LIB=true
+
 ##  File containing the sizes to build for the CPU version of MDDFT, MDPRDFT, and RCONV
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
 
@@ -41,8 +44,11 @@ GPU_SIZES_FILE="cube-sizes-gpu.txt"
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
 
-##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
+##  File containing the sizes to build for the distributed FFT library
 DISTDFT_SIZES_FILE="distdft-sizes.txt"
+
+##  File containing the sizes to build for the PSATD library
+PSATD_SIZES_FILE="cube-psatd.txt"
 
 ##  Build all examples: If set true the FFTX example programs will be built.  NOTE: Only
 ##  those example programs which have their dependent libraries will be built.  Some
@@ -78,10 +84,12 @@ echo "MDDFT_LIB=$MDDFT_LIB" >> build-lib-code-options.sh
 echo "MDPRDFT_LIB=$MDPRDFT_LIB" >> build-lib-code-options.sh
 echo "RCONV_LIB=$RCONV_LIB" >> build-lib-code-options.sh
 echo "DISTDFT_LIB=$DISTDFT_LIB" >> build-lib-code-options.sh
+echo "PSATD_LIB=$PSATD_LIB" >> build-lib-code-options.sh
 echo "CPU_SIZES_FILE=$CPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "GPU_SIZES_FILE=$GPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "DFTBAT_SIZES_FILE=$DFTBAT_SIZES_FILE" >> build-lib-code-options.sh
 echo "DISTDFT_SIZES_FILE=$DISTDFT_SIZES_FILE" >> build-lib-code-options.sh
+echo "PSATD_SIZES_FILE=$PSATD_SIZES_FILE" >> build-lib-code-options.sh
 
 popd
 
@@ -161,12 +169,16 @@ else
 fi
 echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
 
+if [ "$PSATD_LIB" = true ]; then
+    setopt="ON"
+else
+    setopt="OFF"
+fi
+echo "option ( PSATD_LIB \"Build the PSATD library\" $setopt )" >> options.cmake
+
 if [ "$BUILD_EXAMPLES" = true ]; then
     setopt="ON"
 else
     setopt="OFF"
 fi
 echo "option ( BUILD_EXAMPLES \"Build the FFTX example programs\" $setopt )" >> options.cmake
-
-##  Can we add options to options.cmake to specify what to build: e.g., define _codegen and CXX_COMPILER?
-
