@@ -14,6 +14,7 @@
 #include <sys/types.h> // rest for open/close
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "data_interaction.hpp"
 #pragma once
 #define NVRTC_SAFE_CALL(x) \
  do { \
@@ -37,6 +38,19 @@
  } while(0)
 
 
+const char * getCUDARuntime() {
+    const char * tmp2 = std::getenv("CUDA_HOME");
+     std::string tmp(tmp2 ? tmp2 : "");
+        if (tmp.empty()) {
+            std::cout << "[ERROR] No such variable found! Please set CUDA_HOME" << std::endl;
+            exit(-1);
+        }
+    tmp += "/lib64/libcudadevrt.a";
+
+    return tmp.c_str();
+}
+
+
 class Executor {
     private:
         int x;
@@ -49,6 +63,9 @@ class Executor {
         };
         nvrtcProgram prog;
         nvrtcResult compileResult;
+        // std::vector<fftx::array_t<3,std::complex<double>>> in;
+        // std::vector<fftx::array_t<3,std::complex<double>>> out;
+        std::vector<void*> kernelargs;
         std::vector<std::tuple<std::string, int, std::string>> device_names;
         std::string kernel_name;
         std::string kernels;
@@ -66,22 +83,28 @@ class Executor {
         CUfunction kernel;
         size_t cubinSize;
         void *cubin;
+        float GPUtime;
     public:
+        // Executor();
+    //     Executor(std::vector<fftx::array_t<3,std::complex<double>>> &in1,
+    // std::vector<fftx::array_t<3,std::complex<double>>> &out1)
+    //     :in(in1), out(out1){}
+        // Executor(const std::vector<void*>& args1) {
+        //     kernelargs = args1;
+        // }
         string_code hashit(std::string const& inString);
-        void parseDataStructure(char * input);
+        void parseDataStructure(std::string input);
         void createProg();
         void getVars();
         void compileProg();
         void threeinone();
-        void getLogsAndPTX(char * args);
+        void getLogsAndPTX();
         void initializeVars();
         void destoryProg();
-        void initAndLaunch(std::vector<fftx::array_t<3,std::complex<double>>> in,
-        std::vector<fftx::array_t<3,std::complex<double>>> out);
-        void execute(std::vector<fftx::array_t<3,std::complex<double>>> in,
-        std::vector<fftx::array_t<3,std::complex<double>>> out,
-        int counts,
-        std::vector<char**> inputargs);
+        float initAndLaunch(std::vector<void*>& args);
+        void execute(std::string file_name);
+        float getKernelTime();
+        void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
 
 Executor::string_code Executor::hashit(std::string const& inString) {
@@ -92,15 +115,20 @@ Executor::string_code Executor::hashit(std::string const& inString) {
     return mone;
 }
 
-void Executor::parseDataStructure(char * input) {
-    std::cout << input << std::endl;
-    std::ifstream t(input);
-    std::stringstream ds;
-    ds << t.rdbuf();
-    std::istringstream stream(ds.str());
+void Executor::parseDataStructure(std::string input) {
+    // std::cout << input << std::endl;
+    // std::ifstream t(input);
+    // std::stringstream ds;
+    // ds << t.rdbuf();
+    //std::istringstream stream(ds.str());
+    std::istringstream stream(input);
     char delim = ' ';
     std::string line;
     std::string b = "------------------";
+    while(std::getline(stream, line)){
+        if(line == "spiral> JIT BEGIN")
+            break;
+    }
     while(std::getline(stream,line)) {
         if(line == b) {
             break;
@@ -242,7 +270,7 @@ void Executor::compileProg() {
 //     opts)); 
 // }
 
-void Executor::getLogsAndPTX(char * arg) {
+void Executor::getLogsAndPTX() {
     NVRTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
     log = new char[logSize];
     NVRTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
@@ -258,11 +286,11 @@ void Executor::getLogsAndPTX(char * arg) {
     NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     ptx = new char[ptxSize];
     NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    CUDA_SAFE_CALL(cuInit(0));
-    CUDA_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
-    CUDA_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
+    // CUDA_SAFE_CALL(cuInit(0));
+    // CUDA_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
+    // CUDA_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
     CUDA_SAFE_CALL(cuLinkCreate(0, 0, 0, &linkState));
-    CUDA_SAFE_CALL(cuLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, arg, 
+    CUDA_SAFE_CALL(cuLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getCUDARuntime(), 
     0, 0, 0));
     CUDA_SAFE_CALL(cuLinkAddData(linkState, CU_JIT_INPUT_PTX,
     (void *)ptx, ptxSize, "dft_jit.ptx",
@@ -316,10 +344,10 @@ void Executor::destoryProg() {
     NVRTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
-void Executor::initAndLaunch(std::vector<fftx::array_t<3,std::complex<double>>> in,
-        std::vector<fftx::array_t<3,std::complex<double>>> out) {
+float Executor::initAndLaunch(std::vector<void*>& args) {
+    //kernelargs = initGPUData(in.at(0), out.at(0));
     std::cout << "the kernel name is " << kernel_name << std::endl;
-    std::cout << in.at(0).m_domain.size() << std::endl;
+    // std::cout << in.at(0).m_domain.size() << std::endl;
     CUDA_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
     // double *X = new double[64];
     // double *Y = new double[64];
@@ -339,59 +367,69 @@ void Executor::initAndLaunch(std::vector<fftx::array_t<3,std::complex<double>>> 
     // std::cout << "\n";
     // std::cout << "numBlocks " << numBlocks << std::endl;
     // std::cout << "X in host is " << X[10] << std::endl;
-    CUdeviceptr dX, dY, dsym;
-    //double  *hp1 = new double[512];
-    std::cout << "allocating memory\n";
-    CUDA_SAFE_CALL(cuMemAlloc(&dX, in.at(0).m_domain.size() * sizeof(std::complex<double>)));
-    std::cout << "allocated X\n";
-    CUDA_SAFE_CALL(cuMemcpyHtoD(dX, in.at(0).m_data.local(),  in.at(0).m_domain.size() * sizeof(std::complex<double>)));
-    std::cout << "copied X\n";
-    CUDA_SAFE_CALL(cuMemAlloc(&dY, out.at(0).m_domain.size() * sizeof(std::complex<double>)));
-    std::cout << "allocated Y\n";
-    // //CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
-    CUDA_SAFE_CALL(cuMemAlloc(&dsym, 64* sizeof(double)));
-    //init_grid_dft2d_cont(kernel, module);
-    // Execute parent kernel.
-    void *args[] = { &dY, &dX, &dsym};
-    //init_grid_dft2d_cont();
-    //for(int i = 0; i < 1; i++) {
-        std::cout << "launched kernel\n";
-        CUDA_SAFE_CALL(
-        cuLaunchKernel(kernel,
-        1, 1, 1, // grid dim
-        1, 1, 1, // block dim
-        0, NULL, // shared mem and stream
-        args, 0)); // arguments
-        CUDA_SAFE_CALL(cuCtxSynchronize());
-        //CUDA_SAFE_CALL(cuMemcpyDtoH(X, dX, 64*sizeof(double)));
-        std::cout << "copying data back\n";
-        CUDA_SAFE_CALL(cuMemcpyDtoH(out.at(0).m_data.local(), dY, out.at(0).m_domain.size()*sizeof(std::complex<double>)));
-        std::cout << "\n\n\n\nOutput is" << std::endl;
-        // for (int i = 0; i < out.at(0).m_domain.size(); i++) {
-        //     std::cout << out.at(0).m_data.local()[i] << "\n";
-        // }
+    // CUdeviceptr dX, dY, dsym;
+    // double  *hp1 = new double[512];
+    // std::cout << "allocating memory\n";
+    // CUDA_SAFE_CALL(cuMemAlloc(&dX, in.at(0).m_domain.size() * sizeof(std::complex<double>)));
+    // std::cout << "allocated X\n";
+    // CUDA_SAFE_CALL(cuMemcpyHtoD(dX, in.at(0).m_data.local(),  in.at(0).m_domain.size() * sizeof(std::complex<double>)));
+    // std::cout << "copied X\n";
+    // CUDA_SAFE_CALL(cuMemAlloc(&dY, out.at(0).m_domain.size() * sizeof(std::complex<double>)));
+    // std::cout << "allocated Y\n";
+    // // //CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+    // CUDA_SAFE_CALL(cuMemAlloc(&dsym, 64* sizeof(double)));
+    // // //init_grid_dft2d_cont(kernel, module);
+    // // // Execute parent kernel.
+    std::cout << "launched kernel\n";
+    CUevent start, stop;
+    CUDA_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
+    CUDA_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
+    CUDA_SAFE_CALL(cuEventRecord(start,0));
+    CUDA_SAFE_CALL(
+    cuLaunchKernel(kernel,
+    1, 1, 1, // grid dim
+    1, 1, 1, // block dim
+    0, NULL, // shared mem and stream
+    //kernelargs.data(), 0)); // arguments
+    args.data(),0));
+    CUDA_SAFE_CALL(cuEventRecord(stop,0));
+    CUDA_SAFE_CALL(cuCtxSynchronize());
+    CUDA_SAFE_CALL(cuEventSynchronize(stop));
+    CUDA_SAFE_CALL(cuEventElapsedTime(&GPUtime, start, stop));
+    //CUDA_SAFE_CALL(cuMemcpyDtoH(X, dX, 64*sizeof(double)));
+    // std::cout << "copying data back\n";
+    // CUDA_SAFE_CALL(cuMemcpyDtoH(out.at(0).m_data.local(), dY, out.at(0).m_domain.size()*sizeof(std::complex<double>)));
+    // std::cout << "\n\n\n\nOutput is" << std::endl;
+    // for (int i = 0; i < out.at(0).m_domain.size(); i++) {
+    //     std::cout << out.at(0).m_data.local()[i] << "\n";
+    // }
+    return getKernelTime();
     //}
-
 }
 
-void Executor::execute(std::vector<fftx::array_t<3,std::complex<double>>> in, 
-                        std::vector<fftx::array_t<3,std::complex<double>>> out,
-                        int counts,
-                        std::vector<char**> inputargs) {
+void Executor::execute(std::string file_name) {
     //int count = *((int*)inputargs.at(0));
     // std::cout << "count is" << counts << std::endl;
     // std::cout << (char*)inputargs.at(inputargs.size()-1) << std::endl;
     // std::cout << (inputargs.at(inputargs.size()-2))[counts-1] << std::endl;
-    std::cout << in.at(0).m_domain.size() << std::endl;
+    //std::cout << in.at(0).m_domain.size() << std::endl;
     std::cout << "begin executing code\n";
-    parseDataStructure((char*)inputargs.at(inputargs.size()-1));
+    parseDataStructure(file_name);
     std::cout << "finsihed parsing\n";
     createProg();
     getVars();
     compileProg();
-    getLogsAndPTX((inputargs.at(inputargs.size()-2))[counts-1]);
+    getLogsAndPTX();
     initializeVars();
     destoryProg();
-    std::cout << "begin kernel launch\n";
-    initAndLaunch(in, out);
+    //std::cout << "begin kernel launch\n";
+    //initAndLaunch(in, out);
+}
+
+float Executor::getKernelTime() {
+    return GPUtime;
+}
+
+void Executor::returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1) {
+    gatherOutput(out1.at(0), kernelargs);
 }
