@@ -3,7 +3,9 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
-#include "newinterface.hpp"
+#include <unordered_map>
+//#include "newinterface.hpp"
+#include "hipbackend.hpp"
 #include "fftx3.hpp"
 #include <array>
 #include <cstdio>
@@ -27,7 +29,7 @@ public:
     // std::vector<fftx::array_t<3,std::complex<double>>> out;
     std::vector<void*> args;
     std::string res;
-
+    std::unordered_map<std::string, Executor> executors;
     
     FFTXProblem(){
     }
@@ -66,7 +68,11 @@ void FFTXProblem::transform(){
             res = semantics();
             //std::cout << res << std::endl;
         }
-        if(!res.empty()) {
+        if(executors.find(res) != executors.end()) {
+            std::cout << "running cached instances";
+            run(executors.at(res));
+        }
+        else if(!res.empty()) {
             std::cout << "found file to parse\n";
             // const char * file_name = "mddft.fftx.source.txt";
             // p.sig.args.push_back((char**)file_name);
@@ -81,6 +87,7 @@ void FFTXProblem::transform(){
             //e.execute(std::any_cast<int>(p.sig.inputargs.at(0)), std::any_cast<char**>(p.sig.inputargs.at(1)));
             //e.execute(*((int*)p.sig.inputargs.at(0)), (char**)p.sig.inputargs.at(1));
             e.execute(res);
+            executors.insert(std::make_pair(res, e));
             run(e);
             //e.execute(p);
         }

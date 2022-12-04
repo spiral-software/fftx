@@ -2,13 +2,17 @@
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
 #include "interfacev2.hpp"
-#include "newinterface.hpp"
-#include <nvrtc.h>
 #include "mddftObjv2.hpp"
 #include "imddftObjv2.hpp"
-#include "data_interaction.hpp"
+//#include "data_interaction.hpp"
 #include <string>
 #include <fstream>
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#endif
+#if defined FFTX_HIP
+#include "hipbackend.hpp"
+#endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "device_macros.h"
 #endif
@@ -18,7 +22,7 @@ int main(int argc, char* argv[])
   std::cout <<"this is my program X3\n";
   printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
 
-  int iterations = 1 ;
+  int iterations = 2;
   if (argc > 1)
     {
       iterations = atoi(argv[1]);
@@ -34,22 +38,45 @@ int main(int argc, char* argv[])
            v=std::complex<double>(2.0,0.0);
          },inputHost);
 
- initDevice();
-//  CUdevice cuDevice;
-//  CUcontext context;
-//  CUDA_SAFE_CALL(cuInit(0));
-//  CUDA_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
-//  CUDA_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
- CUdeviceptr  dX, dY, dsym;
-std::cout << "allocating memory\n";
-CUDA_SAFE_CALL(cuMemAlloc(&dX, inputHost.m_domain.size() * sizeof(std::complex<double>)));
+//initDevice();
+  #if defined FFTX_CUDA
+    CUdevice cuDevice;
+    CUcontext context;
+    cuInit(0);
+    cuDeviceGet(&cuDevice, 0);
+    cuCtxCreate(&context, 0, cuDevice);
+    CUdeviceptr  dX, dY, dsym;
+  #endif
+  #if defined FFTX_HIP
+    hipDeviceptr_t  dX, dY, dsym;
+  #endif
+// std::cout << "allocating memory\n";
+// CUDA_SAFE_CALL(cuMemAlloc(&dX, inputHost.m_domain.size() * sizeof(std::complex<double>)));
+// std::cout << "allocated X\n";
+// CUDA_SAFE_CALL(cuMemcpyHtoD(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>)));
+// std::cout << "copied X\n";
+// CUDA_SAFE_CALL(cuMemAlloc(&dY, outputHost.m_domain.size() * sizeof(std::complex<double>)));
+// std::cout << "allocated Y\n";
+// // //CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+// CUDA_SAFE_CALL(cuMemAlloc(&dsym, outputHost.m_domain.size() * sizeof(std::complex<double>)));
+// std::cout << "allocating memory\n" << 30720 << "\n";
+// CUDA_SAFE_CALL(hipMalloc((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>)));
+// std::cout << "allocated X\n";
+// CUDA_SAFE_CALL(hipMemcpy(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>), hipMemcpyHostToDevice));
+// std::cout << "copied X\n";
+// CUDA_SAFE_CALL(hipMalloc((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>)));
+// std::cout << "allocated Y\n";
+// // //HIP_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+// CUDA_SAFE_CALL(hipMalloc((void **)&dsym,  outputHost.m_domain.size()*  sizeof(std::complex<double>)));
+std::cout << "allocating memory\n" << 30720 << "\n";
+DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
 std::cout << "allocated X\n";
-CUDA_SAFE_CALL(cuMemcpyHtoD(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>)));
+DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE);
 std::cout << "copied X\n";
-CUDA_SAFE_CALL(cuMemAlloc(&dY, outputHost.m_domain.size() * sizeof(std::complex<double>)));
+DEVICE_MALLOC((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>));
 std::cout << "allocated Y\n";
-// //CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
-CUDA_SAFE_CALL(cuMemAlloc(&dsym, outputHost.m_domain.size() * sizeof(std::complex<double>)));
+// //HIP_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size()*  sizeof(std::complex<double>));
 
   double* mddft_cpu = new double[iterations];
   double* imddft_cpu = new double[iterations];
@@ -57,8 +84,13 @@ CUDA_SAFE_CALL(cuMemAlloc(&dsym, outputHost.m_domain.size() * sizeof(std::comple
 //   // additional code for GPU programs
   float* mddft_gpu = new float[iterations];
   float* imddft_gpu = new float[iterations];
-   std::string descrip = "CPU and GPU";
-std::vector<void*> args{&dX,&dY,&dsym};
+  std::string descrip = "CPU and GPU";
+#if defined FFTX_CUDA
+std::vector<void*> args{&dY,&dX,&dsym}
+#endif
+#if defined FFTX_HIP
+std::vector<void*> args{dY,dX,dsym};
+#endif
 //   std::complex<double> * bufferDevicePtr;
 //   std::complex<double> * inputDevicePtr;
 //   std::complex<double> * outputDevicePtr;
@@ -86,7 +118,7 @@ std::vector<void*> args{&dX,&dY,&dsym};
 
   // inList.push_back(inputHost);
   // outList.push_back(outputHost);
-  
+
 
   //MDDFTProblem mdp(inList, outList);
   //std::cout << *((int*)args.at(3)) << std::endl;
@@ -101,7 +133,9 @@ std::vector<void*> args{&dX,&dY,&dsym};
   for (int itn = 0; itn < iterations; itn++)
     {
       mdp.transform();
-      gatherOutput(outputHost, args);
+      //gatherOutput(outputHost, args);
+      hipMemcpy(outputHost.m_data.local(), &dY,  outputHost.m_domain.size() * sizeof(std::complex<double>), hipMemcpyDeviceToHost);
+
 // #ifdef FFTX_HIP
 //       mddft_gpu[itn] = mddft::GPU_milliseconds;
 // #endif
@@ -119,12 +153,14 @@ printf("finished the code\n");
   for (int itn = 0; itn < iterations; itn++)
     {
       imdp.transform();
-      gatherOutput(outputHost, args);
+      //gatherOutput(outputHost, args);
+      hipMemcpy(outputHost.m_data.local(), &dY,  outputHost.m_domain.size() * sizeof(std::complex<double>), hipMemcpyDeviceToHost);
+
       //imddft::transform(input, output);
 // #ifdef FFTX_HIP
 //       imddft_gpu[itn] = imddft::GPU_milliseconds;
 // #endif
-      imddft_cpu[itn] = imdp.getTime();;
+      imddft_cpu[itn] = imdp.getTime();
     }
 
 //   imddft::destroy();

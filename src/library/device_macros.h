@@ -1,6 +1,7 @@
 #ifndef DEVICE_MACROS_HEADER
 #define DEVICE_MACROS_HEADER
 #if defined(FFTX_HIP)
+#include <hip/hiprtc.h>
 #include <hip/hip_runtime.h>
 #include <hipfft.h>
 #include "rocfft.h"
@@ -41,6 +42,7 @@
 #define DEVICE_FFT_FORWARD HIPFFT_FORWARD
 #define DEVICE_FFT_INVERSE HIPFFT_BACKWARD
 #elif defined(__CUDACC__) || defined(FFTX_CUDA)
+#include <nvrtc.h>
 #include <cufft.h>
 #include "cuda_runtime.h"
 #if defined(__CUDACC__)

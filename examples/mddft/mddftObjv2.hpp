@@ -76,7 +76,8 @@ public:
         std::ofstream out{"fftxgenerator.g"};
         std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
         std::cout.rdbuf(out.rdbuf());
-        std::cout << "Load(fftx);\nImportAll(fftx);\nLoad(jit);\nImport(jit);\nconf := LocalConfig.fftx.confGPU();\n";
+        //#if FFTX_CUDA 
+        std::cout << "Load(fftx);\nImportAll(fftx);\nImportAll(simt);\nLoad(jit);\nImport(jit);\nconf := FFTXGlobals.defaultHIPConf();\n";
         tracing = true;
         box_t<3> empty(point_t<3>({{1,1,1}}), point_t<3>({{0,0,0}}));
         box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{fftx_nx,fftx_ny,fftx_nz}}));
@@ -91,7 +92,7 @@ public:
         MDDFT(domain.extents(), 1, outputs, inputs);
 
         closeScalarDAG(intermediates, "mddft");
-        std::cout << "opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\nPrintJIT2(c,opts);\n";
+        std::cout << "opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\nPrintHIPJIT(c,opts);\n";
         out.close();
         std::cout.rdbuf(coutbuf);
         int save_stdin = redirect_input("fftxgenerator.g");//hardcoded
