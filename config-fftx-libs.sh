@@ -15,22 +15,22 @@
 ##  Whenever a library is built both the forward and inverse transforms (when applicable)
 ##  are built
 ##  Build the batch 1D DFT (complex to complex) library
-DFTBAT_LIB=false
+DFTBAT_LIB=true
 
 ##  Build the batch 1D packed real DFT (real to complex, complex to real) library
-PRDFTBAT_LIB=false
+PRDFTBAT_LIB=true
 
 ##  Build the 3D DFT (complex to complex) library
-MDDFT_LIB=false
+MDDFT_LIB=true
 
 ##  Build the 3D DFT (real to complex, complex to real) library
-MDPRDFT_LIB=false
+MDPRDFT_LIB=true
 
 ##  Build the Real Convolution library
-RCONV_LIB=false
+RCONV_LIB=true
 
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
-DISTDFT_LIB=false
+DISTDFT_LIB=true
 
 ##  File containing the sizes to build for the CPU version of MDDFT, MDPRDFT, and RCONV
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
@@ -51,13 +51,13 @@ DISTDFT_SIZES_FILE="distdft-sizes.txt"
 BUILD_EXAMPLES=true
 
 ##Build FFTX for CPU
-BUILD_FOR_CPU=true
+BUILD_FOR_CPU=false
 
 ##  Build FFTX for CUDA
-BUILD_FOR_CUDA=true
+BUILD_FOR_CUDA=false
 
 ##  Build FFTX for HIP
-BUILD_FOR_HIP=false
+BUILD_FOR_HIP=true
 
 #############################################################################################
 ##
@@ -169,4 +169,3 @@ fi
 echo "option ( BUILD_EXAMPLES \"Build the FFTX example programs\" $setopt )" >> options.cmake
 
 ##  Can we add options to options.cmake to specify what to build: e.g., define _codegen and CXX_COMPILER?
-
