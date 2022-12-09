@@ -169,4 +169,3 @@ fi
 echo "option ( BUILD_EXAMPLES \"Build the FFTX example programs\" $setopt )" >> options.cmake
 
 ##  Can we add options to options.cmake to specify what to build: e.g., define _codegen and CXX_COMPILER?
-
