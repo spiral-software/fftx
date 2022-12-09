@@ -1,9 +1,9 @@
 #include "mddft.fftx.codegen.hpp"
 #include "imddft.fftx.codegen.hpp"
 #include "test_plan.h"
-#include "interfacev2.hpp"
-#include "mddftObjv2.hpp"
-#include "imddftObjv2.hpp"
+#include "interface.hpp"
+#include "mddftObj.hpp"
+#include "imddftObj.hpp"
 //#include "data_interaction.hpp"
 #include <string>
 #include <fstream>
