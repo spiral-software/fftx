@@ -618,10 +618,23 @@ with open ( _sizesfil, 'r' ) as fil:
         _func_stem = _file_stem + _dimx + 'x' + _dimy + 'x' + _dimz + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
+        failure_written = False
         if len ( sys.argv ) < 6:
             ##  No optional argument, generate the code
-            result = subprocess.run ( cmdstr, shell=True, check=True )
-            res = result.returncode
+            try:
+                result = subprocess.run ( cmdstr, shell=True, check=True )
+                res = result.returncode
+            except:
+                ##  Spiral exited with an error (non-zero return code).  Log the failure.
+                ##  Failed to generate file -- note it in build-lib-code-failures.txt
+                print ( 'Spiral code generation failed, error logged to build-lib-code-failures.txt', flush = True )
+                bldf = open ( 'build-lib-code-failures.txt', 'a' )
+                bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
+                bldf.close  ()
+                failure_written = True
+                if os.path.exists ( src_file_path ):
+                    os.remove ( src_file_path )
+
         else:
             ##  Just print a message and skip copde gen (test python process/logic)
             print ( 'run spiral to create source file: ' + _file_name, flush = True )
@@ -661,10 +674,12 @@ with open ( _sizesfil, 'r' ) as fil:
             _metadata += '        },\\\n'
 
         else:
-            ## Failed to generate file -- note it in build-lib-code-failures.txt
-            bldf = open ( 'build-lib-code-failures.txt', 'a' )
-            bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
-            bldf.close  ()
+            ##  File was not successfully created
+            if not failure_written:
+                ##  Failed to generate file -- note it in build-lib-code-failures.txt
+                bldf = open ( 'build-lib-code-failures.txt', 'a' )
+                bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
+                bldf.close  ()
 
     ##  All cube sizes processed: close list of sources, create header file
     _cmake_srcs.write ( ')\n' )
