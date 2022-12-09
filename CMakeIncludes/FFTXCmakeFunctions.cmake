@@ -18,8 +18,6 @@
 ##  then run it to create mddft.fftx.plan.g and mddft.fftx.codegen.hpp, adding
 ##  "/path/to/addl/includes" to the search path for include files.
 
-##set (CMAKE_CXX_FLAGS "-I /usr/local/cuda-11.3/include -L /usr/local/cuda-11.3/lib -L /usr/local/cuda-11.3/lib64/")
-##set (CMAKE_EXE_LINKER_FLAGS "-lnvrtc -lcuda -Wl,-rpath,/usr/local/cuda-11.3/lib64")
 
 function ( run_driver_program prefix stem )
     ##  message ( "build and run driver for ${prefix}.${stem}.cpp" )
