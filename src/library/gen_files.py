@@ -54,6 +54,8 @@ SW_KEY_TRANSFORMS       = 'Transforms'
 SW_KEY_TRANSFORMTYPE    = 'TransformType'
 SW_KEY_TRANSFORMTYPES   = 'TransformTypes'
 
+SW_TRANSFORM_MDRCONV    = 'MDRCONV'
+
 ###################################
 
 ##  Process the command line args...
@@ -69,6 +71,7 @@ if not re.match ( '_$', _file_stem ):                ## append an underscore if 
 
 _xform_name = _file_stem
 _xform_pref = ''
+_xform_sw_type = ''
 
 if re.match ( '^.*_.*_', _file_stem ):
     _dims = re.split ( '_', _file_stem )
@@ -76,6 +79,10 @@ if re.match ( '^.*_.*_', _file_stem ):
     _xform_name = _dims[1]
     _xform_root = _dims[1]
     _xform_pref = _xform_pref + '_'
+    if _xform_name == 'rconv':
+        _xform_sw_type = SW_TRANSFORM_MDRCONV
+    else:
+        _xform_sw_type = _xform_name.upper()
 
 _orig_file_stem = _file_stem
 
@@ -553,8 +560,10 @@ _extern_decls  = ''
 _all_cubes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
 
+SW_TRANSFORM_MDRCONV    = 'MDRCONV'
+
 _metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SW_METADATA_START + '\\\n{\\\n'
-_metadata     += '    \\"' + SW_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_name.upper() + '\\" ],\\\n'
+_metadata     += '    \\"' + SW_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_sw_type + '\\" ],\\\n'
 _metadata     += '    \\"' + SW_KEY_TRANSFORMS + '\\": [ \\\n'
 
 
@@ -609,10 +618,23 @@ with open ( _sizesfil, 'r' ) as fil:
         _func_stem = _file_stem + _dimx + 'x' + _dimy + 'x' + _dimz + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
+        failure_written = False
         if len ( sys.argv ) < 6:
             ##  No optional argument, generate the code
-            result = subprocess.run ( cmdstr, shell=True, check=True )
-            res = result.returncode
+            try:
+                result = subprocess.run ( cmdstr, shell=True, check=True )
+                res = result.returncode
+            except:
+                ##  Spiral exited with an error (non-zero return code).  Log the failure.
+                ##  Failed to generate file -- note it in build-lib-code-failures.txt
+                print ( 'Spiral code generation failed, error logged to build-lib-code-failures.txt', flush = True )
+                bldf = open ( 'build-lib-code-failures.txt', 'a' )
+                bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
+                bldf.close  ()
+                failure_written = True
+                if os.path.exists ( src_file_path ):
+                    os.remove ( src_file_path )
+
         else:
             ##  Just print a message and skip copde gen (test python process/logic)
             print ( 'run spiral to create source file: ' + _file_name, flush = True )
@@ -648,14 +670,16 @@ with open ( _sizesfil, 'r' ) as fil:
             _metadata += '             \\"' + SW_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
             ##  For now all libs generated are double precision -- maybe look at this in future
             _metadata += '             \\"' + SW_KEY_PRECISION + '\\": \\"' + SW_STR_DOUBLE + '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_name.upper() + '\\"\\\n'
+            _metadata += '             \\"' + SW_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_sw_type + '\\"\\\n'
             _metadata += '        },\\\n'
 
         else:
-            ## Failed to generate file -- note it in build-lib-code-failures.txt
-            bldf = open ( 'build-lib-code-failures.txt', 'a' )
-            bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
-            bldf.close  ()
+            ##  File was not successfully created
+            if not failure_written:
+                ##  Failed to generate file -- note it in build-lib-code-failures.txt
+                bldf = open ( 'build-lib-code-failures.txt', 'a' )
+                bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
+                bldf.close  ()
 
     ##  All cube sizes processed: close list of sources, create header file
     _cmake_srcs.write ( ')\n' )
