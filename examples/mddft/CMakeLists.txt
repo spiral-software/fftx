@@ -26,7 +26,6 @@ set ( _desired_suffix cpp )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 LIST (APPEND ADDL_COMPILE_FLAGS -g -fpermissive )
-LIST (APPEND LIBS_FOR_CUDA nvrtc cuda)
 
 if ( ${_codegen} STREQUAL "HIP" )
     set_source_files_properties ( ${BUILD_PROGRAM}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
