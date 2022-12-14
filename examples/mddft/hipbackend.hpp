@@ -1,3 +1,9 @@
+#ifndef FFTX_MDDFT_HIPBACKEND_HEADER
+#define FFTX_MDDFT_HIPBACKEND_HEADER
+
+//  Copyright (c) 2018-2022, Carnegie Mellon University
+//  See LICENSE for details
+
 #include <hip/hiprtc.h>
 #include <hip/hip_runtime.h>
 #include <vector>
@@ -5,18 +11,14 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-//#include <charconv>
-//#include "interface.hpp"
 #include <tuple>
 #include <iomanip>
-// #include <cstdio>      // perror
-// #include <unistd.h>    // dup2
-// #include <sys/types.h> // rest for open/close
-//#include <sys/stat.h>
 #include <fcntl.h>
 #pragma once
+
 #define LOCALDEBUG 0
-#define HIPRTC_SAFE_CALL(x) \
+
+#define HIPRTC_SAFE_CALL(x)						\
  do { \
 hiprtcResult result = x; \
  if (result != HIPRTC_SUCCESS) { \
@@ -25,7 +27,8 @@ hiprtcResult result = x; \
  exit(1); \
  } \
  } while(0)
-#define HIP_SAFE_CALL(x)                                         \
+
+#define HIP_SAFE_CALL(x)										  \
   do {                                                            \
     hipError_t result = x;                                          \
     if (result != hipSuccess ) {                                 \
@@ -453,3 +456,5 @@ float Executor::getKernelTime() {
 //     //gatherOutput(out1.at(0), kernelargs);
 //     hipMemcpy(out.m_data.local(), &((hipDeviceptr_t)args.at(0)),  out.m_domain.size() * sizeof(std::complex<double>), hipMemcpyDeviceToHost);
 // }
+
+#endif			//  FFTX_MDDFT_HIPBACKEND_HEADER

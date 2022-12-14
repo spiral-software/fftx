@@ -1,11 +1,23 @@
+#ifndef FFTX_MDDFT_INTERFACE_HEADER
+#define FFTX_MDDFT_INTERFACE_HEADER
+
+//  Copyright (c) 2018-2022, Carnegie Mellon University
+//  See LICENSE for details
+
 #include <cstdlib>
 #include <vector>
 #include <functional>
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-//#include "newinterface.hpp"
+
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#endif
+#if defined FFTX_HIP
 #include "hipbackend.hpp"
+#endif
+
 #include "fftx3.hpp"
 #include <array>
 #include <cstdio>
@@ -107,3 +119,4 @@ float FFTXProblem::getTime() {
    return gpuTime;
 }
 
+#endif			// FFTX_MDDFT_INTERFACE_HEADER

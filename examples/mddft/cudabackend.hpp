@@ -1,3 +1,9 @@
+#ifndef FFTX_MDDFT_CUDABACKEND_HEADER
+#define FFTX_MDDFT_CUDABACKEND_HEADER
+
+//  Copyright (c) 2018-2022, Carnegie Mellon University
+//  See LICENSE for details
+
 #include <nvrtc.h>
 #include <cuda.h>
 #include <vector>
@@ -5,8 +11,6 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-//#include <charconv>
-//#include "interface.hpp"
 #include <tuple>
 #include <iomanip>
 #include <cstdio>      // perror
@@ -14,9 +18,8 @@
 #include <sys/types.h> // rest for open/close
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "data_interaction.hpp"
-#pragma once
-#define NVRTC_SAFE_CALL(x) \
+
+#define NVRTC_SAFE_CALL(x)						\
  do { \
  nvrtcResult result = x; \
  if (result != NVRTC_SUCCESS) { \
@@ -25,7 +28,8 @@
  exit(1); \
  } \
  } while(0)
-#define CUDA_SAFE_CALL(x) \
+
+#define CUDA_SAFE_CALL(x)						\
  do { \
  CUresult result = x; \
  if (result != CUDA_SUCCESS) { \
@@ -36,6 +40,9 @@
  exit(1); \
  } \
  } while(0)
+
+#include "data_interaction.hpp"
+#pragma once
 
 
 const char * getCUDARuntime() {
@@ -433,3 +440,5 @@ float Executor::getKernelTime() {
 void Executor::returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1) {
     gatherOutput(out1.at(0), kernelargs);
 }
+
+#endif			//  FFTX_MDDFT_CUDABACKEND_HEADER

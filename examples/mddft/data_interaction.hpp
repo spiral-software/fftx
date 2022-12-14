@@ -1,29 +1,15 @@
+#ifndef FFTX_MDDFT_DATA_INTEGRATOR_HEADER
+#define FFTX_MDDFT_DATA_INTEGRATOR_HEADER
+
+//  Copyright (c) 2018-2022, Carnegie Mellon University
+//  See LICENSE for details
+
 #include <nvrtc.h>
 #include <cuda.h>
 #include <vector>
 #include <iostream>
 #include "fftx3.hpp"
 #pragma once
-#define NVRTC_SAFE_CALL(x) \
- do { \
- nvrtcResult result = x; \
- if (result != NVRTC_SUCCESS) { \
- std::cerr << "\nerror: " #x " failed with error " \
- << nvrtcGetErrorString(result) << '\n'; \
- exit(1); \
- } \
- } while(0)
-#define CUDA_SAFE_CALL(x) \
- do { \
- CUresult result = x; \
- if (result != CUDA_SUCCESS) { \
- const char *msg; \
- cuGetErrorName(result, &msg); \
- std::cerr << "\nerror: " #x " failed with error " \
- << msg << '\n'; \
- exit(1); \
- } \
- } while(0)
 
 void initDevice() {
     CUdevice cuDevice;
@@ -80,3 +66,5 @@ void gatherOutput(fftx::array_t<3,std::complex<double>> &out, std::vector<void*>
      //out.m_data.local() = new std::complex<double>[out.m_domain.size()];
      CUDA_SAFE_CALL(cuMemcpyDtoH(out.m_data.local(), *((CUdeviceptr*)params.at(0)), out.m_domain.size()*sizeof(std::complex<double>)));
 }
+
+#endif			// FFTX_MDDFT_DATA_INTEGRATOR_HEADER
