@@ -362,17 +362,29 @@ void Executor::initializeVars() {
             }
             case pointer_int:
             {
-                HIP_SAFE_CALL(hipMalloc((void **)&variable_addr, std::get<1>(device_names.at(i)) * sizeof(int)));
+                int * h1;
+                if(LOCALDEBUG == 1)
+                std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
+                HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
                 break;
             }
             case pointer_float:
             {
-                HIP_SAFE_CALL(hipMalloc((void **)&variable_addr, std::get<1>(device_names.at(i)) * sizeof(float)));
+                float * h1;
+                if(LOCALDEBUG == 1)
+                std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
+                HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
                 break;
             }
             case pointer_double:
             {
-                HIP_SAFE_CALL(hipMalloc((void **)&variable_addr, std::get<1>(device_names.at(i)) * sizeof(double)));
+                double * h1;
+                if(LOCALDEBUG == 1)
+                std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
+                HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
                 break;
             }
             default:
