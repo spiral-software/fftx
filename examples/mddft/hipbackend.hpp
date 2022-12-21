@@ -231,9 +231,6 @@ void Executor::createProg() {
 }
 
 void Executor::getVarsAndKernels() {
-    // for(int i = 0; i < device_names.size(); i++) {
-    //     HIPRTC_SAFE_CALL(hiprtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
-    // }
     std::vector<std::string> new_names;
     for(int i = 0; i < device_names.size(); i++) {
         new_names.push_back(std::get<0>(device_names[i]));
@@ -262,26 +259,8 @@ void Executor::compileProg() {
     1, 
     opts); 
     if(LOCALDEBUG == 1)
-    std::cout << "compiled program\n";
+        std::cout << "compiled program\n";
 }
-
-// void Executor::threeinone() {
-//     HIPRTC_SAFE_CALL(
-//     nvrtcCreateProgram(&prog, // prog
-//     kernels.c_str(), // buffer
-//     "interface_jit.cpp", // name
-//     0, // numHeaders
-//     NULL, // headers
-//     NULL)); 
-//     for(int i = 0; i < device_names.size(); i++) {
-//         std::cout << std::get<0>(device_names[i]) << std::endl;
-//         HIPRTC_SAFE_CALL(HIPRTCAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
-//     }
-//     const char *opts[] = {"--relocatable-device-code=true", "--device-debug", "--generate-line-info","--gpu-architecture=compute_70"};
-//     HIPRTC_SAFE_CALL(nvrtcCompileProgram(prog, 
-//     4, 
-//     opts)); 
-// }
 
 void Executor::getLogsAndPTX() {
     HIPRTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
@@ -335,7 +314,6 @@ void Executor::initializeVars() {
         HIP_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
         if(LOCALDEBUG == 1)
             std::cout << "it got past get global\n";
-
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
@@ -367,6 +345,7 @@ void Executor::initializeVars() {
                 std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
+                hipFree(h1);
                 break;
             }
             case pointer_float:
@@ -376,6 +355,7 @@ void Executor::initializeVars() {
                 std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
+                hipFree(h1);
                 break;
             }
             case pointer_double:
@@ -385,6 +365,7 @@ void Executor::initializeVars() {
                 std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
+                hipFree(h1);
                 break;
             }
             default:
@@ -438,7 +419,7 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
 
 void Executor::execute(std::string file_name) {
     if(LOCALDEBUG == 1)
-        std::cout << "begin executing code\n";
+        std::cout << "begin parsing\n";
     
     parseDataStructure(file_name);
     
