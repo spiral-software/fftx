@@ -142,7 +142,7 @@ void Executor::parseDataStructure(std::string input) {
     std::string line;
     std::string b = "------------------";
     while(std::getline(stream, line)){
-        if(line == "spiral> JIT BEGIN")
+        if(line.find("JIT BEGIN") != std::string::npos)
             break;
     }
     while(std::getline(stream,line)) {
@@ -350,7 +350,7 @@ void Executor::initializeVars() {
                 CUdeviceptr h;
                 CUDA_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
                 CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
-                cuMemFree(h);      
+                // cuMemFree(h);      
                 break;
             }
             case pointer_float:
@@ -360,7 +360,7 @@ void Executor::initializeVars() {
                 CUdeviceptr h;
                 CUDA_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
                 CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
-                cuMemFree(h);                
+                // cuMemFree(h);                
                 break;
             }
             case pointer_double:
@@ -370,7 +370,7 @@ void Executor::initializeVars() {
                 CUdeviceptr h;
                 CUDA_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
                 CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
-                cuMemFree(h);
+                // cuMemFree(h);
                 break;
             }
         }
@@ -421,10 +421,8 @@ void Executor::execute(std::string file_name) {
         for(int i = 0; i < device_names.size(); i++) {
             std::cout << std::get<0>(device_names[i]) << std::endl;
         }
-        for(int i = 0; i < kernel_names.size(); i++) {
-            std::cout << kernel_names[i] << std::endl;
-        }
-        std::cout << kernels << std::endl;
+        std::cout << kernel_name << std::endl;
+        // std::cout << kernels << std::endl;
     }
     createProg();
     getVars();

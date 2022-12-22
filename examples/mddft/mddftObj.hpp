@@ -25,6 +25,7 @@ std::string exec(const char* cmd) {
         throw std::runtime_error("popen() failed!");
     }
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        // std::cout << buffer.data() << std::endl;
         result += buffer.data();
     }
     return result;
@@ -85,7 +86,7 @@ public:
         #endif
         tracing = true;
         box_t<3> empty(point_t<3>({{1,1,1}}), point_t<3>({{0,0,0}}));
-        box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{fftx_nx,fftx_ny,fftx_nz}}));
+        box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
         
         std::array<array_t<3,std::complex<double>>,1> intermediates {{empty}}; // in this case, empty
         array_t<3,std::complex<double>> inputs(domain);
@@ -97,7 +98,7 @@ public:
         MDDFT(domain.extents(), 1, outputs, inputs);
 
         closeScalarDAG(intermediates, "mddft");
-        std::cout << "opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n";
+        std::cout << "if 1 = 1 then\n opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
         #if defined FFTX_HIP 
         std::cout << "PrintHIPJIT(c,opts);\n";
         #endif

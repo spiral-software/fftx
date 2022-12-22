@@ -16,7 +16,7 @@
 #include <fcntl.h>
 #pragma once
 
-#define LOCALDEBUG 0
+#define LOCALDEBUG 1
 
 #define HIPRTC_SAFE_CALL(x)						\
  do { \
@@ -112,7 +112,7 @@ void Executor::parseDataStructure(std::string input) {
     std::string line;
     std::string b = "------------------";
     while(std::getline(stream, line)){
-        if(line == "spiral> JIT BEGIN")
+        if(line.find("JIT BEGIN") != std::string::npos)
             break;
     }
     while(std::getline(stream,line)) {
@@ -126,10 +126,14 @@ void Executor::parseDataStructure(std::string input) {
         while(std::getline(ss,s,delim)) {
             words.push_back(s);
         }
+        for(int i = 0; i < words.size(); i++) {
+            std::cout << words.at(i) << " ";
+        }
+        std::cout << std::endl;
         int test = atoi(words.at(0).c_str());
         switch(test) {
             case 0:
-                    device_names.push_back(std::make_tuple("&"+words.at(1), atoi(words.at(2).c_str()), words.at(3)));
+                device_names.push_back(std::make_tuple("&"+words.at(1), atoi(words.at(2).c_str()), words.at(3)));
                 break;
             case 1:
                 in_params.push_back(std::make_tuple("&"+words.at(1), atoi(words.at(2).c_str()), words.at(3)));
@@ -345,7 +349,7 @@ void Executor::initializeVars() {
                 std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
-                hipFree(h1);
+                // hipFree(h1);
                 break;
             }
             case pointer_float:
@@ -355,7 +359,7 @@ void Executor::initializeVars() {
                 std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
-                hipFree(h1);
+                // hipFree(h1);
                 break;
             }
             case pointer_double:
@@ -365,7 +369,7 @@ void Executor::initializeVars() {
                 std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
-                hipFree(h1);
+                // hipFree(h1);
                 break;
             }
             default:
@@ -395,17 +399,17 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
     if(LOCALDEBUG == 1)
     std::cout << "launched kernel\n";
     if(LOCALDEBUG == 1)
-    std::cout << kernel_params[i*kernel_names.size()] << "\t" << kernel_params[i*kernel_names.size()+1] <<
-    "\t" << kernel_params[i*kernel_names.size()+2] << "\t" << kernel_params[i*kernel_names.size()+3] << 
-    "\t" << kernel_params[i*kernel_names.size()+4] << "\t" << kernel_params[i*kernel_names.size()+5] << "\n";
+    std::cout << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
+    "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
+    "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
     hipEvent_t start, stop;
     HIP_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
     HIP_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
     HIP_SAFE_CALL(hipEventRecord(start,0));
     HIP_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
-    kernel_params[i*kernel_names.size()], kernel_params[i*kernel_names.size()+1], kernel_params[i*kernel_names.size()+2], // grid dim
-    kernel_params[i*kernel_names.size()+3], kernel_params[i*kernel_names.size()+4], kernel_params[i*kernel_names.size()+5], // block dim
+    kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
+    kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
     0, nullptr, nullptr, // shared mem and stream
     config));
     HIP_SAFE_CALL(hipEventRecord(stop,0));
@@ -431,7 +435,7 @@ void Executor::execute(std::string file_name) {
         for(int i = 0; i < kernel_names.size(); i++) {
             std::cout << kernel_names[i] << std::endl;
         }
-        std::cout << kernels << std::endl;
+        // std::cout << kernels << std::endl;
     }
     createProg();
     getVarsAndKernels();

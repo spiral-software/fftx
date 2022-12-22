@@ -82,7 +82,7 @@ public:
         #endif
         tracing=true;
   
-        box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{fftx_nx, fftx_ny, fftx_nz}}));
+        box_t<3> domain(point_t<3>({{1,1,1}}), point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
         
         std::array<array_t<3,std::complex<double>>,1> intermediates {domain};
         array_t<3,std::complex<double>> inputs(domain);
@@ -98,7 +98,7 @@ public:
         IMDDFT(domain.extents(), 1, outputs, intermediates[0]);
 
         closeScalarDAG(intermediates, "imddft");
-        std::cout << "opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n";
+        std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
         #if defined FFTX_HIP 
         std::cout << "PrintHIPJIT(c,opts);\n";
         #endif

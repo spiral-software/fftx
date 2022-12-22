@@ -18,7 +18,7 @@ project ( mddft ${_lang_add} ${_lang_base} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes mddft imddft )
+## set ( _prefixes mddft imddft )
 set ( BUILD_PROGRAM test${PROJECT_NAME} )
 
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
