@@ -40,6 +40,7 @@ public:
     // std::vector<fftx::array_t<3,std::complex<double>>> in;
     // std::vector<fftx::array_t<3,std::complex<double>>> out;
     std::vector<void*> args;
+    std::vector<int> sizes;
     std::string res;
     std::unordered_map<std::string, Executor> executors;
     
@@ -50,6 +51,11 @@ public:
         args = args1;
 
     }
+    FFTXProblem(const std::vector<void*>& args1, const std::vector<int>& sizes1) {
+        args = args1;   
+        sizes = sizes1;
+    }
+
 
     // FFTXProblem(std::vector<fftx::array_t<3,std::complex<double>>> &in1,
     // std::vector<fftx::array_t<3,std::complex<double>>> &out1)
@@ -81,11 +87,14 @@ void FFTXProblem::transform(){
             //std::cout << res << std::endl;
         }
         if(executors.find(res) != executors.end()) {
-            std::cout << "running cached instances";
+            std::cout << "running cached instances\n";
             run(executors.at(res));
         }
         else if(!res.empty()) {
             std::cout << "found file to parse\n";
+            std::cout << res << std::endl;
+            std::cout << res.size() << std::endl;
+            // exit(0);
             // const char * file_name = "mddft.fftx.source.txt";
             // p.sig.args.push_back((char**)file_name);
             // double * input =  (double*)(p.sig.in.at(0).m_data.local());
