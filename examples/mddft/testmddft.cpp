@@ -1,6 +1,4 @@
-#include "mddft.fftx.codegen.hpp"
-#include "imddft.fftx.codegen.hpp"
-#include "test_plan.h"
+#include "fftx3.hpp"
 #include "interface.hpp"
 #include "mddftObj.hpp"
 #include "imddftObj.hpp"
@@ -19,18 +17,44 @@
 
 int main(int argc, char* argv[])
 {
-	std::cout <<"this is my program X3\n";
-	printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
+  // std::cout <<"this is my program X3\n";
+  // printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
+  int iterations = 2;
+  int mm = 24, nn = 32, kk = 40; // cube dimensions
+  char *prog = argv[0];
+  int baz = 0;
+  while ( argc > 1 && argv[1][0] == '-' ) {
+    switch ( argv[1][1] ) {
+    case 'i':
+    argv++, argc--;
+    iterations = atoi ( argv[1] );
+    break;
+    case 's':
+    argv++, argc--;
+    mm = atoi ( argv[1] );
+    while ( argv[1][baz] != 'x' ) baz++;
+    baz++ ;
+    nn = atoi ( & argv[1][baz] );
+    while ( argv[1][baz] != 'x' ) baz++;
+    baz++ ;
+    kk = atoi ( & argv[1][baz] );
+    break;
+    case 'h':
+      printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+      exit (0);
+    default:
+      printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+    }
+    argv++, argc--;
+  }
+  // std::cout << "left while loop\n";
+  std::cout << mm << " " << nn << " " << kk << std::endl;
+  std::vector<int> sizes{mm,nn,kk};
+  fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
+  point_t<3> ( { { mm, nn, kk } } ));
 
-	int iterations = 2;
-	if (argc > 1) {
-		iterations = atoi(argv[1]);
-	}
-	// Does not work:
-	//  fftx::box_t<3> domain(lo, hi);
-
-	fftx::array_t<3,std::complex<double>> inputHost(test_plan::domain);
-	fftx::array_t<3,std::complex<double>> outputHost(test_plan::domain);
+	fftx::array_t<3,std::complex<double>> inputHost(domain);
+	fftx::array_t<3,std::complex<double>> outputHost(domain);
 
 	forall([](std::complex<double>(&v), const fftx::point_t<3>& p) {
 			v=std::complex<double>(2.0,0.0);
@@ -69,7 +93,7 @@ int main(int argc, char* argv[])
 // // //HIP_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
 // CUDA_SAFE_CALL(hipMalloc((void **)&dsym,  outputHost.m_domain.size()*  sizeof(std::complex<double>)));
 
-	std::cout << "allocating memory\n" << 30720 << "\n";
+	std::cout << "allocating memory\n";
 	DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
 	std::cout << "allocated X\n";
 	DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE);
@@ -123,11 +147,11 @@ int main(int argc, char* argv[])
 
   //MDDFTProblem mdp(inList, outList);
   //std::cout << *((int*)args.at(3)) << std::endl;
-  MDDFTProblem mdp(args);
+  MDDFTProblem mdp(args, sizes);
 
 
   printf("call mddft::init()\n");
-  mddft::init();
+  // mddft::init();
 
   printf("call mddft::transform()\n");
 
@@ -144,12 +168,12 @@ int main(int argc, char* argv[])
       mddft_cpu[itn] = mdp.getTime();
     }
 printf("finished the code\n");
-  mddft::destroy();
+  // mddft::destroy();
 
   printf("call imddft::init()\n");
   // imddft::init();
 
-  IMDDFTProblem imdp(args);
+  IMDDFTProblem imdp(args, sizes);
 
   printf("call imddft::transform()\n");
   for (int itn = 0; itn < iterations; itn++)
@@ -169,7 +193,7 @@ printf("finished the code\n");
 //   imddft::destroy();
 
   printf("Times in milliseconds for %s on mddft on %d trials of size %d %d %d:\n",
-         descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
+         descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
   for (int itn = 0; itn < iterations; itn++)
     {
 // #ifdef FFTX_HIP
@@ -180,7 +204,7 @@ printf("finished the code\n");
     }
 
   printf("Times in milliseconds for %s on imddft on %d trials of size %d %d %d:\n",
-         descrip.c_str(), iterations, fftx_nx, fftx_ny, fftx_nz);
+         descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
   for (int itn = 0; itn < iterations; itn++)
     {
 // #ifdef FFTX_HIP
