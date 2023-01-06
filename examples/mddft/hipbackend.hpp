@@ -16,7 +16,7 @@
 #include <fcntl.h>
 #pragma once
 
-#define LOCALDEBUG 1
+#define LOCALDEBUG 0
 
 #define HIPRTC_SAFE_CALL(x)						\
  do { \
@@ -304,7 +304,7 @@ void Executor::getLogsAndPTX() {
 void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
         if(LOCALDEBUG == 1)
-        std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
+            std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
         HIPRTC_SAFE_CALL(hiprtcGetLoweredName(
         prog, 
@@ -312,7 +312,7 @@ void Executor::initializeVars() {
         &name                         // lowered name
         ));
         if(LOCALDEBUG == 1)
-        std::cout << "it got past lower name\n";
+            std::cout << "it got past lower name\n";
         hipDeviceptr_t variable_addr;
         size_t bytes{};
         HIP_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
@@ -346,7 +346,7 @@ void Executor::initializeVars() {
             {
                 int * h1;
                 if(LOCALDEBUG == 1)
-                std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                    std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
                 // hipFree(h1);
@@ -356,7 +356,7 @@ void Executor::initializeVars() {
             {
                 float * h1;
                 if(LOCALDEBUG == 1)
-                std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                    std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
                 // hipFree(h1);
@@ -366,7 +366,7 @@ void Executor::initializeVars() {
             {
                 double * h1;
                 if(LOCALDEBUG == 1)
-                std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                    std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
                 HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
                 // hipFree(h1);
@@ -397,21 +397,21 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
                           HIP_LAUNCH_PARAM_BUFFER_SIZE, &size,
                           HIP_LAUNCH_PARAM_END};
     if(LOCALDEBUG == 1)
-    std::cout << "launched kernel\n";
+        std::cout << "launched kernel\n";
     if(LOCALDEBUG == 1)
-    std::cout << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
-    "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
-    "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
+        std::cout << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
+            "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
+            "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
     hipEvent_t start, stop;
     HIP_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
     HIP_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
     HIP_SAFE_CALL(hipEventRecord(start,0));
     HIP_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
-    kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
-    kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
-    0, nullptr, nullptr, // shared mem and stream
-    (void**)&config));
+                          kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
+                          kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
+                          0, nullptr, nullptr, // shared mem and stream
+                          (void**)&config));
     hipDeviceSynchronize();
     HIP_SAFE_CALL(hipEventRecord(stop,0));
     HIP_SAFE_CALL(hipEventSynchronize(stop));
