@@ -69,7 +69,7 @@ public:
             std::cout << "[ERROR] No such variable found!" << std::endl;
             exit(-1);
         }
-        tmp += "/./spiral";
+        tmp += "/bin/spiral";         //  "/./spiral";
         std::ofstream out{"fftxgenerator2.g"};
         std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
         std::cout.rdbuf(out.rdbuf());
@@ -99,11 +99,12 @@ public:
 
         closeScalarDAG(intermediates, "imddft");
         std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
-        #if defined FFTX_HIP 
-        std::cout << "PrintHIPJIT(c,opts);\n";
+        #if defined FFTX_HIP
+            std::cout << "GASMAN(\"collect\");\n";
+            std::cout << "PrintHIPJIT(c,opts);\n";
         #endif
         #if defined FFTX_CUDA 
-        std::cout << "PrintJIT2(c,opts)\n";
+            std::cout << "PrintJIT2(c,opts)\n";
         #endif
         out.close();
         std::cout.rdbuf(coutbuf);
