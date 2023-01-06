@@ -69,7 +69,7 @@ public:
             std::cout << "[ERROR] No such variable found!" << std::endl;
             exit(-1);
         }
-        tmp += "/bin/./spiral";
+        tmp += "/./spiral";
         std::ofstream out{"fftxgenerator2.g"};
         std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
         std::cout.rdbuf(out.rdbuf());
@@ -94,8 +94,8 @@ public:
         
         openScalarDAG();
         
-        MDDFT(domain.extents(), 1, intermediates[0], inputs);
-        IMDDFT(domain.extents(), 1, outputs, intermediates[0]);
+        // MDDFT(domain.extents(), 1, intermediates[0], inputs);
+        IMDDFT(domain.extents(), 1, outputs, inputs);
 
         closeScalarDAG(intermediates, "imddft");
         std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
@@ -113,8 +113,8 @@ public:
         // }
         // else {
             std::string result = exec(tmp.c_str());
-            //std::cout << result << std::endl;
-            //exit(0);
+            // std::cout << "this is the size " << result.size() << std::endl;
+            // exit(0);
             //int output = system(tmp.c_str());
             //std::string result = " ";
             restore_input(save_stdin);

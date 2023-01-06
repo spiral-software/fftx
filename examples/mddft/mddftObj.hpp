@@ -73,7 +73,7 @@ public:
             std::cout << "[ERROR] No such variable found, please download and set SPIRAL_HOME env variable" << std::endl;
             exit(-1);
         }
-        tmp += "/bin/./spiral";
+        tmp += "/./spiral";
         std::ofstream out{"fftxgenerator.g"};
         std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
         std::cout.rdbuf(out.rdbuf());
@@ -98,9 +98,10 @@ public:
         MDDFT(domain.extents(), 1, outputs, inputs);
 
         closeScalarDAG(intermediates, "mddft");
-        std::cout << "if 1 = 1 then\n opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
+        std::cout << "if 1 = 1 then\n opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\nfi;\n";
         #if defined FFTX_HIP 
-        std::cout << "PrintHIPJIT(c,opts);\n";
+        //std::cout << "PrintTo(\"cached_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << ".txt\", PrintHIPJIT(c,opts));\nPrintHIPJIT(c,opts);\n";
+        std::cout << "PrintHIPJIT(c,opts)\n";
         #endif
         #if defined FFTX_CUDA 
         std::cout << "PrintJIT2(c,opts)\n";

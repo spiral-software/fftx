@@ -92,8 +92,8 @@ void FFTXProblem::transform(){
         }
         else if(!res.empty()) {
             std::cout << "found file to parse\n";
-            std::cout << res << std::endl;
-            std::cout << res.size() << std::endl;
+            // std::cout << res << std::endl;
+            // std::cout << res.size() << std::endl;
             // exit(0);
             // const char * file_name = "mddft.fftx.source.txt";
             // p.sig.args.push_back((char**)file_name);

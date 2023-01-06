@@ -411,7 +411,8 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
     kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
     kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
     0, nullptr, nullptr, // shared mem and stream
-    config));
+    (void**)&config));
+    hipDeviceSynchronize();
     HIP_SAFE_CALL(hipEventRecord(stop,0));
     HIP_SAFE_CALL(hipEventSynchronize(stop));
     HIP_SAFE_CALL(hipEventElapsedTime(&local_time, start, stop)); 
