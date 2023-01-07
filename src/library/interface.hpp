@@ -1,11 +1,23 @@
+#ifndef FFTX_MDDFT_INTERFACE_HEADER
+#define FFTX_MDDFT_INTERFACE_HEADER
+
+//  Copyright (c) 2018-2022, Carnegie Mellon University
+//  See LICENSE for details
+
 #include <cstdlib>
 #include <vector>
 #include <functional>
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-//#include "newinterface.hpp"
+
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#endif
+#if defined FFTX_HIP
 #include "hipbackend.hpp"
+#endif
+
 #include "fftx3.hpp"
 #include <array>
 #include <cstdio>
@@ -22,12 +34,57 @@
 #include <array>
 #pragma once
 
+
+std::string exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        // std::cout << buffer.data() << std::endl;
+        result += buffer.data();
+    }
+    return result;
+}
+
+
+int redirect_input(const char* fname)
+{
+
+    int save_stdin = dup(0);
+
+    
+     std::cout << "in redirect input " << fname << std::endl;
+    // system("ls");
+    // std::cout << "\n";
+    int input = open(fname, O_RDONLY);
+
+    //if (!errno) 
+    dup2(input, 0);
+    //if (!errno) 
+    close(input);
+
+    return save_stdin;
+}
+
+void restore_input(int saved_fd)
+{
+    close(0);
+    //if (!errno) 
+    dup2(saved_fd, 0);
+    //if (!errno) 
+    close(saved_fd);
+}
+
 class FFTXProblem {
 public:
 
     // std::vector<fftx::array_t<3,std::complex<double>>> in;
     // std::vector<fftx::array_t<3,std::complex<double>>> out;
     std::vector<void*> args;
+    std::vector<int> sizes;
     std::string res;
     std::unordered_map<std::string, Executor> executors;
     
@@ -38,6 +95,11 @@ public:
         args = args1;
 
     }
+    FFTXProblem(const std::vector<void*>& args1, const std::vector<int>& sizes1) {
+        args = args1;   
+        sizes = sizes1;
+    }
+
 
     // FFTXProblem(std::vector<fftx::array_t<3,std::complex<double>>> &in1,
     // std::vector<fftx::array_t<3,std::complex<double>>> &out1)
@@ -52,6 +114,7 @@ public:
     virtual std::string semantics() = 0;
     float gpuTime;
     void run(Executor e);
+    std::string returnJIT();
     float getTime();
     ~FFTXProblem(){}
 
@@ -64,16 +127,24 @@ void FFTXProblem::transform(){
         // if(fopen("mddft.fftx.source.txt", "r") == false) {
         //     semantics();
         // }
+        // char buff[FILENAME_MAX]; //create string buffer to hold path
+        // getcwd( buff, FILENAME_MAX );
+        // std::string current_working_dir(buff);
+        // std::cout << current_working_dir << std::endl;
+        // exit(0);
         if(res.empty()) {
             res = semantics();
             //std::cout << res << std::endl;
         }
         if(executors.find(res) != executors.end()) {
-            std::cout << "running cached instances";
+            std::cout << "running cached instances\n";
             run(executors.at(res));
         }
         else if(!res.empty()) {
             std::cout << "found file to parse\n";
+            // std::cout << res << std::endl;
+            // std::cout << res.size() << std::endl;
+            // exit(0);
             // const char * file_name = "mddft.fftx.source.txt";
             // p.sig.args.push_back((char**)file_name);
             // double * input =  (double*)(p.sig.in.at(0).m_data.local());
@@ -107,3 +178,13 @@ float FFTXProblem::getTime() {
    return gpuTime;
 }
 
+std::string FFTXProblem::returnJIT() {
+    if(!res.empty()) {
+        return res;
+    }
+    else{
+        return nullptr;
+    }
+}
+
+#endif			// FFTX_MDDFT_INTERFACE_HEADER
