@@ -11,12 +11,12 @@
 #include <fstream>
 #include <unordered_map>
 
-// #if defined FFTX_CUDA
-// #include "cudabackend.hpp"
-// #endif
-// #if defined FFTX_HIP
-// #include "hipbackend.hpp"
-// #endif
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#endif
+#if defined FFTX_HIP
+#include "hipbackend.hpp"
+#endif
 
 #include "fftx3.hpp"
 #include <array>
@@ -147,6 +147,7 @@ std::string FFTXProblem::semantics2() {
     getImportAndConf();
     semantics();
     printJITBackend();
+    // exit(0);
     std::cout.rdbuf(coutbuf);
     std::string script = out.str();
     write(p[1], script.c_str(), script.size());
@@ -157,6 +158,7 @@ std::string FFTXProblem::semantics2() {
     close(p[0]);
     result.erase(result.size()-8);
     return result;
+    // return nullptr;
 }
 
 void FFTXProblem::transform(){

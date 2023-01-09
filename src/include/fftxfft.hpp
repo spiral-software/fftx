@@ -23,7 +23,10 @@
 #include <string>
 #include <array>
 #include "interface.hpp"
-#include "mddftObj.hpp"
+#include "mddftlib.hpp"
+#include "imddftlib.hpp"
+#include "dftbatlib.hpp"
+#include "idftbatlib.hpp"
 #pragma once
 
 typedef std::tuple<int, int, int> keys_t;
