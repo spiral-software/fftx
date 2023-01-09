@@ -11,12 +11,12 @@
 #include <fstream>
 #include <unordered_map>
 
-#if defined FFTX_CUDA
-#include "cudabackend.hpp"
-#endif
-#if defined FFTX_HIP
-#include "hipbackend.hpp"
-#endif
+// #if defined FFTX_CUDA
+// #include "cudabackend.hpp"
+// #endif
+// #if defined FFTX_HIP
+// #include "hipbackend.hpp"
+// #endif
 
 #include "fftx3.hpp"
 #include <array>
@@ -34,7 +34,6 @@
 #include <array>
 #pragma once
 
-
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
@@ -49,40 +48,66 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-
 int redirect_input(const char* fname)
 {
-
     int save_stdin = dup(0);
-
-    
-     std::cout << "in redirect input " << fname << std::endl;
-    // system("ls");
-    // std::cout << "\n";
+    //std::cout << "in redirect input " << fname << std::endl;
     int input = open(fname, O_RDONLY);
-
-    //if (!errno) 
-    dup2(input, 0);
-    //if (!errno) 
+    dup2(input, 0); 
     close(input);
+    return save_stdin;
+}
 
+int redirect_input(int input)
+{
+    int save_stdin = dup(0);
+    dup2(input, 0);
+    close(input);
     return save_stdin;
 }
 
 void restore_input(int saved_fd)
 {
     close(0);
-    //if (!errno) 
     dup2(saved_fd, 0);
-    //if (!errno) 
     close(saved_fd);
+}
+
+std::string getSPIRAL() {
+    const char * tmp2 = std::getenv("SPIRAL_HOME");//required >8.3.1
+    std::string tmp(tmp2 ? tmp2 : "");
+    if (tmp.empty()) {
+        std::cout << "[ERROR] No such variable found, please download and set SPIRAL_HOME env variable" << std::endl;
+        exit(-1);
+    }
+    tmp += "/bin/spiral";         
+    return tmp;
+}
+
+void getImportAndConf() {
+    std::cout << "Load(fftx);\nImportAll(fftx);\nImportAll(simt);\nLoad(jit);\nImport(jit);\n";
+    //#if defined FFTX_HIP 
+    std::cout << "conf := FFTXGlobals.defaultHIPConf();\n";
+    //#endif
+    //#if defined FFTX_CUDA 
+    //std::cout << "conf := LocalConfig.fftx.confGPU();\n";
+    //#endif
+}
+
+void printJITBackend() {
+    std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
+    std::cout << "GASMAN(\"collect\");\n";
+    //#if defined FFTX_HIP
+        std::cout << "PrintHIPJIT(c,opts);\n";
+    //#endif
+    //#if defined FFTX_CUDA 
+    //    std::cout << "PrintJIT2(c,opts)\n";
+    //#endif
 }
 
 class FFTXProblem {
 public:
 
-    // std::vector<fftx::array_t<3,std::complex<double>>> in;
-    // std::vector<fftx::array_t<3,std::complex<double>>> out;
     std::vector<void*> args;
     std::vector<int> sizes;
     std::string res;
@@ -100,18 +125,10 @@ public:
         sizes = sizes1;
     }
 
-
-    // FFTXProblem(std::vector<fftx::array_t<3,std::complex<double>>> &in1,
-    // std::vector<fftx::array_t<3,std::complex<double>>> &out1)
-    //     :in(in1), out(out1){}
-
-    // FFTXProblem(std::vector<fftx::array_t<3,std::complex<double>>> &in1,
-    // std::vector<fftx::array_t<3,std::complex<double>>> &out1,
-    // std::vector<CUdeviceptr> &args1)
-    //     :in(in1), out(out1), args(args1){}
     void transform();
+    std::string semantics2();
     virtual void randomProblemInstance() = 0;
-    virtual std::string semantics() = 0;
+    virtual void semantics() = 0;
     float gpuTime;
     void run(Executor e);
     std::string returnJIT();
@@ -120,21 +137,32 @@ public:
 
 };
 
+std::string FFTXProblem::semantics2() {
+    std::string tmp = getSPIRAL();
+    int p[2];
+    if(pipe(p) < 0)
+        std::cout << "pipe failed\n";
+    std::stringstream out; 
+    std::streambuf *coutbuf = std::cout.rdbuf(out.rdbuf()); //save old buf
+    getImportAndConf();
+    semantics();
+    printJITBackend();
+    std::cout.rdbuf(coutbuf);
+    std::string script = out.str();
+    write(p[1], script.c_str(), script.size());
+    close(p[1]);
+    int save_stdin = redirect_input(p[0]);
+    std::string result = exec(tmp.c_str());
+    restore_input(save_stdin);
+    close(p[0]);
+    result.erase(result.size()-8);
+    return result;
+}
+
 void FFTXProblem::transform(){
 
-        //NEED A CACHING CASE
-        //printf("semantics called\n");
-        // if(fopen("mddft.fftx.source.txt", "r") == false) {
-        //     semantics();
-        // }
-        // char buff[FILENAME_MAX]; //create string buffer to hold path
-        // getcwd( buff, FILENAME_MAX );
-        // std::string current_working_dir(buff);
-        // std::cout << current_working_dir << std::endl;
-        // exit(0);
         if(res.empty()) {
-            res = semantics();
-            //std::cout << res << std::endl;
+            res = semantics2();
         }
         if(executors.find(res) != executors.end()) {
             std::cout << "running cached instances\n";
@@ -142,25 +170,10 @@ void FFTXProblem::transform(){
         }
         else if(!res.empty()) {
             std::cout << "found file to parse\n";
-            // std::cout << res << std::endl;
-            // std::cout << res.size() << std::endl;
-            // exit(0);
-            // const char * file_name = "mddft.fftx.source.txt";
-            // p.sig.args.push_back((char**)file_name);
-            // double * input =  (double*)(p.sig.in.at(0).m_data.local());
-            // for(int i = 0; i < in.at(0).m_domain.size(); i++) {
-            //     std::cout << in.at(0).m_data.local()[i] << std::endl;
-            // }
-            //exit(1);
-            //Executor e(in, out);
             Executor e;
-            // std::cout << p.sig.in.at(0).m_domain.size() << std::endl;
-            //e.execute(std::any_cast<int>(p.sig.inputargs.at(0)), std::any_cast<char**>(p.sig.inputargs.at(1)));
-            //e.execute(*((int*)p.sig.inputargs.at(0)), (char**)p.sig.inputargs.at(1));
             e.execute(res);
             executors.insert(std::make_pair(res, e));
             run(e);
-            //e.execute(p);
         }
         else {
             std::cout << "failure\n";
@@ -171,7 +184,6 @@ void FFTXProblem::transform(){
 
 void FFTXProblem::run(Executor e) {
     gpuTime = e.initAndLaunch(args);
-    //e.returnData(out);
 }
 
 float FFTXProblem::getTime() {
