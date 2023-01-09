@@ -126,10 +126,6 @@ void Executor::parseDataStructure(std::string input) {
         while(std::getline(ss,s,delim)) {
             words.push_back(s);
         }
-        for(int i = 0; i < words.size(); i++) {
-            std::cout << words.at(i) << " ";
-        }
-        std::cout << std::endl;
         int test = atoi(words.at(0).c_str());
         switch(test) {
             case 0:

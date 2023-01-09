@@ -56,9 +56,20 @@ int main(int argc, char* argv[])
 	fftx::array_t<3,std::complex<double>> inputHost(domain);
 	fftx::array_t<3,std::complex<double>> outputHost(domain);
 
-	forall([](std::complex<double>(&v), const fftx::point_t<3>& p) {
-			v=std::complex<double>(2.0,0.0);
-		},inputHost);
+	// forall([](std::complex<double>(&v), const fftx::point_t<3>& p) {
+	// 		v=std::complex<double>(2.0,0.0);
+	// 	},inputHost);
+
+  double *hostinp = (double *) inputHost.m_data.local();
+    for ( int imm = 0; imm < mm; imm++ ) {
+		for ( int inn = 0; inn < nn; inn++ ) {
+			for ( int ikk = 0; ikk < kk; ikk++ ) {
+				hostinp[(ikk + inn * kk + imm * nn * kk) * 2 + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+				hostinp[(ikk + inn * kk + imm * nn * kk) * 2 + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+			}
+		}
+	}
+
 
     //initDevice();
 #if defined FFTX_CUDA
@@ -159,9 +170,11 @@ int main(int argc, char* argv[])
     {
       mdp.transform();
       //gatherOutput(outputHost, args);
-	  DEVICE_MEM_COPY ( outputHost.m_data.local(), &dY,
+	  DEVICE_MEM_COPY ( outputHost.m_data.local(), args.at(0),
 						outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-	  
+	  // for(int i = 0; i < outputHost.m_domain.size(); i++) {
+    //   std::cout << outputHost.m_data.local()[i] << std::endl;
+    // }
 // #ifdef FFTX_HIP
 //       mddft_gpu[itn] = mddft::GPU_milliseconds;
 // #endif
@@ -180,9 +193,11 @@ printf("finished the code\n");
     {
       imdp.transform();
       //gatherOutput(outputHost, args);
-	  DEVICE_MEM_COPY ( outputHost.m_data.local(), &dY,
+	  DEVICE_MEM_COPY ( outputHost.m_data.local(), args.at(0),
 						outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-
+    // for(int i = 0; i < outputHost.m_domain.size(); i++) {
+    //   std::cout << outputHost.m_data.local()[i] << std::endl;
+    // }
       //imddft::transform(input, output);
 // #ifdef FFTX_HIP
 //       imddft_gpu[itn] = imddft::GPU_milliseconds;
