@@ -15,63 +15,93 @@
 #include "device_macros.h"
 #endif
 
+
+//  Build a random input buffer for Spiral and rocfft
+//  host_X is the host buffer to setup -- it'll be copied to the device later
+//  sizes is a vector with the X, Y, & Z dimensions
+
+static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
+{
+    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
+        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
+            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
+                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+                host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+                host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+            }
+        }
+    }
+    return;
+}
+
+
+// Check that the buffer are identical (within roundoff)
+// spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
+// devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
+// arrsz is the size of each array
+
+static void checkOutputBuffers ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
+{
+    bool correct = true;
+    double maxdelta = 0.0;
+
+    for ( int indx = 0; indx < arrsz; indx++ ) {
+        DEVICE_FFT_DOUBLECOMPLEX s = spiral_Y[indx];
+        DEVICE_FFT_DOUBLECOMPLEX c = devfft_Y[indx];
+
+        bool elem_correct = ( (abs(s.x - c.x) < 1e-7) && (abs(s.y - c.y) < 1e-7) );
+        maxdelta = maxdelta < (double)(abs(s.x -c.x)) ? (double)(abs(s.x -c.x)) : maxdelta ;
+        maxdelta = maxdelta < (double)(abs(s.y -c.y)) ? (double)(abs(s.y -c.y)) : maxdelta ;
+        correct &= elem_correct;
+    }
+    
+    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
+    fflush ( stdout );
+
+    return;
+}
+
 int main(int argc, char* argv[])
 {
-  // std::cout <<"this is my program X3\n";
-  // printf("%s: Entered test program\n call mddft::init()\n", argv[0]);
-  int iterations = 2;
-  int mm = 24, nn = 32, kk = 40; // cube dimensions
-  char *prog = argv[0];
-  int baz = 0;
-  while ( argc > 1 && argv[1][0] == '-' ) {
-    switch ( argv[1][1] ) {
-    case 'i':
-    argv++, argc--;
-    iterations = atoi ( argv[1] );
-    break;
-    case 's':
-    argv++, argc--;
-    mm = atoi ( argv[1] );
-    while ( argv[1][baz] != 'x' ) baz++;
-    baz++ ;
-    nn = atoi ( & argv[1][baz] );
-    while ( argv[1][baz] != 'x' ) baz++;
-    baz++ ;
-    kk = atoi ( & argv[1][baz] );
-    break;
-    case 'h':
-      printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
-      exit (0);
-    default:
-      printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+    int iterations = 2;
+    int mm = 24, nn = 32, kk = 40; // default cube dimensions
+    char *prog = argv[0];
+    int baz = 0;
+
+    while ( argc > 1 && argv[1][0] == '-' ) {
+        switch ( argv[1][1] ) {
+        case 'i':
+            argv++, argc--;
+            iterations = atoi ( argv[1] );
+            break;
+        case 's':
+            argv++, argc--;
+            mm = atoi ( argv[1] );
+            while ( argv[1][baz] != 'x' ) baz++;
+            baz++ ;
+            nn = atoi ( & argv[1][baz] );
+            while ( argv[1][baz] != 'x' ) baz++;
+            baz++ ;
+            kk = atoi ( & argv[1][baz] );
+            break;
+        case 'h':
+            printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+            exit (0);
+        default:
+            printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+        }
+        argv++, argc--;
     }
-    argv++, argc--;
-  }
-  // std::cout << "left while loop\n";
-  std::cout << mm << " " << nn << " " << kk << std::endl;
-  std::vector<int> sizes{mm,nn,kk};
-  fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
-  point_t<3> ( { { mm, nn, kk } } ));
 
-	fftx::array_t<3,std::complex<double>> inputHost(domain);
-	fftx::array_t<3,std::complex<double>> outputHost(domain);
+    std::cout << mm << " " << nn << " " << kk << std::endl;
+    std::vector<int> sizes{mm,nn,kk};
+    fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
+                            point_t<3> ( { { mm, nn, kk } } ));
 
-	// forall([](std::complex<double>(&v), const fftx::point_t<3>& p) {
-	// 		v=std::complex<double>(2.0,0.0);
-	// 	},inputHost);
+    fftx::array_t<3,std::complex<double>> inputHost(domain);
+    fftx::array_t<3,std::complex<double>> outputHost(domain);
+    fftx::array_t<3,std::complex<double>> outDevfft(domain);
 
-  double *hostinp = (double *) inputHost.m_data.local();
-    for ( int imm = 0; imm < mm; imm++ ) {
-		for ( int inn = 0; inn < nn; inn++ ) {
-			for ( int ikk = 0; ikk < kk; ikk++ ) {
-				hostinp[(ikk + inn * kk + imm * nn * kk) * 2 + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-				hostinp[(ikk + inn * kk + imm * nn * kk) * 2 + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-			}
-		}
-	}
-
-
-    //initDevice();
 #if defined FFTX_CUDA
     CUdevice cuDevice;
     CUcontext context;
@@ -79,164 +109,159 @@ int main(int argc, char* argv[])
     cuDeviceGet(&cuDevice, 0);
     cuCtxCreate(&context, 0, cuDevice);
     //  CUdeviceptr  dX, dY, dsym;
-	std::complex<double> *dX, *dY, *dsym;
+    std::complex<double> *dX, *dY, *dsym;
 #endif
 #if defined FFTX_HIP
     hipDeviceptr_t  dX, dY, dsym;
 #endif
 
-// std::cout << "allocating memory\n";
-// CUDA_SAFE_CALL(cuMemAlloc(&dX, inputHost.m_domain.size() * sizeof(std::complex<double>)));
-// std::cout << "allocated X\n";
-// CUDA_SAFE_CALL(cuMemcpyHtoD(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>)));
-// std::cout << "copied X\n";
-// CUDA_SAFE_CALL(cuMemAlloc(&dY, outputHost.m_domain.size() * sizeof(std::complex<double>)));
-// std::cout << "allocated Y\n";
-// // //CUDA_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
-// CUDA_SAFE_CALL(cuMemAlloc(&dsym, outputHost.m_domain.size() * sizeof(std::complex<double>)));
-// std::cout << "allocating memory\n" << 30720 << "\n";
-// CUDA_SAFE_CALL(hipMalloc((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>)));
-// std::cout << "allocated X\n";
-// CUDA_SAFE_CALL(hipMemcpy(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>), hipMemcpyHostToDevice));
-// std::cout << "copied X\n";
-// CUDA_SAFE_CALL(hipMalloc((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>)));
-// std::cout << "allocated Y\n";
-// // //HIP_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
-// CUDA_SAFE_CALL(hipMalloc((void **)&dsym,  outputHost.m_domain.size()*  sizeof(std::complex<double>)));
+    std::cout << "allocating memory\n";
+    DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
+    if ( LOCALDEBUG == 1 ) std::cout << "allocated X\n";
 
-	std::cout << "allocating memory\n";
-	DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
-	std::cout << "allocated X\n";
-	DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE);
-	std::cout << "copied X\n";
-	DEVICE_MALLOC((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>));
-	std::cout << "allocated Y\n";
-	//  HIP_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
-	DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size()*  sizeof(std::complex<double>));
+    DEVICE_MALLOC((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>));
+    if ( LOCALDEBUG == 1 ) std::cout << "allocated Y\n";
 
-	double* mddft_cpu = new double[iterations];
-	double* imddft_cpu = new double[iterations];
-	// #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-	// additional code for GPU programs
-	float* mddft_gpu = new float[iterations];
-	float* imddft_gpu = new float[iterations];
-	std::string descrip = "CPU and GPU";
+    DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size() * sizeof(std::complex<double>));
+
+    // double* mddft_cpu = new double[iterations];
+    // double* imddft_cpu = new double[iterations];
+    // #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    // additional code for GPU programs
+    float *mddft_gpu = new float[iterations];
+    float *imddft_gpu = new float[iterations];
 #if defined FFTX_CUDA
-	std::vector<void*> args{&dY,&dX,&dsym};
+    std::vector<void*> args{&dY,&dX,&dsym};
+    std::string descrip = "NVIDIA GPU";                //  "CPU and GPU";
+    std::string devfft  = "cufft";
 #endif
 #if defined FFTX_HIP
-	std::vector<void*> args{dY,dX,dsym};
-#endif
-//   std::complex<double> * bufferDevicePtr;
-//   std::complex<double> * inputDevicePtr;
-//   std::complex<double> * outputDevicePtr;
-//   DEVICE_MALLOC(&bufferDevicePtr,
-//                 test_plan::domain.size()*sizeof(std::complex<double>)*2);
-//   inputDevicePtr = bufferDevicePtr;
-//   outputDevicePtr = bufferDevicePtr + test_plan::domain.size();
-//   DEVICE_MEM_COPY(inputDevicePtr, inputHost.m_data.local(),
-//                   test_plan::domain.size()*sizeof(std::complex<double>),
-//                   MEM_COPY_HOST_TO_DEVICE);
-//   fftx::array_t<3,std::complex<double>> inputDevice(fftx::global_ptr<std::complex<double>>(inputDevicePtr,0,1), test_plan::domain);
-//   fftx::array_t<3,std::complex<double>> outputDevice(fftx::global_ptr<std::complex<double>>(outputDevicePtr,0,1), test_plan::domain);
-
-//   fftx::array_t<3,std::complex<double>>& input = inputDevice;
-//   fftx::array_t<3,std::complex<double>>& output = outputDevice;
-//   // end special code for GPU
-// #else
-  // std::string descrip = "CPU";
-  // fftx::array_t<3,std::complex<double>>& input = inputHost;
-  // fftx::array_t<3,std::complex<double>>& output = outputHost;
-//#endif  
-
-  // std::vector<fftx::array_t<3,std::complex<double>>> inList;
-  // std::vector<fftx::array_t<3,std::complex<double>>> outList;
-
-  // inList.push_back(inputHost);
-  // outList.push_back(outputHost);
-
-
-  //MDDFTProblem mdp(inList, outList);
-  //std::cout << *((int*)args.at(3)) << std::endl;
-  MDDFTProblem mdp(args, sizes);
-
-
-  printf("call mddft::init()\n");
-  // mddft::init();
-
-  printf("call mddft::transform()\n");
-
-  for (int itn = 0; itn < iterations; itn++)
-    {
-      mdp.transform();
-      //gatherOutput(outputHost, args);
-	  DEVICE_MEM_COPY ( outputHost.m_data.local(), args.at(0),
-						outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-	  // for(int i = 0; i < outputHost.m_domain.size(); i++) {
-    //   std::cout << outputHost.m_data.local()[i] << std::endl;
-    // }
-// #ifdef FFTX_HIP
-//       mddft_gpu[itn] = mddft::GPU_milliseconds;
-// #endif
-      mddft_cpu[itn] = mdp.getTime();
-    }
-printf("finished the code\n");
-  // mddft::destroy();
-
-  printf("call imddft::init()\n");
-  // imddft::init();
-
-  IMDDFTProblem imdp(args, sizes);
-
-  printf("call imddft::transform()\n");
-  for (int itn = 0; itn < iterations; itn++)
-    {
-      imdp.transform();
-      //gatherOutput(outputHost, args);
-	  DEVICE_MEM_COPY ( outputHost.m_data.local(), args.at(0),
-						outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-    // for(int i = 0; i < outputHost.m_domain.size(); i++) {
-    //   std::cout << outputHost.m_data.local()[i] << std::endl;
-    // }
-      //imddft::transform(input, output);
-// #ifdef FFTX_HIP
-//       imddft_gpu[itn] = imddft::GPU_milliseconds;
-// #endif
-      imddft_cpu[itn] = imdp.getTime();
-    }
-
-//   imddft::destroy();
-
-  printf("Times in milliseconds for %s on mddft on %d trials of size %d %d %d:\n",
-         descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-  for (int itn = 0; itn < iterations; itn++)
-    {
-// #ifdef FFTX_HIP
-//         printf("%.7e  %.7e\n", mddft_cpu[itn], mddft_gpu[itn]);
-// #else
-      printf("%.7e\n", mddft_cpu[itn]);
-// #endif
-    }
-
-  printf("Times in milliseconds for %s on imddft on %d trials of size %d %d %d:\n",
-         descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-  for (int itn = 0; itn < iterations; itn++)
-    {
-// #ifdef FFTX_HIP
-//       printf("%.7e  %.7e\n", imddft_cpu[itn], imddft_gpu[itn]);
-// #else
-      printf("%.7e\n", imddft_cpu[itn]);
-// #endif
-    }
-
-  delete[] mddft_cpu;
-  delete[] imddft_cpu;
-#ifdef FFTX_MPI
-  delete[] mddft_gpu;
-  delete[] imddft_gpu;
+    std::vector<void*> args{dY,dX,dsym};
+    std::string descrip = "AMD GPU";                //  "CPU and GPU";
+    std::string devfft  = "rocfft";
 #endif
 
-  printf("%s: All done, exiting\n", argv[0]);
+      //MDDFTProblem mdp(inList, outList);
+      //std::cout << *((int*)args.at(3)) << std::endl;
+    MDDFTProblem mdp(args, sizes);
+
+    //  Setup a plan to run the transform using cu or roc fft
+    DEVICE_FFT_HANDLE plan;
+    DEVICE_FFT_RESULT res;
+    DEVICE_FFT_TYPE   xfmtype = DEVICE_FFT_Z2Z ;
+    DEVICE_EVENT_T custart, custop;
+    DEVICE_EVENT_CREATE ( &custart );
+    DEVICE_EVENT_CREATE ( &custop );
+    float *devmilliseconds = new float[iterations];
+    float *invdevmilliseconds = new float[iterations];
+    bool check_buff = true;                // compare results of spiral - RTC with device fft
+    
+    res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
+    if ( res != DEVICE_FFT_SUCCESS ) {
+        printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
+        check_buff = false;
+    }
+
+    double *hostinp = (double *) inputHost.m_data.local();
+    for (int itn = 0; itn < iterations; itn++)
+    {
+        // setup random data for input buffer (Use different randomized data each iteration)
+        buildInputBuffer ( hostinp, sizes );
+        DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
+                        MEM_COPY_HOST_TO_DEVICE);
+        if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
+        
+        mdp.transform();
+        //gatherOutput(outputHost, args);
+        DEVICE_MEM_COPY ( outputHost.m_data.local(), dY,
+                          outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+        mddft_gpu[itn] = mdp.getTime();
+
+        //  Run the roc fft plan on the same input data
+        if ( check_buff ) {
+            DEVICE_EVENT_RECORD ( custart );
+            res = DEVICE_FFT_EXECZ2Z ( plan,
+                                       (DEVICE_FFT_DOUBLECOMPLEX *) dX,
+                                       (DEVICE_FFT_DOUBLECOMPLEX *) dY,
+                                       DEVICE_FFT_FORWARD );
+            if ( res != DEVICE_FFT_SUCCESS) {
+                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+                check_buff = false;
+                //  break;
+            }
+            DEVICE_EVENT_RECORD ( custop );
+            DEVICE_EVENT_SYNCHRONIZE ( custop );
+            DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
+
+            DEVICE_MEM_COPY ( outDevfft.m_data.local(), dY,
+                              outDevfft.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+            printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
+            checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
+                                 (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
+                                 (long) outDevfft.m_domain.size() );
+        }
+    }
+
+    // setup the inverse transform (we'll reuse the device fft plan already created)
+    IMDDFTProblem imdp(args, sizes);
+
+    for (int itn = 0; itn < iterations; itn++)
+    {
+        // setup random data for input buffer (Use different randomized data each iteration)
+        buildInputBuffer ( hostinp, sizes );
+        DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
+                        MEM_COPY_HOST_TO_DEVICE);
+        if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
+        
+        imdp.transform();
+        //gatherOutput(outputHost, args);
+        DEVICE_MEM_COPY ( outputHost.m_data.local(), dY,
+                          outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+        imddft_gpu[itn] = imdp.getTime();
+
+        //  Run the device fft plan on the same input data
+        if ( check_buff ) {
+            DEVICE_EVENT_RECORD ( custart );
+            res = DEVICE_FFT_EXECZ2Z ( plan,
+                                       (DEVICE_FFT_DOUBLECOMPLEX *) dX,
+                                       (DEVICE_FFT_DOUBLECOMPLEX *) dY,
+                                       DEVICE_FFT_INVERSE );
+            if ( res != DEVICE_FFT_SUCCESS) {
+                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+                check_buff = false;
+                //  break;
+            }
+            DEVICE_EVENT_RECORD ( custop );
+            DEVICE_EVENT_SYNCHRONIZE ( custop );
+            DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
+
+            DEVICE_MEM_COPY ( outDevfft.m_data.local(), dY,
+                              outDevfft.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+            printf ( "cube = [ %d, %d, %d ]\tMDDFT (Inverse)\t", mm, nn, kk );
+            checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
+                                 (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
+                                 (long) outDevfft.m_domain.size() );
+        }
+    }
+
+    printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2), devfft.c_str() );
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\t%.7e\n", itn, mddft_gpu[itn], devmilliseconds[itn] );
+    }
+
+    printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2), devfft.c_str() );
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\t%.7e\n", itn, imddft_gpu[itn], invdevmilliseconds[itn] );
+    }
+
+    // delete[] mddft_cpu;
+    // delete[] imddft_cpu;
+    delete[] mddft_gpu;
+    delete[] imddft_gpu;
+
+    printf("%s: All done, exiting\n", prog);
   
-  return 0;
+    return 0;
 }

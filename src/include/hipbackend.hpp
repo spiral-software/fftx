@@ -90,7 +90,8 @@ class Executor {
         void initializeVars();
         void destoryProg();
         float initAndLaunch(std::vector<void*>& args);
-        void execute(std::string file_name);
+        void execute(std::string input);
+        void execute(char *file_name, std::vector<void*>& args);
         float getKernelTime();
         void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
@@ -418,11 +419,11 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
 }
 
 
-void Executor::execute(std::string file_name) {
+void Executor::execute(std::string input) {
     if(LOCALDEBUG == 1)
         std::cout << "begin parsing\n";
     
-    parseDataStructure(file_name);
+    parseDataStructure(input);
     
     if(LOCALDEBUG == 1) {
         std::cout << "finished parsing\n";
@@ -442,6 +443,34 @@ void Executor::execute(std::string file_name) {
     //destoryProg(); cant call it early like in cuda
 }
 
+void Executor::execute(char *file_name, std::vector<void*>& args)
+{
+    if ( LOCALDEBUG == 1 )
+        std::cout << "begin executing code\n";
+
+    std::ifstream ifs ( file_name );
+    std::string   fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
+                             ( std::istreambuf_iterator<char>()    ) );
+
+    parseDataStructure ( fcontent );
+    if ( LOCALDEBUG == 1 ) {
+        std::cout << "finsihed parsing\n";
+        for(int i = 0; i < device_names.size(); i++) {
+            std::cout << std::get<0>(device_names[i]) << std::endl;
+        }
+        for(int i = 0; i < kernel_names.size(); i++) {
+            std::cout << kernel_names[i] << std::endl;
+        }
+    }
+
+    createProg();
+    getVarsAndKernels();
+    compileProg();
+    getLogsAndPTX();
+    initializeVars();
+    initAndLaunch(args);
+}
+
 float Executor::getKernelTime() {
     return GPUtime;
 }
@@ -451,4 +480,4 @@ float Executor::getKernelTime() {
 //     hipMemcpy(out.m_data.local(), &((hipDeviceptr_t)args.at(0)),  out.m_domain.size() * sizeof(std::complex<double>), hipMemcpyDeviceToHost);
 // }
 
-#endif			//  FFTX_MDDFT_HIPBACKEND_HEADER
+#endif            //  FFTX_MDDFT_HIPBACKEND_HEADER
