@@ -10,14 +10,6 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-
-#if defined FFTX_CUDA
-#include "cudabackend.hpp"
-#endif
-#if defined FFTX_HIP
-#include "hipbackend.hpp"
-#endif
-
 #include "fftx3.hpp"
 #include <array>
 #include <cstdio>
@@ -32,7 +24,17 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#elif defined FFTX_HIP
+#include "hipbackend.hpp"
+#else
+#include "cpubackend.hpp"
+#endif
 #pragma once
+
+class Executor;
+class FFTXProblem;
 
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
@@ -85,24 +87,29 @@ std::string getSPIRAL() {
 }
 
 void getImportAndConf() {
-    std::cout << "Load(fftx);\nImportAll(fftx);\nImportAll(simt);\nLoad(jit);\nImport(jit);\n";
-    //#if defined FFTX_HIP 
+    std::cout << "Load(fftx);\nImportAll(fftx);\n";
+    #if (defined FFTX_HIP || FFTX_CUDA)
+    std::cout << "ImportAll(simt);\nLoad(jit);\nImport(jit);\n";
+    #endif
+    #if defined FFTX_HIP 
     std::cout << "conf := FFTXGlobals.defaultHIPConf();\n";
-    //#endif
-    //#if defined FFTX_CUDA 
-    //std::cout << "conf := LocalConfig.fftx.confGPU();\n";
-    //#endif
+    #elif defined FFTX_CUDA 
+    std::cout << "conf := LocalConfig.fftx.confGPU();\n";
+    #else
+    std::cout << "conf := LocalConfig.fftx.defaultConf();\n";
+    #endif
 }
 
 void printJITBackend() {
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
-    //#if defined FFTX_HIP
+    #if defined FFTX_HIP
         std::cout << "PrintHIPJIT(c,opts);\n";
-    //#endif
-    //#if defined FFTX_CUDA 
-    //    std::cout << "PrintJIT2(c,opts)\n";
-    //#endif
+    #elif defined FFTX_CUDA 
+       std::cout << "PrintJIT2(c,opts);\n";
+    #else
+        std::cout << "opts.prettyPrint(c);\n";
+    #endif
 }
 
 class FFTXProblem {
@@ -147,7 +154,6 @@ std::string FFTXProblem::semantics2() {
     getImportAndConf();
     semantics();
     printJITBackend();
-    // exit(0);
     std::cout.rdbuf(coutbuf);
     std::string script = out.str();
     write(p[1], script.c_str(), script.size());
@@ -164,6 +170,7 @@ std::string FFTXProblem::semantics2() {
 void FFTXProblem::transform(){
 
         if(res.empty()) {
+            std::cout << "res is empty\n";
             res = semantics2();
         }
         if(executors.find(res) != executors.end()) {

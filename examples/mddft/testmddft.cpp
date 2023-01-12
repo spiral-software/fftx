@@ -7,9 +7,10 @@
 
 #if defined FFTX_CUDA
 #include "cudabackend.hpp"
-#endif
-#if defined FFTX_HIP
+#elif defined FFTX_HIP
 #include "hipbackend.hpp"
+#else  
+#include "cpubackend.hpp"
 #endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "device_macros.h"
@@ -39,7 +40,7 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
 // arrsz is the size of each array
-
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
 static void checkOutputBuffers ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
 {
     bool correct = true;
@@ -60,6 +61,7 @@ static void checkOutputBuffers ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_FFT_
 
     return;
 }
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -110,11 +112,13 @@ int main(int argc, char* argv[])
     cuCtxCreate(&context, 0, cuDevice);
     //  CUdeviceptr  dX, dY, dsym;
     std::complex<double> *dX, *dY, *dsym;
-#endif
-#if defined FFTX_HIP
+#elif defined FFTX_HIP
     hipDeviceptr_t  dX, dY, dsym;
+#else  
+    double * dX, *dY, *dsym;
 #endif
 
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
     std::cout << "allocating memory\n";
     DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
     if ( LOCALDEBUG == 1 ) std::cout << "allocated X\n";
@@ -123,6 +127,11 @@ int main(int argc, char* argv[])
     if ( LOCALDEBUG == 1 ) std::cout << "allocated Y\n";
 
     DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size() * sizeof(std::complex<double>));
+#else
+    dX = (double *) inputHost.m_data.local();
+    dY = (double *) outputHost.m_data.local();
+    dsym = new double[outputHost.m_domain.size()];
+#endif
 
     // double* mddft_cpu = new double[iterations];
     // double* imddft_cpu = new double[iterations];
@@ -134,17 +143,22 @@ int main(int argc, char* argv[])
     std::vector<void*> args{&dY,&dX,&dsym};
     std::string descrip = "NVIDIA GPU";                //  "CPU and GPU";
     std::string devfft  = "cufft";
-#endif
-#if defined FFTX_HIP
+#elif defined FFTX_HIP
     std::vector<void*> args{dY,dX,dsym};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
     std::string devfft  = "rocfft";
+#else
+    std::vector<void*> args{(void*)dY,(void*)dX,(void*)dsym};
+    std::string descrip = "CPU";                //  "CPU";
+    std::string devfft = "fftw";
+    //std::string devfft  = "rocfft";
 #endif
 
       //MDDFTProblem mdp(inList, outList);
       //std::cout << *((int*)args.at(3)) << std::endl;
     MDDFTProblem mdp(args, sizes);
 
+#if defined FFTX_HIP
     //  Setup a plan to run the transform using cu or roc fft
     DEVICE_FFT_HANDLE plan;
     DEVICE_FFT_RESULT res;
@@ -161,22 +175,27 @@ int main(int argc, char* argv[])
         printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
         check_buff = false;
     }
-
+#endif
     double *hostinp = (double *) inputHost.m_data.local();
     for (int itn = 0; itn < iterations; itn++)
     {
         // setup random data for input buffer (Use different randomized data each iteration)
         buildInputBuffer ( hostinp, sizes );
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
+    #endif
         if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
         
         mdp.transform();
         //gatherOutput(outputHost, args);
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.m_data.local(), dY,
                           outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+    #endif
         mddft_gpu[itn] = mdp.getTime();
 
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
             DEVICE_EVENT_RECORD ( custart );
@@ -200,6 +219,7 @@ int main(int argc, char* argv[])
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
                                  (long) outDevfft.m_domain.size() );
         }
+    #endif
     }
 
     // setup the inverse transform (we'll reuse the device fft plan already created)
@@ -209,16 +229,21 @@ int main(int argc, char* argv[])
     {
         // setup random data for input buffer (Use different randomized data each iteration)
         buildInputBuffer ( hostinp, sizes );
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
+    #endif
         if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
         
         imdp.transform();
         //gatherOutput(outputHost, args);
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.m_data.local(), dY,
                           outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+    #endif
         imddft_gpu[itn] = imdp.getTime();
 
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         //  Run the device fft plan on the same input data
         if ( check_buff ) {
             DEVICE_EVENT_RECORD ( custart );
@@ -242,8 +267,10 @@ int main(int argc, char* argv[])
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
                                  (long) outDevfft.m_domain.size() );
         }
+    #endif
     }
 
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
     printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
              descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2), devfft.c_str() );
     for (int itn = 0; itn < iterations; itn++) {
@@ -251,10 +278,24 @@ int main(int argc, char* argv[])
     }
 
     printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2), devfft.c_str() );
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
     for (int itn = 0; itn < iterations; itn++) {
         printf ( "%d\t%.7e\t%.7e\n", itn, imddft_gpu[itn], invdevmilliseconds[itn] );
     }
+#else
+     printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\n", itn, mddft_gpu[itn]);
+    }
+
+    printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\n", itn, imddft_gpu[itn]);
+    }
+#endif
+
 
     // delete[] mddft_cpu;
     // delete[] imddft_cpu;
