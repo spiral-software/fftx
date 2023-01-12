@@ -33,6 +33,9 @@
 #endif
 #pragma once
 
+class Executor;
+class FFTXProblem;
+
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
