@@ -10,7 +10,6 @@
 
 #include "fftx_distdft_embed_gpu_public.h"
 
-
 #include <stdlib.h>     /* srand, rand */
 
 #include "device_macros.h"
@@ -23,6 +22,38 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
 
+	int row = 0, col = 0;
+	int baz = 0;
+	char *prog = argv[0];
+
+	if ( argc == 1 ) {
+		printf ( "Usage: %s: -g ROWxCOL \n", argv[0] );
+		printf ( "Grid size to use must be specified\n" );
+		exit (0);
+	}
+		
+	while ( argc > 1 && argv[1][0] == '-' ) {
+		switch ( argv[1][1] ) {
+		case 'g':
+			argv++, argc--;
+			row = atoi ( argv[1] );
+			while ( argv[1][baz] != 'x' ) baz++;
+			baz++ ;
+			col = atoi ( & argv[1][baz] );
+			break;
+
+		case 'h':
+			printf ( "Usage: %s: -g ROWxCOL \n", argv[0] );
+			exit (0);
+
+		default:
+			printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+		}
+		argv++, argc--;
+	}
+
+	printf ( "%s: Run distributed DFT for all sizes using grid = %dx%d\n", prog, row, col );
+	
   MPI_Init(&argc, &argv);
 
   int commRank;
@@ -34,99 +65,103 @@ int main(int argc, char* argv[]) {
 
   bool is_embedded = true; // TODO: get embedded testing working
 
-  // 3d fft sizes
-  int M = 30;
-  int N = 30;
-  int K = 30;
+  fftx::point_t<5> *wcube = fftx_distdft_embed_gpu_QuerySizes();
+  if (wcube == NULL) {
+    printf ( "Failed to get list of available sizes\n");
+    exit (-1);
+  }
   
-  int r = 2;
-  int c = 2;
+  for (fftx::point_t<5> *req = wcube;
+       req->x[0] != 0 && req->x[1] != 0 && req->x[2] != 0 && req->x[3] != 0 && req->x[4] != 0;
+       req++)
+  {
+	  int r = req->x[0], c = req->x[1];							//  grid (r x c) for this entry is first 2 values from point_t<>
+	  int Mo = req->x[2], No = req->x[3], Ko = req->x[4];		//  Output cube size is remaining values
+	  int Mi = Mo / 2, Ni = No / 2, Ki = Ko / 2;				//  Input cube dimensions are half output dims
 
-  int Mi = M;
-  int Ni = N;
-  int Ki = K;
-  int Mo = M * (is_embedded ? 2 : 1);
-  int No = N * (is_embedded ? 2 : 1);
-  int Ko = K * (is_embedded ? 2 : 1);
+	  if ( ( r != row ) || ( c != col ) ) continue;				//  Different grid, skip it
 
-  int check = 1;
+	  printf ( "Test cube: input size = [ %d, %d, %d ], output size = [ %d, %d, %d ]\n", Mi, Ni, Ki, Mo, No, Ko );
 
-  complex<double> *in_buffer = NULL;
-  DEVICE_ERROR_T err = DEVICE_MALLOC(&in_buffer, Mo*Ni*Ki/p * sizeof(complex<double>));
-  if (err != DEVICE_SUCCESS) {
-    cout << "DEVICE_MALLOC failed\n" << endl;
-    exit(-1);
-  }
-  complex<double> *out_buffer = NULL;
-  err = DEVICE_MALLOC(&out_buffer, Mo*No*Ko/p * sizeof(complex<double>));
-  if (err != DEVICE_SUCCESS) {
-    cout << "DEVICE_MALLOC failed\n" << endl;
-    exit(-1);
-  }
-
-  // initialize data to random values in the range (-1, 1).
-  complex<double> *in_buff = new complex<double>[Mo*Ni*Ki/p];
-
-  // assume data is padded on x as input.
-  for (int k = 0; k < Ki/r; k++) {
-    for (int j = 0; j < Ni/c; j++) {
-      for (int i = 0; i < Mo; i++) {
-        in_buff[
-          k * (Ni/c)*Mo +
-          j *        Mo +
-          i
-        ] = ( // embedded
-	     (Mi/2 <= i &&
-          i < 3*Mi/2 )||
-	  !is_embedded
-        ) ?
-          complex<double>(
-            1 - ((double) rand()) / (double) (RAND_MAX/2),
-            1 - ((double) rand()) / (double) (RAND_MAX/2)
-          )
-        :
-          complex<double>(0, 0);
-      }
-    }
-  }
-
-
-  err = DEVICE_MEM_COPY(
-    in_buffer,
-    in_buff,
-	  Mo*Ni*Ki/p * sizeof(complex<double>),
-    MEM_COPY_HOST_TO_DEVICE
-  );
-  if (err != DEVICE_SUCCESS) {
-    cout << "DEVICE_MEM_COPY failed\n" << endl;
-    exit(-1);
-  }
-
-  DEVICE_SYNCHRONIZE();
-
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  fftx::point_t<5> req({r, c, Mo, No, Ko}) ;
-  transformTuple_t *tptr = fftx_distdft_embed_gpu_Tuple(req);
-  
-  if ( tptr != NULL ) {
-	  (* tptr->initfp)();
-  
-	  for (int t = 0; t < 1; t++) {
-		  double start_time = MPI_Wtime();
-
-		  (* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
-
-		  double end_time = MPI_Wtime();
+	int check = 1;
     
-		  double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
-		  double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    //    fftx::point_t<5> req = ({r, c, Mo, No, Ko}) ;
+    transformTuple_t *tptr = fftx_distdft_embed_gpu_Tuple(*req);  
+    
+    if (tptr != NULL){
+      //init_mddft3d();
+      (* tptr->initfp)();
 
-		  if (commRank == 0) {
-			  printf("%lf %lf\n", min_time, max_time);
-		  }
+      // initialize data to random values in the range (-1, 1).
+      complex<double> *in_buff = new complex<double>[Mo*Ni*Ki/p];
+      
+      // assume data is padded on x as input.
+      for (int k = 0; k < Ki/r; k++) {
+	for (int j = 0; j < Ni/c; j++) {
+	  for (int i = 0; i < Mo; i++) {
+	    in_buff[
+		    k * (Ni/c)*Mo +
+		    j *        Mo +
+		    i
+		    ] = ( // embedded
+			 (Mi/2 <= i &&
+			  i < 3*Mi/2 )||
+			 !is_embedded
+			  ) ?
+	      complex<double>(
+			      1 - ((double) rand()) / (double) (RAND_MAX/2),
+			      1 - ((double) rand()) / (double) (RAND_MAX/2)
+			      )
+	      :
+	      complex<double>(0, 0);
 	  }
-  
+	}
+      }           
+      
+      complex<double> *in_buffer = NULL;
+      DEVICE_ERROR_T err = DEVICE_MALLOC(&in_buffer, Mo*Ni*Ki/p * sizeof(complex<double>));
+      if (err != DEVICE_SUCCESS) {
+	cout << "DEVICE_MALLOC failed\n" << endl;
+	exit(-1);
+      }
+      complex<double> *out_buffer = NULL;
+      err = DEVICE_MALLOC(&out_buffer, Mo*No*Ko/p * sizeof(complex<double>));
+      if (err != DEVICE_SUCCESS) {
+	cout << "DEVICE_MALLOC failed\n" << endl;
+	exit(-1);
+      }      
+      
+      err = DEVICE_MEM_COPY(
+			    in_buffer,
+			    in_buff,
+			    Mo*Ni*Ki/p * sizeof(complex<double>),
+			    MEM_COPY_HOST_TO_DEVICE
+			    );
+      if (err != DEVICE_SUCCESS) {
+	cout << "DEVICE_MEM_COPY failed\n" << endl;
+	exit(-1);
+      }
+      
+      DEVICE_SYNCHRONIZE();      
+      
+      for (int t = 0; t < 1; t++) {
+	double start_time = MPI_Wtime();
+	
+	//  mddft3d((double*)out_buffer, (double*)in_buffer);
+	(* tptr->runfp)((double*)out_buffer, (double*)in_buffer);
+	
+	double end_time = MPI_Wtime();
+	
+	double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
+	double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
+	
+	if (commRank == 0) {
+	  printf("%lf %lf\n", min_time, max_time);
+	}
+      }
+      
   // Check correctness against local compute.
 #if CHECK_WITH_CUFFT
   {
@@ -150,15 +185,15 @@ int main(int argc, char* argv[]) {
       DEVICE_MALLOC(&device_fft_out_root, Mo*No*Ko * sizeof(complex<double>));
     }
     MPI_Gather(
-      in_buff +  0, // (is_embedded ? Mi/2*Ni*Ki/p: 0),
-      Mo*Ni*Ki/p,
-      MPI_DOUBLE_COMPLEX,
-      recv_buff,
-      Mo*Ni*Ki/p,
-      MPI_DOUBLE_COMPLEX,
-      root,
-      MPI_COMM_WORLD
-    );
+	       in_buff +  0, // (is_embedded ? Mi/2*Ni*Ki/p: 0),
+	       Mo*Ni*Ki/p,
+	       MPI_DOUBLE_COMPLEX,
+	       recv_buff,
+	       Mo*Ni*Ki/p,
+	       MPI_DOUBLE_COMPLEX,
+	       root,
+	       MPI_COMM_WORLD
+	       );
     // old root layout was     [xl, yl, zl, zr, xr, yr]
     // new root layout will be [xl, xr, yl, zl, yr, zr]
     if (commRank == root) {
@@ -171,16 +206,16 @@ int main(int argc, char* argv[]) {
               for (int jl = 0; jl < Ni/c; jl++) {
                 for (int il = 0; il < Mo/r; il++) {
                   in_root[
-                    ((is_embedded ? Ki/2 : 0) + kr * (Ki/c) + kl) * No*Mo +
-                    ((is_embedded ? Ni/2 : 0) + jr * (Ni/c) + jl) *    Mo +
-                    (                         + ir * (Mo/r) + il)
-                  ] = recv_buff[
-                    kr * c*(Ki/c)*(Ni/c)*Mo +
-                    jr *   (Ki/c)*(Ni/c)*Mo +
-                    kl *          (Ni/c)*Mo +
-                    jl *                 Mo +
-                    ir * (Mo/r) + il
-                  ];
+			  ((is_embedded ? Ki/2 : 0) + kr * (Ki/c) + kl) * No*Mo +
+			  ((is_embedded ? Ni/2 : 0) + jr * (Ni/c) + jl) *    Mo +
+			  (                         + ir * (Mo/r) + il)
+			  ] = recv_buff[
+					kr * c*(Ki/c)*(Ni/c)*Mo +
+					jr *   (Ki/c)*(Ni/c)*Mo +
+					kl *          (Ni/c)*Mo +
+					jl *                 Mo +
+					ir * (Mo/r) + il
+					];
                 }
               }
             }
@@ -280,17 +315,23 @@ int main(int argc, char* argv[]) {
       printf("%lu miscompares, %f%% correct\n", miscompares, ((double ) Mo*No*Ko - miscompares) / (Mo*No*Ko) * 100.0);
     }
   }
-#endif  
+#endif    
 
-      (* tptr->destroyfp)();
-  }
+  DEVICE_FREE(in_buffer);
+  DEVICE_FREE(out_buffer);  
+  delete[] in_buff;
+  
+  //  destroy_mddft3d();
+  (* tptr->destroyfp)();
+    }
   else {
-	  printf ( "Distributed library entry for req = { %d, %d, %d, %d, %d } not found ... skipping\n",
-			   req[0], req[1], req[2], req[3], req[4] );
+  	  printf ( "Distributed library entry for req = { %d, %d, %d, %d, %d } not found ... skipping\n",
+  			   req->x[0], req->x[1], req->x[2], req->x[3], req->x[4] );
+    }
+
   }
   
   MPI_Finalize();
   
-  delete[] in_buff;
   return 0;
 }
