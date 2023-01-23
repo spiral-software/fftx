@@ -10,6 +10,9 @@
 
 Load(fftx);
 ImportAll(fftx);
+ImportAll(simt);
+Load(jit);
+Import(jit);
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
@@ -21,10 +24,12 @@ fi;
 
 if fwd then
     prefix := "fftx_mdprdft_";
+    jitpref := "cache_mdprdft_";
     prdft  := MDPRDFT;
     sign   := -1;
 else
     prefix := "fftx_imdprdft_";
+    jitpref := "cache_imdprdft_";
     prdft  := IMDPRDFT;
     sign   := 1;
 fi;
@@ -32,15 +37,11 @@ fi;
 if 1 = 1 then
     name := prefix::StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1), s->"x"::StringInt(s)));
     name := name::"_"::codefor;
+    jitname := jitpref::StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1), s->"x"::StringInt(s)));
+    jitname := jitname::"_"::codefor::".txt";
     
-    PrintLine("fftx_mdprdft-frame: name = ", name, ", cube = ", szcube, ", size = ",
-              StringInt(szcube[1])::ApplyFunc(ConcatenationString, List(Drop(szcube, 1),
-                                                                    s->" x "::StringInt(s))),
-              ";\t\t##PICKME##");
+    PrintLine("fftx_mdprdft-frame: name = ", name, ", cube = ", szcube, ", jitname = ", jitname, ";\t\t##PICKME##");
 
-    ## This line from mddft-frame-cuda.g :
-    ##    t := TFCall(TRC(MDDFT(szcube, 1)), 
-    ##                rec(fname := name, params := []));
     ##  szrevcube := Reversed(szcube);
     ## This assumes FFTX_COMPLEX_TRUNC_LAST==0
     ##szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
@@ -73,4 +74,10 @@ if 1 = 1 then
     c := opts.fftxGen(tt);
     ##  opts.prettyPrint(c);
     PrintTo(libdir::"/"::name::file_suffix, opts.prettyPrint(c));
+
+    ##  If the variable createJIT is defined and set true then output the JIT code to a file
+    if ( IsBound(createJIT) and createJIT ) then
+        GASMAN ( "collect" );
+        PrintTo ( "cache_jit_files/"::jitname, PrintHIPJIT ( c, opts ) );
+    fi;
 fi;
