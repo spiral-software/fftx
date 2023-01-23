@@ -33,6 +33,50 @@
 #include <array>
 #pragma once
 
+namespace fftx_cuFFT {
+
+#define CUFFT_FORWARD -1
+#define CUFFT_INVERSE 1
+
+typedef struct {
+    int x;
+    int y;
+    int z;
+    int batch;
+
+} cufftHandle;
+
+typedef enum cufftType_t {
+    CUFFT_R2C = 0x2a,  // Real to complex (interleaved)
+    CUFFT_C2R = 0x2c,  // Complex (interleaved) to real
+    CUFFT_C2C = 0x29,  // Complex to complex (interleaved)
+    CUFFT_D2Z = 0x6a,  // Double to double-complex (interleaved)
+    CUFFT_Z2D = 0x6c,  // Double-complex (interleaved) to double
+    CUFFT_Z2Z = 0x69   // Double-complex to double-complex (interleaved)
+} cufftType;
+
+typedef enum cufftResult_t {
+    CUFFT_SUCCESS        = 0,  //  The cuFFT operation was successful
+    CUFFT_INVALID_PLAN   = 1,  //  cuFFT was passed an invalid plan handle
+    CUFFT_ALLOC_FAILED   = 2,  //  cuFFT failed to allocate GPU or CPU memory
+    CUFFT_INVALID_TYPE   = 3,  //  No longer used
+    CUFFT_INVALID_VALUE  = 4,  //  User specified an invalid pointer or parameter
+    CUFFT_INTERNAL_ERROR = 5,  //  Driver or internal cuFFT library error
+    CUFFT_EXEC_FAILED    = 6,  //  Failed to execute an FFT on the GPU
+    CUFFT_SETUP_FAILED   = 7,  //  The cuFFT library failed to initialize
+    CUFFT_INVALID_SIZE   = 8,  //  User specified an invalid transform size
+    CUFFT_UNALIGNED_DATA = 9,  //  No longer used
+    CUFFT_INCOMPLETE_PARAMETER_LIST = 10, //  Missing parameters in call
+    CUFFT_INVALID_DEVICE = 11, //  Execution of a plan was on different GPU than plan creation
+    CUFFT_PARSE_ERROR    = 12, //  Internal plan database error
+    CUFFT_NO_WORKSPACE   = 13,  //  No workspace has been provided prior to plan execution
+    CUFFT_NOT_IMPLEMENTED = 14, // Function does not implement functionality for parameters given.
+    CUFFT_LICENSE_ERROR  = 15, // Used in previous versions.
+    CUFFT_NOT_SUPPORTED  = 16  // Operation is not supported for parameters given.
+} cufftResult;
+
+typedef std::complex<double> cufftComplex;
+
 typedef std::tuple<int, int, int, int> keys_t;
  
 struct key_hash : public std::unary_function<keys_t, std::size_t>
@@ -97,3 +141,41 @@ void mddft(int x, int y, int z, int sign, double * Y, double * X) {
     }
 }
 #endif
+
+
+#if defined FFTX_HIP 
+cufftResult cufftPlanMany(cufftHandle *plan, int rank, int *n, int *inembed,
+        int istride, int idist, int *onembed, int ostride,
+        int odist, cufftType type, int batch) {
+            if(rank != 3) {
+                std::cout << "only supports 3d ffts" << std::endl;
+                return CUFFT_SETUP_FAILED;
+            }
+            plan->x = n[0];
+            plan->y = n[1];
+            plan->z = n[2];
+            return CUFFT_SUCCESS;
+        }
+// cufftResult cufftExecC2C(cufftHandle plan, cufftComplex *idata,
+//         cufftComplex *odata, int direction) {
+cufftResult cufftExecC2C(cufftHandle plan, hipDeviceptr_t Y,
+         hipDeviceptr_t X, int sign) {
+    std::cout << "Entered mddft cuapi call for hip" << std::endl;
+    hipDeviceptr_t dsym;
+    hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
+    std::vector<void*> args{Y,X,dsym};
+    std::vector<int> sizes{plan.x,plan.y,plan.z,sign};
+    if(stored_jit.find(std::make_tuple(plan.x,plan.y,plan.z,sign)) != stored_jit.end()) {
+        std::cout << "running cached instance cuapi call for hip" << std::endl;
+        Executor e;
+        e.execute(stored_jit.at(std::make_tuple(plan.x,plan.y,plan.z,sign)));
+    }
+    else {
+        MDDFTProblem mdp(args, sizes);
+        mdp.transform();
+        stored_jit[std::make_tuple(plan.x,plan.y,plan.z,sign)] = mdp.returnJIT();
+    }
+    return CUFFT_SUCCESS; 
+}
+#endif
+}
