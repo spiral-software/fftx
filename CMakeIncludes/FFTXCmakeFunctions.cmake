@@ -197,7 +197,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_CUDA} )
     elseif ( ${_codegen} STREQUAL "CPU" )
 	target_link_libraries      ( ${_target} PRIVATE dl )
-	endif ()
+    endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
 	##  Some libraries were built -- add them for linker
 	target_link_libraries      ( ${_target} PRIVATE ${_library_names} )
