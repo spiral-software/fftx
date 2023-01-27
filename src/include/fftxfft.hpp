@@ -144,6 +144,20 @@ void mddft(int x, int y, int z, int sign, double * Y, double * X) {
 
 
 #if defined FFTX_HIP 
+
+cufftResult cufftCreate(cufftHandle * plan) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult cufftDestroy(cufftHandle plan) {
+    return CUFFT_SUCCESS;
+}
+
+
+void cudaMalloc(void** ptr, size_t size) {
+    hipMalloc(ptr, size);
+}
+
 cufftResult cufftPlanMany(cufftHandle *plan, int rank, int *n, int *inembed,
         int istride, int idist, int *onembed, int ostride,
         int odist, cufftType type, int batch) {
