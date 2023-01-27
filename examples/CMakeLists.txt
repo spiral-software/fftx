@@ -32,6 +32,7 @@ if ( BLD_COMPARE_EX )
 endif ()
 
 manage_add_subdir ( mddft         TRUE      TRUE )
+manage_add_subdir ( mdprdft         TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
 
 if ( BLD_RCONV_EX )
