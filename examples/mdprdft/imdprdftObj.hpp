@@ -26,7 +26,7 @@ public:
     void semantics() {
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
         std::cout << "sign := 1;" << std::endl;
-        std::cout << "name := \"imdprdft_spiral\";" << std::endl;
+        std::cout << "name := \"transform_spiral\";" << std::endl;
         std::cout << mdprdft_script << std::endl;
     }
 };

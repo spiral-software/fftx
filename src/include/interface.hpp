@@ -132,6 +132,8 @@ public:
         sizes = sizes1;
     }
 
+    void setSizes(const std::vector<int>& sizes1);
+    void setArgs(const std::vector<void*>& args1);
     void transform();
     std::string semantics2();
     virtual void randomProblemInstance() = 0;
@@ -143,6 +145,14 @@ public:
     ~FFTXProblem(){}
 
 };
+
+void FFTXProblem::setArgs(const std::vector<void*>& args1) {
+    args = args1;
+}
+
+void FFTXProblem::setSizes(const std::vector<int>& sizes1) {
+    sizes = sizes1;
+}
 
 std::string FFTXProblem::semantics2() {
     std::string tmp = getSPIRAL();
@@ -166,6 +176,7 @@ std::string FFTXProblem::semantics2() {
     return result;
     // return nullptr;
 }
+
 
 void FFTXProblem::transform(){
 

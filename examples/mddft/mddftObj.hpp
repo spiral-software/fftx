@@ -19,6 +19,6 @@ public:
         openScalarDAG();
         MDDFT(domain.extents(), 1, outputs, inputs);
 
-        closeScalarDAG(intermediates, "mddft");
+        closeScalarDAG(intermediates, "transform");
     }
 };
