@@ -9,11 +9,11 @@
 #include "interface.hpp"
 #include "rconvObj.hpp"
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
-#include "fftx_rconv_gpu_public.h"
-#else
-#include "fftx_rconv_cpu_public.h"
-#endif
+// #if defined(__CUDACC__) || defined(FFTX_HIP)
+// #include "fftx_rconv_gpu_public.h"
+// #else
+// #include "fftx_rconv_cpu_public.h"
+// #endif
 
 #include "device_macros.h"
 // #include "rconv.fftx.precompile.hpp"

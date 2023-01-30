@@ -181,15 +181,15 @@ std::string FFTXProblem::semantics2() {
 void FFTXProblem::transform(){
 
         if(res.empty()) {
-            std::cout << "res is empty\n";
+            std::cout << "haven't seen size generating\n";
             res = semantics2();
         }
         if(executors.find(res) != executors.end()) {
-            std::cout << "running cached instances\n";
+            std::cout << "cached size found running cached instance\n";
             run(executors.at(res));
         }
         else if(!res.empty()) {
-            std::cout << "found file to parse\n";
+            std::cout << "code for new size generated\n";
             Executor e;
             e.execute(res);
             executors.insert(std::make_pair(res, e));
