@@ -8,8 +8,8 @@ static constexpr auto mdprdft_script{
     var_2:= X;
     var_3:= Y;
     symvar := var("sym", TPtr(TReal));
-    t := TFCall(TDecl(TDAG([
-           TDAGNode(TTensorI(prdft(szcube,sign),1,APar, APar), var_3,var_2),
+    transform := TFCall(TDecl(TDAG([
+           TDAGNode(TTensorI(MDPRDFT(szcube,sign),1,APar, APar), var_3,var_2),
                   ]),
             [var_1]
             ),
