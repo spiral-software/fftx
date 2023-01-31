@@ -132,6 +132,8 @@ public:
         sizes = sizes1;
     }
 
+    void setSizes(const std::vector<int>& sizes1);
+    void setArgs(const std::vector<void*>& args1);
     void transform();
     std::string semantics2();
     virtual void randomProblemInstance() = 0;
@@ -143,6 +145,14 @@ public:
     ~FFTXProblem(){}
 
 };
+
+void FFTXProblem::setArgs(const std::vector<void*>& args1) {
+    args = args1;
+}
+
+void FFTXProblem::setSizes(const std::vector<int>& sizes1) {
+    sizes = sizes1;
+}
 
 std::string FFTXProblem::semantics2() {
     std::string tmp = getSPIRAL();
@@ -167,18 +177,19 @@ std::string FFTXProblem::semantics2() {
     // return nullptr;
 }
 
+
 void FFTXProblem::transform(){
 
         if(res.empty()) {
-            std::cout << "res is empty\n";
+            std::cout << "haven't seen size generating\n";
             res = semantics2();
         }
         if(executors.find(res) != executors.end()) {
-            std::cout << "running cached instances\n";
+            std::cout << "cached size found running cached instance\n";
             run(executors.at(res));
         }
         else if(!res.empty()) {
-            std::cout << "found file to parse\n";
+            std::cout << "code for new size generated\n";
             Executor e;
             e.execute(res);
             executors.insert(std::make_pair(res, e));
