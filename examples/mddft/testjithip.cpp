@@ -1,5 +1,3 @@
-#include <hip/hiprtc.h>
-#include <hip/hip_runtime.h>
 #include <memory>
 // #include <cuda_runtime.h>
 #include <complex>
@@ -7,9 +5,19 @@
 #include <string>
 #include <vector>
 #include <stdlib.h>
-#include "fftx3.hpp"
-#include "hipbackend.hpp"
+
 #include "device_macros.h"
+#include "fftx3.hpp"
+
+#if defined(FFTX_HIP)
+#include <hip/hiprtc.h>
+#include <hip/hip_runtime.h>
+#include "hipbackend.hpp"
+#endif
+
+#if defined(FFTX_CUDA)
+#include "cudabackend.hpp"
+#endif
 
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
@@ -96,31 +104,46 @@ int main(int argc, char *argv[])
     }
     
     printf ( "Standalone test for size: %dx%dx%d using cached JIT from file: %s\n", mm, nn, kk, input_file );
+	char transform[32];
+	for ( int idx = 6 ; idx < strlen ( input_file ); idx++ ) {		// skip past 'cache_'
+		if ( input_file[idx] == '_' ) break;
+		transform[idx - 6] = toupper ( input_file[idx] );
+	}
     bool direction = true;
-    if ( strstr ( input_file, "_imddft" ) != NULL )
+    if ( strstr ( input_file, "_imd" ) != NULL )
         direction = false;
 
     long arrsz = mm * nn * kk;
-    double *hostX = new double[arrsz * 2];
-    double *hostY = new double[arrsz * 2];
-    double *devY  = new double[arrsz * 2];
+    double *hostX   = new double[arrsz * 2];
+    double *hostY   = new double[arrsz * 2];
+    double *devY    = new double[arrsz * 2];
+	double *hostSym = new double[arrsz * 2];
 
     std::vector<int> sizes{ mm, nn, kk };
     buildInputBuffer ( hostX, sizes );
+    buildInputBuffer ( hostSym, sizes );
     
-    hipDeviceptr_t  dX, dY, dsym;
-    std::cout << "allocating memory\n" << arrsz << "\n";
-    HIP_SAFE_CALL(hipMalloc((void **)&dX, arrsz * sizeof(std::complex<double>)));
-    std::cout << "allocated X\n";
+	DEVICE_FFT_DOUBLECOMPLEX *dX, *dY, *dsym;			//    hipDeviceptr_t  dX, dY, dsym;
+    if ( LOCALDEBUG == 1 )
+		std::cout << "allocating memory\n" << arrsz << "\n";
+    DEVICE_SAFE_CALL ( DEVICE_MALLOC ( (void **)&dX, arrsz * sizeof(std::complex<double>) ) );
+    if ( LOCALDEBUG == 1 )
+		std::cout << "allocated X\n";
 
-    HIP_SAFE_CALL(hipMemcpy(dX, hostX,  arrsz * sizeof(std::complex<double>), hipMemcpyHostToDevice));
-    std::cout << "copied hostX\n";
+    DEVICE_SAFE_CALL ( DEVICE_MEM_COPY ( dX, hostX,  arrsz * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE ) );
+    if ( LOCALDEBUG == 1 )
+		std::cout << "copied hostX\n";
 
-    HIP_SAFE_CALL(hipMalloc((void **)&dY, arrsz * sizeof(std::complex<double>)));
-    std::cout << "allocated Y\n";
+    DEVICE_SAFE_CALL ( DEVICE_MALLOC ( (void **)&dY, arrsz * sizeof(std::complex<double>) ) );
+    if ( LOCALDEBUG == 1 )
+		std::cout << "allocated Y\n";
 
-    // HIP_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
-    HIP_SAFE_CALL(hipMalloc((void **)&dsym, 64* sizeof(double)));
+    // DEVICE_SAFE_CALL(cuMemcpyHtoD(dY, Y, 64* sizeof(double)));
+    DEVICE_SAFE_CALL ( DEVICE_MALLOC ( (void **)&dsym, arrsz * sizeof(std::complex<double>) ) );
+
+    DEVICE_SAFE_CALL ( DEVICE_MEM_COPY ( dsym, hostSym,  arrsz * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE ) );
+    if ( LOCALDEBUG == 1 )
+		std::cout << "copied hostX\n";
 
     std::vector<void*> inside;//{&dY, &dX, &dsym};
     inside.push_back(dY);
@@ -131,35 +154,40 @@ int main(int argc, char *argv[])
     e.execute ( input_file, inside );
     std::cout << e.getKernelTime() << std::endl;
     
-    HIP_SAFE_CALL ( DEVICE_MEM_COPY ( hostY, dY,  arrsz * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST ) );
-    std::cout << "copied Y to host\n";
+    DEVICE_SAFE_CALL ( DEVICE_MEM_COPY ( hostY, dY,  arrsz * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST ) );
+    if ( LOCALDEBUG == 1 )
+		std::cout << "copied Y to host\n";
 
-    //  Setup a plan to run the transform using cu or roc fft
-    DEVICE_FFT_HANDLE plan;
-    DEVICE_FFT_RESULT res;
-    DEVICE_FFT_TYPE   xfmtype = DEVICE_FFT_Z2Z ;
+	if ( strstr ( transform, "MDDFT" ) != NULL ) {
+		//  Its a forward or inverse MDDFT - validate it vs rocfft, otherwise, skip validation
+		//  Setup a plan to run the transform using cu or roc fft
+		DEVICE_FFT_HANDLE plan;
+		DEVICE_FFT_RESULT res;
+		DEVICE_FFT_TYPE   xfmtype = DEVICE_FFT_Z2Z ;
     
-    res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
-    if ( res != DEVICE_FFT_SUCCESS ) {
-        printf ( "Create DEVICE_FFT_PLAN_3D() failed with error code %d ... skip buffer check\n", res );
-    }
-    else {
-        res = DEVICE_FFT_EXECZ2Z ( plan,
-                                   (DEVICE_FFT_DOUBLECOMPLEX *) dX,
-                                   (DEVICE_FFT_DOUBLECOMPLEX *) dY,
-                                   direction ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE );
-        if ( res != DEVICE_FFT_SUCCESS) {
-            printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
-        }
-        else {
-            HIP_SAFE_CALL ( DEVICE_MEM_COPY ( devY, dY, arrsz * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST ) );
-            printf ( "cube = [ %d, %d, %d ]\tMDDFT (%s)\t", mm, nn, kk, direction ? "Forward" : "Inverse" );
-            checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) hostY, (DEVICE_FFT_DOUBLECOMPLEX *) devY, arrsz );
-        }
-    }
+		res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
+		if ( res != DEVICE_FFT_SUCCESS ) {
+			printf ( "Create DEVICE_FFT_PLAN_3D() failed with error code %d ... skip buffer check\n", res );
+		}
+		else {
+			res = DEVICE_FFT_EXECZ2Z ( plan,
+									   (DEVICE_FFT_DOUBLECOMPLEX *) dX,
+									   (DEVICE_FFT_DOUBLECOMPLEX *) dY,
+									   direction ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE );
+			if ( res != DEVICE_FFT_SUCCESS) {
+				printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+			}
+			else {
+				DEVICE_SAFE_CALL ( DEVICE_MEM_COPY ( devY, dY, arrsz * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST ) );
+				printf ( "cube = [ %d, %d, %d ]\t%s (%s)\t", mm, nn, kk, transform, direction ? "Forward" : "Inverse" );
+				checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) hostY, (DEVICE_FFT_DOUBLECOMPLEX *) devY, arrsz );
+			}
+		}
+	}
 
     delete[] hostX;
     delete[] hostY;
+	delete[] hostSym;
     delete[] devY;
 
     printf ( "Standalone test for size: %dx%dx%d completed successfully\n", mm, nn, kk );

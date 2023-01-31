@@ -19,29 +19,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "device_macros.h"
+
 #define LOCALDEBUG 0
-
-#define NVRTC_SAFE_CALL(x)						\
- do { \
- nvrtcResult result = x; \
- if (result != NVRTC_SUCCESS) { \
- std::cerr << "\nerror: " #x " failed with error " \
- << nvrtcGetErrorString(result) << '\n'; \
- exit(1); \
- } \
- } while(0)
-
-#define CUDA_SAFE_CALL(x)						\
- do { \
- CUresult result = x; \
- if (result != CUDA_SUCCESS) { \
- const char *msg; \
- cuGetErrorName(result, &msg); \
- std::cerr << "\nerror: " #x " failed with error " \
- << msg << '\n'; \
- exit(1); \
- } \
- } while(0)
 
 #include "data_interaction.hpp"
 #pragma once
@@ -245,7 +225,7 @@ void Executor::parseDataStructure(std::string input) {
 }
 
 void Executor::createProg() {
-    NVRTC_SAFE_CALL(nvrtcCreateProgram(&prog, // prog
+    DEVICE_RTC_SAFE_CALL(nvrtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     NULL, // name
     0, // numHeaders
@@ -257,7 +237,7 @@ void Executor::createProg() {
 
 void Executor::getVars() {
     for(int i = 0; i < device_names.size(); i++) {
-        NVRTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
+        DEVICE_RTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
     }
     if(LOCALDEBUG == 1)
         std::cout << "added variables\n";
@@ -273,9 +253,9 @@ void Executor::compileProg() {
 }
 
 void Executor::getLogsAndPTX() {
-    NVRTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
+    DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
     log = new char[logSize];
-    NVRTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
+    DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
     if (compileResult != NVRTC_SUCCESS) {
         std::cout << "compile failure with code "<< nvrtcGetErrorString(compileResult) << std::endl;
         for(int i = 0; i < logSize; i++) {
@@ -285,20 +265,20 @@ void Executor::getLogsAndPTX() {
         exit(1);
     }
     delete[] log;
-    NVRTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
+    DEVICE_RTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     ptx = new char[ptxSize];
-    NVRTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    // CUDA_SAFE_CALL(cuInit(0));
-    // CUDA_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
-    // CUDA_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
-    CUDA_SAFE_CALL(cuLinkCreate(0, 0, 0, &linkState));
-    CUDA_SAFE_CALL(cuLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getCUDARuntime().c_str(), 
+    DEVICE_RTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
+    // DEVICE_SAFE_CALL(cuInit(0));
+    // DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
+    // DEVICE_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
+    DEVICE_SAFE_CALL(cuLinkCreate(0, 0, 0, &linkState));
+    DEVICE_SAFE_CALL(cuLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getCUDARuntime().c_str(), 
     0, 0, 0));
-    CUDA_SAFE_CALL(cuLinkAddData(linkState, CU_JIT_INPUT_PTX,
+    DEVICE_SAFE_CALL(cuLinkAddData(linkState, CU_JIT_INPUT_PTX,
     (void *)ptx, ptxSize, "dft_jit.ptx",
     0, 0, 0));
-    CUDA_SAFE_CALL(cuLinkComplete(linkState, &cubin, &cubinSize));
-    CUDA_SAFE_CALL(cuModuleLoadData(&module, cubin));
+    DEVICE_SAFE_CALL(cuLinkComplete(linkState, &cubin, &cubinSize));
+    DEVICE_SAFE_CALL(cuModuleLoadData(&module, cubin));
     if(LOCALDEBUG == 1)
         std::cout << "created module\n";
 }
@@ -308,7 +288,7 @@ void Executor::initializeVars() {
         if(LOCALDEBUG == 1)
             std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
-        NVRTC_SAFE_CALL(nvrtcGetLoweredName(
+        DEVICE_RTC_SAFE_CALL(nvrtcGetLoweredName(
         prog, 
         std::get<0>(device_names[i]).c_str(), // name expression
         &name                         // lowered name
@@ -316,7 +296,7 @@ void Executor::initializeVars() {
         if(LOCALDEBUG == 1)
             std::cout << "it got past lower name\n";
         CUdeviceptr variable_addr;
-        CUDA_SAFE_CALL(cuModuleGetGlobal(&variable_addr, NULL, module, name));
+        DEVICE_SAFE_CALL(cuModuleGetGlobal(&variable_addr, NULL, module, name));
          if(LOCALDEBUG == 1)
             std::cout << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
@@ -324,19 +304,19 @@ void Executor::initializeVars() {
             case zero:
             {
                 int * value = (int*)(data.at(i));
-                CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
+                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
                 break;
             }
             case one:
             {
                 float * value = (float*)(data.at(i));
-                CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
+                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
                 break;
             }
             case two:
             {   
                 double * value = (double*)(data.at(i));
-                CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
+                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
                 break;
             }
             case constant:
@@ -348,8 +328,8 @@ void Executor::initializeVars() {
                 if(LOCALDEBUG == 1)
                 std::cout << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
-                CUDA_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
-                CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
+                DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
+                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
                 // cuMemFree(h);      
                 break;
             }
@@ -358,8 +338,8 @@ void Executor::initializeVars() {
                 if(LOCALDEBUG == 1)
                 std::cout << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
-                CUDA_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
-                CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
+                DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
+                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
                 // cuMemFree(h);                
                 break;
             }
@@ -368,8 +348,8 @@ void Executor::initializeVars() {
                 if(LOCALDEBUG == 1)
                 std::cout << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
-                CUDA_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
-                CUDA_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
+                DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
+                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
                 // cuMemFree(h);
                 break;
             }
@@ -380,30 +360,30 @@ void Executor::initializeVars() {
 void Executor::destoryProg() {
     if(LOCALDEBUG == 1)
         std::cout << "destoryed program call\n";
-    NVRTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
+    DEVICE_RTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
 float Executor::initAndLaunch(std::vector<void*>& args) {
     if(LOCALDEBUG == 1)
     std::cout << "the kernel name is " << kernel_name << std::endl;
-    CUDA_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
+    DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
     if(LOCALDEBUG == 1)
     std::cout << "launched kernel\n";
     CUevent start, stop;
-    CUDA_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
-    CUDA_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
-    CUDA_SAFE_CALL(cuEventRecord(start,0));
-    CUDA_SAFE_CALL(
+    DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
+    DEVICE_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
+    DEVICE_SAFE_CALL(cuEventRecord(start,0));
+    DEVICE_SAFE_CALL(
     cuLaunchKernel(kernel,
     1, 1, 1, // grid dim
     1, 1, 1, // block dim
     0, NULL, // shared mem and stream
     //kernelargs.data(), 0)); // arguments
     args.data(),0));
-    CUDA_SAFE_CALL(cuEventRecord(stop,0));
-    CUDA_SAFE_CALL(cuCtxSynchronize());
-    CUDA_SAFE_CALL(cuEventSynchronize(stop));
-    CUDA_SAFE_CALL(cuEventElapsedTime(&GPUtime, start, stop));
+    DEVICE_SAFE_CALL(cuEventRecord(stop,0));
+    DEVICE_SAFE_CALL(cuCtxSynchronize());
+    DEVICE_SAFE_CALL(cuEventSynchronize(stop));
+    DEVICE_SAFE_CALL(cuEventElapsedTime(&GPUtime, start, stop));
     return getKernelTime();
 }
 

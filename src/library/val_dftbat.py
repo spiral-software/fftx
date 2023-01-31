@@ -11,7 +11,8 @@ import os
 import numpy as np
 
 if len(sys.argv) < 2:
-    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>] [-f sizes_file]' )
+    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>x<stride_type>] [-f sizes_file]' )
+##    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>] [-f sizes_file]' )
     sys.exit ('missing argument(s), NOTE: Only one of -s or -f should be specified')
 
 _under = '_'
@@ -54,6 +55,7 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
 
     nbat = int ( dims[0] )
     dz   = int ( dims[1] )
+    styp = int ( dims[2] )
 
     froot = segnams[0] + _under
     if not fwd:
@@ -63,7 +65,6 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
 
     ##  Setup source (input) data -- fill with random values
     _src        = np.zeros(shape=(nbat, dz)).astype(complex)
-    _src_spiral = _src.view(dtype=np.double)
     for ib in range ( nbat ):
         for ii in range ( dz ):
             vr = np.random.random()
@@ -72,10 +73,12 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
 
     ##  Destination (output) -- fill with zeros, one for spiral, one for python
     _dst_python = np.zeros(shape=(nbat, dz)).astype(complex)
-    _dst_spiral = np.zeros((nbat * dz * 2), dtype=np.double)
-    _xfmsz      = np.zeros(2).astype(ctypes.c_int)
+    _dst_spiral = np.zeros(shape=(nbat, dz)).astype(complex)
+##    _xfmsz      = np.zeros(2).astype(ctypes.c_int)
+    _xfmsz      = np.zeros(3).astype(ctypes.c_int)
     _xfmsz[0] = nbat
     _xfmsz[1] = dz
+    _xfmsz[2] = styp
 
     ##  Evaluate using numpy ... 
     if fwd:
@@ -86,8 +89,6 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
         for ii in range ( nbat ):
             _biidft = np.fft.ifft ( _src[ii,:] )
             _dst_python[ii,:] = _biidft
-
-    _dst_python_IL = _dst_python.view(dtype=np.double).flatten()
 
     ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
     ##  the library (these setup/teardown GPU resources when using GPU libraries).
@@ -124,7 +125,7 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
     if not fwd:
         ##  Normalize Spiral result: numpy result is normalized
         ##  Divide by Length (dz) as size _dst_spiral increases with number batches
-        _dst_spiral = _dst_spiral / dz  ##  np.size ( _dst_python )
+        _dst_spiral = _dst_spiral / dz
 
     ##  Call the transform's destroy function
     func = pywrap + 'destroy' + _under + 'wrapper'
@@ -132,7 +133,7 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
     _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
 
     ##  Check difference
-    _diff = np.max ( np.absolute ( _dst_spiral - _dst_python_IL ) )
+    _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
     if fwd:
         dir = 'forward'
     else:
@@ -153,12 +154,13 @@ if len(sys.argv) > 2:
         _probsz = _probsz.rstrip()                  ##  remove training newline
         _dims = re.split ( 'x', _probsz )
 
-        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
+##        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
+        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length) x ' + _dims[2] + ' (stride type)', flush = True )
         exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
         exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
 
-        # exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        # exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
+        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
+        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
 
         exit ()
 
@@ -180,24 +182,40 @@ with open ( _sizesfile, 'r' ) as fil:
         if re.match ( '[ \t]*$', line ):                ## skip lines consisting of whitespace
             continue
 
-        _dims = [ 0, 0 ]
-        _nbat = re.sub ( '.*nbatch :=', '', line )      ## get number batches
-        _nbat = re.sub ( ';.*', '', _nbat )
-        _nbat = re.sub ( ' *', '', _nbat )              ## compress out white space
-        _nbat = _nbat.rstrip()                          ## remove training newline
-        _dims[0] = _nbat
+        # _dims = [ 0, 0 ]
+        # _nbat = re.sub ( '.*nbatch :=', '', line )      ## get number batches
+        # _nbat = re.sub ( ';.*', '', _nbat )
+        # _nbat = re.sub ( ' *', '', _nbat )              ## compress out white space
+        # _nbat = _nbat.rstrip()                          ## remove training newline
+        # _dims[0] = _nbat
         
-        line = re.sub ( '.*\[', '', line )              ## drop "szns := ["
-        line = re.sub ( '\].*', '', line )              ## drop "];"
-        line = re.sub ( ' *', '', line )                ## compress out white space
-        line = line.rstrip()                            ## remove training newline
-        _dims[1] = line
+        # line = re.sub ( '.*\[', '', line )              ## drop "szns := ["
+        # line = re.sub ( '\].*', '', line )              ## drop "];"
+        # line = re.sub ( ' *', '', line )                ## compress out white space
+        # line = line.rstrip()                            ## remove training newline
+        # _dims[1] = line
 
-        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
+        _dims = [ 0, 0, 0 ]
+
+        line = re.sub ( ' ', '', line )                 ## suppress white space
+        segs = re.split ( ';', line )                   ## expect 3 segments
+        chnk = re.split ( '=', segs[0] )
+        _dims[0] = chnk[1]
+
+        segs[1] = re.sub ( '\[', '', segs[1] )
+        segs[1] = re.sub ( '\]', '', segs[1] )
+        chnk = re.split ( '=', segs[1] )
+        _dims[1] = chnk[1]
+        
+        chnk = re.split ( '=', segs[2] )
+        _dims[2] = chnk[1]
+        
+        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length) x ' + _dims[2] + ' (stride type)', flush = True )
+##        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
         exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
         exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
 
-        # exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        # exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
+        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
+        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
 
     exit()

@@ -14,29 +14,11 @@
 #include <tuple>
 #include <iomanip>
 #include <fcntl.h>
+
+#include "device_macros.h"
 #pragma once
 
 #define LOCALDEBUG 0
-
-#define HIPRTC_SAFE_CALL(x)						\
- do { \
-hiprtcResult result = x; \
- if (result != HIPRTC_SUCCESS) { \
- std::cerr << "\nrtc error: " #x " failed with error " \
- << hiprtcGetErrorString(result) << '\n'; \
- exit(1); \
- } \
- } while(0)
-
-#define HIP_SAFE_CALL(x)										  \
-  do {                                                            \
-    hipError_t result = x;                                          \
-    if (result != hipSuccess ) {                                 \
-      std::cerr << "\nmain error: " <<  hipGetErrorName(result) << " failed with error "   \
-                << hipGetErrorString(result) << '\n';                                   \
-      exit(1);                                                    \
-    }                                                             \
-  } while(0)
 
 
 class Executor {
@@ -221,7 +203,7 @@ void Executor::parseDataStructure(std::string input) {
 }
 
 void Executor::createProg() {
-    HIPRTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
+    DEVICE_RTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     "test.cu", // name
     0, // numHeaders
@@ -264,10 +246,10 @@ void Executor::compileProg() {
 }
 
 void Executor::getLogsAndPTX() {
-    HIPRTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
+    DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
     //std::cout << "this is the log size" << logSize << "\n";
     log = new char[logSize];
-    HIPRTC_SAFE_CALL(hiprtcGetProgramLog(prog, log));
+    DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLog(prog, log));
     if (compileResult != HIPRTC_SUCCESS) {
         std::cout << "compile failure with code "<< hiprtcGetErrorString (compileResult) << std::endl;
         for(int i = 0; i < logSize; i++) {
@@ -277,23 +259,23 @@ void Executor::getLogsAndPTX() {
         exit(1);
     }
     delete[] log;
-    HIPRTC_SAFE_CALL(hiprtcGetCodeSize(prog, &ptxSize));
+    DEVICE_RTC_SAFE_CALL(hiprtcGetCodeSize(prog, &ptxSize));
     //std::cout << "this is the program size" << ptxSize << "\n";
     ptx = new char[ptxSize];
-    HIPRTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
-    // HIP_SAFE_CALL(cuInit(0));
-    // HIP_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
-    // HIP_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
-    // HIPRTC_SAFE_CALL(hiprtcLinkCreate(0, 0, 0, &linkState));
-    // // HIP_SAFE_CALL(hiprtcLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getHIPRuntime(), 
+    DEVICE_RTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
+    // DEVICE_SAFE_CALL(cuInit(0));
+    // DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
+    // DEVICE_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
+    // DEVICE_RTC_SAFE_CALL(hiprtcLinkCreate(0, 0, 0, &linkState));
+    // // DEVICE_SAFE_CALL(hiprtcLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getHIPRuntime(), 
     // // 0, 0, 0));
-    // HIPRTC_SAFE_CALL(hiprtcLinkAddData(linkState, HIPRTC_JIT_INPUT_LLVM_BITCODE,
+    // DEVICE_RTC_SAFE_CALL(hiprtcLinkAddData(linkState, HIPRTC_JIT_INPUT_LLVM_BITCODE,
     // (void *)ptx, ptxSize, "dft_jit.ptx",
     // 0, 0, 0));
-    // HIPRTC_SAFE_CALL(hiprtcLinkComplete(linkState, &cubin, &cubinSize));
-    //HIP_SAFE_CALL(hipModuleLoadData(&module, cubin));
+    // DEVICE_RTC_SAFE_CALL(hiprtcLinkComplete(linkState, &cubin, &cubinSize));
+    //DEVICE_SAFE_CALL(hipModuleLoadData(&module, cubin));
     //std::cout << "before moodule\n";
-    HIP_SAFE_CALL(hipModuleLoadData(&module, ptx));
+    DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
     if(LOCALDEBUG == 1)
     std::cout << "created module\n";
 }
@@ -303,7 +285,7 @@ void Executor::initializeVars() {
         if(LOCALDEBUG == 1)
             std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
-        HIPRTC_SAFE_CALL(hiprtcGetLoweredName(
+        DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(
         prog, 
         std::get<0>(device_names[i]).c_str(), // name expression
         &name                         // lowered name
@@ -312,7 +294,7 @@ void Executor::initializeVars() {
             std::cout << "it got past lower name\n";
         hipDeviceptr_t variable_addr;
         size_t bytes{};
-        HIP_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
+        DEVICE_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
         if(LOCALDEBUG == 1)
             std::cout << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
@@ -320,19 +302,19 @@ void Executor::initializeVars() {
             case zero:
             {
                 int * value = (int*)(data.at(i));
-                HIP_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
+                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
                 break;
             }
             case one:
             {
                 float * value = (float*)(data.at(i));
-                HIP_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
+                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
                 break;
             }
             case two:
             {   
                 double * value = (double*)(data.at(i));
-                HIP_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
+                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
                 break;
             }
             case constant:
@@ -344,8 +326,8 @@ void Executor::initializeVars() {
                 int * h1;
                 if(LOCALDEBUG == 1)
                     std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
-                HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
+                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
+                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -354,8 +336,8 @@ void Executor::initializeVars() {
                 float * h1;
                 if(LOCALDEBUG == 1)
                     std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
-                HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
+                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
+                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -364,8 +346,8 @@ void Executor::initializeVars() {
                 double * h1;
                 if(LOCALDEBUG == 1)
                     std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                HIP_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
-                HIP_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
+                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
+                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -376,8 +358,8 @@ void Executor::initializeVars() {
 }
 
 void Executor::destoryProg() {
-    //HIPRTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
-    HIPRTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
+    //DEVICE_RTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
+    DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
 }
 
 float Executor::initAndLaunch(std::vector<void*>& args) {
@@ -385,8 +367,8 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
     //std::cout << "the kernel name is " << kernel_names[ki] << std::endl;
     for(int i = 0; i < kernel_names.size(); i++) {
     const char* name;
-    HIPRTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
-    HIP_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
+    DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
+    DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
     // // // Execute parent kernel.
     float local_time; 
     auto size = args.size() * sizeof(hipDeviceptr_t);
@@ -400,19 +382,19 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
             "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
             "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
     hipEvent_t start, stop;
-    HIP_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
-    HIP_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
-    HIP_SAFE_CALL(hipEventRecord(start,0));
-    HIP_SAFE_CALL(
+    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
+    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
+    DEVICE_SAFE_CALL(hipEventRecord(start,0));
+    DEVICE_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
                           kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
                           kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
                           0, nullptr, nullptr, // shared mem and stream
                           (void**)&config));
     hipDeviceSynchronize();
-    HIP_SAFE_CALL(hipEventRecord(stop,0));
-    HIP_SAFE_CALL(hipEventSynchronize(stop));
-    HIP_SAFE_CALL(hipEventElapsedTime(&local_time, start, stop)); 
+    DEVICE_SAFE_CALL(hipEventRecord(stop,0));
+    DEVICE_SAFE_CALL(hipEventSynchronize(stop));
+    DEVICE_SAFE_CALL(hipEventElapsedTime(&local_time, start, stop)); 
     GPUtime += local_time;
     }
     return getKernelTime();

@@ -11,8 +11,12 @@
 Load(fftx);
 ImportAll(fftx);
 ImportAll(simt);
-Load(jit);
-Import(jit);
+
+##  If the variable createJIT is defined and set true then load the jit module
+if ( IsBound(createJIT) and createJIT ) then
+    Load(jit);
+    Import(jit);
+fi;
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
