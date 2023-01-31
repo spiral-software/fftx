@@ -11,6 +11,7 @@ inline double max_diff(double start, double end, const MPI_Comm&  comm) {
   MPI_Reduce(&my_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, comm);  
   return max_time;
 }
+
 inline double min_diff(double start, double end, const MPI_Comm& comm) {
   double my_time = end - start;
   double min_time = my_time;
