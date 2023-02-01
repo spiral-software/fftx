@@ -181,15 +181,15 @@ std::string FFTXProblem::semantics2() {
 void FFTXProblem::transform(){
 
         if(res.empty()) {
-            std::cout << "haven't seen size generating\n";
+            std::cout << "haven't seen size, generating\n";
             res = semantics2();
         }
         if(executors.find(res) != executors.end()) {
-            std::cout << "cached size found running cached instance\n";
+            std::cout << "cached size found, running cached instance\n";
             run(executors.at(res));
         }
         else if(!res.empty()) {
-            std::cout << "code for new size generated\n";
+            std::cout << "\ncode for new size generated\n";
             Executor e;
             e.execute(res);
             executors.insert(std::make_pair(res, e));
