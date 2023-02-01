@@ -21,7 +21,7 @@ DFTBAT_LIB=false
 PRDFTBAT_LIB=false
 
 ##  Build the 3D DFT (complex to complex) library
-MDDFT_LIB=false
+MDDFT_LIB=true
 
 ##  Build the 3D DFT (real to complex, complex to real) library
 MDPRDFT_LIB=false
