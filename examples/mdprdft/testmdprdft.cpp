@@ -1,7 +1,7 @@
 #include "fftx3.hpp"
 #include "interface.hpp"
-#include "mddftObj.hpp"
-#include "imddftObj.hpp"
+#include "mdprdftObj.hpp"
+#include "imdprdftObj.hpp"
 #include <string>
 #include <fstream>
 
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 
       //MDDFTProblem mdp(inList, outList);
       //std::cout << *((int*)args.at(3)) << std::endl;
-    MDDFTProblem mdp(args, sizes);
+    MDPRDFTProblem mdp(args, sizes);
 
 #if defined FFTX_HIP
     //  Setup a plan to run the transform using cu or roc fft
@@ -195,35 +195,35 @@ int main(int argc, char* argv[])
     #endif
         mddft_gpu[itn] = mdp.getTime();
 
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        //  Run the roc fft plan on the same input data
-        if ( check_buff ) {
-            DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECZ2Z ( plan,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) dX,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) dY,
-                                       DEVICE_FFT_FORWARD );
-            if ( res != DEVICE_FFT_SUCCESS) {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
-                check_buff = false;
-                //  break;
-            }
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
+    // #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    //     //  Run the roc fft plan on the same input data
+    //     if ( check_buff ) {
+    //         DEVICE_EVENT_RECORD ( custart );
+    //         res = DEVICE_FFT_EXECZ2Z ( plan,
+    //                                    (DEVICE_FFT_DOUBLECOMPLEX *) dX,
+    //                                    (DEVICE_FFT_DOUBLECOMPLEX *) dY,
+    //                                    DEVICE_FFT_FORWARD );
+    //         if ( res != DEVICE_FFT_SUCCESS) {
+    //             printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+    //             check_buff = false;
+    //             //  break;
+    //         }
+    //         DEVICE_EVENT_RECORD ( custop );
+    //         DEVICE_EVENT_SYNCHRONIZE ( custop );
+    //         DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outDevfft.m_data.local(), dY,
-                              outDevfft.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-            printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
-            checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
-                                 (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
-                                 (long) outDevfft.m_domain.size() );
-        }
-    #endif
+    //         DEVICE_MEM_COPY ( outDevfft.m_data.local(), dY,
+    //                           outDevfft.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+    //         printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
+    //         checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
+    //                              (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
+    //                              (long) outDevfft.m_domain.size() );
+    //     }
+    // #endif
     }
 
     // setup the inverse transform (we'll reuse the device fft plan already created)
-    IMDDFTProblem imdp(args, sizes);
+    IMDPRDFTProblem imdp(args, sizes);
 
     for (int itn = 0; itn < iterations; itn++)
     {
@@ -243,31 +243,31 @@ int main(int argc, char* argv[])
     #endif
         imddft_gpu[itn] = imdp.getTime();
 
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        //  Run the device fft plan on the same input data
-        if ( check_buff ) {
-            DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECZ2Z ( plan,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) dX,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) dY,
-                                       DEVICE_FFT_INVERSE );
-            if ( res != DEVICE_FFT_SUCCESS) {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
-                check_buff = false;
-                //  break;
-            }
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
+    // #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    //     //  Run the device fft plan on the same input data
+    //     if ( check_buff ) {
+    //         DEVICE_EVENT_RECORD ( custart );
+    //         res = DEVICE_FFT_EXECZ2Z ( plan,
+    //                                    (DEVICE_FFT_DOUBLECOMPLEX *) dX,
+    //                                    (DEVICE_FFT_DOUBLECOMPLEX *) dY,
+    //                                    DEVICE_FFT_INVERSE );
+    //         if ( res != DEVICE_FFT_SUCCESS) {
+    //             printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+    //             check_buff = false;
+    //             //  break;
+    //         }
+    //         DEVICE_EVENT_RECORD ( custop );
+    //         DEVICE_EVENT_SYNCHRONIZE ( custop );
+    //         DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outDevfft.m_data.local(), dY,
-                              outDevfft.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-            printf ( "cube = [ %d, %d, %d ]\tMDDFT (Inverse)\t", mm, nn, kk );
-            checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
-                                 (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
-                                 (long) outDevfft.m_domain.size() );
-        }
-    #endif
+    //         DEVICE_MEM_COPY ( outDevfft.m_data.local(), dY,
+    //                           outDevfft.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+    //         printf ( "cube = [ %d, %d, %d ]\tMDDFT (Inverse)\t", mm, nn, kk );
+    //         checkOutputBuffers ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
+    //                              (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft.m_data.local(),
+    //                              (long) outDevfft.m_domain.size() );
+    //     }
+    // #endif
     }
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
