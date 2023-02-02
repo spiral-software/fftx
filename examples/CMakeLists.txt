@@ -33,7 +33,7 @@ endif ()
 
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( mdprdft         TRUE      TRUE )
-manage_add_subdir ( hockney       TRUE      FALSE )
+##  manage_add_subdir ( hockney       TRUE      FALSE )
 
 manage_add_subdir ( rconv         TRUE      TRUE )
 
@@ -41,7 +41,7 @@ if ( BLD_VERIFY_EX )
     manage_add_subdir ( verify        TRUE      TRUE )
 endif ()
 
-manage_add_subdir ( warpx         TRUE      FALSE )
+##  manage_add_subdir ( warpx         TRUE      FALSE )
 ##  manage_add_subdir ( warpx_basic   FALSE     TRUE )
 manage_add_subdir ( compare_cufft FALSE     TRUE )
 
