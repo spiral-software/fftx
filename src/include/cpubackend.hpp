@@ -42,7 +42,7 @@ class Executor {
         //void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
 
-float Executor::initAndLaunch(std::vector<void*>& args) {
+float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     if(LOCALDEBUG)
         std::cout << "Loading shared library\n";
     shared_lib = dlopen("./libtmp.so", RTLD_LAZY);
@@ -50,10 +50,13 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
         std::cout << "Cannot open library: " << dlerror() << '\n';
         exit(0);
     }
+    std::string init = "init_" << name << "_spiral";
+    std::string transform = name << "_spiral";
+    std::string destory = "destory_" << name << "_spiral";
     else if(shared_lib){
-        void (*fn1) ()= (void (*)())dlsym(shared_lib, "init_transform_spiral");
-        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, "transform_spiral");
-        void (*fn3) ()= (void (*)())dlsym(shared_lib, "destroy_transform_spiral");
+        void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
+        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
+        void (*fn3) ()= (void (*)())dlsym(shared_lib, destory.c_str());
         auto start = std::chrono::high_resolution_clock::now();
         if(fn1) {
             fn1();
