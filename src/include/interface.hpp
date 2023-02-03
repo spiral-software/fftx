@@ -119,9 +119,10 @@ void printJITBackend(std::string name, std::vector<int> sizes) {
         std::cout << "PrintTo(\"" << tmp << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << ".txt\", PrintHIPJIT(c,opts));\n"; 
         std::cout << "PrintHIPJIT(c,opts);\n";
     #elif defined FFTX_CUDA 
+       std::cout << "PrintTo(\"" << tmp << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << ".txt\", PrintJIT2(c,opts));\n";   
        std::cout << "PrintJIT2(c,opts);\n";
     #else
-        std::cout << "PrintTo(\"$FFTX_HOME/cached/" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << ".txt\", opts.prettyPrint(c));\n"; 
+        std::cout << "PrintTo(\"" << tmp << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << ".txt\", opts.prettyPrint(c));\n"; 
         std::cout << "opts.prettyPrint(c);\n";
     #endif
 }
