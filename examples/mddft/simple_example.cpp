@@ -8,7 +8,7 @@
 #include <vector>
 
 //fftx order matters
-#include "fftx3.hpp"
+// #include "fftx3.hpp"
 #include "device_macros.h"
 #include "interface.hpp"
 #include "mddftObj.hpp"
@@ -48,13 +48,13 @@ int main(int argc, char *argv[])
     std::vector<int> sizes{ mm, nn, kk };
     buildInputBuffer (hostX,sizes);
     hipDeviceptr_t  dY, dX, dsym;
-    std::cout << "allocated Y\n";
+    std::cout << "allocated Y" << std::endl;
     hipMalloc((void **)&dY, arrsz * sizeof(std::complex<double>));
-    std::cout << "allocating memory\n" << arrsz << "\n";
+    std::cout << "allocating memory\n" << arrsz << std::endl;
     hipMalloc((void **)&dX, arrsz * sizeof(std::complex<double>));
-    std::cout << "allocated X\n";
+    std::cout << "allocated X" << std::endl;
     hipMemcpy(dX, hostX,  arrsz * sizeof(std::complex<double>), hipMemcpyHostToDevice);
-    std::cout << "copied hostX\n";
+    std::cout << "copied hostX" << std::endl;
     hipMalloc((void **)&dsym, 64* sizeof(double));
     MDDFTProblem mdp(std::vector<void*>{dY,dX,dsym}, sizes);
     mdp.transform(); 
@@ -63,12 +63,13 @@ int main(int argc, char *argv[])
     imdp.transform(); 
     std::cout << imdp.getTime() << std::endl;
     hipMemcpy( hostY, dY,  arrsz * sizeof(std::complex<double>), hipMemcpyDeviceToHost);
-    std::cout << "copied Y to host\n";
+    std::cout << "copied Y to host" << std::endl;
     delete[] hostX;
     delete[] hostY;
     delete[] devY;
 
-    printf ( "Standalone test for size: %dx%dx%d completed successfully\n", mm, nn, kk );
+    // printf ( "Standalone test for size: %dx%dx%d completed successfully\n", mm, nn, kk );
+    std::cout << "Standalone test for size: " << mm << "x" << nn << "x" << kk << " completed successfully" << std::endl;
 
     return 0;
 }
