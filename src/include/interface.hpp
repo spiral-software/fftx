@@ -257,10 +257,11 @@ void FFTXProblem::transform(){
 
 
 void FFTXProblem::run(Executor e) {
-    #if defined (FFTX_HIP || FFTX_CUDA)
+    #if (defined FFTX_HIP || FFTX_CUDA)
     gpuTime = e.initAndLaunch(args);
     #else
     gpuTime = e.initAndLaunch(args, name);
+    #endif
 }
 
 float FFTXProblem::getTime() {
