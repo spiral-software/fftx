@@ -152,7 +152,7 @@ public:
         DEVICE_FREE(inputPtr);
         DEVICE_FREE(outputPtr);
 #else
-        std::vector<void*> args{(void*)a_input, (void*)a_output, (void*)a_symbol};
+        std::vector<void*> args{(void*)a_input.m_data.local(), (void*)a_output.m_data.local(), (void*)a_symbol.m_data.local()};
         m_rp.setArgs(args);
         m_rp.setSizes(m_sizes);
         m_rp.transform();
