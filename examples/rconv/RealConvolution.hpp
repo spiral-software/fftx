@@ -151,16 +151,11 @@ public:
 
         DEVICE_FREE(inputPtr);
         DEVICE_FREE(outputPtr);
-// #else
-//         // on CPU
-//         if (m_tp == FFTX_HANDLE)
-//           {
-//             (*m_functionPtr)(a_input, a_output, a_symbol);
-//           }
-//         else if (m_tp == FFTX_LIB)
-//           {
-//             m_transformerPtr->transform(a_input, a_output, a_symbol);
-//           }
+#else
+        std::vector<void*> args{(void*)a_input.m_data.local(), (void*)a_output.m_data.local(), (void*)a_symbol.m_data.local()};
+        m_rp.setArgs(args);
+        m_rp.setSizes(m_sizes);
+        m_rp.transform();
 #endif
       }
   }
