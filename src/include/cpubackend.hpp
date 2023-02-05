@@ -50,9 +50,15 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         std::cout << "Cannot open library: " << dlerror() << '\n';
         exit(0);
     }
-    std::string init = "init_" << name << "_spiral";
-    std::string transform = name << "_spiral";
-    std::string destory = "destory_" << name << "_spiral";
+    std::ostringstream oss;
+    std::ostringstream oss1;
+    std::ostringstream oss2;
+    oss << "init_" << name << "_spiral";
+    oss1 << name << "_spiral";
+    oss2 << "destory_" << name << "_spiral";
+    std::string init = oss.str();
+    std::string transform = oss1.str();
+    std::string destory = oss2.str();
     else if(shared_lib){
         void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
         void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
