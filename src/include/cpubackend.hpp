@@ -36,33 +36,49 @@ class Executor {
         void * shared_lib;
         float CPUTime;
     public:
-        float initAndLaunch(std::vector<void*>& args);
+        float initAndLaunch(std::vector<void*>& args, std::string name);
         void execute(std::string file_name);
         float getKernelTime();
         //void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
 
-float Executor::initAndLaunch(std::vector<void*>& args) {
+float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     if(LOCALDEBUG)
         std::cout << "Loading shared library\n";
     shared_lib = dlopen("./libtmp.so", RTLD_LAZY);
+    std::ostringstream oss;
+    std::ostringstream oss1;
+    std::ostringstream oss2;
+    oss << "init_" << name << "_spiral";
+    oss1 << name << "_spiral";
+    oss2 << "destory_" << name << "_spiral";
+    std::string init = oss.str();
+    std::string transform = oss1.str();
+    std::string destory = oss2.str();
     if(!shared_lib) {
         std::cout << "Cannot open library: " << dlerror() << '\n';
         exit(0);
     }
     else if(shared_lib){
-        void (*fn1) ()= (void (*)())dlsym(shared_lib, "init_transform_spiral");
-        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, "transform_spiral");
-        void (*fn3) ()= (void (*)())dlsym(shared_lib, "destroy_transform_spiral");
+        void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
+        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
+        void (*fn3) ()= (void (*)())dlsym(shared_lib, destory.c_str());
         auto start = std::chrono::high_resolution_clock::now();
         if(fn1) {
             fn1();
+        }else {
+            std::cout << init << "function didnt run" << std::endl;
         }
         if(fn2) {
             fn2((double*)args.at(0),(double*)args.at(1), (double*)args.at(2));
+        }else {
+            std::cout << transform << "function didnt run" << std::endl;
         }
         if(fn3){
             fn3();
+        }else {
+            if(LOCALDEBUG)
+                std::cout << destory << "function didnt run" << std::endl;
         }
         auto stop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float, std::milli> duration = stop - start;
@@ -82,9 +98,9 @@ void Executor::execute(std::string result) {
     // else 
     //     compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces -x c - -o libtmp.so -O2 -shared -fPIC";
     if(LOCALDEBUG)
-        compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces -Wall -Wextra spiral_generated.c -o libtmp.so -O2 -shared -fPIC";
+        compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces -Wall -Wextra spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
     else 
-        compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces spiral_generated.c -o libtmp.so -O2 -shared -fPIC";
+        compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
     
     if(LOCALDEBUG) {
         std::cout << "created compile\n";
@@ -93,7 +109,7 @@ void Executor::execute(std::string result) {
     // exit(0);
     // result.erase(result.size()-8);
     std::string result2 = result.substr(result.find("*/")+3, result.length());
-    std::cout << result2.size() << std::endl;
+    // std::cout << result2.size() << std::endl;
     std::ofstream out("spiral_generated.c");
     out << result2;
     out.close();
