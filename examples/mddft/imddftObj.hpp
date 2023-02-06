@@ -23,6 +23,6 @@ public:
         // MDDFT(domain.extents(), 1, intermediates[0], inputs);
         IMDDFT(domain.extents(), 1, outputs, inputs);
 
-        closeScalarDAG(intermediates, "transform");
+        closeScalarDAG(intermediates, name.c_str());
     }
 };

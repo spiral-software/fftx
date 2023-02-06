@@ -93,6 +93,14 @@ echo "PSATD_SIZES_FILE=$PSATD_SIZES_FILE" >> build-lib-code-options.sh
 
 popd
 
+##  Make a directory for cached JIT files (may be written by code gen from build-lib-code or
+##  at run time to cache files created during the RTC process
+if [[ ! -v FFTX_HOME ]]; then
+    ##  FFTX_HOME is not set
+    FFTX_HOME=`pwd`
+fi
+mkdir ${FFTX_HOME}/cache_jit_files
+
 echo "Build for CPU = $BUILD_FOR_CPU"
 if [ "$BUILD_FOR_CPU" = true ]; then
     ##  Build the libraries for CPU

@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 
       //MDDFTProblem mdp(inList, outList);
       //std::cout << *((int*)args.at(3)) << std::endl;
-    MDDFTProblem mdp(args, sizes);
+    MDDFTProblem mdp(args, sizes, "mddft");
 
 #if defined FFTX_HIP
     //  Setup a plan to run the transform using cu or roc fft
@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
     }
 
     // setup the inverse transform (we'll reuse the device fft plan already created)
-    IMDDFTProblem imdp(args, sizes);
+    IMDDFTProblem imdp(args, sizes, "imddft");
 
     for (int itn = 0; itn < iterations; itn++)
     {

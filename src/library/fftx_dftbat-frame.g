@@ -74,6 +74,9 @@ PrintTo(libdir::"/"::name::file_suffix, opts.prettyPrint(c));
 
 ##  If the variable createJIT is defined and set true then output the JIT code to a file
 if ( IsBound(createJIT) and createJIT ) then
+    cachedir := GetEnv("FFTX_HOME");
+    if (cachedir = "") then cachedir := "../.."; fi;
+    cachedir := cachedir::"/cache_jit_files/";
     GASMAN ( "collect" );
-    PrintTo ( "cache_jit_files/"::jitname, PrintHIPJIT ( c, opts ) );
+    PrintTo ( cachedir::jitname, PrintHIPJIT ( c, opts ) );
 fi;
