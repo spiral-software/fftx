@@ -278,7 +278,7 @@ int main(int argc, char* argv[])
     }
 
     printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2), devfft.c_str() );
     for (int itn = 0; itn < iterations; itn++) {
         printf ( "%d\t%.7e\t%.7e\n", itn, imddft_gpu[itn], invdevmilliseconds[itn] );
     }
