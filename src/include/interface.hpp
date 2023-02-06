@@ -82,7 +82,7 @@ std::string getFFTX() {
         std::cout << "[ERROR] No such variable found, please download and set FFTX_HOME env variable" << std::endl;
         exit(-1);
     }
-    tmp += "/cached_jit_files/"; 
+    tmp += "/cache_jit_files/"; 
     return tmp;
 }
 
@@ -116,13 +116,13 @@ void printJITBackend(std::string name, std::vector<int> sizes) {
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
     #if defined FFTX_HIP
-        std::cout << "PrintTo(\"" << tmp << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt\", PrintHIPJIT(c,opts));\n"; 
+        std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt\", PrintHIPJIT(c,opts));\n"; 
         std::cout << "PrintHIPJIT(c,opts);\n";
     #elif defined FFTX_CUDA 
-       std::cout << "PrintTo(\"" << tmp << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt\", PrintJIT2(c,opts));\n";   
+       std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt\", PrintJIT2(c,opts));\n";   
        std::cout << "PrintJIT2(c,opts);\n";
     #else
-        std::cout << "PrintTo(\"" << tmp << "cached_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt\", opts.prettyPrint(c));\n"; 
+        std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt\", opts.prettyPrint(c));\n"; 
         std::cout << "opts.prettyPrint(c);\n";
     #endif
 }
@@ -217,11 +217,11 @@ void FFTXProblem::transform(){
             std::ostringstream oss;
             std::string tmp = getFFTX();
             #if defined FFTX_HIP 
-            oss << tmp << "cached_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt";
+                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt";
             #elif defined FFTX_CUDA 
-            oss << tmp << "cached_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt";
+				oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt";
             #else
-            oss << tmp << "cached_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt";
+				oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt";
             #endif
             std::string file_name = oss.str();
             std::ifstream ifs ( file_name );
