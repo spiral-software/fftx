@@ -43,8 +43,9 @@ This location is known as *SPIRAL HOME*, and you must set an environment variabl
 
 **FFTX** requires the **SPIRAL** packages
 [**fftx**](https://www.github.com/spiral-software/spiral-package-fftx),
-[**simt**](https://www.github.com/spiral-software/spiral-package-simt), and
-[**mpi**](https://www.github.com/spiral-software/spiral-package-mpi).
+[**simt**](https://www.github.com/spiral-software/spiral-package-simt),
+[**mpi**](https://www.github.com/spiral-software/spiral-package-mpi), and
+[**jit**](https://www.github.com/spiral-software/spiral-package-jit).
 
 You need to download these separately, as follows:
 ```
@@ -52,6 +53,7 @@ cd $SPIRAL_HOME/namespaces/packages
 git clone https://www.github.com/spiral-software/spiral-package-fftx fftx
 git clone https://www.github.com/spiral-software/spiral-package-simt simt
 git clone https://www.github.com/spiral-software/spiral-package-mpi mpi
+git clone https://www.github.com/spiral-software/spiral-package-jit jit
 ```
 **NOTES:**
 * The **SPIRAL** packages must be installed under directory **$SPIRAL_HOME/namespaces/packages**
