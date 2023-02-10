@@ -12,10 +12,17 @@
 ##  file is built to drive what CMake builds (e.g., some examples cannot be built unless
 ##  all the pre-requisite libraries are built).
 
+##  Build the libraries but only add a few [typically small] sizes to the library to
+##  demonstrate the ability to run with both fixed sizes libraries and to generate code
+##  (RTC) as needed.  Ultimately, create all libraries but with no fixed transforms in
+##  them -- this will allow complete on the fly RTC but create the necessary APIs for
+##  library access thus supporting fboth fixed-sixed libraries and RTC as the user may
+##  prefer. 
+
 ##  Whenever a library is built both the forward and inverse transforms (when applicable)
 ##  are built
 ##  Build the batch 1D DFT (complex to complex) library
-DFTBAT_LIB=false
+DFTBAT_LIB=true
 
 ##  Build the batch 1D packed real DFT (real to complex, complex to real) library
 PRDFTBAT_LIB=false
@@ -24,7 +31,7 @@ PRDFTBAT_LIB=false
 MDDFT_LIB=true
 
 ##  Build the 3D DFT (real to complex, complex to real) library
-MDPRDFT_LIB=false
+MDPRDFT_LIB=true
 
 ##  Build the Real Convolution library
 RCONV_LIB=false

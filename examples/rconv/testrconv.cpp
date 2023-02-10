@@ -21,7 +21,7 @@ void rconvDimension(std::vector<int> sizes,
             << a_domain << std::endl;
 
   // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
-  RCONVProblem rp;
+  RCONVProblem rp("rconv");
   RealConvolution<DIM> fun(rp, sizes, a_domain, a_fdomain);
   TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
 }

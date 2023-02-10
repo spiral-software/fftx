@@ -362,29 +362,27 @@ void Executor::destoryProg() {
     DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
 }
 
+
 float Executor::initAndLaunch(std::vector<void*>& args) {
-    //kernelargs = initGPUData(in.at(0), out.at(0));
-    //std::cout << "the kernel name is " << kernel_names[ki] << std::endl;
+    auto size = args.size() * sizeof(hipDeviceptr_t);
+    void * config[] = {HIP_LAUNCH_PARAM_BUFFER_POINTER, args.data(),
+                          HIP_LAUNCH_PARAM_BUFFER_SIZE, &size,
+                          HIP_LAUNCH_PARAM_END};
+    hipEvent_t start, stop;
+    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
+    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
+    DEVICE_SAFE_CALL(hipEventRecord(start,0));
     for(int i = 0; i < kernel_names.size(); i++) {
     const char* name;
     DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
     DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
     // // // Execute parent kernel.
-    float local_time; 
-    auto size = args.size() * sizeof(hipDeviceptr_t);
-    void * config[] = {HIP_LAUNCH_PARAM_BUFFER_POINTER, args.data(),
-                          HIP_LAUNCH_PARAM_BUFFER_SIZE, &size,
-                          HIP_LAUNCH_PARAM_END};
     if(LOCALDEBUG == 1)
         std::cout << "launched kernel\n";
     if(LOCALDEBUG == 1)
         std::cout << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
             "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
             "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
-    hipEvent_t start, stop;
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventRecord(start,0));
     DEVICE_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
                           kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
@@ -392,14 +390,12 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
                           0, nullptr, nullptr, // shared mem and stream
                           (void**)&config));
     hipDeviceSynchronize();
+    }
     DEVICE_SAFE_CALL(hipEventRecord(stop,0));
     DEVICE_SAFE_CALL(hipEventSynchronize(stop));
-    DEVICE_SAFE_CALL(hipEventElapsedTime(&local_time, start, stop)); 
-    GPUtime += local_time;
-    }
+    DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
     return getKernelTime();
 }
-
 
 void Executor::execute(std::string input) {
     if(LOCALDEBUG == 1)

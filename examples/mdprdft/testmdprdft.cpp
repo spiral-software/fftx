@@ -119,12 +119,12 @@ int main(int argc, char* argv[])
 #endif
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    std::cout << "allocating memory\n";
+    std::cout << "allocating memory" << std::endl;
     DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
-    if ( LOCALDEBUG == 1 ) std::cout << "allocated X\n";
+    if ( LOCALDEBUG == 1 ) std::cout << "allocated X" << std::endl;
 
     DEVICE_MALLOC((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>));
-    if ( LOCALDEBUG == 1 ) std::cout << "allocated Y\n";
+    if ( LOCALDEBUG == 1 ) std::cout << "allocated Y" << std::endl;
 
     DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size() * sizeof(std::complex<double>));
 #else
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 
       //MDDFTProblem mdp(inList, outList);
       //std::cout << *((int*)args.at(3)) << std::endl;
-    MDPRDFTProblem mdp(args, sizes);
+    MDPRDFTProblem mdp(args, sizes, "mdprdft");
 
 #if defined FFTX_HIP
     //  Setup a plan to run the transform using cu or roc fft
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
+        if ( LOCALDEBUG == 1 ) std::cout << "copied X" << std::endl;
         
         mdp.transform();
         //gatherOutput(outputHost, args);
@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
     }
 
     // setup the inverse transform (we'll reuse the device fft plan already created)
-    IMDPRDFTProblem imdp(args, sizes);
+    IMDPRDFTProblem imdp(args, sizes, "imdprdft");
 
     for (int itn = 0; itn < iterations; itn++)
     {
@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
+        if ( LOCALDEBUG == 1 ) std::cout << "copied X" << std::endl;
         
         imdp.transform();
         //gatherOutput(outputHost, args);
@@ -271,16 +271,16 @@ int main(int argc, char* argv[])
     }
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2), devfft.c_str() );
+    printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d:\nTrial #\tSpiral\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );		//  , devfft.c_str() );
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, mddft_gpu[itn], devmilliseconds[itn] );
+        printf ( "%d\t%.7e\n", itn, mddft_gpu[itn] );			//  , devmilliseconds[itn] );
     }
 
-    printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d:\nTrial #\tSpiral\t%s\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+    printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d:\nTrial #\tSpiral\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, imddft_gpu[itn], invdevmilliseconds[itn] );
+        printf ( "%d\t%.7e\n", itn, imddft_gpu[itn] );	//  , invdevmilliseconds[itn] );
     }
 #else
      printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d\n",

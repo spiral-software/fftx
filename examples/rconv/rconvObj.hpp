@@ -46,6 +46,6 @@ public:
         kernel(symbol, intermediates[1], intermediates[0]);
         IPRDFT(domain3.extents(), outputs, intermediates[1]);
 
-        closeScalarDAG(intermediates, "transform");
+        closeScalarDAG(intermediates, name.c_str());
     }
 };

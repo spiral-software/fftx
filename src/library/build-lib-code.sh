@@ -128,6 +128,11 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     echo "Generate code for $build_type ..."
     waitspiral=false
 
+    if [ "$DFTBAT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true &
+	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false &
+    fi
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py fftx_mddft $GPU_SIZES_FILE $build_type true &
