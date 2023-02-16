@@ -19,18 +19,17 @@ __global__ void __unpack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size, 
-	size_t batch
+	size_t copy_size
 ) {
 	size_t a_id = blockIdx.x; // index into dim_out
 	size_t b_id = blockIdx.y; // index into dim_in
 	size_t batch_id = blockIdx.z;
-	size_t dst_offset = (a_id*a_i_stride + b_id*b_i_stride + batch_id*a_dim*b_dim*copy_size)*batch;
+	size_t dst_offset = a_id*a_i_stride + b_id*b_i_stride + batch_id*a_dim*b_dim*copy_size;
 	dst += dst_offset;
-	size_t src_offset = (a_id*a_o_stride + b_id*b_o_stride + batch_id*a_dim*b_dim*copy_size)*batch;
+	size_t src_offset = a_id*a_o_stride + b_id*b_o_stride + batch_id*a_dim*b_dim*copy_size;
 	src += src_offset;
 
-	for (size_t e_id = threadIdx.x; e_id < copy_size*batch; e_id += blockDim.x) {
+	for (size_t e_id = threadIdx.x; e_id < copy_size; e_id += blockDim.x) {
 	  dst[e_id] = src[e_id];
 	}
 }
@@ -45,18 +44,17 @@ __global__ void __pack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size, 
-	size_t batch
+	size_t copy_size
 ) {
 	size_t a_id = blockIdx.x; // index into dim_out
 	size_t b_id = blockIdx.y; // index into dim_in
 	size_t batch_id = blockIdx.z;
-	size_t src_offset = (a_id*a_i_stride + b_id*b_i_stride + batch_id*a_dim*b_dim*copy_size)*batch;
+	size_t src_offset = a_id*a_i_stride + b_id*b_i_stride + batch_id*a_dim*b_dim*copy_size;
 	src += src_offset;
-	size_t dst_offset = (a_id*a_o_stride + b_id*b_o_stride + batch_id*a_dim*b_dim*copy_size)*batch;
+	size_t dst_offset = a_id*a_o_stride + b_id*b_o_stride + batch_id*a_dim*b_dim*copy_size;
 	dst += dst_offset;
 
-	for (size_t e_id = threadIdx.x; e_id < copy_size*batch; e_id += blockDim.x) {
+	for (size_t e_id = threadIdx.x; e_id < copy_size; e_id += blockDim.x) {
 		dst[e_id] = src[e_id];
 	}
 }
@@ -114,11 +112,10 @@ DEVICE_ERROR_T pack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size, 
-	size_t batch
+	size_t copy_size
 ) {
   
-  __pack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size*batch, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size, batch);
+  __pack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size);
 	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
 		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
@@ -170,10 +167,9 @@ DEVICE_ERROR_T unpack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size, 
-	size_t batch
+	size_t copy_size
 ) {
-	__unpack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size, batch);
+	__unpack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size);
 	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
 		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
@@ -181,8 +177,3 @@ DEVICE_ERROR_T unpack(
 	}
 	return DEVICE_SUCCESS;
 }
-
-
-
-
-
