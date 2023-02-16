@@ -19,6 +19,7 @@
 #define DEVICE_FREE hipFree
 #define DEVICE_MEM_COPY hipMemcpy
 #define DEVICE_MEM_SET hipMemset
+#define MEM_COPY_DEVICE_TO_DEVICE hipMemcpyDeviceToDevice
 #define MEM_COPY_DEVICE_TO_HOST hipMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE hipMemcpyHostToDevice
 #define DEVICE_ERROR_T hipError_t
@@ -86,6 +87,7 @@
 #define DEVICE_FREE cudaFree
 #define DEVICE_MEM_COPY cudaMemcpy
 #define DEVICE_MEM_SET cudaMemset
+#define MEM_COPY_DEVICE_TO_DEVICE cudaMemcpyDeviceToDevice
 #define MEM_COPY_DEVICE_TO_HOST cudaMemcpyDeviceToHost
 #define MEM_COPY_HOST_TO_DEVICE cudaMemcpyHostToDevice
 #define DEVICE_ERROR_T cudaError_t
