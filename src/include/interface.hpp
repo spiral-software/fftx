@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#include <chrono>
 #if defined FFTX_CUDA
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
@@ -31,10 +32,17 @@
 #else
 #include "cpubackend.hpp"
 #endif
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftx_mddft_gpu_public.h"
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"
 #include "fftx_imdprdft_gpu_public.h"
+#else
+#include "fftx_mddft_cpu_public.h"
+#include "fftx_imddft_cpu_public.h"
+#include "fftx_mdprdft_cpu_public.h"
+#include "fftx_imdprdft_cpu_public.h"
+#endif
 #pragma once
 
 class Executor;
@@ -244,8 +252,26 @@ void FFTXProblem::transform(){
         if(tupl != nullptr) { //check if fixed library has transform
             std::cout << "found size in fixed library\n";
             ( * tupl->initfp )();
+            #if defined (FFTX_CUDA) ||  (FFTX_HIP)
+            DEVICE_EVENT_T custart, custop;
+            DEVICE_EVENT_CREATE ( &custart );
+            DEVICE_EVENT_CREATE ( &custop );
+            DEVICE_EVENT_RECORD ( custart );
+            #else
+            auto start = std::chrono::high_resolution_clock::now();
+            #endif
             ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
+            #if defined (FFTX_CUDA) ||  (FFTX_HIP)
+                DEVICE_EVENT_RECORD ( custop );
+                DEVICE_EVENT_SYNCHRONIZE ( custop );
+                DEVICE_EVENT_ELAPSED_TIME ( &gpuTime, custart, custop );
+            #else
+                auto stop = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<float, std::milli> duration = stop - start;
+                gpuTime = duration.count();
+            #endif
             ( * tupl->destroyfp )();
+            //end time
         } else { // use RTC
             if(executors.find(sizes) != executors.end()) { //check in memory cache
                     std::cout << "cached size found, running cached instance\n";
