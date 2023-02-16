@@ -16,8 +16,7 @@ DEVICE_ERROR_T pack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size,
-	size_t batch_size
+	size_t copy_size
 );
 
 
@@ -41,8 +40,7 @@ DEVICE_ERROR_T unpack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size,
-	size_t batch_size
+	size_t copy_size
 );
 
 
