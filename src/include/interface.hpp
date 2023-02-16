@@ -24,12 +24,24 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#include <chrono>
 #if defined FFTX_CUDA
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
 #include "hipbackend.hpp"
 #else
 #include "cpubackend.hpp"
+#endif
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#include "fftx_mddft_gpu_public.h"
+#include "fftx_imddft_gpu_public.h"
+#include "fftx_mdprdft_gpu_public.h"
+#include "fftx_imdprdft_gpu_public.h"
+#else
+#include "fftx_mddft_cpu_public.h"
+#include "fftx_imddft_cpu_public.h"
+#include "fftx_mdprdft_cpu_public.h"
+#include "fftx_imdprdft_cpu_public.h"
 #endif
 #pragma once
 
@@ -73,6 +85,25 @@ void restore_input(int saved_fd)
     close(0);
     dup2(saved_fd, 0);
     close(saved_fd);
+}
+
+transformTuple_t * getLibTransform(std::string name, std::vector<int> sizes) {
+    if(name == "mddft") {
+        return fftx_mddft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
+    else if(name == "imddft") {
+        return fftx_imddft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
+    else if(name == "mdprdft") {
+        return fftx_mdprdft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
+    else if(name == "imdprdft") {
+        return fftx_imdprdft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
+    else {
+        std::cout << "non-supported fixed library transform" << std::endl; 
+        return nullptr;
+    }
 }
 
 std::string getFFTX() {
@@ -146,9 +177,17 @@ public:
         args = args1;
 
     }
+    FFTXProblem(const std::vector<int>& sizes1) {
+       sizes = sizes1;
+
+    }
     FFTXProblem(const std::vector<void*>& args1, const std::vector<int>& sizes1) {
         args = args1;   
         sizes = sizes1;
+    }
+    FFTXProblem(const std::vector<int>& sizes1, std::string name1) {  
+        sizes = sizes1;
+        name = name1;
     }
      FFTXProblem(const std::vector<void*>& args1, const std::vector<int>& sizes1, std::string name1) {
         args = args1;   
@@ -209,38 +248,63 @@ std::string FFTXProblem::semantics2() {
 
 void FFTXProblem::transform(){
 
-
-        if(executors.find(sizes) != executors.end()) {
-                std::cout << "cached size found, running cached instance\n";
-                run(executors.at(sizes));
-        } else {
-            std::ostringstream oss;
-            std::string tmp = getFFTX();
-            #if defined FFTX_HIP 
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt";
-            #elif defined FFTX_CUDA 
-				oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt";
+        transformTuple_t *tupl = getLibTransform(name, sizes);
+        if(tupl != nullptr) { //check if fixed library has transform
+            std::cout << "found size in fixed library\n";
+            ( * tupl->initfp )();
+            #if defined (FFTX_CUDA) ||  (FFTX_HIP)
+            DEVICE_EVENT_T custart, custop;
+            DEVICE_EVENT_CREATE ( &custart );
+            DEVICE_EVENT_CREATE ( &custop );
+            DEVICE_EVENT_RECORD ( custart );
             #else
-				oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt";
+            auto start = std::chrono::high_resolution_clock::now();
             #endif
-            std::string file_name = oss.str();
-            std::ifstream ifs ( file_name );
-            if(ifs) {
-                std::cout << "found cached file on disk\n";
-                std::string fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
-                                ( std::istreambuf_iterator<char>()    ) );
-                Executor e;
-                e.execute(fcontent);
-                executors.insert(std::make_pair(sizes, e));
-                run(e);
-            }
-            else {
-                std::cout << "haven't seen size, generating\n";
-                res = semantics2();
-                Executor e;
-                e.execute(res);
-                executors.insert(std::make_pair(sizes, e));
-                run(e);
+            ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
+            #if defined (FFTX_CUDA) ||  (FFTX_HIP)
+                DEVICE_EVENT_RECORD ( custop );
+                DEVICE_EVENT_SYNCHRONIZE ( custop );
+                DEVICE_EVENT_ELAPSED_TIME ( &gpuTime, custart, custop );
+            #else
+                auto stop = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<float, std::milli> duration = stop - start;
+                gpuTime = duration.count();
+            #endif
+            ( * tupl->destroyfp )();
+            //end time
+        } else { // use RTC
+            if(executors.find(sizes) != executors.end()) { //check in memory cache
+                    std::cout << "cached size found, running cached instance\n";
+                    run(executors.at(sizes));
+            } else { //check filesystem cache
+                std::ostringstream oss;
+                std::string tmp = getFFTX();
+                #if defined FFTX_HIP 
+                    oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt";
+                #elif defined FFTX_CUDA 
+                    oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt";
+                #else
+                    oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt";
+                #endif
+                std::string file_name = oss.str();
+                std::ifstream ifs ( file_name );
+                if(ifs) {
+                    std::cout << "found cached file on disk\n";
+                    std::string fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
+                                    ( std::istreambuf_iterator<char>()    ) );
+                    Executor e;
+                    e.execute(fcontent);
+                    executors.insert(std::make_pair(sizes, e));
+                    run(e);
+                } 
+                else { //generate code at runtime
+                    std::cout << "haven't seen size, generating\n";
+                    res = semantics2();
+                    Executor e;
+                    e.execute(res);
+                    executors.insert(std::make_pair(sizes, e));
+                    run(e);
+                }
             }
         }   
         //  else {
