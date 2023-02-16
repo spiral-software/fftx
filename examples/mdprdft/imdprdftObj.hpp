@@ -27,7 +27,7 @@ public:
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
         std::cout << "sign := 1;" << std::endl;
         std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
-        std::cout << mdprdft_script << std::endl;
+        std::cout << imdprdft_script << std::endl;
     }
 };
 

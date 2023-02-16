@@ -169,9 +169,17 @@ public:
         args = args1;
 
     }
+    FFTXProblem(const std::vector<void*>& sizes1) {
+       sizes = sizes1;
+
+    }
     FFTXProblem(const std::vector<void*>& args1, const std::vector<int>& sizes1) {
         args = args1;   
         sizes = sizes1;
+    }
+    FFTXProblem(const std::vector<int>& sizes1, std::string name1) {  
+        sizes = sizes1;
+        name = name1;
     }
      FFTXProblem(const std::vector<void*>& args1, const std::vector<int>& sizes1, std::string name1) {
         args = args1;   
