@@ -25,7 +25,7 @@ public:
     }
     void semantics() {
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
-		std::cout << "prdft := MDPRDFT;" << std::endl;
+        std::cout << "prdft := MDPRDFT;" << std::endl;
         std::cout << "sign := -1;" << std::endl;
         std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
         std::cout << mdprdft_script << std::endl;
@@ -39,7 +39,7 @@ public:
     }
     void semantics() {
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
-		std::cout << "prdft := IMDPRDFT;" << std::endl;
+        std::cout << "prdft := IMDPRDFT;" << std::endl;
         std::cout << "sign := 1;" << std::endl;
         std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
         std::cout << mdprdft_script << std::endl;
