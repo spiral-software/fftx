@@ -9,7 +9,7 @@ static constexpr auto mdprdft_script{
     var_3:= Y;
     symvar := var("sym", TPtr(TReal));
     transform := TFCall(TDecl(TDAG([
-           TDAGNode(TTensorI(MDPRDFT(szcube,sign),1,APar, APar), var_3,var_2),
+           TDAGNode(TTensorI(prdft(szcube,sign),1,APar, APar), var_3,var_2),
                   ]),
             [var_1]
             ),
@@ -25,6 +25,7 @@ public:
     }
     void semantics() {
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
+		std::cout << "prdft := MDPRDFT;" << std::endl;
         std::cout << "sign := -1;" << std::endl;
         std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
         std::cout << mdprdft_script << std::endl;
@@ -38,6 +39,7 @@ public:
     }
     void semantics() {
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
+		std::cout << "prdft := IMDPRDFT;" << std::endl;
         std::cout << "sign := 1;" << std::endl;
         std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
         std::cout << mdprdft_script << std::endl;
