@@ -8,6 +8,7 @@
 #include <utility>
 #include "interface.hpp"
 #include "mddftlib.hpp"
+#include "mdprdftlib.hpp"
 #include "dftbatlib.hpp"
 // #include "cudabackend.hpp"
 #if defined FFTX_HIP
@@ -102,7 +103,9 @@ std::get<3>(v0) == std::get<3>(v1)
 
 typedef std::unordered_map<const keys_t,std::string,key_hash,key_equal> map_t;
 
-map_t stored_jit;
+map_t stored_mddft_jit;
+map_t stored_mdprdft_jit;
+
 
 #if defined FFTX_HIP
 void mddft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
@@ -110,34 +113,82 @@ void mddft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
-    std::vector<int> sizes{x,y,z,sign};
-    if(stored_jit.find(std::make_tuple(x,y,z,sign)) != stored_jit.end()) {
+    std::vector<int> sizes{x,y,z};
+    if(stored_mddft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mddft_jit.end()) {
         std::cout << "running cached instance" << std::endl;
         Executor e;
-        e.execute(stored_jit.at(std::make_tuple(x,y,z,sign)));
+        e.execute(stored_mddft_jit.at(std::make_tuple(x,y,z,sign)));
     }
     else {
-        MDDFTProblem mdp(args, sizes);
+        if(sign == -1)
+            MDDFTProblem mdp(args, sizes, "mddft");
+        else 
+            IMDDFTProblem mdp(args, sizes, "imddft");
         mdp.transform();
-        stored_jit[std::make_tuple(x,y,z,sign)] = mdp.returnJIT();
+        stored_mddft_jit[std::make_tuple(x,y,z,sign)] = mdp.returnJIT();
     }
 }
+
+void mdprdft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
+    std::cout << "Entered mdprdft fftx hip api call" << std::endl;
+    hipDeviceptr_t dsym;
+    hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
+    std::vector<void*> args{Y,X,dsym};
+    std::vector<int> sizes{x,y,z};
+    if(stored_mdprdft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mdprdft_jit.end()) {
+        std::cout << "running cached instance" << std::endl;
+        Executor e;
+        e.execute(stored_mdprdft_jit.at(std::make_tuple(x,y,z,sign)));
+    }
+    else {
+        if(sign == -1)
+            MDPRDFTProblem mdp(args, sizes, "mdprdft");
+        else 
+            IMDPRDFTProblem mdp(args, sizes, "imdprdft");
+        mdp.transform();
+        stored_mdprdft_jit[std::make_tuple(x,y,z,sign)] = mdp.returnJIT();
+    }
+}
+
 #else
 void mddft(int x, int y, int z, int sign, double * Y, double * X) {
     std::cout << "Entered mddft fftx cpu api call" << std::endl;
     std::complex<double> * dsym = new std::complex<double>[1];
     // hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{(void*)Y,(void*)X,(void*)dsym};
-    std::vector<int> sizes{x,y,z,sign};
-    if(stored_jit.find(std::make_tuple(x,y,z,sign)) != stored_jit.end()) {
+    std::vector<int> sizes{x,y,z};
+    if(stored_mddft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mddft_jit.end()) {
         std::cout << "running cached instance" << std::endl;
         Executor e;
-        e.execute(stored_jit.at(std::make_tuple(x,y,z,sign)));
+        e.execute(stored_mddft_jit.at(std::make_tuple(x,y,z,sign)));
     }
     else {
-        MDDFTProblem mdp(args, sizes);
+        if(sign == -1)
+            MDDFTProblem mdp(args, sizes, "mddft");
+        else 
+            IMDDFTProblem mdp(args, sizes, "imddft");
         mdp.transform();
-        stored_jit[std::make_tuple(x,y,z,sign)] = mdp.returnJIT();
+        stored_mddft_jit[std::make_tuple(x,y,z,sign)] = mdp.returnJIT();
+    }
+}
+void mdprdft(int x, int y, int z, int sign, double * Y, double * X) {
+    std::cout << "Entered mddft fftx cpu api call" << std::endl;
+    std::complex<double> * dsym = new std::complex<double>[1];
+    // hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
+    std::vector<void*> args{(void*)Y,(void*)X,(void*)dsym};
+    std::vector<int> sizes{x,y,z};
+    if(stored_mdprdft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mdprdft_jit.end()) {
+        std::cout << "running cached instance" << std::endl;
+        Executor e;
+        e.execute(stored_mdprdft_jit.at(std::make_tuple(x,y,z,sign)));
+    }
+    else {
+        if(sign == -1)
+            MDPRDFTProblem mdp(args, sizes, "mdprdft");
+        else 
+            IMDPRDFTProblem mdp(args, sizes, "imdprdft");
+        mdp.transform();
+        stored_mdprdft_jit[std::make_tuple(x,y,z,sign)] = mdp.returnJIT();
     }
 }
 #endif
@@ -178,14 +229,17 @@ cufftResult cufftExecC2C(cufftHandle plan, hipDeviceptr_t Y,
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
-    std::vector<int> sizes{plan.x,plan.y,plan.z,sign};
+    std::vector<int> sizes{plan.x,plan.y,plan.z};
     if(stored_jit.find(std::make_tuple(plan.x,plan.y,plan.z,sign)) != stored_jit.end()) {
         std::cout << "running cached instance cuapi call for hip" << std::endl;
         Executor e;
         e.execute(stored_jit.at(std::make_tuple(plan.x,plan.y,plan.z,sign)));
     }
     else {
-        MDDFTProblem mdp(args, sizes);
+        if(sign == -1)
+            MDDFTProblem mdp(args, sizes);
+        else 
+            IMDDFTProblem mdp(args, sizes);
         mdp.transform();
         stored_jit[std::make_tuple(plan.x,plan.y,plan.z,sign)] = mdp.returnJIT();
     }

@@ -26,12 +26,21 @@ public:
     }
     void semantics() {
         std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
-        std::cout << "sign := " << sizes.at(3) << ";" << std::endl;
-        if(sizes.at(3) == -1)
-            std::cout << "prefix := \"fftx_mddft_\";" << std::endl;
-        else
-            std::cout << "prefix := \"fftx_imddft_\";" << std::endl;
-        std::cout << "name := \"transform_spiral\";" << std::endl;
+        std::cout << "sign := -1;" << std::endl;
+        std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
+        std::cout << mddft_script << std::endl;
+    }
+};
+
+class IMDDFTProblem: public FFTXProblem {
+public:
+    using FFTXProblem::FFTXProblem;
+    void randomProblemInstance() {
+    }
+    void semantics() {
+        std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
+        std::cout << "sign := 1;" << std::endl;
+        std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
         std::cout << mddft_script << std::endl;
     }
 };
