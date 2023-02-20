@@ -21,7 +21,11 @@
 
 #include "device_macros.h"
 
-#define LOCALDEBUG 0
+#if defined ( PRINTDEBUG )
+#define DEBUGOUT 1
+#else
+#define DEBUGOUT 0
+#endif
 
 #include "data_interaction.hpp"
 #pragma once
@@ -145,7 +149,7 @@ void Executor::parseDataStructure(std::string input) {
                 in_params.push_back(std::make_tuple("&"+words.at(1), atoi(words.at(2).c_str()), words.at(3)));
                 break;
             case 2:
-                std::cout << "the kernel name is " << words.at(1) << "\n";
+                if ( DEBUGOUT ) std::cout << "the kernel name is " << words.at(1) << "\n";
                 kernel_name = words.at(1);
                 break;
             case 3:
@@ -220,8 +224,7 @@ void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-     if(LOCALDEBUG == 1)
-        std::cout << "parsed input\n";
+    if ( DEBUGOUT ) std::cout << "parsed input\n";
 }
 
 void Executor::createProg() {
@@ -231,16 +234,14 @@ void Executor::createProg() {
     0, // numHeaders
     NULL, // headers
     NULL)); 
-    if(LOCALDEBUG == 1)
-        std::cout << "created program\n";
+    if ( DEBUGOUT ) std::cout << "created program\n";
 }
 
 void Executor::getVars() {
     for(int i = 0; i < device_names.size(); i++) {
         DEVICE_RTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
     }
-    if(LOCALDEBUG == 1)
-        std::cout << "added variables\n";
+    if ( DEBUGOUT ) std::cout << "added variables\n";
 }
 
 void Executor::compileProg() {
@@ -248,8 +249,7 @@ void Executor::compileProg() {
     compileResult = nvrtcCompileProgram(prog, 
     3, 
     opts); 
-    if(LOCALDEBUG == 1)
-        std::cout << "compiled program\n";
+    if ( DEBUGOUT ) std::cout << "compiled program\n";
 }
 
 void Executor::getLogsAndPTX() {
@@ -279,26 +279,22 @@ void Executor::getLogsAndPTX() {
     0, 0, 0));
     DEVICE_SAFE_CALL(cuLinkComplete(linkState, &cubin, &cubinSize));
     DEVICE_SAFE_CALL(cuModuleLoadData(&module, cubin));
-    if(LOCALDEBUG == 1)
-        std::cout << "created module\n";
+    if ( DEBUGOUT ) std::cout << "created module\n";
 }
 
 void Executor::initializeVars() {
     for(int i = 0; i < device_names.size(); i++) {
-        if(LOCALDEBUG == 1)
-            std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
+        if ( DEBUGOUT ) std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
         DEVICE_RTC_SAFE_CALL(nvrtcGetLoweredName(
-        prog, 
-        std::get<0>(device_names[i]).c_str(), // name expression
-        &name                         // lowered name
-        ));
-        if(LOCALDEBUG == 1)
-            std::cout << "it got past lower name\n";
+                                 prog, 
+                                 std::get<0>(device_names[i]).c_str(), // name expression
+                                 &name                         // lowered name
+                                 ));
+        if ( DEBUGOUT ) std::cout << "it got past lower name\n";
         CUdeviceptr variable_addr;
         DEVICE_SAFE_CALL(cuModuleGetGlobal(&variable_addr, NULL, module, name));
-         if(LOCALDEBUG == 1)
-            std::cout << "it got past get global\n";
+         if ( DEBUGOUT ) std::cout << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
@@ -325,8 +321,7 @@ void Executor::initializeVars() {
             }
             case pointer_int:
             {
-                if(LOCALDEBUG == 1)
-                std::cout << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) std::cout << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
                 DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
                 DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
@@ -335,8 +330,7 @@ void Executor::initializeVars() {
             }
             case pointer_float:
             {
-                if(LOCALDEBUG == 1)
-                std::cout << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) std::cout << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
                 DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
                 DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
@@ -345,8 +339,7 @@ void Executor::initializeVars() {
             }
             case pointer_double:
             {
-                if(LOCALDEBUG == 1)
-                std::cout << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) std::cout << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
                 DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
                 DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
@@ -358,28 +351,25 @@ void Executor::initializeVars() {
 }
 
 void Executor::destoryProg() {
-    if(LOCALDEBUG == 1)
-        std::cout << "destoryed program call\n";
+    if ( DEBUGOUT ) std::cout << "destoryed program call\n";
     DEVICE_RTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
 float Executor::initAndLaunch(std::vector<void*>& args) {
-    if(LOCALDEBUG == 1)
-    std::cout << "the kernel name is " << kernel_name << std::endl;
+    if ( DEBUGOUT ) std::cout << "the kernel name is " << kernel_name << std::endl;
     DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
-    if(LOCALDEBUG == 1)
-    std::cout << "launched kernel\n";
+    if ( DEBUGOUT ) std::cout << "launched kernel\n";
     CUevent start, stop;
     DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
     DEVICE_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
     DEVICE_SAFE_CALL(cuEventRecord(start,0));
     DEVICE_SAFE_CALL(
-    cuLaunchKernel(kernel,
-    1, 1, 1, // grid dim
-    1, 1, 1, // block dim
-    0, NULL, // shared mem and stream
-    //kernelargs.data(), 0)); // arguments
-    args.data(),0));
+        cuLaunchKernel(kernel,
+                       1, 1, 1, // grid dim
+                       1, 1, 1, // block dim
+                       0, NULL, // shared mem and stream
+                       //kernelargs.data(), 0)); // arguments
+                       args.data(), 0));
     DEVICE_SAFE_CALL(cuEventRecord(stop,0));
     DEVICE_SAFE_CALL(cuCtxSynchronize());
     DEVICE_SAFE_CALL(cuEventSynchronize(stop));
@@ -393,16 +383,14 @@ void Executor::execute(std::string file_name) {
     // std::cout << (char*)inputargs.at(inputargs.size()-1) << std::endl;
     // std::cout << (inputargs.at(inputargs.size()-2))[counts-1] << std::endl;
     //std::cout << in.at(0).m_domain.size() << std::endl;
-    if(LOCALDEBUG == 1)
-    std::cout << "begin parsing\n";
+    if ( DEBUGOUT ) std::cout << "begin parsing\n";
     parseDataStructure(file_name);
-    if(LOCALDEBUG == 1) {
+    if ( DEBUGOUT ) {
         std::cout << "finished parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
             std::cout << std::get<0>(device_names[i]) << std::endl;
         }
         std::cout << kernel_name << std::endl;
-        // std::cout << kernels << std::endl;
     }
     createProg();
     getVars();
@@ -410,8 +398,6 @@ void Executor::execute(std::string file_name) {
     getLogsAndPTX();
     initializeVars();
     destoryProg();
-    //std::cout << "begin kernel launch\n";
-    //initAndLaunch(in, out);
 }
 
 float Executor::getKernelTime() {
@@ -422,4 +408,4 @@ void Executor::returnData(std::vector<fftx::array_t<3,std::complex<double>>> &ou
     gatherOutput(out1.at(0), kernelargs);
 }
 
-#endif			//  FFTX_MDDFT_CUDABACKEND_HEADER
+#endif            //  FFTX_MDDFT_CUDABACKEND_HEADER

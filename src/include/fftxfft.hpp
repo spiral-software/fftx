@@ -34,6 +34,12 @@
 #include <array>
 #pragma once
 
+#if defined ( PRINTDEBUG )
+#define DEBUGOUT 1
+#else
+#define DEBUGOUT 0
+#endif
+
 namespace fftx_cuFFT {
 
 #define CUFFT_FORWARD -1
@@ -109,13 +115,13 @@ map_t stored_mdprdft_jit;
 
 #if defined FFTX_HIP
 void mddft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
-    std::cout << "Entered mddft fftx hip api call" << std::endl;
+    if ( DEBUGOUT) std::cout << "Entered mddft fftx hip api call" << std::endl;
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mddft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mddft_jit.end()) {
-        std::cout << "running cached instance" << std::endl;
+        if ( DEBUGOUT) std::cout << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mddft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -130,13 +136,13 @@ void mddft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
 }
 
 void mdprdft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
-    std::cout << "Entered mdprdft fftx hip api call" << std::endl;
+    if ( DEBUGOUT) std::cout << "Entered mdprdft fftx hip api call" << std::endl;
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mdprdft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mdprdft_jit.end()) {
-        std::cout << "running cached instance" << std::endl;
+        if ( DEBUGOUT) std::cout << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mdprdft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -152,13 +158,13 @@ void mdprdft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) 
 
 #else
 void mddft(int x, int y, int z, int sign, double * Y, double * X) {
-    std::cout << "Entered mddft fftx cpu api call" << std::endl;
+    if ( DEBUGOUT) std::cout << "Entered mddft fftx cpu api call" << std::endl;
     std::complex<double> * dsym = new std::complex<double>[1];
     // hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{(void*)Y,(void*)X,(void*)dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mddft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mddft_jit.end()) {
-        std::cout << "running cached instance" << std::endl;
+        if ( DEBUGOUT) std::cout << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mddft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -172,13 +178,13 @@ void mddft(int x, int y, int z, int sign, double * Y, double * X) {
     }
 }
 void mdprdft(int x, int y, int z, int sign, double * Y, double * X) {
-    std::cout << "Entered mddft fftx cpu api call" << std::endl;
+    if ( DEBUGOUT) std::cout << "Entered mddft fftx cpu api call" << std::endl;
     std::complex<double> * dsym = new std::complex<double>[1];
     // hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{(void*)Y,(void*)X,(void*)dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mdprdft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mdprdft_jit.end()) {
-        std::cout << "running cached instance" << std::endl;
+        if ( DEBUGOUT) std::cout << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mdprdft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -225,13 +231,13 @@ cufftResult cufftPlanMany(cufftHandle *plan, int rank, int *n, int *inembed,
 //         cufftComplex *odata, int direction) {
 cufftResult cufftExecC2C(cufftHandle plan, hipDeviceptr_t Y,
          hipDeviceptr_t X, int sign) {
-    std::cout << "Entered mddft cuapi call for hip" << std::endl;
+    if ( DEBUGOUT) std::cout << "Entered mddft cuapi call for hip" << std::endl;
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
     std::vector<int> sizes{plan.x,plan.y,plan.z};
     if(stored_jit.find(std::make_tuple(plan.x,plan.y,plan.z,sign)) != stored_jit.end()) {
-        std::cout << "running cached instance cuapi call for hip" << std::endl;
+        if ( DEBUGOUT) std::cout << "running cached instance cuapi call for hip" << std::endl;
         Executor e;
         e.execute(stored_jit.at(std::make_tuple(plan.x,plan.y,plan.z,sign)));
     }

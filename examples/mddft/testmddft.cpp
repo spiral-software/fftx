@@ -121,10 +121,10 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     std::cout << "allocating memory\n";
     DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(std::complex<double>));
-    if ( LOCALDEBUG == 1 ) std::cout << "allocated X\n";
+    if ( DEBUGOUT ) std::cout << "allocated X\n";
 
     DEVICE_MALLOC((void **)&dY, outputHost.m_domain.size() * sizeof(std::complex<double>));
-    if ( LOCALDEBUG == 1 ) std::cout << "allocated Y\n";
+    if ( DEBUGOUT ) std::cout << "allocated Y\n";
 
     DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size() * sizeof(std::complex<double>));
 #else
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
+        if ( DEBUGOUT ) std::cout << "copied X\n";
         
         mdp.transform();
         //gatherOutput(outputHost, args);
@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( LOCALDEBUG == 1 ) std::cout << "copied X\n";
+        if ( DEBUGOUT ) std::cout << "copied X\n";
         
         imdp.transform();
         //gatherOutput(outputHost, args);
