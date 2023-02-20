@@ -39,6 +39,7 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
 // arrsz is the size of each array
+
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
 {
@@ -147,10 +148,10 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     std::cout << "allocating memory" << std::endl;
     DEVICE_MALLOC((void **)&dX, inputHost.m_domain.size() * sizeof(double));
-    if ( LOCALDEBUG == 1 ) std::cout << "allocated X" << std::endl;
+    if ( DEBUGOUT ) std::cout << "allocated X" << std::endl;
 
     DEVICE_MALLOC((void **)&dY, outputHost2.m_domain.size() * sizeof(double));
-    if ( LOCALDEBUG == 1 ) std::cout << "allocated Y" << std::endl;
+    if ( DEBUGOUT ) std::cout << "allocated Y" << std::endl;
 
     DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size() * sizeof(std::complex<double>));
 
@@ -214,7 +215,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(double),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( LOCALDEBUG == 1 ) std::cout << "copied X" << std::endl;
+        if ( DEBUGOUT ) std::cout << "copied X" << std::endl;
         
         mdp.transform();
         mddft_gpu[itn] = mdp.getTime();
@@ -258,11 +259,11 @@ int main(int argc, char* argv[])
     // normalize the data returned 
     for ( int ii = 0; ii < mm * nn * K_adj; ii++ ) {
         host_X[ii] /= ( mm * nn * K_adj );
-    }	
+    }
     #else
     for ( int ii = 0; ii < mm * nn * K_adj; ii++ ) {
         tempX[ii] /= ( mm * nn * K_adj );
-    }	
+    }
     #endif
     std::cout << "normalization done" << std::endl;
 
@@ -292,7 +293,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY (tempX, host_X, (  mm * nn * K_adj ) * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE );
         DEVICE_CHECK_ERROR ( DEVICE_GET_LAST_ERROR () );
     #endif
-        if ( LOCALDEBUG == 1 ) std::cout << "copied tempX" << std::endl;
+        if ( DEBUGOUT ) std::cout << "copied tempX" << std::endl;
         imdp.transform();
         imddft_gpu[itn] = imdp.getTime();
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
@@ -327,7 +328,7 @@ int main(int argc, char* argv[])
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d:\nTrial #\tSpiral\trocfft\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );		//  , devfft.c_str() );
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );        //  , devfft.c_str() );
     for (int itn = 0; itn < iterations; itn++) {
         printf ( "%d\t%.7e\t%.7e\n", itn, mddft_gpu[itn], devmilliseconds[itn] );
     }

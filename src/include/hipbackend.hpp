@@ -18,8 +18,11 @@
 #include "device_macros.h"
 #pragma once
 
-#define LOCALDEBUG 0
-
+#if defined ( PRINTDEBUG )
+#define DEBUGOUT 1
+#else
+#define DEBUGOUT 0
+#endif
 
 class Executor {
     private:
@@ -197,8 +200,7 @@ void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-    if(LOCALDEBUG == 1)
-        std::cout << "parsed input\n";
+    if ( DEBUGOUT ) std::cout << "parsed input\n";
 
 }
 
@@ -209,8 +211,7 @@ void Executor::createProg() {
     0, // numHeaders
     nullptr, // headers
     nullptr)); 
-    if(LOCALDEBUG == 1)
-        std::cout << "created program\n";
+    if ( DEBUGOUT ) std::cout << "created program\n";
 }
 
 void Executor::getVarsAndKernels() {
@@ -218,12 +219,10 @@ void Executor::getVarsAndKernels() {
     for(int i = 0; i < device_names.size(); i++) {
         new_names.push_back(std::get<0>(device_names[i]));
     }
-    if(LOCALDEBUG == 1)
-    std::cout << "added new names\n";
+    if ( DEBUGOUT ) std::cout << "added new names\n";
     for (auto&& x : kernel_names) hiprtcAddNameExpression(prog, x.c_str());
     for(auto&& x: new_names) {hiprtcAddNameExpression(prog, x.c_str());}
-    if(LOCALDEBUG == 1)
-    std::cout << "added kernels and variables\n";
+    if ( DEBUGOUT ) std::cout << "added kernels and variables\n";
 }
 
 void Executor::compileProg() {
@@ -241,8 +240,7 @@ void Executor::compileProg() {
     compileResult = hiprtcCompileProgram(prog, 
     1, 
     opts); 
-    if(LOCALDEBUG == 1)
-        std::cout << "compiled program\n";
+    if ( DEBUGOUT ) std::cout << "compiled program\n";
 }
 
 void Executor::getLogsAndPTX() {
@@ -276,27 +274,23 @@ void Executor::getLogsAndPTX() {
     //DEVICE_SAFE_CALL(hipModuleLoadData(&module, cubin));
     //std::cout << "before moodule\n";
     DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
-    if(LOCALDEBUG == 1)
-    std::cout << "created module\n";
+    if ( DEBUGOUT ) std::cout << "created module\n";
 }
 
 void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
-        if(LOCALDEBUG == 1)
-            std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
+        if ( DEBUGOUT ) std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
         DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(
         prog, 
         std::get<0>(device_names[i]).c_str(), // name expression
         &name                         // lowered name
         ));
-        if(LOCALDEBUG == 1)
-            std::cout << "it got past lower name\n";
+        if ( DEBUGOUT ) std::cout << "it got past lower name\n";
         hipDeviceptr_t variable_addr;
         size_t bytes{};
         DEVICE_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
-        if(LOCALDEBUG == 1)
-            std::cout << "it got past get global\n";
+        if ( DEBUGOUT ) std::cout << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
@@ -324,8 +318,7 @@ void Executor::initializeVars() {
             case pointer_int:
             {
                 int * h1;
-                if(LOCALDEBUG == 1)
-                    std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) std::cout << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
                 DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
                 // hipFree(h1);
@@ -334,8 +327,7 @@ void Executor::initializeVars() {
             case pointer_float:
             {
                 float * h1;
-                if(LOCALDEBUG == 1)
-                    std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) std::cout << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
                 DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
                 // hipFree(h1);
@@ -344,8 +336,7 @@ void Executor::initializeVars() {
             case pointer_double:
             {
                 double * h1;
-                if(LOCALDEBUG == 1)
-                    std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) std::cout << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
                 DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
                 DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
                 // hipFree(h1);
@@ -377,9 +368,8 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
     DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
     DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
     // // // Execute parent kernel.
-    if(LOCALDEBUG == 1)
-        std::cout << "launched kernel\n";
-    if(LOCALDEBUG == 1)
+    if ( DEBUGOUT ) std::cout << "launched kernel\n";
+    if ( DEBUGOUT )
         std::cout << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
             "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
             "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
@@ -398,12 +388,11 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
 }
 
 void Executor::execute(std::string input) {
-    if(LOCALDEBUG == 1)
-        std::cout << "begin parsing\n";
+    if ( DEBUGOUT ) std::cout << "begin parsing\n";
     
     parseDataStructure(input);
     
-    if(LOCALDEBUG == 1) {
+    if ( DEBUGOUT ) {
         std::cout << "finished parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
             std::cout << std::get<0>(device_names[i]) << std::endl;
@@ -411,7 +400,6 @@ void Executor::execute(std::string input) {
         for(int i = 0; i < kernel_names.size(); i++) {
             std::cout << kernel_names[i] << std::endl;
         }
-        // std::cout << kernels << std::endl;
     }
     createProg();
     getVarsAndKernels();
@@ -423,15 +411,14 @@ void Executor::execute(std::string input) {
 
 void Executor::execute(char *file_name, std::vector<void*>& args)
 {
-    if ( LOCALDEBUG == 1 )
-        std::cout << "begin executing code\n";
+    if ( DEBUGOUT) std::cout << "begin executing code\n";
 
     std::ifstream ifs ( file_name );
     std::string   fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
                              ( std::istreambuf_iterator<char>()    ) );
 
     parseDataStructure ( fcontent );
-    if ( LOCALDEBUG == 1 ) {
+    if ( DEBUGOUT) {
         std::cout << "finsihed parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
             std::cout << std::get<0>(device_names[i]) << std::endl;
@@ -452,10 +439,5 @@ void Executor::execute(char *file_name, std::vector<void*>& args)
 float Executor::getKernelTime() {
     return GPUtime;
 }
-
-// void Executor::returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1, std::vector<void*>& args) {
-//     //gatherOutput(out1.at(0), kernelargs);
-//     hipMemcpy(out.m_data.local(), &((hipDeviceptr_t)args.at(0)),  out.m_domain.size() * sizeof(std::complex<double>), hipMemcpyDeviceToHost);
-// }
 
 #endif            //  FFTX_MDDFT_HIPBACKEND_HEADER
