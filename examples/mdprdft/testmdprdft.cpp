@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 #else
     dX = (double *) inputHost.m_data.local();
     dY = (double *) outputHost2.m_data.local();
-    tempX = new double[outputHost.m_domain.size()];
+    tempX = new std::complex<double>[outputHost.m_domain.size()];
     dsym = new double[outputHost2.m_domain.size()];
 #endif
 
@@ -280,13 +280,14 @@ int main(int argc, char* argv[])
     imdp.setArgs(args1);
     imdp.setSizes(sizes);
 
-    xfmtype = DEVICE_FFT_Z2D ;
-    res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
-    if ( res != DEVICE_FFT_SUCCESS ) {
-        printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
-        check_buff = false;
-    }
-
+    #if defined (FFTX_CUDA) || defined(FFTX_HIP)     
+        xfmtype = DEVICE_FFT_Z2D ;
+        res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
+        if ( res != DEVICE_FFT_SUCCESS ) {
+            printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
+            check_buff = false;
+        }
+    #endif
     for (int itn = 0; itn < iterations; itn++)
     {   
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)     
