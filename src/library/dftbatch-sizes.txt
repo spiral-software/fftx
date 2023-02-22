@@ -9,11 +9,12 @@
 
 ##  nbatch := 4;  szns := [ 50 ];
 ##  nbatch := 4;  szns := [ 60 ];
+
 nbatch := 4;  szns := [ 64 ];  stridetype := 1;
 nbatch := 4;  szns := [ 80 ];  stridetype := 1;
 
-nbatch := 16;  szns := [ 64 ];  stridetype := 1;
-nbatch := 16;  szns := [ 80 ];  stridetype := 1;
+##  nbatch := 16;  szns := [ 64 ];  stridetype := 1;
+##  nbatch := 16;  szns := [ 80 ];  stridetype := 1;
 
-nbatch := 64;  szns := [ 64 ];  stridetype := 1;
-nbatch := 64;  szns := [ 80 ];  stridetype := 1;
+##  nbatch := 64;  szns := [ 64 ];  stridetype := 1;
+##  nbatch := 64;  szns := [ 80 ];  stridetype := 1;
