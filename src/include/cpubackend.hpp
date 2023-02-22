@@ -24,6 +24,7 @@
 #include <sys/mman.h>
 #include <cstring>
 #include <chrono>
+#include <regex>
 #pragma once
 
 #if defined ( PRINTDEBUG )
@@ -31,6 +32,56 @@
 #else
 #define DEBUGOUT 0
 #endif
+
+static constexpr auto cmake_nodebug{
+R"(
+cmake_minimum_required ( VERSION 3.14 )
+set ( CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel" )
+project ( tmplib LANGUAGES C CXX )
+
+if ( DEFINED ENV{SPIRAL_HOME} )
+    set ( SPIRAL_SOURCE_DIR $ENV{SPIRAL_HOME} )
+else ()
+    if ( "x${SPIRAL_HOME}" STREQUAL "x" )
+        message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
+    endif ()
+    set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
+endif ()
+
+add_library                ( tmp SHARED spiral_generated.c )
+target_include_directories ( tmp PRIVATE ${SPIRAL_SOURCE_DIR}/namespaces )
+target_compile_options     ( tmp PRIVATE -shared -fPIC ${_addl_options} )
+
+if ( WIN32 )
+    set_property    ( TARGET tmp PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )
+endif ()
+)"};
+
+static constexpr auto cmake_debug{
+R"(
+set ( _addl_options -Wall -Wextra )    
+cmake_minimum_required ( VERSION 3.14 )
+set ( CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel" )
+project ( tmplib LANGUAGES C CXX )
+
+if ( DEFINED ENV{SPIRAL_HOME} )
+    set ( SPIRAL_SOURCE_DIR $ENV{SPIRAL_HOME} )
+else ()
+    if ( "x${SPIRAL_HOME}" STREQUAL "x" )
+        message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
+    endif ()
+    set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
+endif ()
+
+add_library                ( tmp SHARED spiral_generated.c )
+target_include_directories ( tmp PRIVATE ${SPIRAL_SOURCE_DIR}/namespaces )
+target_compile_options     ( tmp PRIVATE -shared -fPIC ${_addl_options} )
+
+if ( WIN32 )
+    set_property    ( TARGET tmp PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )
+endif ()
+)"};
+
 
 int redirect_input(int);
 void restore_input(int);
@@ -48,7 +99,13 @@ class Executor {
 
 float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     if ( DEBUGOUT) std::cout << "Loading shared library\n";
-    shared_lib = dlopen("./libtmp.so", RTLD_LAZY);
+    #if defined(_WIN32) || defined (_WIN64)
+    shared_lib = dlopen("temp/./libtmp.so", RTLD_LAZY);
+    #elif defined(__APPLE__)
+    shared_lib = dlopen("temp/./libtmp.dylib", RTLD_LAZY);
+    #else
+    shared_lib = dlopen("temp/./libtmp.so", RTLD_LAZY); 
+    #endif
     std::ostringstream oss;
     std::ostringstream oss1;
     std::ostringstream oss2;
@@ -87,6 +144,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         CPUTime = duration.count();
         dlclose(shared_lib);
     }
+    // system("rm -rf temp");
     return getKernelTime();
 }
 
@@ -95,24 +153,51 @@ void Executor::execute(std::string result) {
     if ( DEBUGOUT) std::cout << "entered CPU backend execute\n";
     std::string compile;
 
-    if ( DEBUGOUT)
-        compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces -Wall -Wextra spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
-    else 
-        compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
-    
+    std::cout << "is it using new code?\n";
+    // if ( DEBUGOUT)
+    //     compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces -Wall -Wextra spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
+    // else 
+    //     compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
+
     if ( DEBUGOUT) {
         std::cout << "created compile\n";
     }
 
     std::string result2 = result.substr(result.find("*/")+3, result.length());
-    // std::cout << result2.size() << std::endl;
-    std::ofstream out("spiral_generated.c");
+    int check = mkdir("temp", 0777);
+    // if((check)) {
+    //     std::cout << "failed to create temp directory for runtime code\n";
+    //     exit(-1);
+    // }
+    std::ofstream out("temp/spiral_generated.c");
     out << result2;
     out.close();
-
+    std::ofstream cmakelists("temp/CMakeLists.txt");
+    if(DEBUGOUT)
+        cmakelists << cmake_debug;
+    else
+        cmakelists << cmake_nodebug;
+    cmakelists.close();
     if ( DEBUGOUT )
         std::cout << "compiling\n";
-    system(compile.c_str());
+    // system(compile.c_str());
+    // system("cd temp;");
+    char buff[FILENAME_MAX]; //create string buffer to hold path
+    getcwd( buff, FILENAME_MAX );
+    std::string current_working_dir(buff);
+    
+    check = chdir("temp");
+    // if(!(check)) {
+    //     std::cout << "failed to create temp directory for runtime code\n";
+    //     exit(-1);
+    // }
+    system("cmake . && make;");
+     check = chdir(current_working_dir.c_str());
+    // if((check)) {
+    //     std::cout << "failed to create temp directory for runtime code\n";
+    //     exit(-1);
+    // }
+    // system("cd ..;");
     if ( DEBUGOUT )
         std::cout << "finished compiling\n";
 }
