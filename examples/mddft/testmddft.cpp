@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
       //std::cout << *((int*)args.at(3)) << std::endl;
     MDDFTProblem mdp(args, sizes, "mddft");
 
-#if defined FFTX_HIP
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
     //  Setup a plan to run the transform using cu or roc fft
     DEVICE_FFT_HANDLE plan;
     DEVICE_FFT_RESULT res;
