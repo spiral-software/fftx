@@ -586,6 +586,7 @@ with open ( _sizesfil, 'r' ) as fil:
         testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
         testscript.write ( 'fwd := ' + _fwd + '; \n' )
         testscript.write ( 'codefor := "' + _code_type + '"; \n' )
+        testscript.write ( 'createJIT := true;\n' )
         testscript.close()
 
         line = re.sub ( '.*\[', '', line )               ## drop "szcube := ["

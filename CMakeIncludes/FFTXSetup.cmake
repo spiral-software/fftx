@@ -73,7 +73,7 @@ if ( ${_codegen} STREQUAL "HIP" )
     ##  Need to add $ROCM_PATH for includes and libraries
     if ( DEFINED ENV{ROCM_PATH} )
 	message ( STATUS "ROCM_PATH is defined: $ENV{ROCM_PATH}" )
-	include_directories ( $ENV{ROCM_PATH}/hipfft/include $ENV{ROCM_PATH}/include )
+	include_directories ( $ENV{ROCM_PATH}/include/hipfft $ENV{ROCM_PATH}/include )
     endif ()
     list ( APPEND LIBS_FOR_HIP hipfft rocfft )
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_HIP )

@@ -16,8 +16,7 @@ DEVICE_ERROR_T pack(
 	size_t b_dim,
 	size_t b_i_stride,
 	size_t b_o_stride,
-	size_t copy_size,
-	size_t batch_size
+	size_t copy_size
 );
 
 
@@ -30,6 +29,31 @@ DEVICE_ERROR_T pack_embedded(
 	size_t b,
 	size_t c
 );
+
+
+DEVICE_ERROR_T unpack(
+	std::complex<double> *dst,
+	std::complex<double> *src,
+	size_t a_dim,
+	size_t a_i_stride,
+	size_t a_o_stride,
+	size_t b_dim,
+	size_t b_i_stride,
+	size_t b_o_stride,
+	size_t copy_size
+);
+
+
+// slowest to fastest
+// [a, b, c] -> [b, a, 2c]
+DEVICE_ERROR_T unpack_embedded(
+	std::complex<double> *dst,
+	std::complex<double> *src,
+	size_t a,
+	size_t b,
+	size_t c
+);
+
 
 
 void execute_packing(size_t cp_size,
