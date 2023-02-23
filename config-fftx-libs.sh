@@ -12,13 +12,20 @@
 ##  file is built to drive what CMake builds (e.g., some examples cannot be built unless
 ##  all the pre-requisite libraries are built).
 
+##  Build the libraries but only add a few [typically small] sizes to the library to
+##  demonstrate the ability to run with both fixed sizes libraries and to generate code
+##  (RTC) as needed.  Ultimately, create all libraries but with no fixed transforms in
+##  them -- this will allow complete on the fly RTC but create the necessary APIs for
+##  library access thus supporting fboth fixed-sixed libraries and RTC as the user may
+##  prefer. 
+
 ##  Whenever a library is built both the forward and inverse transforms (when applicable)
 ##  are built
 ##  Build the batch 1D DFT (complex to complex) library
 DFTBAT_LIB=true
 
 ##  Build the batch 1D packed real DFT (real to complex, complex to real) library
-PRDFTBAT_LIB=true
+PRDFTBAT_LIB=false
 
 ##  Build the 3D DFT (complex to complex) library
 MDDFT_LIB=true
@@ -27,13 +34,13 @@ MDDFT_LIB=true
 MDPRDFT_LIB=true
 
 ##  Build the Real Convolution library
-RCONV_LIB=true
+RCONV_LIB=false
 
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
-DISTDFT_LIB=true
+DISTDFT_LIB=false
 
 ##  Build the PSATD fixed sizes library
-PSATD_LIB=true
+PSATD_LIB=false
 
 ##  File containing the sizes to build for the CPU version of MDDFT, MDPRDFT, and RCONV
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
@@ -92,6 +99,17 @@ echo "DISTDFT_SIZES_FILE=$DISTDFT_SIZES_FILE" >> build-lib-code-options.sh
 echo "PSATD_SIZES_FILE=$PSATD_SIZES_FILE" >> build-lib-code-options.sh
 
 popd
+
+##  Make a directory for cached JIT files (may be written by code gen from build-lib-code or
+##  at run time to cache files created during the RTC process
+if [ -v FFTX_HOME ]; then
+    ##  FFTX_HOME is set
+    echo "FFTX_HOME = $FFTX_HOME"
+else
+    echo "FFTX_HOME is not set; set it to `pwd`"
+    export FFTX_HOME=`pwd`
+fi
+mkdir ${FFTX_HOME}/cache_jit_files
 
 echo "Build for CPU = $BUILD_FOR_CPU"
 if [ "$BUILD_FOR_CPU" = true ]; then

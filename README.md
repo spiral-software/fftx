@@ -32,6 +32,13 @@ To build and use **FFTX**, follow these steps:
 
 ### 1. Install SPIRAL and associated packages
 
+If you already have SPIRAL installed (and have the **SPIRAL_HOME** environment variable
+set) FFTX will use that installation and you can skip to step 2, "Clone the FFTX repository".
+
+If you want to manually install SPIRAL follow these steps; alternatively, skip to step 2,
+"Clone the FFTX repository" and have FFTX pull down the necessary SPIRAL repositories and
+perform the build steps.
+
 Clone **spiral-software** (available [**here**](https://www.github.com/spiral-software/spiral-software))
 to a location on your computer.  E.g.,:
 ```
@@ -72,17 +79,31 @@ Clone **FFTX** to a location on your computer.  E.g.,
 ```
 cd ~/work
 git clone https://www.github.com/spiral-software/fftx
+cd fftx
 ```
 Set the environment variable **FFTX_HOME** to point to the directory where
 you want to install **FFTX** (which is not necessarily the same directory
 where you have cloned **FFTX**; you may want to have separate installation
 directories for different backends).
 
+If you have not already installed SPIRAL you can have it downloaded and built from the
+repositories by sourcing the **get_spiral.sh** shell script now.  This script checks the
+definition of the **SPIRAL_HOME** environment variable, and if undefined it will get the
+SPIRAL code, build it and export a definition for **SPIRAL_HOME**.  Make sure you source
+(vs run) the script:
+```
+. get_spiral.sh
+or
+source get_spiral.sh
+```
+
 ### 3. Generate library source code.
 
 **FFTX** builds libraries of transforms for a set of different sizes.  The library
-source code is generated from **SPIRAL** script specifications, and must be
-created before building **FFTX** itself.
+source code is generated from **SPIRAL** script specifications, and may be
+created before building **FFTX** itself.  If the sizes are pre-built the code will be
+added to libraries of pre-defined fixed size.  Alternatively, sizes not defined can have
+the code generated and compiled at run-time (RTC).
 
 Before creating the library source code consider if you will be
 running on CPU only, or also utilizing a GPU.  If you create all the source code
@@ -107,7 +128,8 @@ can take quite a long time depending on the number of transforms and set of
 sizes to create.  The code is targeted to run on a CPU, a GPU (either CUDA or
 HIP) depending on the selections made in the configure script.  Depending on the
 number of sizes being built for each transform this process can take a
-considerable amount of time.
+considerable amount of time.  By default, only a very small number of fixed sizes will be
+created for the fixed-size libraries. 
 
 The text file **`build-lib-code-failures.txt`** will contain a list of all library
 transforms that failed to generate in this step.
@@ -171,6 +193,7 @@ directories will be created/populated:
 |**./bin**|Executables for example programs built as part of the **FFTX** distribution|
 |**./lib**|**FFTX** libraries, that can be called by external applications|
 |**./include**|Include files for using **FFTX** libraries|
+|**./cache_jit_files**|Folder containing the RTC code generated for any transform not <br>found in a fixed-size library|
 
 ## Running FFTX Example Programs
 
@@ -217,31 +240,23 @@ folder):
 |3D FFT|cube-sizes-gpu.txt|3D FFTs for GPU| 
 |Distributed FFT|distdft_sizes.txt|Distributed FFTs|
 
-The following is a list of libraries potentially built (NOTE: most libraries may
-be built for CPU or GPU; the header file name differs accordingly):
+The following is a list of libraries potentially built:
 
-|Type|Name|Description|Include Header File|
-|:-----:|:-----|:-----|:-----:|
-|3D FFT|fftx_mddft|Forward 3D FFT complex to complex|fftx_mddft_cpu_public.h or fftx_mddft_gpu_public.h|
-|3D FFT|fftx_imddft|Inverse 3D FFT complex to complex|fftx_imddft_cpu_public.h or fftx_imddft_gpu_public.h|
-|3D FFT|fftx_mdprdft|Forward 3D FFT real to complex|fftx_mdprdft_cpu_public.h or fftx_mdprdft_gpu_public.h|
-|3D FFT|fftx_imdprdft|Inverse 3D FFT complex to real|fftx_imdprdft_cpu_public.h or fftx_imdprdft_cpu_public.h|
-|3D Convolution|fftx_rconv|3D real convolution (in development)|fftx_rconv_cpu_public.h or fftx_rconv_gpu_public.h|
-|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex|fftx_dftbat_cpu_public.h (only built for CPU)|
-|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex|fftx_idftbat_cpu_public.h (only built for CPU)|
-|1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex|fftx_prdftbat_cpu_public.h (only built for CPU)|
-|1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real|fftx_iprdftbat_cpu_public.h (only built for CPU)|
-|Distributed FFT|fftx_distdft|Distributed 3D FFT complex to complex|fftx_distdft_gpu_public.h (only built for GPU)|
-|Distributed embedded FFT|fftx_distdft|Distributed embedded 3D FFT complex to complex|fftx_distdft_embed_gpu_public.h (only built for GPU)|
+|Type|Name|Description|
+|:-----:|:-----|:-----|
+|3D FFT|fftx_mddft|Forward 3D FFT complex to complex|
+|3D FFT|fftx_imddft|Inverse 3D FFT complex to complex|
+|3D FFT|fftx_mdprdft|Forward 3D FFT real to complex|
+|3D FFT|fftx_imdprdft|Inverse 3D FFT complex to real|
+|3D Convolution|fftx_rconv|3D real convolution|
+|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex (in development)|
+|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex (in development)|
+|1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex (in development)|
+|1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real (in development)|
+|Distributed FFT|fftx_distdft|Distributed 3D FFT complex to complex (in development)|
+|Distributed embedded FFT|fftx_distdft|Distributed embedded 3D FFT complex to complex (in development)|
 
 ### Library API
-
-Each library contains code for either a CPU or a GPU (either CUDA or HIP
-depending on how/where the library was generated).  There are API calls to do
-the following:
-* Get the list of sizes built in the library.
-* Get a tuple containing pointers to the init, destroy, and run functions for a particular size.
-* Run a specific size transform once.
 
 The following example shows usage of the 3D FFT complex-to-complex transform
 (others are similar; just use the appropriate names and header file(s) from the
@@ -253,23 +268,19 @@ for clarity and brevity:
 
 ```
 #include "fftx3.hpp"
-#include "fftx_mddft_gpu_public.h"
+#include "transformlib.hpp"
 
-    fftx::point_t<3> *wcube, curr;
-    wcube = fftx_mddft_QuerySizes ();             // Get a list of sizes in library
+    std::vector<int> sizes{ mm, nn, kk };         // 'cube' dimensions
+    std::vector<void *> args{ dY, dX, dsym };     // pointers to the Output, Input, and symbol arrays
 
-    transformTuple_t *tupl;
-    for ( int iloop = 0; ; iloop++ ) {
-        if ( wcube[iloop].x[0] == 0 ) break;      // last entry in list is zero
-        tupl = fftx_mddft_Tuple ( wcube[iloop] );
+    MDDFTProblem mdp ( args, sizes, "mddft" );    // Define transform
 
-        ( * tupl->initfp )();                    // init function for transform
-
-        ( * tupl->runfp )( outbuf, input, symbol );  // run the transform (may call multiple times)
-
-        ( * tupl->destroyfp )();
-    }
+    mdp.transform();                              // Run the transform
 ```
+
+If the size specified with the transform definition is found in a library then that code
+is executed; however, if it is not found in  a library then RTC is invoked to generate and
+compile the necessary code (this is also cached for future use).
 
 ### Linking Against FFTX Libraries
 
