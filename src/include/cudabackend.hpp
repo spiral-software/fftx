@@ -27,7 +27,6 @@
 #define DEBUGOUT 0
 #endif
 
-#include "data_interaction.hpp"
 #pragma once
 
 
@@ -404,8 +403,8 @@ float Executor::getKernelTime() {
     return GPUtime;
 }
 
-void Executor::returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1) {
-    gatherOutput(out1.at(0), kernelargs);
-}
+// void Executor::returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1) {
+//     gatherOutput(out1.at(0), kernelargs);
+// }
 
 #endif            //  FFTX_MDDFT_CUDABACKEND_HEADER

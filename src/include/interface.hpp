@@ -240,7 +240,7 @@ std::string FFTXProblem::semantics2() {
     printJITBackend(name, sizes);
     std::cout.rdbuf(coutbuf);
     std::string script = out.str();
-    write(p[1], script.c_str(), script.size());
+    int res = write(p[1], script.c_str(), script.size());
     close(p[1]);
     int save_stdin = redirect_input(p[0]);
     std::string result = exec(tmp.c_str());
