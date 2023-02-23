@@ -114,18 +114,25 @@ public:
         auto output_bytes = output_size * sizeof(double);
         auto symbol_bytes = symbol_size * sizeof(double);
 
+#if defined FFTX_HIP 
         hipDeviceptr_t inputPtr;
         hipDeviceptr_t outputPtr;
         hipDeviceptr_t symbolPtr;
+#else
+        CUdeviceptr inputPtr;
+        CUdeviceptr outputPtr;
+        CUdeviceptr symbolPtr;
+#endif      
         DEVICE_MALLOC((void **)&inputPtr, input_bytes);
         DEVICE_MALLOC((void **)&outputPtr, output_bytes);
         DEVICE_MALLOC((void **)&symbolPtr, symbol_bytes);
 
-        DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
+        DEVICE_MEM_COPY((void*)inputPtr, a_input.m_data.local(), input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
-        DEVICE_MEM_COPY(symbolPtr, a_symbol.m_data.local(), symbol_bytes,
+        DEVICE_MEM_COPY((void*)symbolPtr, a_symbol.m_data.local(), symbol_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
 
+#if defined FFTX_HIP
         fftx::array_t<DIM, hipDeviceptr_t> inputDevice(fftx::global_ptr<hipDeviceptr_t>
                                                (&inputPtr, 0, 1), m_domain);
         fftx::array_t<DIM, hipDeviceptr_t> outputDevice(fftx::global_ptr<hipDeviceptr_t>
@@ -134,6 +141,16 @@ public:
                                                 (&symbolPtr, 0, 1), m_fdomain);
 
         std::vector<void*> args{outputPtr, inputPtr, symbolPtr};
+#else
+        fftx::array_t<DIM, CUdeviceptr> inputDevice(fftx::global_ptr<CUdeviceptr>
+                                               (&inputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, CUdeviceptr> outputDevice(fftx::global_ptr<CUdeviceptr>
+                                                (&outputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, CUdeviceptr> symbolDevice(fftx::global_ptr<CUdeviceptr>
+                                                (&symbolPtr, 0, 1), m_fdomain);
+
+        std::vector<void*> args{&outputPtr, &inputPtr, &symbolPtr};
+#endif      
         m_rp.setArgs(args);
         m_rp.setSizes(m_sizes);
         m_rp.transform();
@@ -146,11 +163,11 @@ public:
         //   {
         //     m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
         //   }
-        DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
+        DEVICE_MEM_COPY(a_output.m_data.local(), (void*)outputPtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
 
-        DEVICE_FREE(inputPtr);
-        DEVICE_FREE(outputPtr);
+        DEVICE_FREE((void*)inputPtr);
+        DEVICE_FREE((void*)outputPtr);
 #else
         std::vector<void*> args{(void*)a_input.m_data.local(), (void*)a_output.m_data.local(), (void*)a_symbol.m_data.local()};
         m_rp.setArgs(args);

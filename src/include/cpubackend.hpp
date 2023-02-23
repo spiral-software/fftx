@@ -25,6 +25,7 @@
 #include <cstring>
 #include <chrono>
 #include <regex>
+#include <regex>
 #pragma once
 
 #if defined ( PRINTDEBUG )
@@ -120,6 +121,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         dlclose(shared_lib);
     }
     // system("rm -rf temp");
+    // system("rm -rf temp");
     return getKernelTime();
 }
 
@@ -127,10 +129,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
 void Executor::execute(std::string result) {
     if ( DEBUGOUT) std::cout << "entered CPU backend execute\n";
     std::string compile;
-
-    if ( DEBUGOUT)
-        std::cout << "is it using new code?\n";
-
+    
     if ( DEBUGOUT) {
         std::cout << "created compile\n";
     }
