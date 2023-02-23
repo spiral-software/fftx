@@ -25,6 +25,7 @@
 #include <cstring>
 #include <chrono>
 #include <regex>
+#include <regex>
 #pragma once
 
 #if defined ( PRINTDEBUG )
@@ -100,11 +101,11 @@ class Executor {
 float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     if ( DEBUGOUT) std::cout << "Loading shared library\n";
     #if defined(_WIN32) || defined (_WIN64)
-    shared_lib = dlopen("temp/./libtmp.so", RTLD_LAZY);
+        shared_lib = dlopen("temp/libtmp.dll", RTLD_LAZY);
     #elif defined(__APPLE__)
-    shared_lib = dlopen("temp/./libtmp.dylib", RTLD_LAZY);
+        shared_lib = dlopen("temp/libtmp.dylib", RTLD_LAZY);
     #else
-    shared_lib = dlopen("temp/./libtmp.so", RTLD_LAZY); 
+        shared_lib = dlopen("temp/libtmp.so", RTLD_LAZY); 
     #endif
     std::ostringstream oss;
     std::ostringstream oss1;
@@ -145,6 +146,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         dlclose(shared_lib);
     }
     // system("rm -rf temp");
+    // system("rm -rf temp");
     return getKernelTime();
 }
 
@@ -152,13 +154,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
 void Executor::execute(std::string result) {
     if ( DEBUGOUT) std::cout << "entered CPU backend execute\n";
     std::string compile;
-
-    std::cout << "is it using new code?\n";
-    // if ( DEBUGOUT)
-    //     compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces -Wall -Wextra spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
-    // else 
-    //     compile = "/usr/bin/gcc -I $SPIRAL_HOME/namespaces spiral_generated.c -o libtmp.so -O3 -shared -fPIC";
-
+    
     if ( DEBUGOUT) {
         std::cout << "created compile\n";
     }
@@ -180,8 +176,7 @@ void Executor::execute(std::string result) {
     cmakelists.close();
     if ( DEBUGOUT )
         std::cout << "compiling\n";
-    // system(compile.c_str());
-    // system("cd temp;");
+
     char buff[FILENAME_MAX]; //create string buffer to hold path
     getcwd( buff, FILENAME_MAX );
     std::string current_working_dir(buff);
@@ -191,8 +186,8 @@ void Executor::execute(std::string result) {
     //     std::cout << "failed to create temp directory for runtime code\n";
     //     exit(-1);
     // }
-    system("cmake . && make;");
-     check = chdir(current_working_dir.c_str());
+    system("cmake . && make");
+    check = chdir(current_working_dir.c_str());
     // if((check)) {
     //     std::cout << "failed to create temp directory for runtime code\n";
     //     exit(-1);
