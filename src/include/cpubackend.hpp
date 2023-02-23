@@ -25,7 +25,6 @@
 #include <cstring>
 #include <chrono>
 #include <regex>
-#include <regex>
 #pragma once
 
 #if defined ( PRINTDEBUG )
@@ -120,7 +119,6 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         CPUTime = duration.count();
         dlclose(shared_lib);
     }
-    // system("rm -rf temp");
     // system("rm -rf temp");
     return getKernelTime();
 }
