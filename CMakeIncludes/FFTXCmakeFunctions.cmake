@@ -18,6 +18,7 @@
 ##  then run it to create mddft.fftx.plan.g and mddft.fftx.codegen.hpp, adding
 ##  "/path/to/addl/includes" to the search path for include files.
 
+
 function ( run_driver_program prefix stem )
     ##  message ( "build and run driver for ${prefix}.${stem}.cpp" )
     set     ( _driver ${PROJECT_NAME}.${prefix}.${stem}.driver )
@@ -194,6 +195,8 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_HIP} )
     elseif ( ${_codegen} STREQUAL "CUDA" )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_CUDA} )
+    elseif ( ${_codegen} STREQUAL "CPU" )
+	target_link_libraries      ( ${_target} PRIVATE dl )
     endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
 	##  Some libraries were built -- add them for linker
@@ -216,7 +219,7 @@ function ( add_mpi_decorations_to_target _target )
 	##  target_compile_options     ( ${_target} PRIVATE ${MPI_CXX_COMPILE_OPTIONS} )
 	##  target_link_options        ( ${_target} PRIVATE ${MPI_CXX_LINK_FLAGS} )
 	##  link flags are wrong on thom
-	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX )
+	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX ${ADDL_MPI_LIBS} )
     else ()
 	message ( STATUS "MPI was not found -- cannot add decorations for target = ${_target}" )
     endif ()
