@@ -33,33 +33,8 @@
 #define DEBUGOUT 0
 #endif
 
-static constexpr auto cmake_nodebug{
+static constexpr auto cmake_script{
 R"(
-cmake_minimum_required ( VERSION 3.14 )
-set ( CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel" )
-project ( tmplib LANGUAGES C CXX )
-
-if ( DEFINED ENV{SPIRAL_HOME} )
-    set ( SPIRAL_SOURCE_DIR $ENV{SPIRAL_HOME} )
-else ()
-    if ( "x${SPIRAL_HOME}" STREQUAL "x" )
-        message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
-    endif ()
-    set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
-endif ()
-
-add_library                ( tmp SHARED spiral_generated.c )
-target_include_directories ( tmp PRIVATE ${SPIRAL_SOURCE_DIR}/namespaces )
-target_compile_options     ( tmp PRIVATE -shared -fPIC ${_addl_options} )
-
-if ( WIN32 )
-    set_property    ( TARGET tmp PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )
-endif ()
-)"};
-
-static constexpr auto cmake_debug{
-R"(
-set ( _addl_options -Wall -Wextra )    
 cmake_minimum_required ( VERSION 3.14 )
 set ( CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel" )
 project ( tmplib LANGUAGES C CXX )
@@ -171,9 +146,9 @@ void Executor::execute(std::string result) {
     out.close();
     std::ofstream cmakelists("temp/CMakeLists.txt");
     if(DEBUGOUT)
-        cmakelists << cmake_debug;
-    else
-        cmakelists << cmake_nodebug;
+        cmakelists << "set ( _addl_options -Wall -Wextra )" << std::endl;
+
+    cmakelists << cmake_script;
     cmakelists.close();
     if ( DEBUGOUT )
         std::cout << "compiling\n";
