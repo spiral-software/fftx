@@ -3,7 +3,10 @@
 #include <iostream>
 #include <stdlib.h>     /* srand, rand */
 
-#include "fftx_mpi.hpp"
+// #include "fftx_mpi.hpp"
+
+#include "fftx_mpi.cpp"
+
 
 using namespace std;
 
@@ -23,9 +26,11 @@ int main(int argc, char* argv[])
   int batch = 1;
   bool is_complex = true;
 
-  
+
   double *dev_in, *host_in;
   complex<double> *host_out, *dev_out, *send_buf, *recv_buf, *Q3;
+
+
 
   int M = 6;
   int N = 4;
@@ -41,6 +46,13 @@ int main(int argc, char* argv[])
   send_buf = (complex<double>*)malloc(sizeof(complex<double>) * M * N * b * K / p);
   recv_buf = (complex<double>*)malloc(sizeof(complex<double>) * M * N * b * K / p);     
 
+  // replace plan init with init_1d_comms?
+  // define any fields here that are used by pack functions.
+  fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
+  plan->send_buffer = send_buf;
+  plan->recv_buffer = recv_buf;
+  // end plan init.
+
   cudaMalloc(&dev_in, sizeof(complex<double>) * M * N * b * K/p);
   cudaMalloc(&dev_out, sizeof(complex<double>) * M * N * b * K/p);  
 
@@ -50,7 +62,6 @@ int main(int argc, char* argv[])
       for (int j = 0; j != N; ++j)
 	for (int k = 0; k != b; ++k)
 	  host_in[l*M*N*b + i*N*b + j*b + k] = 1.0;//complex<double>(l*M*N*K  + k+1.0, 0.0);
-
 
   if (commRank == 0){
   cout<<"In"<<endl;
@@ -64,33 +75,37 @@ int main(int argc, char* argv[])
   cudaMemcpy(dev_in, host_in, N * M * b * K/p * sizeof(double), cudaMemcpyHostToDevice);
 
   int Mdim = (M/2+1)/p;
-  if ((M/2 + 1) % p)
-    {
-      Mdim += 1;
-    }
+  if ((M/2 + 1) % p) {
+    Mdim += 1;
+  }
   
-  
-  
-  
-  cufftHandle plan1, plan23, plan2, plan3;
+  cufftHandle plan1, plan2, plan3;
 
-  cufftPlanMany(&plan1, 1, &M,
+  // slowest to fastest
+  // [X', Z/pz, Y] <= [Z/pz, Y, X] (read seq, write strided)
+  // X' is complex size M/2 + 1
+  cufftPlanMany(
+    &plan1, 1, &M,
 		&M, b, M*b,
 		&M, N*K/p*b, b,
-		CUFFT_D2Z, N*K/p);
+		CUFFT_D2Z, N*K/p
+  );
   
-
-  cufftPlanMany(&plan2, 1, &N,
+  // [Y, X'/px, Z] <= [X'/px, Z, Y] (read seq, write strided)
+  cufftPlanMany(
+    &plan2, 1, &N,
 		&N,     b, N*b,	       
 		&N, Mdim*K*b, b,
-		CUFFT_Z2Z, Mdim*K);
+		CUFFT_Z2Z, Mdim*K
+  );
   
-  cufftPlanMany(&plan3, 1, &K,
-			        &K, b, K*b,
-				&K, b, K*b,
-		//NULL, 0, 0,
-		//NULL, 0, 0, 		
-		CUFFT_Z2Z, N*Mdim);
+  // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
+  cufftPlanMany(
+    &plan3, 1, &K,
+    &K, b, K*b,
+    &K, b, K*b,
+    CUFFT_Z2Z, N*Mdim
+  );
 
   //  fftx_plan  plan = fftx_plan_distributed_1d(p, M, N, K, b, is_embedded, is_complex);
   
@@ -100,67 +115,46 @@ int main(int argc, char* argv[])
 
   cudaMemcpy(send_buf, dev_out, N * M * b * K/p* sizeof(complex<double>), cudaMemcpyDeviceToHost);
 
-
-
   //RCPERM
   
   //pack for 1D MPI
 
+  // slowest to fastest
+  // tile X' by X'/p,
+  // [(pz), px, X'/px, Z/pz, Y] <= [(pz), X', Z/pz, Y]
+  // then gather pz - scatter px
+  // [(px), pz, X'/px, Z/pz, Y] <= [(pz), px, X'/px, Z/pz, Y]
   size_t sendSize = Mdim * N  * K/p;
   size_t recvSize = Mdim * N  * K/p;
   MPI_Alltoall(
-	       // X, sendSize*plan->b,
-	       send_buf, sendSize * b,
-	       //		 plan->send_buffer, sendSize*plan->b,
-	       MPI_DOUBLE_COMPLEX,
-	       // plan->recv_buffer, recvSize*plan->b,
-	       recv_buf, recvSize * b,
-	       MPI_DOUBLE_COMPLEX,
-	       MPI_COMM_WORLD
-	       //plan->row_comm // TODO: Make sure this is the correct communicator
-	       ); // assume N dim is initially distributed along col comm.  
-    
-    //endRCPERM
-    
-    cudaMemcpy(dev_in, recv_buf, N * Mdim * b * K * sizeof(complex<double>), cudaMemcpyHostToDevice);
+    send_buf, sendSize * b,
+    MPI_DOUBLE_COMPLEX,
+    recv_buf, recvSize * b,
+    MPI_DOUBLE_COMPLEX,
+    MPI_COMM_WORLD
+  );
 
-    
-  
+  //      [X'/px, pz, Z/pz, Y] <= [pz, X'/px, Z/pz, Y]
+  // i.e. [X'/px,        Z, Y]
+  pack_embed(plan, (complex<double> *) dev_in, recv_buf, N * K/p * b, Mdim, p, is_embedded);
+  // endRCPERM
+  // cudaMemcpy(dev_in, send_buf, N * Mdim * b * K * sizeof(complex<double>), cudaMemcpyHostToDevice);
+
+  // [Y, X'/px, Z] <= [X'/px, Z, Y]
   for (int i = 0; i != b; ++i)
     cufftExecZ2Z(plan2, ((cufftDoubleComplex*)dev_in + i) ,
 		        ((cufftDoubleComplex*)dev_out + i), CUFFT_FORWARD);
   
-  
-  //RCPERM
-  cudaMemcpy(Q3, dev_out, N * Mdim * b * K* sizeof(complex<double>), cudaMemcpyDeviceToHost);
-
-
-  for (int jj = 0; jj != p; ++jj)
-    for (int l = 0; l != N; ++l)
-      for (int j = 0; j != Mdim; ++j)	
-	for (int k = 0; k != K/p*b; ++k)
-	  recv_buf[
-		   jj * K/p*b * Mdim * N + 
-		   l  * K/p*b * Mdim + 
-		   j  * K/p*b + 
-		   k
-		   ]
-	    = Q3[
-		 jj * K/p*b + 
-		 l  * K/p*b * p * Mdim + 
-		 j  * K/p*b * p + 
-		 k
-		 ];
-  
-  //endRCPERM
-  cudaMemcpy(dev_in, recv_buf, N * Mdim * b * K * sizeof(complex<double>), cudaMemcpyHostToDevice);
-  
+  { // swap pointers.
+    void *tmp = (void *) dev_in;
+    dev_in = (double *) dev_out;
+    dev_out = (complex<double> *) dev_in;
+  }
 
   for (int i = 0; i != b; ++i)
     cufftExecZ2Z(plan3, ((cufftDoubleComplex*)dev_in + i) ,
 		        ((cufftDoubleComplex*)dev_out + i), CUFFT_FORWARD);
   
-
   cudaMemcpy(host_out, dev_out, N * Mdim * b * K* sizeof(complex<double>), cudaMemcpyDeviceToHost);
 
   if (commRank == 0)

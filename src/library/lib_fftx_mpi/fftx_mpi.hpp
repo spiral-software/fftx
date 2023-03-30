@@ -57,5 +57,6 @@ void fftx_plan_destroy(fftx_plan plan);
 //void destroy_2d_comms(fftx_plan plan);
 
 // perm: [a, b, c] -> [a, c, b]
-void pack_embed(complex<double> *dst, complex<double> *src, int a, int b, int c, int batch, bool is_embedded);
+// void pack_embed(complex<double> *dst, complex<double> *src, int a, int b, int c, int batch, bool is_embedded);
+void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, int a, int b, int c, bool is_embedded);
 void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded);
