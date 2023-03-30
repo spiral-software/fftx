@@ -105,47 +105,20 @@ int main(int argc, char* argv[])
   //RCPERM
   
   //pack for 1D MPI
-  /*
-  for (int jj = 0; jj != p; ++jj)
-    {
-      for (int i = 0; i != K/p; ++i)
-	{
-	  for (int j = 0; j != N; ++j)
-	    {
-	      for (int k = 0; k != Mdim*b; ++k)
-		send_buf[
-			 jj* Mdim*b * N * K/p +
-			 i * Mdim*b * N  + 			       
-			 j * Mdim*b  +
-			 k
-			 ] = Q3[
-				i* Mdim*b * N   +
-				jj * Mdim*b * N * K/p+
-				j* Mdim*b + 
-				k
-			      ];
-	    }
-	}
-    }
-  */
 
-    size_t sendSize = Mdim * N  * K/p;
-    size_t recvSize = Mdim * N  * K/p;
-    MPI_Alltoall(
-		 // X, sendSize*plan->b,
-		 send_buf, sendSize * b,
-		 //		 plan->send_buffer, sendSize*plan->b,
-		 MPI_DOUBLE_COMPLEX,
-		 // plan->recv_buffer, recvSize*plan->b,
-		 recv_buf, recvSize * b,
-		 MPI_DOUBLE_COMPLEX,
-		 MPI_COMM_WORLD
-		 //plan->row_comm // TODO: Make sure this is the correct communicator
-		 ); // assume N dim is initially distributed along col comm.
-
-
-
-   
+  size_t sendSize = Mdim * N  * K/p;
+  size_t recvSize = Mdim * N  * K/p;
+  MPI_Alltoall(
+	       // X, sendSize*plan->b,
+	       send_buf, sendSize * b,
+	       //		 plan->send_buffer, sendSize*plan->b,
+	       MPI_DOUBLE_COMPLEX,
+	       // plan->recv_buffer, recvSize*plan->b,
+	       recv_buf, recvSize * b,
+	       MPI_DOUBLE_COMPLEX,
+	       MPI_COMM_WORLD
+	       //plan->row_comm // TODO: Make sure this is the correct communicator
+	       ); // assume N dim is initially distributed along col comm.  
     
     //endRCPERM
     
