@@ -1,4 +1,6 @@
-// #include <__clang_cuda_builtin_vars.h>
+#ifndef __FFTX_MPI__
+#define __FFTX_MPI__
+
 #include <complex>
 #include <cstdio>
 #include <vector>
@@ -20,11 +22,10 @@
 #define FFTX_FORWARD  1
 #define FFTX_BACKWARD 2
 
-
 using namespace std;
 
 #define CPU_PERMUTE 1     //Todo: Fix CPU PERMUTE to work with batch + embedded
-#define CUDA_AWARE_MPI 0  //Todo: CUDA_AWARE_MPI not working
+#define CUDA_AWARE_MPI 0  
 
 // implement on GPU.
 // [A, B, C] -> [B, A, C]
@@ -49,6 +50,8 @@ struct fftx_plan_t
 typedef fftx_plan_t* fftx_plan;
 
 
+
+//fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 fftx_plan  fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy(fftx_plan plan);
@@ -59,3 +62,8 @@ void fftx_plan_destroy(fftx_plan plan);
 // perm: [a, b, c] -> [a, c, b]
 void pack_embed(complex<double> *dst, complex<double> *src, int a, int b, int c, int batch, bool is_embedded);
 void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded);
+
+
+#include "fftx_1d_mpi.hpp"
+
+#endif
