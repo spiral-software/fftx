@@ -45,8 +45,7 @@ void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
 	}      
     }  
   
-  // initial layout is [4, 5, 0, 1, 2, 3], after first fft [0, 1, 2, 3, 4, 5]
-  
+  // initial layout is [4, 5, 0, 1, 2, 3], after first fft [0, 1, 2, 3, 4, 5]  
   plan->shape[0] = M/plan->r;
   plan->shape[1] = plan->r;  
   plan->shape[2] = N/plan->r;
@@ -71,49 +70,6 @@ void destroy_2d_comms(fftx_plan plan) {
   }
 }
 
-/*
-fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex)
-{
-  fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
-  plan->b = batch;
-  plan->is_embed = is_embedded;
-  plan->is_complex = is_complex;
-
-  int inK = K * (is_embedded ? 2 : 1);
-  int inM = M * (is_embedded ? 2 : 1);
-  int inN = N * (is_embedded ? 2 : 1);
-  
-  int outK = K * (is_embedded ? 2 : 1);
-  int outM = M * (is_embedded ? 2 : 1);
-  int outN = N * (is_embedded ? 2 : 1);
-
-  int sizes[2] = {N, M};
-
-  DEVICE_MALLOC(&(plan->Q3), M*N*K*(is_embedded ? 8 : 1) / p * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC(&(plan->Q4), M*N*K*(is_embedded ? 8 : 1) / p * sizeof(complex<double>) * batch);
-  
-  if (plan->is_complex)
-    {
-      //only correct if not embedded
-      
-      DEVICE_FFT_PLAN_MANY(&(plan->stg1), 2, sizes, 
-			   sizes, plan->b, inM*inN*batch,
-			   sizes, plan->b, inM*inN*batch,
-			   CUFFT_Z2Z, inK);
-
-      DEVICE_FFT_PLAN_MANY(&(plan->stg2), 1, &inK,
-			   &inM, inM*inN/p*batch, batch,
-			   &inM, inM*inN/p*batch, batch, 
-			   CUFFT_Z2Z, inM*inN/p*batch);
-    }
-  else
-    {
-      
-    }
-  
-  return plan;  
-}
-*/
 fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
