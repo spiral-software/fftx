@@ -31,8 +31,7 @@ using namespace std;
 // work for a single thread block.
 
 // static complex<double> *recv_buffer, *send_buffer;
-struct fftx_plan_t
-{
+struct fftx_plan_t {
   complex<double> *recv_buffer, *send_buffer;
   int r, c, b;
   double  *Q3, *Q4;
@@ -40,7 +39,8 @@ struct fftx_plan_t
   bool is_forward;
   bool is_complex;
   MPI_Comm row_comm, col_comm;
-  size_t shape[6];  
+  size_t shape[6]; // used for buffers for A2A.
+  int M, N, K; // used for FFT sizes. 
   DEVICE_FFT_HANDLE stg3, stg2, stg1;
   DEVICE_FFT_HANDLE stg2i, stg1i;
 };
