@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
     for (int j = 0; j != Ni; ++j) {
       for (int i = 0; i != Mo; ++i) {
         for (int k = 0; k != b; ++k) {
-          host_in[l * Ni*Mo*b + j * Mo*b + i * b + k] = (is_embedded && i < Mi/2 &&  3 * Mi/2 <= i) ? 0.0 : 1.0;
+          host_in[l * Ni*Mo*b + j * Mo*b + i * b + k] = (is_embedded && (i < Mi/2 || 3 * Mi/2 <= i)) ? 0.0 : 1.0;
           // complex<double>(l*M*N*K  + k+1.0, 0.0);
         }
       }
