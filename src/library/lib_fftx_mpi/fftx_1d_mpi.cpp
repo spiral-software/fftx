@@ -55,7 +55,7 @@ void destroy_1d_comms(fftx_plan plan) {
 }
 
 
-fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
+fftx_plan fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
   fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
   plan->b = batch;
   plan->is_embed = is_embedded;
@@ -68,14 +68,26 @@ fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool 
   DEVICE_MALLOC(&(plan->Q3), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
   DEVICE_MALLOC(&(plan->Q4), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
 
-  int M0 = (M*e)/p;
-  if (!(plan->is_complex)) {
+  /*
+    R2C is
+    [K, N,       M]
+    [K, N, M/2 + 1]
+
+    C2R is
+    [K, N, M/2 + 1]
+    [K, N,       M]
+  */
+
+  int M0 = -1;
+  if (plan->is_complex) {
+    M0 = (M*e)/p;
+  } else {
     M0 = (M*e/2 + 1)/p;
     if (M0*p < M*e) { // pad up if M' not divisible by p.
       M0 += 1;
     }
-    plan->shape[0] = M0;
   }
+  plan->shape[0] = M0; // this overwrites M/p if r2c or c2r, right?
   int M1 = p;
 
   // DFT sizes.  
@@ -84,9 +96,7 @@ fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool 
   int inK = K * e;
 
   // DFT batch sizes.
-  int batch_sizeX = N * K/p;  // stage 1, dist Z
-  int batch_sizeY = K * M0;   // stage 2, dist X
-  int batch_sizeZ = M0 * N*e; // stage 3, dist X
+  
   
   if (plan->is_complex) {
       //only correct if not embedded
@@ -106,6 +116,7 @@ fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool 
       // slowest to fastest
       // [X', Z/pz, Y] <= [Z/pz, Y, X] (read seq, write strided)
       // X' is complex size M/2 + 1
+      int batch_sizeX = N * K/p;  // stage 1, dist Z
       DEVICE_FFT_PLAN_MANY(
         &(plan->stg1), 1, &inM,
         &inM, plan->b, inM*plan->b,
@@ -116,20 +127,53 @@ fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool 
       // [Y, X'/px, Z] <= [X'/px, Z, Y] (read seq, write strided)
       // if embedded, put output in
       // [Y, X'/px, 2Z]
-      DEVICE_FFT_PLAN_MANY(
-        &(plan->stg2),  1,            &inN,
-        &inN,     plan->b,            inN*plan->b,	       
-        &inN,    batch_sizeY*plan->b, plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeY
-			);
+      {
+        int M0 = ((M*e)/2 + 1)/p;
+        M0 += (M0*p < M*e);
+        int batch_sizeY = K * M0;   // stage 2, dist X
+        DEVICE_FFT_PLAN_MANY(
+          &(plan->stg2),  1, &inN,
+          &inN, plan->b, inN*plan->b,	       
+          &inN, batch_sizeY*plan->b, plan->b,
+          DEVICE_FFT_Z2Z, batch_sizeY
+        );
+
+        int batch_sizeZ = M0 * N*e; // stage 3, dist X
+        // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
+        DEVICE_FFT_PLAN_MANY(
+          &(plan->stg3), 1, &inK,
+          &inK, plan->b, inK*plan->b,
+          &inK, plan->b, inK*plan->b,
+          DEVICE_FFT_Z2Z, batch_sizeZ
+        );
+      }
       
-      // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
-      DEVICE_FFT_PLAN_MANY(
-        &(plan->stg3), 1, &inK,
-        &inK, plan->b, inK*plan->b,
-        &inK, plan->b, inK*plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeZ
-			);
+      // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
+      // TODO: update for embedded
+      {
+        // int M0 = (M*e)/p;
+        int M0 = ((M*e)/2 + 1)/p;
+        M0 += (M0*p < M*e);
+        int batch_sizeY = K * M0;   // stage 2, dist X
+        DEVICE_FFT_PLAN_MANY(
+          &(plan->stg2i), 1, &inN,
+          &inN, batch_sizeY*plan->b, plan->b,
+          &inN, plan->b, inN*plan->b,	       
+          DEVICE_FFT_Z2Z, batch_sizeY
+        );
+
+      // [Z/pz, Y, X] <= [X', Z/pz, Y] (read strided, write seq)
+      // X' is complex size M, X is (M-1)*2
+      // TODO: update for embedded
+        int xi = M/2 + 1;
+        int xo = M;
+        DEVICE_FFT_PLAN_MANY(
+          &(plan->stg1i), 1, &xo,
+          &xi, batch_sizeX*plan->b, plan->b,
+          &xo, plan->b, xo*plan->b,
+          DEVICE_FFT_Z2D, batch_sizeX
+        );
+      }
   }
   return plan;  
 }
@@ -144,83 +188,69 @@ void fftx_mpi_rcperm_1d(fftx_plan plan, double * _Y, double *_X, int stage, bool
   switch (stage) {
     case FFTX_MPI_EMBED_1:
       {
-        // TODO: support different MPI CPU/HOST devices.
-        // after first 1D FFT on X dim (slowest to fastest)
-        // [X'   , Z/p, Y]    <= [Z/p, Y, X]
-        // [M/2+1, K/p, N] <= [K/p, N, M]
+          // TODO: support different MPI CPU/HOST devices.
+          // after first 1D FFT on X dim (slowest to fastest)
+          // [X'   , Z/p, Y] <= [Z/p, Y, X]
+          // [M/2+1, K/p, N] <= [K/p, N, M]
 
-        //#if CUDA_AWARE_MPI
-        //      DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
-        //#else
-        // TODO: check these sizes.
-        // TODO: change this to be acceptable for C2C, not just R2C.
-        size_t buffer_size = (plan->M*e/2+1) * plan->shape[4] * plan->shape[2] * plan->b;
-        size_t sendSize    = plan->shape[0]  * plan->shape[4] * plan->shape[2] * plan->b;
-        size_t recvSize = sendSize;
+          // TODO: check these sizes.
+          // TODO: change this to be acceptable for C2C, not just R2C.
+          size_t buffer_size = (plan->M*e/2+1) * plan->shape[4] * plan->shape[2] * plan->b;
+          size_t sendSize    = plan->shape[0]  * plan->shape[4] * plan->shape[2] * plan->b;
+          size_t recvSize = sendSize;
 
-        DEVICE_MEM_COPY(
-          plan->send_buffer, X,
-          buffer_size * sizeof(complex<double>),
-          MEM_COPY_DEVICE_TO_HOST
-        );
-        // int rank = -1;
-        // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        // if (rank == 0) {
-        //   for (int i = 0; i < plan->M * e; i++) {
-        //     printf("%f \t", plan->send_buffer[i].real());
-        //   }
-        //   printf("\n");
-        // }
-        // TODO: fill out send buffer with zeros if R2C size not divisible by p.
-
-
-        // [pz, X'/px, Z/pz, Y] <= [X', Z/pz, Y]
-        MPI_Alltoall(
-          plan->send_buffer,  sendSize,
-          MPI_DOUBLE_COMPLEX,
-          plan->recv_buffer, recvSize,
-          MPI_DOUBLE_COMPLEX,
-          MPI_COMM_WORLD
-        );
-
-        //      [X'/px, pz, Z/pz, Y] <= [pz, X'/px, Z/pz, Y]
-        // i.e. [X'/px,        Z, Y]
-        if (is_embedded) {
           DEVICE_MEM_COPY(
-            Y, plan->recv_buffer, 
-            plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * sizeof(complex<double>) * plan->b,
-            MEM_COPY_HOST_TO_DEVICE
+            plan->send_buffer, X,
+            buffer_size * sizeof(complex<double>),
+            MEM_COPY_DEVICE_TO_HOST
           );
-          pack_embed(
-            plan,
-            (complex<double> *) X, Y,
-            plan->shape[4] * plan->shape[2] * plan->b,
-            plan->shape[0],
-            plan->shape[5],
-            false
+          
+          // [pz, X'/px, Z/pz, Y] <= [X', Z/pz, Y]
+          MPI_Alltoall(
+            plan->send_buffer,  sendSize,
+            MPI_DOUBLE_COMPLEX,
+            plan->recv_buffer, recvSize,
+            MPI_DOUBLE_COMPLEX,
+            MPI_COMM_WORLD
           );
-          embed(
-            Y, X,
-            plan->shape[2],
-            plan->shape[0] * plan->shape[5] * plan->shape[4] * plan->b
-          );
-        } else {
-          DEVICE_MEM_COPY(
-            X, plan->recv_buffer, 
-            plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * sizeof(complex<double>) * plan->b,
-            MEM_COPY_HOST_TO_DEVICE
-          );
-          pack_embed(
-            plan,
-            (complex<double> *) Y, X,
-            plan->shape[4] * plan->shape[2] * plan->b,
-            plan->shape[0],
-            plan->shape[5],
-            false
-          );
-        }
-        //#endif
-      }
+
+          //      [X'/px, pz, Z/pz, Y] <= [pz, X'/px, Z/pz, Y]
+          // i.e. [X'/px,        Z, Y]
+          if (is_embedded) {
+            DEVICE_MEM_COPY(
+              Y, plan->recv_buffer, 
+              plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * sizeof(complex<double>) * plan->b,
+              MEM_COPY_HOST_TO_DEVICE
+            );
+            pack_embed(
+              plan,
+              (complex<double> *) X, Y,
+              plan->shape[4] * plan->shape[2] * plan->b,
+              plan->shape[0],
+              plan->shape[5],
+              false
+            );
+            embed(
+              Y, X,
+              plan->shape[2],
+              plan->shape[0] * plan->shape[5] * plan->shape[4] * plan->b
+            );
+          } else {
+            DEVICE_MEM_COPY(
+              X, plan->recv_buffer, 
+              plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * sizeof(complex<double>) * plan->b,
+              MEM_COPY_HOST_TO_DEVICE
+            );
+            pack_embed(
+              plan,
+              (complex<double> *) Y, X,
+              plan->shape[4] * plan->shape[2] * plan->b,
+              plan->shape[0],
+              plan->shape[5],
+              false
+            );
+          }
+      } // end stage 1 case.
       break;
       
     case FFTX_MPI_EMBED_2:
@@ -243,10 +273,56 @@ void fftx_mpi_rcperm_1d(fftx_plan plan, double * _Y, double *_X, int stage, bool
         }       
       }
       break;
-    }
+    case FFTX_MPI_EMBED_4:
+      {
+        // if inverse,
+        // permute such that
+        // [X'/px, pz, Z/pz, Y] <= [X'/px,        Z, Y] (reshape)
+        // [pz, X'/px, Z/pz, Y] <= [X'/px, pz, Z/pz, Y] (permute)
+        if (is_embedded) {
+          // don't care at the moment.
+        } else {
+          // printf("packing\n");
+          // NOTE: assuming CPU packing, pack_embed uses send-recv buffers.
+          DEVICE_MEM_COPY(
+            plan->recv_buffer, X,
+            sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
+            MEM_COPY_DEVICE_TO_HOST
+          );
+
+          // send <- recv
+          pack_embed(
+            plan,
+            (complex<double> *) Y, X,
+            plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
+            plan->shape[5],
+            plan->shape[0],
+            false
+          );
+        }
+        // [px, X'/px, Z/pz, Y] <= [pz, X'/px, Z/pz, Y] (all2all)
+        // [       X', Z/pz, Y] <=                      (reshape)
+        size_t sendSize = plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
+        size_t recvSize = sendSize;
+        MPI_Alltoall(
+          plan->send_buffer,  sendSize,
+          MPI_DOUBLE_COMPLEX,
+          plan->recv_buffer, recvSize,
+          MPI_DOUBLE_COMPLEX,
+          MPI_COMM_WORLD
+        );
+
+        DEVICE_MEM_COPY(
+          Y, plan->recv_buffer,
+          sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
+          MEM_COPY_HOST_TO_DEVICE
+        );
+      }
+      break;
+    } // end switch/case.
 }
 
-void fftx_execute_1d(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
+void fftx_execute_1d(fftx_plan plan, double * out_buffer, double * in_buffer, int direction) {
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // TODO: write complex.
@@ -269,51 +345,69 @@ void fftx_execute_1d(fftx_plan plan, double* out_buffer, double*in_buffer, int d
     for (int i = 0; i != plan->b; ++i) {
       DEVICE_FFT_EXECZ2Z(
         plan->stg2,
-        ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i),
-			  ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i),
+        (DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i,
+			  (DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i,
         direction
       );
     }
 
-    double *st2_output = (double *) plan->Q3;
-    double *st3_input  = (double *) plan->Q4;
+    double *stg2_output = (double *) plan->Q3;
+    double *stg3_input  = (double *) plan->Q4;
     if (plan->is_embed) {
-      // st3_input = st2_output;
-      fftx_mpi_rcperm_1d(plan, st3_input, st2_output, FFTX_MPI_EMBED_2, plan->is_embed);
-
+      fftx_mpi_rcperm_1d(plan, stg3_input, stg2_output, FFTX_MPI_EMBED_2, plan->is_embed);
     } else {
-      // use previous output as input.
-      st3_input = st2_output;
+      // no permutation necessary, use previous output as input.
+      stg3_input = stg2_output;
     }
     
     for (int i = 0; i != plan->b; ++i) {
       DEVICE_FFT_EXECZ2Z(
         plan->stg3,
-        ((DEVICE_FFT_DOUBLECOMPLEX  *) st3_input  + i),
-			  ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i),
+        (DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input  + i,
+			  (DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i,
         direction
       );
     }      
-  } else { // backward
-    
+  } else if (direction == DEVICE_FFT_INVERSE) { // backward
+    DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
+    DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
+    // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
+    for (int i = 0; i < plan->b; i++) {
+      DEVICE_FFT_EXECZ2Z(plan->stg3, stg3i_input + i, stg3i_output + i, direction);
+    }
+    // no permutation necessary, use previous output as input.
+    DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
+    DEVICE_FFT_DOUBLECOMPLEX *stg2i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q4;
+    // TODO: add code here if we expect embedded.
+
     //stage 2i
-    for (int i = 0; i < plan->b; ++i){
-      if (plan->is_complex) {
-        //backward complex	  
-      } else {
-        //backward real
-      }
+    // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
+    for (int i = 0; i < plan->b; ++i) {
+      DEVICE_FFT_EXECZ2Z(plan->stg2i, stg2i_input + i, stg2i_output + i, direction);
     }
 
-    //COMMS
+    DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
+    double tmp = -1;
+    int rank = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    // permute such that
+    // [X'/px, pz, Z/pz, Y] <= [X'/px         Z, Y] (reshape)
+    // [pz, X'/px, Z/pz, Y] <= [X'/px, pz, Z/pz, Y] (permute)
+    // [px, X'/px, Z/pz, Y] <= [pz, X'/px, Z/pz, Y] (all2all)
+    // [       X', Z/pz, Y] <= [px, X'/px, Z/pz, Y] (reshape)
+    fftx_mpi_rcperm_1d(plan, (double *) stg1i_input, (double *) stg2i_output, FFTX_MPI_EMBED_4, plan->is_embed);
+
+    DEVICE_FFT_DOUBLECOMPLEX *stg1i_output = (DEVICE_FFT_DOUBLECOMPLEX *) out_buffer;
 
     //stage 1i
-    for (int i = 0; i < plan->b; ++i){
+    for (int i = 0; i < plan->b; ++i) {
       if (plan->is_complex) {
         //backward complex
+        DEVICE_FFT_EXECZ2Z(plan->stg1i, stg1i_input + i, stg1i_output + i, direction);
       } else {
         //backward real
+        DEVICE_FFT_EXECZ2D(plan->stg1i, stg1i_input + i, ((DEVICE_FFT_DOUBLEREAL *) stg1i_output) + i);
       }
     }
   } // end backward.

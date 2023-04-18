@@ -89,10 +89,10 @@ int main(int argc, char* argv[]) {
       for (int k = 0; k < Ko; k++) {
         for (int b = 0; b < batch; b++) {
           fftx_in[
-	   ((n * (Mi/c)*Ko +
+            ((n * (Mi/c)*Ko +
              m *        Ko +
              k)* batch     +
-	    b)               * (is_complex ? 2 : 1) + 0
+             b)               * (is_complex ? 2 : 1) + 0
             ] = ( // embedded
               (Ki/2 <= k && k < 3*Ki/2 ) ||
               !is_embedded

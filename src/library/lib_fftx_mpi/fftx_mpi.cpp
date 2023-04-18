@@ -154,14 +154,15 @@ fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bo
 
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
   if (direction == DEVICE_FFT_FORWARD) {
-    if (plan->is_complex)
+    if (plan->is_complex) {
       for (int i = 0; i != plan->b; ++i) {
-	DEVICE_FFT_EXECZ2Z(plan->stg1, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
+        DEVICE_FFT_EXECZ2Z(plan->stg1, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
       }
-    else
+    } else {
       for (int i = 0; i != plan->b; ++i) {
-	DEVICE_FFT_EXECD2Z(plan->stg1, ((DEVICE_FFT_DOUBLEREAL  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i));
+        DEVICE_FFT_EXECD2Z(plan->stg1, ((DEVICE_FFT_DOUBLEREAL  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i));
       }
+    }
     
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
     
@@ -172,45 +173,51 @@ void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int dire
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_2, plan->is_embed);
 
     for (int i = 0; i != plan->b; ++i) {
-    DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
+      DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
     }  
     
   } else if (direction == DEVICE_FFT_INVERSE) {
     for (int i = 0; i != plan->b; ++i) {
-      DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
+      DEVICE_FFT_EXECZ2Z(
+        plan->stg3,
+        ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i),
+        ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i),
+        direction
+      );
     }      
+
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_3, plan->is_embed);
+
     for (int i = 0; i != plan->b; ++i){
       DEVICE_FFT_EXECZ2Z(plan->stg2i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
     }
       
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_4, plan->is_embed);      
 
-    if (plan->is_complex)
+    if (plan->is_complex) {
       for (int i = 0; i != plan->b; ++i) {      
-	DEVICE_FFT_EXECZ2Z(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
+        DEVICE_FFT_EXECZ2Z(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
       }
-    else  //untested
+    } else { // untested
       for (int i = 0; i != plan->b; ++i) {      
-	DEVICE_FFT_EXECZ2D(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLEREAL  *) out_buffer + i));
+        DEVICE_FFT_EXECZ2D(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLEREAL  *) out_buffer + i));
       }
-    
+    }
   }      
 }
 
 void fftx_plan_destroy(fftx_plan plan) {
-  if (plan)
-    {
-      if (plan->c == 0)
-      	destroy_1d_comms(plan);
-      else
-      	destroy_2d_comms(plan);
+  if (plan) {
+    if (plan->c == 0)
+      destroy_1d_comms(plan);
+    else
+      destroy_2d_comms(plan);
+    
+    DEVICE_FREE(plan->Q3);
+    DEVICE_FREE(plan->Q4);     
       
-      DEVICE_FREE(plan->Q3);
-      DEVICE_FREE(plan->Q4);     
-       
-      free(plan);
-    }
+    free(plan);
+  }
 }
 
 // perm: [a, b, c] -> [a, 2c, b]
