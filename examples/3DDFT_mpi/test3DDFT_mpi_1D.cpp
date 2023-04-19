@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &p);
   MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
 
-  if (argc != 6) {
-    printf("usage: %s <M> <N> <K> <batch> <embedded>\n", argv[0]);
+  if (argc != 7) {
+    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward>\n", argv[0]);
     exit(-1);
   }
 
@@ -27,10 +27,8 @@ int main(int argc, char* argv[]) {
   int K = atoi(argv[3]);
   int batch = atoi(argv[4]);
   bool is_embedded = 0 < atoi(argv[5]);
+  bool is_forward = 0 < atoi(argv[6]);
 
-  if (commRank == 0) printf("%d, %d, %d, %d\n", M, N, K, batch);
-
-  bool is_forward = false;
   bool is_complex = false;
   bool R2C = !is_complex &&  is_forward;
   bool C2R = !is_complex && !is_forward;
@@ -122,24 +120,27 @@ int main(int argc, char* argv[]) {
 
   fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
   
-  for (int t = 0; t < 1; t++) {
+  for (int t = 0; t < 10; t++) {
     double start_time = MPI_Wtime();
     fftx_execute_1d(plan, (double*)dev_out, dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
     double end_time = MPI_Wtime();
 
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
-    
-    if (commRank == 0) {
-      cout << "end_to_end," << max_time<<endl;      
-    }
-  }
 
   // // layout is [Y, X'/px, Z]
   DEVICE_MEM_COPY(host_out, dev_out, sizeof(complex<double>) * No * Mdim * Ko * batch, MEM_COPY_DEVICE_TO_HOST);
-
-  if (commRank == 0) {
-    printf("diff: %f\n", (double) (M * N * K) - host_out[0].real());
+  double diff = ((double) M * N * K) - host_out[0].real();
+    if (commRank == 0) {
+      // cout << "end_to_end," << max_time<<endl;      
+      cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time << "," << diff << endl;      
+    }
   }
+  // if (commRank == 0) {
+  //   printf("diff: %f\n", (double) (M * N * K) - host_out[0].real());
+  // }
+
+
+
 
   fftx_plan_destroy(plan);
   
