@@ -14,6 +14,7 @@
 #include <cstdio>      // perror
 #include <unistd.h>    // dup2
 #include <sys/types.h> // rest for open/close
+#include <sys/utsname.h> // check machine name
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <memory>
@@ -25,7 +26,6 @@
 #include <cstring>
 #include <chrono>
 #include <regex>
-#include <regex>
 #pragma once
 
 #if defined ( PRINTDEBUG )
@@ -34,7 +34,7 @@
 #define DEBUGOUT 0
 #endif
 
-static constexpr auto cmake_nodebug{
+static constexpr auto cmake_script{
 R"(
 cmake_minimum_required ( VERSION 3.14 )
 set ( CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel" )
@@ -49,29 +49,12 @@ else ()
     set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
 endif ()
 
-add_library                ( tmp SHARED spiral_generated.c )
-target_include_directories ( tmp PRIVATE ${SPIRAL_SOURCE_DIR}/namespaces )
-target_compile_options     ( tmp PRIVATE -shared -fPIC ${_addl_options} )
-
-if ( WIN32 )
-    set_property    ( TARGET tmp PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )
-endif ()
-)"};
-
-static constexpr auto cmake_debug{
-R"(
-set ( _addl_options -Wall -Wextra )    
-cmake_minimum_required ( VERSION 3.14 )
-set ( CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, MinSizeRel" )
-project ( tmplib LANGUAGES C CXX )
-
-if ( DEFINED ENV{SPIRAL_HOME} )
-    set ( SPIRAL_SOURCE_DIR $ENV{SPIRAL_HOME} )
-else ()
-    if ( "x${SPIRAL_HOME}" STREQUAL "x" )
-        message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
+if ( APPLE )
+    if ( ${CMAKE_OSX_ARCHITECTURES} MATCHES "arm64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64.*" )
+	    set ( ADDL_COMPILE_FLAGS -arch arm64 )
+    elseif ( ${CMAKE_OSX_ARCHITECTURES} MATCHES "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64.*")
+	    set ( ADDL_COMPILE_FLAGS -arch x86_64 )
     endif ()
-    set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
 endif ()
 
 add_library                ( tmp SHARED spiral_generated.c )
@@ -112,10 +95,10 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     std::ostringstream oss2;
     oss << "init_" << name << "_spiral";
     oss1 << name << "_spiral";
-    oss2 << "destory_" << name << "_spiral";
+    oss2 << "destroy_" << name << "_spiral";
     std::string init = oss.str();
     std::string transform = oss1.str();
-    std::string destory = oss2.str();
+    std::string destroy = oss2.str();
     if(!shared_lib) {
         std::cout << "Cannot open library: " << dlerror() << '\n';
         exit(0);
@@ -123,7 +106,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     else if(shared_lib){
         void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
         void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
-        void (*fn3) ()= (void (*)())dlsym(shared_lib, destory.c_str());
+        void (*fn3) ()= (void (*)())dlsym(shared_lib, destroy.c_str());
         auto start = std::chrono::high_resolution_clock::now();
         if(fn1) {
             fn1();
@@ -138,14 +121,13 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         if(fn3){
             fn3();
         }else {
-            if ( DEBUGOUT) std::cout << destory << "function didnt run" << std::endl;
+            std::cout << destroy << "function didnt run" << std::endl;
         }
         auto stop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float, std::milli> duration = stop - start;
         CPUTime = duration.count();
         dlclose(shared_lib);
     }
-    // system("rm -rf temp");
     // system("rm -rf temp");
     return getKernelTime();
 }
@@ -170,9 +152,9 @@ void Executor::execute(std::string result) {
     out.close();
     std::ofstream cmakelists("temp/CMakeLists.txt");
     if(DEBUGOUT)
-        cmakelists << cmake_debug;
-    else
-        cmakelists << cmake_nodebug;
+        cmakelists << "set ( _addl_options -Wall -Wextra )" << std::endl;
+
+    cmakelists << cmake_script;
     cmakelists.close();
     if ( DEBUGOUT )
         std::cout << "compiling\n";
@@ -186,7 +168,19 @@ void Executor::execute(std::string result) {
     //     std::cout << "failed to create temp directory for runtime code\n";
     //     exit(-1);
     // }
-    system("cmake . && make");
+    #if defined(_WIN32) || defined (_WIN64)
+        system("cmake . && make");
+    #elif defined(__APPLE__)
+        struct utsname unameData;
+        uname(&unameData);
+        std::string machine_name(unameData.machine);
+        if(machine_name == "arm64")
+            system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
+        else
+            system("cmake . && make");
+    #else
+        system("cmake . && make"); 
+    #endif
     check = chdir(current_working_dir.c_str());
     // if((check)) {
     //     std::cout << "failed to create temp directory for runtime code\n";
