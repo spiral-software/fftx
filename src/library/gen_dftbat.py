@@ -540,7 +540,7 @@ with open ( _sizesfil, 'r' ) as fil:
             cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
 ##        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d' + '_' + _code_type
-        _func_stem = _file_stem + _nbat + '_type' + _stridetype + '_len' + _nsize + '_' + _code_type
+        _func_stem = _file_stem + _nbat + '_type_' + _stridetype + '_len_' + _nsize + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
         failure_written = False
