@@ -104,7 +104,8 @@ fftx_plan fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool i
 
   if (plan->is_complex) {
       //only correct if not embedded
-      /*
+
+    /*
       DEVICE_FFT_PLAN_MANY(&(plan->stg1), 2, sizes,
         sizes, plan->b, inM*inN*batch,
         sizes, plan->b, inM*inN*batch,
@@ -115,7 +116,46 @@ fftx_plan fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool i
         &inM, inM*inN/p*batch, batch,
         &inM, inM*inN/p*batch, batch,
         CUFFT_Z2Z, inM*inN/plan->r*batch);
-      */
+    */
+
+      int batch_sizeX = inN*inK/p;
+      DEVICE_FFT_PLAN_MANY(
+          &(plan->stg1),  1, &inM,
+          &inM, plan->b, inM*plan->b,
+          &inM, batch_sizeX*plan->b, plan->b,
+          DEVICE_FFT_Z2Z, batch_sizeX
+      );
+
+      int batch_sizeY = inM*inK/p;
+      DEVICE_FFT_PLAN_MANY(
+          &(plan->stg2),  1, &inN,
+          &inN, plan->b, inN*plan->b,
+          &inN, batch_sizeY*plan->b, plan->b,
+          DEVICE_FFT_Z2Z, batch_sizeY
+      );
+
+      int batch_sizeZ = inN*inM/p;      
+      DEVICE_FFT_PLAN_MANY(
+          &(plan->stg3), 1, &inK,
+          &inK, plan->b, inK*plan->b,
+          &inK, plan->b, inK*plan->b,
+          DEVICE_FFT_Z2Z, batch_sizeZ
+      );      
+
+      DEVICE_FFT_PLAN_MANY(
+          &(plan->stg2i),  1, &inN,
+          &inN, batch_sizeY*plan->b, plan->b,
+          &inN, plan->b, inN*plan->b,	  
+          DEVICE_FFT_Z2Z, batch_sizeY
+      );
+
+      DEVICE_FFT_PLAN_MANY(
+          &(plan->stg1i),  1, &inM,        
+          &inM, batch_sizeX*plan->b, plan->b,
+	  &inM, plan->b, inM*plan->b,	  
+          DEVICE_FFT_Z2Z, batch_sizeX
+      );
+      
   } else {
       int xr = M;
       int xc = M/2 + 1;
@@ -133,7 +173,7 @@ fftx_plan fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool i
       // [Y, X'/px, Z] <= [X'/px, Z, Y] (read seq, write strided)
       // if embedded, put output in
       // [Y, X'/px, 2Z]
-      {
+     {
         int M0 = ((M*e)/2 + 1)/p;
         M0 += (M0*p < M*e);
         int batch_sizeY = K * M0;   // stage 2, dist X
@@ -207,62 +247,6 @@ void fftx_mpi_rcperm_1d(fftx_plan plan, double * Y, double *X, int stage, bool i
             MEM_COPY_DEVICE_TO_HOST
           );
 
-          // int rank = -1;
-          // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-          // MPI_Barrier(MPI_COMM_WORLD);
-
-          // printf("%lu %lu %lu %lu %lu %lu\n", plan->shape[0], plan->shape[1], plan->shape[2], plan->shape[3], plan->shape[4], plan->shape[5]);
-
-
-          // MPI_Barrier(MPI_COMM_WORLD);
-          // MPI_Barrier(MPI_COMM_WORLD);
-          // MPI_Barrier(MPI_COMM_WORLD);
-
-          // for (int ii = 0; ii < plan->shape[1]; ii++) {
-          //   for (int i = 0; i < plan->shape[0]; i++) {
-
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     for (int ll = 0; ll < plan->shape[5]; ll++) {
-          //       MPI_Barrier(MPI_COMM_WORLD);
-          //       MPI_Barrier(MPI_COMM_WORLD);
-          //       MPI_Barrier(MPI_COMM_WORLD);
-          //       if (ll == rank) {
-          //         for (int l = 0; l < plan->shape[4]; l++) {
-          //           for (int j = 0; j < plan->N; j++) {
-          //             for (int b = 0; b < plan->b; b++) {
-          //               printf(
-          //                 "%4.0f ",
-          //                 plan->send_buffer[
-          //                   (
-          //                     (ii * plan->shape[0] + i) * plan->shape[4] * plan->N +
-          //                     l                                          * plan->N +
-          //                     j
-          //                   ) * plan->b + b
-          //                 ].real()
-          //               );
-          //             }
-          //           }
-          //           printf("\n");
-          //         }
-
-          //       }
-
-          //       MPI_Barrier(MPI_COMM_WORLD);
-          //       MPI_Barrier(MPI_COMM_WORLD);
-          //       MPI_Barrier(MPI_COMM_WORLD);
-          //     }
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     MPI_Barrier(MPI_COMM_WORLD);
-
-          //     if (rank == 0) { printf("\n");  }
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //     MPI_Barrier(MPI_COMM_WORLD);
-          //   }
-          // }
 
           // [pz, X'/px, Z/pz, Y] <= [X', Z/pz, Y]
           MPI_Alltoall(
@@ -332,6 +316,10 @@ void fftx_mpi_rcperm_1d(fftx_plan plan, double * Y, double *X, int stage, bool i
         }
       }
       break;
+      
+  case FFTX_MPI_EMBED_3:
+    break;
+    
     case FFTX_MPI_EMBED_4:
       {
         // if inverse,
@@ -393,7 +381,9 @@ void fftx_execute_1d(
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // TODO: write complex.
-    } else {
+      
+    } else 
+    {
       //forward real
       // printf("stage 1\n");
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
