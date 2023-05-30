@@ -18,6 +18,21 @@ The scope of the distributed library is described by 7 different factors, namely
 
 Currently, only double-precision (complex or real) data is supported. Additional details are describe in the appropriate sections.
 
+API
+---
+
+The design of the FFTX distributed API is similar to many other libraries, i.e. there is a plan, execute and destroy routines. The APIs are as follows:
+
+//1D processor distribution
+ fftx_plan  plan = fftx_plan_distributed(p, M, N, K, batch, embedded, complex);
+
+//2D processor distribution
+ fftx_plan  plan = fftx_plan_distributed(r, c, M, N, K, batch, embedded, complex);
+
+ fftx_execute(plan, device_out_buffer, device_in_buffer, FFTX_FORWARD);
+ fftx_plan_destroy(plan);
+
+
 Types of FFTs
 -------------
 **Options:** Real,  Complex
@@ -25,7 +40,7 @@ Types of FFTs
 Currently, the FFTX distributed library supports only real and complex FFTs. Complex FFT means that both inputs and outputs are complex numbers. Real FFTs mean that either the inputs or the outputs are real numbers. The following data layout are assumed for the different types of FFTs.
 
 1. Complex data are assumed to be in interleaved data format. This means that the real and imaginary components of the complex number are stored in consecutive memory location.
-2. Real data are assumed 
+2. Real data are assumed to be in natural order.
 
 It should be noted that further factors may impose additional constraints on the input/output data. These additional constraints are described in their respective sub-sections.
 
@@ -38,7 +53,7 @@ The Backwards FFT, also commonly known as the Inverse FFT, is computation that g
 
 Batch size
 ----------
-**Options:** Integer value
+**Options:** Integer values
 
 The batch size describes how many distributed FFT is computed. A minimum value of 1 is required. Values higher than 1 means that multiple distributed FFTs are computed at the same time. These FFTs are assumed to be interleaved. This means that the 1^{st} element of the 1^{st} FFT is followed by the 1^{st} element of the 2^{nd} FFT, and the 2^{nd} element of the 1^{st} FFT is preceded by the 1^{th} element of the last FFT, so forth. 
 
@@ -54,7 +69,7 @@ Embedded
 --------
 **Options:** Embedded, Not Embedded
 
-
+The current version of FFTX allows one to embed a data cube into a larger data cube that has been padded with zeros. Each dimension of the padded cube is twice that of the original dimensions. The 3D FFT is performed on the padded data cube. The data is embedded in the center, with equal number of zeros padded on both sides of the data cube. When a dimension of the original data cube is an odd size, the computation is undefined. 
 
 MPI Type
 --------
