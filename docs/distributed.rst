@@ -23,15 +23,21 @@ API
 
 The design of the FFTX distributed API is similar to many other libraries, i.e. there is a plan, execute and destroy routines. The APIs are as follows:
 
-//1D processor distribution
- fftx_plan  plan = fftx_plan_distributed(p, M, N, K, batch, embedded, complex);
+.. code-block:: none
 
-//2D processor distribution
- fftx_plan  plan = fftx_plan_distributed(r, c, M, N, K, batch, embedded, complex);
+    //1D processor distribution, p is the number of processors. The number of processor is given by p
+    fftx_plan  plan = fftx_plan_distributed(p, X, Y, Z, batch, embedded, complex);
 
- fftx_execute(plan, device_out_buffer, device_in_buffer, FFTX_FORWARD);
- fftx_plan_destroy(plan);
+    //2D processor distribution. The p processors are organized into a r x c grid.
+    fftx_plan  plan = fftx_plan_distributed(r, c, X, Y, Z, batch, embedded, complex);
 
+    //device_out_buffers, and device_in_buffers are assumed to be GPU pointers.
+    fftx_execute(plan, device_out_buffer, device_in_buffer, direction);
+ 
+    //release all resources allocated by the planning functions
+    fftx_plan_destroy(plan);
+
+Only one of the planning function is required. The choice of the planning function depends on how the distributed data is mapped onto the processor grid.
 
 Types of FFTs
 -------------
@@ -46,7 +52,7 @@ It should be noted that further factors may impose additional constraints on the
 
 Directions
 ----------
-**Options:** Forward, Backwards
+**Options:** FFTX_FORWARD, FFTX_BACKWARD
 
 The Forward FFT computes the discrete Fourier transform (DFT) and takes the origin input from the time/space domain into the frequency domain.
 The Backwards FFT, also commonly known as the Inverse FFT, is computation that goes from frequency domain back to time/space domain.
