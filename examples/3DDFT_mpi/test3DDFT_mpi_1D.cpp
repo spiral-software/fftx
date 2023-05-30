@@ -113,24 +113,38 @@ int main(int argc, char* argv[]) {
   // TODO: resume conversion of forward to inverse from here.
 
 
-  fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
-
-  for (int t = 0; t < 1; t++) {
+  fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, 1, is_embedded, is_complex);
+  for (int t = 0; t < 10; t++) {
     double start_time = MPI_Wtime();
-    fftx_execute_1d(plan, (double*)dev_out, dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
+    for (int b = 0; b < batch; b++) {
+      fftx_execute_1d(plan, (double*)dev_out + b, dev_in + b, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
+    }
     double end_time = MPI_Wtime();
-
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
-
-  // // layout is [Y, X'/px, Z]
-  // DEVICE_MEM_COPY(host_out, dev_out, sizeof(complex<double>) * No * Mdim * Ko * batch, MEM_COPY_DEVICE_TO_HOST);
-  // double diff = ((double) M * N * K) - host_out[0].real();
     if (rank == 0) {
-      // cout << "end_to_end," << max_time<<endl;
       cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time << endl;
-      // cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time << "," << diff << endl;
     }
   }
+
+
+  // fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+
+  // for (int t = 0; t < 1; t++) {
+  //   double start_time = MPI_Wtime();
+  //   fftx_execute_1d(plan, (double*)dev_out, dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
+  //   double end_time = MPI_Wtime();
+
+  //   double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
+
+  // // // layout is [Y, X'/px, Z]
+  // // DEVICE_MEM_COPY(host_out, dev_out, sizeof(complex<double>) * No * Mdim * Ko * batch, MEM_COPY_DEVICE_TO_HOST);
+  // // double diff = ((double) M * N * K) - host_out[0].real();
+  //   if (rank == 0) {
+  //     // cout << "end_to_end," << max_time<<endl;
+  //     cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time << endl;
+  //     // cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time << "," << diff << endl;
+  //   }
+  // }
 
   // TODO: copy more for C2R?
   if (is_forward) { // R2C
