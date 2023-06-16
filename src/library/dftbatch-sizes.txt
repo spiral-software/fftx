@@ -3,18 +3,59 @@
 ##  Hash (#) as first non-white space indicates a comment
 ##  Lines containing white space only are ignored
 ##  All other lines must be valid size specs in the form:
-##  NOTE: Only batch size of 1 is supported for now.
-##  nbatch := 1;  szns := [ x ];
+##  nbatch := <bat>;  szns := <len>; stridetype := {1|2|3|4};
+##  <bat> is a single value (representing the product of the grid size, e.g., 4x4 -> 16)
+##  Stridetype determines the stride applied on reading & writing:
+##      1 ==> write no stride, read no stride
+##      2 ==> write no stride, read strided
+##      3 ==> write strided, read no stride
+##      4 ==> write strided, read strided
 ##
 
-##  nbatch := 4;  szns := [ 50 ];
-##  nbatch := 4;  szns := [ 60 ];
+nbatch := 4;  szns := 64;  stridetype := 1;
+nbatch := 4;  szns := 80;  stridetype := 1;
 
-nbatch := 4;  szns := [ 64 ];  stridetype := 1;
-nbatch := 4;  szns := [ 80 ];  stridetype := 1;
+nbatch := 16;  szns := 64;  stridetype := 1;
+nbatch := 16;  szns := 80;  stridetype := 1;
 
-##  nbatch := 16;  szns := [ 64 ];  stridetype := 1;
-##  nbatch := 16;  szns := [ 80 ];  stridetype := 1;
+nbatch := 32;  szns := 64;  stridetype := 1;
+nbatch := 32;  szns := 80;  stridetype := 1;
 
-##  nbatch := 64;  szns := [ 64 ];  stridetype := 1;
-##  nbatch := 64;  szns := [ 80 ];  stridetype := 1;
+nbatch := 64;  szns := 64;  stridetype := 1;
+nbatch := 64;  szns := 80;  stridetype := 1;
+
+nbatch := 4;  szns := 64;  stridetype := 2;
+nbatch := 4;  szns := 80;  stridetype := 2;
+
+nbatch := 16;  szns := 64;  stridetype := 2;
+nbatch := 16;  szns := 80;  stridetype := 2;
+
+nbatch := 32;  szns := 64;  stridetype := 2;
+nbatch := 32;  szns := 80;  stridetype := 2;
+
+nbatch := 64;  szns := 64;  stridetype := 2;
+nbatch := 64;  szns := 80;  stridetype := 2;
+
+nbatch := 4;  szns := 64;  stridetype := 3;
+nbatch := 4;  szns := 80;  stridetype := 3;
+
+nbatch := 16;  szns := 64;  stridetype := 3;
+nbatch := 16;  szns := 80;  stridetype := 3;
+
+nbatch := 32;  szns := 64;  stridetype := 3;
+nbatch := 32;  szns := 80;  stridetype := 3;
+
+nbatch := 64;  szns := 64;  stridetype := 3;
+nbatch := 64;  szns := 80;  stridetype := 3;
+
+nbatch := 4;  szns := 64;  stridetype := 4;
+nbatch := 4;  szns := 80;  stridetype := 4;
+
+nbatch := 16;  szns := 64;  stridetype := 4;
+nbatch := 16;  szns := 80;  stridetype := 4;
+
+nbatch := 32;  szns := 64;  stridetype := 4;
+nbatch := 32;  szns := 80;  stridetype := 4;
+
+nbatch := 64;  szns := 64;  stridetype := 4;
+nbatch := 64;  szns := 80;  stridetype := 4;

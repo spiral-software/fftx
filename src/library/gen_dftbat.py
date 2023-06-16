@@ -1,6 +1,6 @@
 #! python
 
-##  Copyright (c) 2018-2022, Carnegie Mellon University
+##  Copyright (c) 2018-2023, Carnegie Mellon University
 ##  See LICENSE for details
 
 ##  This script reads a file of cube sizes (command line arg), that contains several size
@@ -117,7 +117,7 @@ def start_header_file ( type, codefor ):
         
     _str = '#ifndef ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n'
     _str = _str + '#define ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n\n'
-    _str = _str + '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str = _str + '//  Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '//  See LICENSE for details\n\n'
 
     _str = _str + '#include "fftx3.hpp"\n\n'
@@ -148,33 +148,25 @@ def start_header_file ( type, codefor ):
 
     return _str;
 
-##  A potential new version for generating dftbat code will have 3 parameters: number batches, length, and stride type.
-##  This will use point_t<3> to hold the additional arguments (currently point_t<2> holds nbatch & length).
-##  The following code use the existing 2 args with the potential new code commented out.
+##  The new version for generating dftbat code has 3 parameters: number batches, length, and stride type.
+##  Use point_t<3> to hold the arguments (nbatch, length, and stridetype).
 
 def body_public_header ( codefor ):
     "Add the body details for the public header file"
 
-    # if codefor != '':
-    #     codefor = codefor + '_'
-
     _str =        '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of length N + 1, where N is the number of unique instances of the\n'
     _str = _str + '//  transform in the library.  Each element is a struct of type\n'
-##    _str = _str + '//  fftx::point_t<2> specifying the number of batches and the transform dimension\n\n'
-    _str = _str + '//  fftx::point_t<3> specifying the number of batches and the transform dimension\n\n'
+    _str = _str + '//  fftx::point_t<3> specifying # of batches, transform dimension, and stride type\n\n'
 
-##    _str = _str + 'fftx::point_t<2> * ' + _file_stem + codefor + 'QuerySizes ();\n'
     _str = _str + 'fftx::point_t<3> * ' + _file_stem + codefor + 'QuerySizes ();\n'
     _str = _str + '#define ' + _file_stem + 'QuerySizes ' + _file_stem + codefor + 'QuerySizes\n\n'
 
     _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the,\n'
     _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-##    _str = _str + '//  Accepts fftx::point_t<2> specifying size, and pointers to the output\n'
     _str = _str + '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n'
     _str = _str + '//  (returned) data and the input data.\n\n'
 
-##    _str = _str + 'void ' + _file_stem + codefor + 'Run ( fftx::point_t<2> req, double * output, double * input );\n'
     _str = _str + 'void ' + _file_stem + codefor + 'Run ( fftx::point_t<3> req, double * output, double * input );\n'
     _str = _str + '#define ' + _file_stem + 'Run ' + _file_stem + codefor + 'Run\n\n'
 
@@ -183,7 +175,6 @@ def body_public_header ( codefor ):
     _str = _str + '//  information the user may call the init function to setup for the transform,\n'
     _str = _str + '//  then run the transform repeatedly, and finally tear down (using destroy function).\n\n'
 
-##    _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<2> req );\n'
     _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<3> req );\n'
     _str = _str + '#define ' + _file_stem + 'Tuple ' + _file_stem + codefor + 'Tuple\n\n'
 
@@ -204,7 +195,7 @@ def library_api ( mkvers, decor, type ):
     else:
         codefor = type + '_'
 
-    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str =        '//  Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '//  See LICENSE for details\n\n'
 
     _str = _str + '#include <stdio.h>\n'
@@ -220,17 +211,13 @@ def library_api ( mkvers, decor, type ):
         _str = _str + '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  exit(-1); } }\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
-##    _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<2> specifying\n'
     _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying\n'
     _str = _str + '//  the number of batches and the transform dimension.  The final entry in the list\n'
     _str = _str + '//  is a zero entry.\n\n'
 
-##    _str = _str + 'fftx::point_t<2> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
-##    _str = _str + '    fftx::point_t<2> *wp = (fftx::point_t<2> *) malloc ( sizeof ( AllSizes2_' + type + ' ) );\n'
     _str = _str + 'fftx::point_t<3> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
     _str = _str + '    fftx::point_t<3> *wp = (fftx::point_t<3> *) malloc ( sizeof ( AllSizes3_' + type + ' ) );\n'
     _str = _str + '    if ( wp != NULL)\n'
-##    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes2_' + type + ', sizeof ( AllSizes2_' + type + ' ) );\n\n'
     _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes3_' + type + ', sizeof ( AllSizes3_' + type + ' ) );\n\n'
     _str = _str + '    return wp;\n'
     _str = _str + '}\n\n'
@@ -241,17 +228,13 @@ def library_api ( mkvers, decor, type ):
     _str = _str + '//  then run the transform repeatedly, and finally tear down (using the destroy\n'
     _str = _str + '//  function).  Returns NULL if requested size is not found\n\n'
 
-##    _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<2> req )\n'
     _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<3> req )\n'
     _str = _str + '{\n'
     _str = _str + '    int indx;\n'
-##    _str = _str + '    int numentries = sizeof ( AllSizes2_' + type + ' ) / sizeof ( fftx::point_t<2> ) - 1;    // last entry is { 0, 0 }\n'
     _str = _str + '    int numentries = sizeof ( AllSizes3_' + type + ' ) / sizeof ( fftx::point_t<3> ) - 1;    // last entry is { 0, 0 }\n'
     _str = _str + '    transformTuple_t *wp = NULL;\n\n'
 
     _str = _str + '    for ( indx = 0; indx < numentries; indx++ ) {\n'
-##    _str = _str + '        if ( req[0] == AllSizes2_' + type + '[indx][0] &&\n'
-##    _str = _str + '             req[1] == AllSizes2_' + type + '[indx][1] ) {\n'
     _str = _str + '        if ( req[0] == AllSizes3_' + type + '[indx][0] &&\n'
     _str = _str + '             req[1] == AllSizes3_' + type + '[indx][1] ) {\n'
     _str = _str + '            // found a match\n'
@@ -268,11 +251,9 @@ def library_api ( mkvers, decor, type ):
 
     _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the\n'
     _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-##    _str = _str + '//  Accepts fftx::point_t<2> specifying size, and pointers to the output\n'
     _str = _str + '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n'
     _str = _str + '//  (returned) data and the input data.\n\n'
 
-##    _str = _str + 'void ' + _file_stem + decor + 'Run ( fftx::point_t<2> req, double * output, double * input )\n'
     _str = _str + 'void ' + _file_stem + decor + 'Run ( fftx::point_t<3> req, double * output, double * input )\n'
     _str = _str + '{\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( req );\n'
@@ -316,7 +297,6 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'int  ' + _file_stem + decor + 'python_init_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-##    _str = _str + '    fftx::point_t<2> rsz;\n'
     _str = _str + '    fftx::point_t<3> rsz;\n'
     _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
@@ -371,7 +351,6 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'void ' + _file_stem + decor + 'python_run_wrapper ( int * req, double * output, double * input )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-##    _str = _str + '    fftx::point_t<2> rsz;\n'
     _str = _str + '    fftx::point_t<3> rsz;\n'
     _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
@@ -405,7 +384,6 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'void ' + _file_stem + decor + 'python_destroy_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-##    _str = _str + '    fftx::point_t<2> rsz;\n'
     _str = _str + '    fftx::point_t<3> rsz;\n'
     _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
@@ -428,7 +406,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
 
 def cmake_library ( decor, type ):
-    _str =        '##\n## Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str =        '##\n## Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
 
     _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
@@ -470,7 +448,6 @@ def cmake_library ( decor, type ):
 
 
 _extern_decls  = ''
-##  _all_sizes     = 'static fftx::point_t<2> AllSizes2_' + _code_type + '[] = {\n'
 _all_sizes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
 
@@ -496,19 +473,6 @@ with open ( _sizesfil, 'r' ) as fil:
         testscript.write ( 'codefor := "' + _code_type + '"; \n' )
         testscript.write ( 'createJIT := true;\n' )
         testscript.close()
-
-        ##  2 parameter logic: for nbatch & length
-        # _dims = re.sub ( '.*nbatch :=', '', line )      ## get number batches
-        # _dims = re.sub ( ';.*', '', _dims )
-        # _dims = re.sub ( ' *', '', _dims )              ## compress out white space
-        # _dims = _dims.rstrip()                          ## remove training newline
-        # _nbat = _dims
-        
-        # line = re.sub ( '.*\[', '', line )              ## drop "szns := ["
-        # line = re.sub ( '\].*', '', line )              ## drop "];"
-        # line = re.sub ( ' *', '', line )                ## compress out white space
-        # line = line.rstrip()                            ## remove training newline
-        # _dims = line
 
         ##  3 parameter logic: for nbatch, length, and stride type
         line = re.sub ( ' ', '', line )                 ## suppress white space
@@ -540,7 +504,8 @@ with open ( _sizesfil, 'r' ) as fil:
             cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
 ##        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d' + '_' + _code_type
-        _func_stem = _file_stem + _nbat + '_type_' + _stridetype + '_len_' + _nsize + '_' + _code_type
+        stridestr = [ "AParAPar", "AParAVec", "AVecAPar", "AVecAVec" ]
+        _func_stem = _file_stem + _nbat + '_type_' + stridestr[int(_stridetype)-1] + '_len_' + _nsize + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
         failure_written = False
@@ -575,7 +540,6 @@ with open ( _sizesfil, 'r' ) as fil:
             _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
 
             ##  Identify transform by # batches, xform size, and stride type
-##            _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _dims + ' },\n'
             _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _nsize + ', ' + _stridetype + ' },\n'
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
@@ -602,7 +566,6 @@ with open ( _sizesfil, 'r' ) as fil:
     _header_fil.write ( _filebody )
     _header_fil.write ( _extern_decls )
     _header_fil.write ( _tuple_funcs + '    { NULL, NULL, NULL }\n};\n\n' )
-##    _header_fil.write ( _all_sizes + '    { 0, 0 }\n};\n\n' )
     _header_fil.write ( _all_sizes + '    { 0, 0, 0 }\n};\n\n' )
     _header_fil.write ( '#endif\n\n' )
     _header_fil.close ()
