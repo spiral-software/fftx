@@ -42,7 +42,7 @@ if 1 = 1 then
     PrintLine("fftx_dft-batch: name = ", name, " bat = ", nbatch, " stride:", wstr,
               " length = ", szns, " jitname = ", jitname);
 
-    tags := [ [APar, Apar], [Apar, AVec], [Avec, APar], [AVec, AVec] ];
+    tags := [ [APar, APar], [APar, AVec], [AVec, APar], [AVec, AVec] ];
     t := let ( name := name,
                TFCall ( TRC ( TTensorI ( DFT ( szns, sign ), nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
                         rec(fname := name, params := [] ) )
@@ -55,7 +55,7 @@ if 1 = 1 then
 
     ##  We need the Spiral functions wrapped in 'extern C' for adding to a library
     opts.wrapCFuncs := true;
-    Ass ( opts.includes, "<float.h>" );
+    Add ( opts.includes, "<float.h>" );
     tt := opts.tagIt(t);
 
     c := opts.fftxGen(tt);

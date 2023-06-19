@@ -25,7 +25,7 @@
 DFTBAT_LIB=true
 
 ##  Build the batch 1D packed real DFT (real to complex, complex to real) library
-PRDFTBAT_LIB=false
+PRDFTBAT_LIB=true
 
 ##  Build the 3D DFT (complex to complex) library
 MDDFT_LIB=true
@@ -34,7 +34,7 @@ MDDFT_LIB=true
 MDPRDFT_LIB=true
 
 ##  Build the Real Convolution library
-RCONV_LIB=false
+RCONV_LIB=true
 
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
 DISTDFT_LIB=false
@@ -46,7 +46,8 @@ PSATD_LIB=false
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
 
 ##  File containing the sizes to build for the GPU version of MDDFT, MDPRDFT, and RCONV
-GPU_SIZES_FILE="cube-sizes-gpu.txt"
+##  GPU_SIZES_FILE="cube-sizes-gpu.txt"
+GPU_SIZES_FILE="cube-sizes.txt"
 
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
