@@ -85,6 +85,7 @@ add_subdirectory ( src )
 if ( BUILD_EXAMPLES )
     ##  Build the FFTX example programs -- traverse the examples sub-directlry
     add_subdirectory ( examples )
+    add_subdirectory ( external_api_examples )
 else ()
     message ( "Build examples option = ${BUILD_EXAMPLES}; no example programs will be built" )
 endif ()

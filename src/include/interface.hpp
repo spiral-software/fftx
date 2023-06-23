@@ -300,6 +300,7 @@ void FFTXProblem::transform(){
                 if ( DEBUGOUT) std::cout << "found cached file on disk\n";
                 std::string fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
                                        ( std::istreambuf_iterator<char>()    ) );
+                res = fcontent;
                 Executor e;
                 e.execute(fcontent);
                 executors.insert(std::make_pair(sizes, e));
