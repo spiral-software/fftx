@@ -1,6 +1,6 @@
 using namespace fftx;
 
-std::string batch1ddft_script = "\n\
+std::string ibatch1ddft_script = "\n\
     transform := let(\n\
         name := \"grid_dft\"::\"d_cont\",\n\
         TFCall(TRC(TTensorI(DFT(N, sign), N*N, read, write)),\n\
@@ -8,7 +8,7 @@ std::string batch1ddft_script = "\n\
     );";
 
 
-class BATCH1DDFT: public FFTXProblem {
+class IBATCH1DDFTProblem: public FFTXProblem {
 public:
     using FFTXProblem::FFTXProblem;
     void randomProblemInstance() {
@@ -27,8 +27,9 @@ public:
         else{
             std::cout << "write = AVec;" << std::endl;
         }
-        std::cout << "sign := -1;" << std::endl;
+        std::cout << "sign := 1;" << std::endl;
         std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
-        std::cout << batch1ddft_script << std::endl;
+        std::cout << ibatch1ddft_script << std::endl;
     }
 };
+

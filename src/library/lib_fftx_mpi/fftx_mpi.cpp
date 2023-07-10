@@ -9,6 +9,16 @@
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"
 
+#include "interface.hpp"
+#include "batch1ddftObj.hpp"
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#elif defined FFTX_HIP
+#include "hipbackend.hpp"
+#else
+#include "cpubackend.hpp"
+#endif
+
 using namespace std;
 
 void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
