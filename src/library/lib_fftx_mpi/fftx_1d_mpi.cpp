@@ -134,31 +134,30 @@ fftx_plan fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool i
           DEVICE_FFT_Z2Z, batch_sizeY
       );
 
-      int batch_sizeZ = inN*inM/p;      
+      int batch_sizeZ = inN*inM/p;
       DEVICE_FFT_PLAN_MANY(
           &(plan->stg3), 1, &inK,
           &inK, plan->b, inK*plan->b,
           &inK, plan->b, inK*plan->b,
           DEVICE_FFT_Z2Z, batch_sizeZ
-      );      
+      );
 
       DEVICE_FFT_PLAN_MANY(
           &(plan->stg2i),  1, &inN,
           &inN, batch_sizeY*plan->b, plan->b,
-          &inN, plan->b, inN*plan->b,	  
+          &inN, plan->b, inN*plan->b,
           DEVICE_FFT_Z2Z, batch_sizeY
       );
 
       DEVICE_FFT_PLAN_MANY(
-          &(plan->stg1i),  1, &inM,        
+          &(plan->stg1i),  1, &inM,
           &inM, batch_sizeX*plan->b, plan->b,
-	  &inM, plan->b, inM*plan->b,	  
+	        &inM, plan->b, inM*plan->b,
           DEVICE_FFT_Z2Z, batch_sizeX
       );
-      
   } else {
-      int xr = M;
-      int xc = M/2 + 1;
+      int xr = inM;
+      int xc = inM/2 + 1;
       // slowest to fastest
       // [X', Z/pz, Y, b] <= [Z/pz, Y, X, b] (read seq, write strided)
       // X' is complex size M/2 + 1
@@ -169,11 +168,10 @@ fftx_plan fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool i
         &xc, batch_sizeX*plan->b, plan->b,
         DEVICE_FFT_D2Z, batch_sizeX
 			);
-
       // [Y, X'/px, Z] <= [X'/px, Z, Y] (read seq, write strided)
       // if embedded, put output in
       // [Y, X'/px, 2Z]
-     {
+      {
         int M0 = ((M*e)/2 + 1)/p;
         M0 += (M0*p < M*e);
         int batch_sizeY = K * M0;   // stage 2, dist X
@@ -316,10 +314,10 @@ void fftx_mpi_rcperm_1d(fftx_plan plan, double * Y, double *X, int stage, bool i
         }
       }
       break;
-      
-  case FFTX_MPI_EMBED_3:
-    break;
-    
+
+    case FFTX_MPI_EMBED_3:
+      break;
+
     case FFTX_MPI_EMBED_4:
       {
         // if inverse,
@@ -381,8 +379,8 @@ void fftx_execute_1d(
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // TODO: write complex.
-      
-    } else 
+
+    } else
     {
       //forward real
       // printf("stage 1\n");
