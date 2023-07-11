@@ -9,14 +9,23 @@ import sys
 import re
 import os
 import numpy as np
+import argparse
 
-if len(sys.argv) < 2:
-    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>x<stride_type>] [-f sizes_file]' )
-##    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>] [-f sizes_file]' )
-    sys.exit ('missing argument(s), NOTE: Only one of -s or -f should be specified')
+parser = argparse.ArgumentParser ( description = 'Validate FFTX built libraries against NumPy computed versions of the transforms' )
+
+##  Positional argument: libdir
+parser.add_argument ( 'libdir', type=str, help='directory of the library' )
+
+##  Optional arguments
+group = parser.add_mutually_exclusive_group()
+group.add_argument ( '-s', '--size', type=str, help='size of the transform (e.g., 16x80x2)' )
+group.add_argument ( '-f', '--file', type=str, help='file containing sizes to loop over' )
+
+args = parser.parse_args()
+
+_libdir = args.libdir
 
 _under = '_'
-_libdir = sys.argv[1]
 fftxpre = 'fftx_'
 myvar   = sys.argv[0]
 if re.match ( 'val_', myvar ):
@@ -47,7 +56,7 @@ else:
     _libinv = 'lib' + _libinv + '.so'
     _libext = '.so'
 
-print ( 'library stems for fwd/inv xforms = ' + _libfwd + ' / ' + _libinv + ' lib ext = ' + _libext, flush = True )
+print ( 'library stems for fwd/inv xforms = {} / {} lib ext = {}'.format(_libfwd, _libinv, _libext), flush = True )
 
 
 def exec_xform ( segnams, dims, fwd, libext, typecode ):
@@ -74,7 +83,6 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
     ##  Destination (output) -- fill with zeros, one for spiral, one for python
     _dst_python = np.zeros(shape=(nbat, dz)).astype(complex)
     _dst_spiral = np.zeros(shape=(nbat, dz)).astype(complex)
-##    _xfmsz      = np.zeros(2).astype(ctypes.c_int)
     _xfmsz      = np.zeros(3).astype(ctypes.c_int)
     _xfmsz[0] = nbat
     _xfmsz[1] = dz
@@ -101,7 +109,7 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
 
     _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
     if not os.path.exists ( _sharedLibPath ):
-        print ( 'library file: ' + uselib + ' does not exist - continue', flush = True )
+        print ( 'library file: {} does not exist - continue'.format(uselib), flush = True )
         return
 
     _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
@@ -113,15 +121,22 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
         raise RuntimeError(msg)
     _status = _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
     if not _status:
-        print ( 'Size: ' + str(_xfmsz) + ' was not found in library - continue' )
+        print ( 'Size: {} was not found in library - continue'.format(_xfmsz), flush = True )
         return
 
     ##  Call the library function
     func = pywrap + 'run' + _under + 'wrapper'
-    _libFuncAttr = getattr ( _sharedLibAccess, func )
-    _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ),
-                   _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
-                   _src.ctypes.data_as ( ctypes.c_void_p ) )
+    try:
+        _libFuncAttr = getattr ( _sharedLibAccess, func )
+        _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ),
+                       _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
+                       _src.ctypes.data_as ( ctypes.c_void_p ) )
+        print ( 'Called library func: {}'.format(func), flush = True )
+    except Exception as e:
+        print("Error occurred during library function call:", type(e).__name__)
+        print("Exception details:", str(e))
+        return
+
     if not fwd:
         ##  Normalize Spiral result: numpy result is normalized
         ##  Divide by Length (dz) as size _dst_spiral increases with number batches
@@ -139,43 +154,32 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
     else:
         dir = 'inverse'
 
-    print ( 'Difference between Python / Spiral(' + typecode + ') [' + dir + '] transforms = ' + str ( _diff ), flush = True )
+    print ( 'Difference between Python / Spiral({}) [{}] transforms = {}'.format(typecode, dir, _diff), flush = True )
 
     return;
 
 
 _sizesfile = 'dftbatch-sizes.txt'
 
-if len(sys.argv) > 2:
-    ##  Optional problem size or file specified:
-    if sys.argv[2] == '-s':
-        ##  problem size is specified:  e.g., 80x80x80
-        _probsz = sys.argv[3]
-        _probsz = _probsz.rstrip()                  ##  remove training newline
-        _dims = re.split ( 'x', _probsz )
+if args.size:
+    _probsz = args.size.rstrip()
+    _dims = re.split ( 'x', _probsz )
+    print ( 'Size = {} (batches) x {} (length) x {} (stride type)'.format ( _dims[0], _dims[1], _dims[2] ), flush = True )
+    exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
+    exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
 
-##        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
-        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length) x ' + _dims[2] + ' (stride type)', flush = True )
-        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
+    exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
+    exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
 
-        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
+    exit ()
 
-        exit ()
-
-    elif sys.argv[2] == '-f':
-        ##  Option sizes file is specified:  use the supplied filename to loop over desired sizes
-        _sizesfile = sys.argv[3]
-        _sizesfile = _sizesfile.rstrip()
-
-    else:
-        print ( 'Unrecognized argument: ' + sys.argv[2] + ' ignoring remainder of command line', flush = True )
+elif args.file:
+    _sizesfile = args.file.rstrip()
 
 
 with open ( _sizesfile, 'r' ) as fil:
     for line in fil.readlines():
-        ##  print ( 'Line read = ' + line, flush = True )
+        ##  print ( 'Line read = {}'.format(line), flush = True )
         if re.match ( '[ \t]*#', line ):                ## ignore comment lines
             continue
 
@@ -210,8 +214,7 @@ with open ( _sizesfile, 'r' ) as fil:
         chnk = re.split ( '=', segs[2] )
         _dims[2] = chnk[1]
         
-        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length) x ' + _dims[2] + ' (stride type)', flush = True )
-##        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
+        print ( 'Size = {} (batches) x {} (length) x {} (stride type)'.format ( _dims[0], _dims[1], _dims[2] ), flush = True )
         exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
         exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
 

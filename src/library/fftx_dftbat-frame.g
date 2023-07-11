@@ -1,7 +1,7 @@
 ##  Copyright (c) 2018-2021, Carnegie Mellon University
 ##  See LICENSE for details
 
-# 1d batch of 1d and multidimensional of complex DFTs
+##  batch of 1D complex DFTs
 
 Load(fftx);
 ImportAll(fftx);
@@ -43,10 +43,17 @@ if 1 = 1 then
               " length = ", szns, " jitname = ", jitname);
 
     tags := [ [APar, APar], [APar, AVec], [AVec, APar], [AVec, AVec] ];
-    t := let ( name := name,
-               TFCall ( TRC ( TTensorI ( DFT ( szns, sign ), nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
-                        rec(fname := name, params := [] ) )
-              );
+    if fwd then
+        t := let ( name := name,
+                   TFCall ( TRC ( TTensorI ( DFT ( szns, sign ), nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
+                            rec(fname := name, params := [] ) )
+                 );
+    else
+        t := let ( name := name,
+                   TFCall ( TRC ( TTensorI ( Scale (1/szns, DFT ( szns, sign )), nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
+                            rec(fname := name, params := [] ) )
+                 );
+    fi;
 
     opts := conf.getOpts(t);
     if not IsBound ( libdir ) then

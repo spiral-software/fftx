@@ -35,6 +35,38 @@ import os, stat
 import re
 import shutil
 
+################  Definitions pulled from SnowWhite __init__.py  ############
+
+SW_METADATA_START   = '!!START_METADATA!!'
+SW_METADATA_END     = '!!END_METADATA!!'
+SW_STR_DOUBLE       = 'Double'
+SW_STR_FORWARD      = 'Forward'
+SW_STR_INVERSE      = 'Inverse'
+SW_KEY_DESTROY          = 'Destroy'
+SW_KEY_DIMENSIONS       = 'Dimensions'
+SW_KEY_DIRECTION        = 'Direction'
+SW_KEY_EXEC             = 'Exec'
+SW_KEY_INIT             = 'Init'
+SW_KEY_NAMES            = 'Names'
+SW_KEY_PLATFORM         = 'Platform'
+SW_KEY_PRECISION        = 'Precision'
+SW_KEY_TRANSFORMS       = 'Transforms'
+SW_KEY_TRANSFORMTYPE    = 'TransformType'
+SW_KEY_TRANSFORMTYPES   = 'TransformTypes'
+SW_KEY_BATCHSIZE        = 'BatchSize'
+
+SW_TRANSFORM_BATDFT     = 'BATDFT'
+SW_TRANSFORM_BATMDDFT   = 'BATMDDFT'
+SW_KEY_READSTRIDE       = 'ReadStride'
+SW_KEY_WRITESTRIDE      = 'WriteStride'
+
+SW_STR_BLOCK        = 'Block'
+SW_STR_UNIT         = 'Unit'
+
+SW_TRANSFORM_MDRCONV    = 'MDRCONV'
+
+###################################
+
 ##  Process the command line args...
 if len ( sys.argv ) < 4:
     ##  Must specify transform sizes_file target
@@ -48,6 +80,7 @@ if not re.match ( '_$', _file_stem ):                ## append an underscore if 
 
 _xform_name = _file_stem
 _xform_pref = ''
+_xform_sw_type = SW_TRANSFORM_BATDFT
 
 if re.match ( '^.*_.*_', _file_stem ):
     _dims = re.split ( '_', _file_stem )
@@ -177,6 +210,12 @@ def body_public_header ( codefor ):
 
     _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<3> req );\n'
     _str = _str + '#define ' + _file_stem + 'Tuple ' + _file_stem + codefor + 'Tuple\n\n'
+
+    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
+    _str = _str + '//  without having to load the library).\n'
+    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+
+    _str = _str + 'char * ' + _file_stem + codefor + 'GetMetaData ();\n\n'
 
     _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
     _str = _str + 'extern "C" {\n\n'
@@ -405,6 +444,35 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     return _str;
 
 
+def create_metadata ( decor ):
+    "Create a compileable module to be added to the library that contains the metadata for the library"
+
+    _str =        '//  Copyright (c) 2018-2023, Carnegie Mellon University\n'
+    _str = _str + '//  See LICENSE for details\n\n'
+
+    _str = _str + '#include <stdio.h>\n'
+    _str = _str + '#include <stdlib.h>\n'
+    _str = _str + '#include <string.h>\n\n'
+
+    ##  remove last 3 chars of _metadata (they are an unwanted ',\\n')
+    _str = _str + _metadata
+    _str = _str[:-3]
+    _str = _str + '    ]\\\n}\\\n' + SW_METADATA_END + '";\n\n'
+
+    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
+    _str = _str + '//  without having to load the library).\n'
+    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+
+    _str = _str + 'char * ' + _file_stem + decor + 'GetMetaData ()\n{\n'
+    _str = _str + '    char * wp = (char *) malloc ( strlen ( ' + _file_stem + 'MetaData ) + 1 );\n'
+    _str = _str + '    if ( wp != NULL )\n'
+    _str = _str + '        strcpy ( wp, ' + _file_stem + 'MetaData );\n\n'
+    _str = _str + '    return wp;\n'
+    _str = _str + '}\n\n'
+
+    return _str;
+
+
 def cmake_library ( decor, type ):
     _str =        '##\n## Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
@@ -421,6 +489,7 @@ def cmake_library ( decor, type ):
 
     _str = _str + 'include ( SourceList.cmake )\n'
     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
+    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_metadata' + _file_suffix + ' )\n'
     _str = _str + 'set ( _incl_files ${_lib_root}_public.h )\n\n'
 
     _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'
@@ -450,6 +519,10 @@ def cmake_library ( decor, type ):
 _extern_decls  = ''
 _all_sizes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
+
+_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SW_METADATA_START + '\\\n{\\\n'
+_metadata     += '    \\"' + SW_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_sw_type + '\\" ],\\\n'
+_metadata     += '    \\"' + SW_KEY_TRANSFORMS + '\\": [ \\\n'
 
 
 with open ( _sizesfil, 'r' ) as fil:
@@ -505,6 +578,9 @@ with open ( _sizesfil, 'r' ) as fil:
 
 ##        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d' + '_' + _code_type
         stridestr = [ "AParAPar", "AParAVec", "AVecAPar", "AVecAVec" ]
+        _rdstride = SW_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 3 else SW_STR_BLOCK
+        _wrstride = SW_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 2 else SW_STR_BLOCK
+
         _func_stem = _file_stem + _nbat + '_type_' + stridestr[int(_stridetype)-1] + '_len_' + _nsize + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
@@ -543,6 +619,26 @@ with open ( _sizesfil, 'r' ) as fil:
             _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _nsize + ', ' + _stridetype + ' },\n'
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
+
+            _metadata += '        {    \\"' + SW_KEY_DIMENSIONS + '\\": [ ' + _nsize + ' ],\\\n'
+            _metadata += '             \\"' + SW_KEY_BATCHSIZE + '\\": ' + _nbat + ',\\\n'
+            _metadata += '             \\"' + SW_KEY_DIRECTION + '\\": \\"'
+            if _fwd == 'true':
+                _metadata += SW_STR_FORWARD
+            else:
+                _metadata += SW_STR_INVERSE
+            _metadata += '\\",\\\n'
+            _metadata += '             \\"' + SW_KEY_NAMES + '\\": {\\\n'
+            _metadata += '                 \\"' + SW_KEY_DESTROY + '\\": \\"destroy_' + _func_stem + '\\",\\\n'
+            _metadata += '                 \\"' + SW_KEY_EXEC + '\\": \\"' + _func_stem + '\\",\\\n'
+            _metadata += '                 \\"' + SW_KEY_INIT + '\\": \\"init_' + _func_stem + '\\" },\\\n'
+            _metadata += '             \\"' + SW_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
+            ##  For now all libs generated are double precision -- maybe look at this in future
+            _metadata += '             \\"' + SW_KEY_PRECISION + '\\": \\"' + SW_STR_DOUBLE + '\\",\\\n'
+            _metadata += '             \\"' + SW_KEY_READSTRIDE + '\\": \\"' + _rdstride + '\\",\\\n'
+            _metadata += '             \\"' + SW_KEY_WRITESTRIDE + '\\": \\"' + _wrstride + '\\",\\\n'
+            _metadata += '             \\"' + SW_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_sw_type + '\\"\\\n'
+            _metadata += '        },\\\n'
 
         else:
             ##  File was not successfully created
@@ -587,6 +683,14 @@ with open ( _sizesfil, 'r' ) as fil:
     _api_file = open ( _hfil, 'w' )
     _filebody = library_api ( True, _decor, _code_type )
     _filebody = _filebody + python_cuda_api ( True, _decor, _code_type, _xform_root )
+    _api_file.write ( _filebody )
+    _api_file.close ()
+
+    ##  Create the metadata file.
+
+    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'metadata' + _file_suffix
+    _api_file = open ( _hfil, 'w' )
+    _filebody = create_metadata ( _decor )
     _api_file.write ( _filebody )
     _api_file.close ()
 
