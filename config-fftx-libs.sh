@@ -34,10 +34,11 @@ MDDFT_LIB=true
 MDPRDFT_LIB=true
 
 ##  Build the Real Convolution library
-RCONV_LIB=false
+RCONV_LIB=true
 
+##  Deprecated - do not build -- will be removed in next release
 ##  Build the MPI distributed FFT library (MPI is required to build examples)
-DISTDFT_LIB=false
+##  DISTDFT_LIB=false
 
 ##  Build the PSATD fixed sizes library
 PSATD_LIB=false
@@ -47,12 +48,14 @@ CPU_SIZES_FILE="cube-sizes-cpu.txt"
 
 ##  File containing the sizes to build for the GPU version of MDDFT, MDPRDFT, and RCONV
 GPU_SIZES_FILE="cube-sizes-gpu.txt"
+##  GPU_SIZES_FILE="cube-sizes.txt"
 
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
 
+##  Deprecated - do not build -- will be removed in next release
 ##  File containing the sizes to build for the distributed FFT library
-DISTDFT_SIZES_FILE="distdft-sizes.txt"
+##  DISTDFT_SIZES_FILE="distdft-sizes.txt"
 
 ##  File containing the sizes to build for the PSATD library
 PSATD_SIZES_FILE="cube-psatd.txt"
@@ -90,12 +93,14 @@ echo "PRDFTBAT_LIB=$PRDFTBAT_LIB" >> build-lib-code-options.sh
 echo "MDDFT_LIB=$MDDFT_LIB" >> build-lib-code-options.sh
 echo "MDPRDFT_LIB=$MDPRDFT_LIB" >> build-lib-code-options.sh
 echo "RCONV_LIB=$RCONV_LIB" >> build-lib-code-options.sh
-echo "DISTDFT_LIB=$DISTDFT_LIB" >> build-lib-code-options.sh
+##  Deprecated - do not build -- will be removed in next release
+##  echo "DISTDFT_LIB=$DISTDFT_LIB" >> build-lib-code-options.sh
 echo "PSATD_LIB=$PSATD_LIB" >> build-lib-code-options.sh
 echo "CPU_SIZES_FILE=$CPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "GPU_SIZES_FILE=$GPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "DFTBAT_SIZES_FILE=$DFTBAT_SIZES_FILE" >> build-lib-code-options.sh
-echo "DISTDFT_SIZES_FILE=$DISTDFT_SIZES_FILE" >> build-lib-code-options.sh
+##  Deprecated - do not build -- will be removed in next release
+##  echo "DISTDFT_SIZES_FILE=$DISTDFT_SIZES_FILE" >> build-lib-code-options.sh
 echo "PSATD_SIZES_FILE=$PSATD_SIZES_FILE" >> build-lib-code-options.sh
 
 popd
@@ -180,12 +185,13 @@ else
 fi
 echo "option ( RCONV_LIB \"Build the Real Convolution library\" $setopt )" >> options.cmake
 
-if [ "$DISTDFT_LIB" = true ]; then
-    setopt="ON"
-else
-    setopt="OFF"
-fi
-echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
+##  Deprecated - do not build -- will be removed in next release
+##  if [ "$DISTDFT_LIB" = true ]; then
+##      setopt="ON"
+##  else
+##      setopt="OFF"
+##  fi
+##  echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
 
 if [ "$PSATD_LIB" = true ]; then
     setopt="ON"
