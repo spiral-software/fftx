@@ -47,8 +47,8 @@ PSATD_LIB=false
 CPU_SIZES_FILE="cube-sizes-cpu.txt"
 
 ##  File containing the sizes to build for the GPU version of MDDFT, MDPRDFT, and RCONV
-##  GPU_SIZES_FILE="cube-sizes-gpu.txt"
-GPU_SIZES_FILE="cube-sizes.txt"
+GPU_SIZES_FILE="cube-sizes-gpu.txt"
+##  GPU_SIZES_FILE="cube-sizes.txt"
 
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
