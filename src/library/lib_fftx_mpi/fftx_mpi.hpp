@@ -22,7 +22,7 @@
 
 using namespace std;
 
-#define CPU_PERMUTE 1     //Todo: Fix CPU PERMUTE to work with batch + embedded
+#define CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
 #define CUDA_AWARE_MPI 0
 
 // implement on GPU.
