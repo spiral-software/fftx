@@ -32,10 +32,14 @@ else
 fi;
 
 if 1 = 1 then
+    ##  stridetype 1 - 4 translates to a string indicating write stride & read stride
+    ##  Stride is indicated (in GAP) as APar (sequential) or AVec (strided);
+    ##  write stride appears first, followed by read stride
     if stridetype = 1 then wstr := "AParAPar"; fi;
     if stridetype = 2 then wstr := "AParAVec"; fi;
     if stridetype = 3 then wstr := "AVecAPar"; fi;
     if stridetype = 4 then wstr := "AVecAVec"; fi;
+
     name := prefix::StringInt(nbatch)::"_type_"::wstr::"_len_"::StringInt(szns)::"_"::codefor;
     jitname := jitpref::StringInt(nbatch)::"_type_"::wstr::"_len_"::StringInt(szns)::"_"::codefor::".txt";
 
