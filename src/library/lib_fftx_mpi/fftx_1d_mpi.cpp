@@ -359,7 +359,6 @@ void fftx_execute_1d(
 ) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  // printf("fftx_execute_1d: rank %d\n", rank);
 
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
@@ -373,12 +372,6 @@ void fftx_execute_1d(
         );
       }
 
-      {
-        double tmp;
-        cudaMemcpy(&tmp, plan->Q3, sizeof(double), cudaMemcpyDeviceToHost);
-        printf("Q3[0] = %f\n", tmp);
-      }
-
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
       fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
 
@@ -389,12 +382,6 @@ void fftx_execute_1d(
           ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
           direction
         );
-      }
-
-      {
-        double tmp;
-        cudaMemcpy(&tmp, plan->Q3, sizeof(double), cudaMemcpyDeviceToHost);
-        printf("Q3[0] = %f\n", tmp);
       }
 
       double *stg2_output = (double *) plan->Q3;
@@ -414,14 +401,6 @@ void fftx_execute_1d(
           direction
         );
       }
-
-      {
-        double tmp;
-        cudaMemcpy(&tmp, out_buffer, sizeof(double), cudaMemcpyDeviceToHost);
-        printf("out_buffer[0] = %f\n", tmp);
-      }
-
-
     } else {
       //forward real
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
