@@ -373,6 +373,12 @@ void fftx_execute_1d(
         );
       }
 
+      {
+        double tmp;
+        cudaMemcpy(&tmp, plan->Q3, sizeof(double), cudaMemcpyDeviceToHost);
+        printf("Q3[0] = %f\n", tmp);
+      }
+
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
       fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
 
@@ -383,6 +389,12 @@ void fftx_execute_1d(
           ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
           direction
         );
+      }
+
+      {
+        double tmp;
+        cudaMemcpy(&tmp, plan->Q3, sizeof(double), cudaMemcpyDeviceToHost);
+        printf("Q3[0] = %f\n", tmp);
       }
 
       double *stg2_output = (double *) plan->Q3;
@@ -402,6 +414,14 @@ void fftx_execute_1d(
           direction
         );
       }
+
+      {
+        double tmp;
+        cudaMemcpy(&tmp, out_buffer, sizeof(double), cudaMemcpyDeviceToHost);
+        printf("out_buffer[0] = %f\n", tmp);
+      }
+
+
     } else {
       //forward real
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
@@ -412,39 +432,39 @@ void fftx_execute_1d(
           ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + i
         );
       }
-    }
-    // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y]
-    fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
+      // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y]
+      fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
 
-    // [Y, X'/px, Z] <= [X'/px, Z, Y]
-    // TODO: change plan to put output in embedded space?
-    // [Y, X'/px, 2Z]
-    for (int i = 0; i < plan->b; ++i) {
-      DEVICE_FFT_EXECZ2Z(
-        plan->stg2,
-        ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + i,
-			  ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
-        direction
-      );
-    }
+      // [Y, X'/px, Z] <= [X'/px, Z, Y]
+      // TODO: change plan to put output in embedded space?
+      // [Y, X'/px, 2Z]
+      for (int i = 0; i < plan->b; ++i) {
+        DEVICE_FFT_EXECZ2Z(
+          plan->stg2,
+          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + i,
+          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
+          direction
+        );
+      }
 
-    double *stg2_output = (double *) plan->Q3;
-    double *stg3_input  = (double *) plan->Q4;
-    if (plan->is_embed) {
-      fftx_mpi_rcperm_1d(plan, stg3_input, stg2_output, FFTX_MPI_EMBED_2, plan->is_embed);
-    } else {
-      // no permutation necessary, use previous output as input.
-      stg3_input = stg2_output;
-    }
+      double *stg2_output = (double *) plan->Q3;
+      double *stg3_input  = (double *) plan->Q4;
+      if (plan->is_embed) {
+        fftx_mpi_rcperm_1d(plan, stg3_input, stg2_output, FFTX_MPI_EMBED_2, plan->is_embed);
+      } else {
+        // no permutation necessary, use previous output as input.
+        stg3_input = stg2_output;
+      }
 
-    // [Y, X'/px, Z] (no permutation on last stage)
-    for (int i = 0; i < plan->b; ++i) {
-      DEVICE_FFT_EXECZ2Z(
-        plan->stg3,
-        ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
-			  ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
-        direction
-      );
+      // [Y, X'/px, Z] (no permutation on last stage)
+      for (int i = 0; i < plan->b; ++i) {
+        DEVICE_FFT_EXECZ2Z(
+          plan->stg3,
+          ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
+          ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
+          direction
+        );
+      }
     }
   } else if (direction == DEVICE_FFT_INVERSE) { // backward
     DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
