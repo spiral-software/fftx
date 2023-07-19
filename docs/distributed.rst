@@ -39,6 +39,23 @@ The design of the FFTX distributed API is similar to many other libraries, i.e. 
 
 Only one of the planning function is required. The choice of the planning function depends on how the distributed data is mapped onto the processor grid.
 
+
+Running the first example
+---------------------------------
+
+After compiling FFTX, a distributed example, test3DDFT_mpi_1D.cpp, will be compiled (if enabled). The file will execute a distributed 3DFFT using a 1D processor grid. The compiled file takes 7 command line arguments as follows: ``<M> <N> <K> <batch> <embedded> <forward> <complex>``
+
+``M``, ``N``, ``K`` represents the 3 dimensions of the 3D FFT. 
+
+The ``batch`` parameter indicates how many 3D-FFTs are performed simultaneously. A minimum value of ``1`` needs to be passed as the ``batch`` parameter. 
+
+The ``embedded`` parameter takes values either ``1`` or ``0``. A value of ``0`` means that a full 3DFFT is implemented. A value of ``1`` indicates that the data cube is embedded in a larger data cube that that is twice the size in all dimension. The padded values are default to 0. 
+
+The ``forward`` parameter indicates if a foward (``1``) or inverse (``0``) FFT is performed. 
+
+The ``complex`` parameter, when set to ``1`` indicates that the FFT is a complex 3DFFT. However, when the parameter is set to ``0``, the 3DFFT is either a real-to-complex FFT (if the ``forward`` parameter is set to ``1``), or a complex-to-real FFT (otherwise). 
+
+
 Types of FFTs
 -------------
 **Options:** Real,  Complex
