@@ -59,17 +59,27 @@ int main(int argc, char* argv[]) {
   int CI = C2C || C2R ? 2 : 1; // complex input.
   int CO = C2C || R2C ? 2 : 1; // complex output.
 
+  // Used only for inv? and inv checking.
+  // TODO: should we do the same for Ki on fwd?
+  int M0 = Mi / p;
+  M0 += M0*p < Mi;
+  int M1 = p;
+
+
   // TODO: update C2R test to assume X is distributed initially.
 
   // X is first dim, so embed in dim of size Mo.
   if (is_forward) {
-    host_in  = (double *) malloc(sizeof(complex<double>) * (Ki/p) * Ni * Mo * batch);
-    host_out = (double *) malloc(sizeof(complex<double>) * (Ko/p) * No * Mo * batch);
+    // TODO: what about when Ki % p != 0?
+    host_in  = (double *) malloc(sizeof(double) * (Ki/p) * Ni * Mo * batch * CI);
+    host_out = (double *) malloc(sizeof(double) * (Ko/p) * No * Mo * batch * CO);
 
-    DEVICE_MALLOC(&dev_in , sizeof(complex<double>) * (Ki/p) * Ni * Mo * batch);
-    DEVICE_MALLOC(&dev_out, sizeof(complex<double>) * (Ko/p) * No * Mo * batch);
+    DEVICE_MALLOC(&dev_in , sizeof(double) * (Ki/p) * Ni * Mo * batch * CI);
+    DEVICE_MALLOC(&dev_out, sizeof(double) * (Ko/p) * No * Mo * batch * CO);
 
-    // assume layout is [Z, Y, X, b] (slowest to fastest)
+    // () is distributed
+    // assume layout is [(pz), Z/pz, Y, X, b] (slowest to fastest).
+    // embed X in the middle of dimension of twice the size, pad with zeros.
     for (int l = 0; l < Ki/p; l++) {
       for (int j = 0; j < Ni; j++) {
         for (int i = 0; i < Mo; i++) {
@@ -78,10 +88,10 @@ int main(int argc, char* argv[]) {
                 is_embedded && (i < Mi/2 || 3 * Mi/2 <= i)
               ) ?
                 0.0 :
-                // 1.0 * (b + 1) * (rank*1 + 1) * (i*1 + 1) * (j*1 + 1) * (l*1 + 1);
-                1.0 * rand() / RAND_MAX;
+                1.0 * (b + 1) * (rank*1 + 1) * (i*1 + 1) * (j*1 + 1) * (l*1 + 1);
+                // 1.0 * rand() / RAND_MAX;
             if (CI == 2) {
-              host_in[((l * Ni*Mo + j * Mo + i)*batch + b)*CI + 1] = 0;
+              host_in[((l * Ni*Mo + j * Mo + i)*batch + b)*CI + 1] = 0; // TODO: also randomize this.
             }
           }
         }
@@ -91,28 +101,27 @@ int main(int argc, char* argv[]) {
     DEVICE_MEM_COPY(dev_in, host_in, sizeof(double) * (Ki/p) * Ni * Mo * batch * CI, MEM_COPY_HOST_TO_DEVICE);
   } else {
     // TODO: fix for embedded.
-    int M0 = Mi / p;
-    M0 += M0*p < Mi;
-    int M1 = p;
 
-    host_in  = (double *) malloc(sizeof(complex<double>) * Ni * M0 * Ki * batch);
-    host_out = (double *) malloc(sizeof(complex<double>) * Ko * No * M0 * batch);
+    host_in  = (double *) malloc(sizeof(double) * Ni * M0 * Ki * batch * CI);
+    host_out = (double *) malloc(sizeof(double) * Ko * No * M0 * batch * CO);
 
-    DEVICE_MALLOC(&dev_in , sizeof(complex<double>) * Ni * M0 * Ki * batch);
-    DEVICE_MALLOC(&dev_out, sizeof(complex<double>) * Ko * No * M0 * batch);
+    DEVICE_MALLOC(&dev_in , sizeof(double) * Ni * M0 * Ki * batch * CI);
+    DEVICE_MALLOC(&dev_out, sizeof(double) * Ko * No * M0 * batch * CO);
 
-    // assume layout is [Y, X'/px, Z] (slowest to fastest)
+    // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
     for (int j = 0; j < Ni; j++) {
       for (int i = 0; i < M0; i++) {
         for (int l = 0; l < Ki; l++) {
           for (int b = 0; b < batch; b++) {
             for (int c = 0; c < CI; c++) {
+              // TODO: try with random data.
               host_in[((j * M0*Ki + i * Ki + l)*batch + b) * CI + c] = {};
             }
           }
         }
       }
     }
+    // TODO: get rid of this when we have random data.
     if (rank == 0) {
       for (int b = 0; b < batch; b++) {
         host_in[b * CI + 0] = (M * N * K * (b+1));
@@ -121,10 +130,11 @@ int main(int argc, char* argv[]) {
         }
       }
     }
-    DEVICE_MEM_COPY(dev_in, host_in, sizeof(complex<double>) * Ki * Ni * M0 * batch, MEM_COPY_HOST_TO_DEVICE);
+    DEVICE_MEM_COPY(dev_in, host_in, sizeof(double) * Ki * Ni * M0 * batch * CI, MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
   // TODO: resume conversion of forward to inverse from here.
+  // fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, 1, is_embedded, is_complex);
   fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
   for (int t = 0; t < 1; t++) {
     double start_time = MPI_Wtime();
@@ -142,43 +152,72 @@ int main(int argc, char* argv[]) {
 
   {
     // TODO: initially only support non-embedded C2C.
+    // TODO: guard on volume of cube? maybe limit to 1 GB local mem or something reasonable.
     if (!(is_embedded == false && is_forward == true && C2C == true)) {
-      cout << "Initially only support local check for forward non-embedded C2C" << endl;
+      if (rank == 0) {
+        cout << "Initially only support local check for forward non-embedded C2C" << endl;
+      }
     } else {
       double *href_in, *href_out, *htest_out;
       double *dref_in, *dref_out;
       int root = 0;
       if (rank == root) {
         // TODO: fix o vs i here. embedded doesn't exist locally.?
-        href_in  = (double *) malloc(sizeof(double) * Ko * No * Mo * batch * CI);
-        href_out = (double *) malloc(sizeof(double) * Ko * No * Mo * batch * CO);
+        href_in   = (double *) malloc(sizeof(double) * Ko * No * Mo * batch * CI);
+        href_out  = (double *) malloc(sizeof(double) * Ko * No * Mo * batch * CO);
         htest_out = (double *) malloc(sizeof(double) * Ko * No * Mo * batch * CO);
         DEVICE_MALLOC(&dref_in , sizeof(double) * Ko * No * Mo * batch * CI);
         DEVICE_MALLOC(&dref_out, sizeof(double) * Ko * No * Mo * batch * CO);
       }
       // gather all ins
       int count = Ki/p * Ni * Mo * batch * CI;
+      // fwd [Z, Y, X, b] <= Gather pz on [(pz), Z/pz, Y, X, b]
+      // inv [px, Y, X'/px, Z] <= Gather px on [(px), Y, X'/px, Z]
       MPI_Gather(host_in, count, MPI_DOUBLE, href_in, count, MPI_DOUBLE, root, MPI_COMM_WORLD);
       // gather all outs
-      // TODO update count
+      // TODO update count for embedded.
+      // fwd [px, Y, X'/px, Z] <= Gather px on [(px), Y, X'/px, Z]
+      DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * No * M0 * Ko * batch * CO, MEM_COPY_DEVICE_TO_HOST);
       MPI_Gather(host_out, count, MPI_DOUBLE, htest_out, count, MPI_DOUBLE, root, MPI_COMM_WORLD);
+      // TODO: permute to [Z, Y, X, b] for comparing against reference.
 
       // TODO: embed.?
       if (rank == root) {
         DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * Ko * No * Mo * batch * CI, MEM_COPY_HOST_TO_DEVICE);
+        // TODO: change to vendor agnostic names.
         // create cuFFT plan 3d
         cufftHandle plan;
         // slowest to fastest.
-        cufftPlan3d(&plan, Ko, No, Mo, CUFFT_C2C);
+        cufftPlan3d(&plan, Ko, No, Mo, CUFFT_Z2Z);
         cufftExecZ2Z(plan, (cufftDoubleComplex *) dref_in, (cufftDoubleComplex *) dref_out, CUFFT_FORWARD);
         DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * Ko * No * Mo * batch * CO, MEM_COPY_DEVICE_TO_HOST);
 
         // check href_out against htest_out.
-        for (int i = 0; i < Ko * No * Mo * batch * CO; i++) {
-          if (abs(href_out[i] - htest_out[i]) > 1e-8) {
-            cout << "Error: " << i << " " << href_out[i] << " != " << htest_out[i] << endl;
+        for (int i = 0; i < M0; i++) {
+          for (int ii = 0; ii < M1; ii++) {
+            for (int j = 0; j < No; j++) {
+              for (int k = 0; k < Ko; k++) {
+                for (int b = 0; b < batch; b++) {
+                  for (int c = 0; c < CO; c++) {
+                    int ref_idx = ((k * No*M0*M1 + j * M0*M1 + ii * M0 + i)*batch + b) * CO + c;
+                    int tst_idx = ((ii * No*M0*Ko + j * M0*Ko + i * Ko + k)*batch + b) * CO + c;
+                    if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
+                      cout << "Error: (" << k << "," << j << "," << i*M1 + ii << ")\t"<< "\t" << href_out[ref_idx] << " != " << htest_out[tst_idx] << endl;
+                    }
+                  }
+                }
+              }
+            }
           }
         }
+
+
+        // for (int i = 0; i < Ko * No * Mo * batch * CO; i++) {
+        //   cout << i << " " << href_in[i] << " " << href_out[i] << " " << htest_out[i] << endl;
+        //   if (abs(href_out[i] - htest_out[i]) > 1e-8) {
+        //     cout << "Error: " << i << "\t" << href_out[i] << " != " << htest_out[i] << endl;
+        //   }
+        // }
         free(href_in);
         free(href_out);
         free(htest_out);
