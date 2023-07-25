@@ -9,8 +9,8 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-  if (argc != 8) {
-    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex>\n", argv[0]);
+  if (argc != 9) {
+    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <check>\n", argv[0]);
     exit(-1);
   }
 
@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
   bool is_embedded = 0 < atoi(argv[5]);
   bool is_forward  = 0 < atoi(argv[6]);
   bool is_complex  = 0 < atoi(argv[7]);
+  bool check       = 0 < atoi(argv[8]);
   // (slowest to fastest)
   // R2C input is [K,       N, M]         doubles, block distributed Z.
   // C2R input is [N, M/2 + 1, K] complex doubles, block distributed X.
@@ -150,11 +151,11 @@ int main(int argc, char* argv[]) {
     double end_time = MPI_Wtime();
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
     if (rank == 0) {
-      cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time << endl;
+      cout << M << "," << N << "," << K  << "," << batch  << "," << is_embedded << "," << is_forward << "," << max_time;
     }
   }
 
-  {
+  if (check) {
     // TODO: initially only support non-embedded C2C.
     // TODO: guard on volume of cube? maybe limit to 1 GB local mem or something reasonable.
     if (!(is_embedded == false && C2C == true)) {
@@ -238,13 +239,14 @@ int main(int argc, char* argv[]) {
         DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * Ko * No * Mo * batch * CI, MEM_COPY_HOST_TO_DEVICE);
         // TODO: change to vendor agnostic names.
         // create cuFFT plan 3d
-        cufftHandle plan;
+        DEVICE_FFT_HANDLE plan;
         // slowest to fastest.
-        cufftPlan3d(&plan, Ko, No, Mo, CUFFT_Z2Z);
-        cufftExecZ2Z(plan, (cufftDoubleComplex *) dref_in, (cufftDoubleComplex *) dref_out, is_forward ? CUFFT_FORWARD : CUFFT_INVERSE);
+        DEVICE_FFT_PLAN3D(&plan, Ko, No, Mo, CUFFT_Z2Z);
+        DEVICE_FFT_EXECZ2Z(plan, (DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out, is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE);
         DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * Ko * No * Mo * batch * CO, MEM_COPY_DEVICE_TO_HOST);
 
         // check href_out against htest_out.
+        bool correct = true;
         if (is_forward) {
           for (int i = 0; i < M0; i++) {
             for (int ii = 0; ii < M1; ii++) {
@@ -255,7 +257,8 @@ int main(int argc, char* argv[]) {
                       int ref_idx = ((k * No*M0*M1 + j * M0*M1 + ii * M0 + i)*batch + b) * CO + c;
                       int tst_idx = ((ii * No*M0*Ko + j * M0*Ko + i * Ko + k)*batch + b) * CO + c;
                       if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
-                        cout << "Error: (" << k << "," << j << "," << i*M1 + ii << ")\t"<< "\t" << href_out[ref_idx] << " != " << htest_out[tst_idx] << endl;
+                        correct = false;
+                        // cout << "Error: (" << k << "," << j << "," << i*M1 + ii << ")\t"<< "\t" << href_out[ref_idx] << " != " << htest_out[tst_idx] << endl;
                       }
                     }
                   }
@@ -272,7 +275,8 @@ int main(int argc, char* argv[]) {
                     int ref_idx = ((k * No*Mo + j * Mo + i)*batch + b) * CO + c;
                     int tst_idx = ((k * No*Mo + j * Mo + i)*batch + b) * CO + c;
                     if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
-                      cout << "Error: (" << k+1 << "," << j+1 << "," << i+1 << ")\t"<< "\t" << href_in[ref_idx] << "\t" << href_out[ref_idx] << " != " << htest_out[tst_idx] << endl;
+                      correct = false;
+                      // cout << "Error: (" << k+1 << "," << j+1 << "," << i+1 << ")\t"<< "\t" << href_in[ref_idx] << "\t" << href_out[ref_idx] << " != " << htest_out[tst_idx] << endl;
                     }
                   }
                 }
@@ -280,7 +284,11 @@ int main(int argc, char* argv[]) {
             }
           }
         }
-
+        if (correct) {
+          cout << ",1";
+        } else {
+          cout << ",0";
+        }
 
         // for (int i = 0; i < Ko * No * Mo * batch * CO; i++) {
         //   cout << i << " " << href_in[i] << " " << href_out[i] << " " << htest_out[i] << endl;
@@ -294,6 +302,11 @@ int main(int argc, char* argv[]) {
         DEVICE_FREE(dref_in);
         DEVICE_FREE(dref_out);
       }
+    }
+  } else {
+    // not checking.
+    if (rank == 0) {
+      cout << ",-";
     }
   }
 
@@ -359,6 +372,10 @@ int main(int argc, char* argv[]) {
   //     }
   //   }
   // }
+
+  if (rank == 0) {
+    cout << endl;
+  }
 
   fftx_plan_destroy(plan);
 
