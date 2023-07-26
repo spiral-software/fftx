@@ -92,9 +92,9 @@ fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bo
   int inN = N * (is_embedded ? 2 : 1);
 
 
-  int outK = K * (is_embedded ? 2 : 1);
-  int outM = M * (is_embedded ? 2 : 1);
-  int outN = N * (is_embedded ? 2 : 1);
+  // int outK = K * (is_embedded ? 2 : 1);
+  // int outM = M * (is_embedded ? 2 : 1);
+  // int outN = N * (is_embedded ? 2 : 1);
 
 
   batch_sizeX *= (is_embedded ? 2 : 1);

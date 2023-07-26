@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   Ko = K * (is_embedded ? 2 : 1);
 
   double *host_in, *dev_in;
-  double *host_out, *dev_out, *Q3;
+  double *host_out, *dev_out;
   int CI = C2C || C2R ? 2 : 1; // complex input.
   int CO = C2C || R2C ? 2 : 1; // complex output.
 
@@ -241,9 +241,10 @@ int main(int argc, char* argv[]) {
         // create cuFFT plan 3d
         DEVICE_FFT_HANDLE plan;
         // slowest to fastest.
-        DEVICE_FFT_PLAN3D(&plan, Ko, No, Mo, CUFFT_Z2Z);
+        DEVICE_FFT_PLAN3D(&plan, Ko, No, Mo, DEVICE_FFT_Z2Z);
         DEVICE_FFT_EXECZ2Z(plan, (DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out, is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE);
         DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * Ko * No * Mo * batch * CO, MEM_COPY_DEVICE_TO_HOST);
+
 
         // check href_out against htest_out.
         bool correct = true;

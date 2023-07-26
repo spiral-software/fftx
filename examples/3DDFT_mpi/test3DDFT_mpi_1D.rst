@@ -1,30 +1,6 @@
 Test 1D Distributed 3DDFT
 ================================
 
-Build
---------------------------------
-CUDA device::
-
-	nvcc -DFFTX_CUDA -x cu ../../src/library/lib_fftx_mpi/fftx_gpu.cpp -I../../src/library -I../../src/library/lib_fftx_mpi -I../3DDFT_mpi -c
-	nvcc -DFFTX_CUDA -x cu ../../src/library/lib_fftx_mpi/fftx_1d_gpu.cpp -I../../src/library -I../../src/library/lib_fftx_mpi -I../3DDFT_mpi -c
-	mpicc -DFFTX_CUDA ../../src/library/lib_fftx_mpi/fftx_mpi.cpp -I../../src/library -I/usr/local/cuda/include -L/usr/local/cuda/lib64/ -lcudart -c
-	mpicc -DFFTX_CUDA ../../src/library/lib_fftx_mpi/fftx_1d_mpi.cpp -I../../src/library -I/usr/local/cuda/include -L/usr/local/cuda/lib64/ -lcudart -c
-	mpicc -DFFTX_CUDA test3DDFT_mpi_1D.cpp -I../../src/library/lib_fftx_mpi/ -I../../src/library -I../../src/include -I../3DDFFT_mpi -I/usr/local/cuda/include -L/usr/local/cuda/lib64/ -lcudart -c
-	mpicc fftx_gpu.o fftx_1d_gpu.o fftx_mpi.o fftx_1d_mpi.o test3DDFT_mpi_1D.o -L/usr/local/cuda/lib64/ -lcudart -lcufft -lstdc++ -o test3DDFT_mpi_1D.x
-
-HIP device::
-
-	hipcc -DFFTX_HIP ../../src/library/lib_fftx_mpi/fftx_gpu.cu -I../../src/library -I../../src/library/lib_fftx_mpi -I../3DDFT_mpi -c
-	hipcc -DFFTX_HIP ../../src/library/lib_fftx_mpi/fftx_1d_gpu.cu -I../../src/library -I../../src/library/lib_fftx_mpi -I../3DDFT_mpi -c
-	hipcc -DFFTX_HIP ../../src/library/lib_fftx_mpi/fftx_mpi.cpp -I${MPICH_DIR}/include -I../../src/library -c
-	hipcc -DFFTX_HIP ../../src/library/lib_fftx_mpi/fftx_1d_mpi.cpp -I${MPICH_DIR}/include -I../../src/library -c
-	hipcc -DFFTX_HIP test3DDFT_mpi_1D.cpp -I../../src/library/lib_fftx_mpi/ -I../../src/library -I../../src/include -I../3DDFFT_mpi -I${MPICH_DIR}/include -c
-	hipcc fftx_gpu.o fftx_1d_gpu.o fftx_mpi.o fftx_1d_mpi.o test3DDFT_mpi_1D.o -I${MPICH_DIR}/include -L${MPICH_DIR}/lib -lmpi -L${CRAY_MPICH_ROOTDIR}/gtl/lib -lmpi_gtl_hsa -lhipfft -o test3DDFT_mpi_1D.x
-
-
-Run
---------------------------------
-
 To run::
 
     mpirun -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>
