@@ -89,8 +89,8 @@ int main(int argc, char* argv[]) {
                 is_embedded && (i < Mi/2 || 3 * Mi/2 <= i)
               ) ?
                 0.0 :
-                1.0 * (b + 1) * (rank*1 + 1) * (i*1 + 1) * (j*1 + 1) * (l*1 + 1);
-                // 1.0 * rand() / RAND_MAX;
+                // 1.0 * (b + 1) * (rank*1 + 1) * (i*1 + 1) * (j*1 + 1) * (l*1 + 1);
+                1.0 * rand() / RAND_MAX;
             if (CI == 2) {
               host_in[((l * Ni*Mo + j * Mo + i)*batch + b)*CI + 1] = 0; // TODO: also randomize this.
             }
@@ -118,9 +118,9 @@ int main(int argc, char* argv[]) {
               int c = 0;
               // TODO: try with random data.
               // host_in[((j * M0*Ki + i * Ki + l)*batch + b) * CI + c] = {};
-              host_in[((j * M0*Ki + i * Ki + l)*batch + b) * CI + c] = 1.0 * (b + 1) * (rank*1 + 1) * (i*1 + 1) * (j*1 + 1) * (l*1 + 1);
+              // host_in[((j * M0*Ki + i * Ki + l)*batch + b) * CI + c] = 1.0 * (b + 1) * (rank*1 + 1) * (i*1 + 1) * (j*1 + 1) * (l*1 + 1);
 
-              // host_in[((j * M0*Ki + i * Ki + l)*batch + b) * CI + c] = 1.0 * rand() / RAND_MAX;
+              host_in[((j * M0*Ki + i * Ki + l)*batch + b) * CI + c] = 1.0 * rand() / RAND_MAX;
             // }
           }
         }

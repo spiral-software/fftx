@@ -1,6 +1,5 @@
 Test 1D Distributed 3DDFT
 ================================
-
 To run::
 
     mpirun -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>

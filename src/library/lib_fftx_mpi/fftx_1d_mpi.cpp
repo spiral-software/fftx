@@ -83,7 +83,7 @@ fftx_plan fftx_plan_distributed_1d(
 
   // set shape
   plan->shape[0] = M0; // this overwrites M/p if r2c or c2r, right?
-  plan->shape[1] = p;
+  plan->shape[1] = M1;
   plan->shape[2] = N;
   plan->shape[3] = 1;
   plan->shape[4] = K/p;
@@ -195,7 +195,7 @@ fftx_plan fftx_plan_distributed_1d(
 void fftx_mpi_rcperm_1d(
   fftx_plan plan, double * Y, double *X, int stage, bool is_embedded
 ) {
-  int e = is_embedded ? 2 : 1;
+  // int e = is_embedded ? 2 : 1;
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
