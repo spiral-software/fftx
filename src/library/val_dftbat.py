@@ -9,101 +9,76 @@ import sys
 import re
 import os
 import numpy as np
+import argparse
 
-if len(sys.argv) < 2:
-    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>x<stride_type>] [-f sizes_file]' )
-##    print ('Usage: ' + sys.argv[0] + ': libdir [-s <batch>x<length>] [-f sizes_file]' )
-    sys.exit ('missing argument(s), NOTE: Only one of -s or -f should be specified')
 
 _under = '_'
-_libdir = sys.argv[1]
-fftxpre = 'fftx_'
-myvar   = sys.argv[0]
-if re.match ( 'val_', myvar ):
-    _xfmseg = re.split ( _under, myvar )
-    _xfmseg = re.split ( '\.', _xfmseg[1] )
-    _xform  = fftxpre + _xfmseg[0]
 
-_xform  = _xform.rstrip()                             ## remove training newline
-
-if not re.match ( '_$', _xform ):                ## append an underscore if one is not present
-    _xform = _xform + _under
-
-if re.match ( '^.*_.*_', _xform ):
-    _xfmseg = re.split ( _under, _xform )
-    _libfwd = _xfmseg[0] + _under + _xfmseg[1]
-    _libinv = _xfmseg[0] + _under + 'i' + _xfmseg[1]
-
-if sys.platform == 'win32':
-    _libfwd = _libfwd + '.dll'
-    _libinv = _libinv + '.dll'
-    _libext = '.dll'
-elif sys.platform == 'darwin':
-    _libfwd = 'lib' + _libfwd + '.dylib'
-    _libinv = 'lib' + _libinv + '.dylib'
-    _libext = '.dylib'
-else:
-    _libfwd = 'lib' + _libfwd + '.so'
-    _libinv = 'lib' + _libinv + '.so'
-    _libext = '.so'
-
-print ( 'library stems for fwd/inv xforms = ' + _libfwd + ' / ' + _libinv + ' lib ext = ' + _libext, flush = True )
-
-
-def exec_xform ( segnams, dims, fwd, libext, typecode ):
-    "Run a transform specified by segment names and fwd flag of size dims"
-
-    nbat = int ( dims[0] )
-    dz   = int ( dims[1] )
-    styp = int ( dims[2] )
-
-    froot = segnams[0] + _under
-    if not fwd:
-        froot = froot + 'i'
-    froot = froot + segnams[1]
-    pywrap = froot + libext + _under + 'python' + _under
+def setup_input_array ( array_shape ):
+    "Create an input array based on the array shape tuple"
 
     ##  Setup source (input) data -- fill with random values
-    _src        = np.zeros(shape=(nbat, dz)).astype(complex)
-    for ib in range ( nbat ):
-        for ii in range ( dz ):
-            vr = np.random.random()
-            vi = np.random.random()
-            _src[ib, ii] = vr + vi * 1j
+    src = np.random.random(array_shape) + np.random.random(array_shape) * 1j
+    return src;
 
-    ##  Destination (output) -- fill with zeros, one for spiral, one for python
-    _dst_python = np.zeros(shape=(nbat, dz)).astype(complex)
-    _dst_spiral = np.zeros(shape=(nbat, dz)).astype(complex)
-##    _xfmsz      = np.zeros(2).astype(ctypes.c_int)
-    _xfmsz      = np.zeros(3).astype(ctypes.c_int)
+
+def run_python_version ( src, styp, fwd ):
+    "Create the output array by calling python"
+
+    ##  Stride type 1 and 3 read sequentially (2 & 4 read strided)
+    ax = -1 if styp in (1, 3) else 0
+
+    if fwd:
+        dst = np.fft.fft ( src, axis=ax )
+    else:
+        dst = np.fft.ifft ( src, axis=ax )
+ 
+    if styp in (2, 3):
+        ##  read & write strides are different (i.e., read seq/write stride or read stride/write seq)
+        if styp == 3:
+            ##  read sequential, write strided
+            ##  new shape is inverse of src
+            revdims = src.shape[::-1]
+            tmp = dst.reshape(np.asarray(revdims[1:]).prod(), revdims[0]).transpose()
+            dst = tmp.reshape(revdims)
+        else:
+            ##  read strided, write sequential
+            samedims = dst.shape
+            tmp = dst.reshape(samedims[0], np.asarray(samedims[1:]).prod()).transpose()
+            dst = tmp.reshape(samedims[::-1])
+
+    return dst;
+
+
+def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode ):
+    "Run a transform specified by segment names and fwd flag of size dims"
+
+    ##  First, ensure the library we need exists...
+    uselib = libfwd + platform + libext if fwd else libinv + platform + libext
+    _sharedLibPath = os.path.join ( os.path.realpath ( libdir ), uselib )
+    if not os.path.exists ( _sharedLibPath ):
+        print ( f'library file: {uselib} does not exist - continue', flush = True )
+        return
+
+    nbat = dims[0]
+    dz   = dims[1]
+    styp = dims[2]
+
+    ##  Stride type 1 and 3 read sequentially (2 & 4 read strided)
+    array_shape = ( nbat, 1, dz ) if styp in (1, 3) else ( dz, nbat, 1 )
+    _src = setup_input_array ( array_shape )
+
+    ##  Setup function name and specify size to find in library
+    froot = libfwd[3:] if fwd else libinv[3:]
+    pywrap = froot + platform + _under + 'python' + _under
+
+    _xfmsz    = np.zeros(3).astype(ctypes.c_int)
     _xfmsz[0] = nbat
     _xfmsz[1] = dz
     _xfmsz[2] = styp
 
-    ##  Evaluate using numpy ... 
-    if fwd:
-        for ii in range ( nbat ):
-            _biidft = np.fft.fft ( _src[ii,:] )
-            _dst_python[ii,:] = _biidft
-    else:
-        for ii in range ( nbat ):
-            _biidft = np.fft.ifft ( _src[ii,:] )
-            _dst_python[ii,:] = _biidft
-
     ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
     ##  the library (these setup/teardown GPU resources when using GPU libraries).
-    if fwd:
-        _libsegs = re.split ( '\.', _libfwd )
-        uselib = _libsegs[0] + libext + '.' + _libsegs[1]
-    else:
-        _libsegs = re.split ( '\.', _libinv )
-        uselib = _libsegs[0] + libext + '.' + _libsegs[1]
-
-    _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
-    if not os.path.exists ( _sharedLibPath ):
-        print ( 'library file: ' + uselib + ' does not exist - continue', flush = True )
-        return
-
     _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
 
     func = pywrap + 'init' + _under + 'wrapper'
@@ -113,109 +88,113 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
         raise RuntimeError(msg)
     _status = _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
     if not _status:
-        print ( 'Size: ' + str(_xfmsz) + ' was not found in library - continue' )
+        print ( f'Size: {_xfmsz} was not found in library - continue', flush = True )
         return
+
+    ##  If the strides for read & write are different then reverse the dimensions for the output array.
+    if styp in (2, 3):
+        ##  reverse dims
+        revdims = _src.shape[::-1]
+        _dst_spiral = np.zeros ( revdims, _src.dtype )
+    else:
+        _dst_spiral = np.zeros_like( _src )
 
     ##  Call the library function
     func = pywrap + 'run' + _under + 'wrapper'
-    _libFuncAttr = getattr ( _sharedLibAccess, func )
-    _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ),
-                   _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
-                   _src.ctypes.data_as ( ctypes.c_void_p ) )
-    if not fwd:
-        ##  Normalize Spiral result: numpy result is normalized
-        ##  Divide by Length (dz) as size _dst_spiral increases with number batches
-        _dst_spiral = _dst_spiral / dz
+    try:
+        _libFuncAttr = getattr ( _sharedLibAccess, func )
+        _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ),
+                       _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
+                       _src.ctypes.data_as ( ctypes.c_void_p ) )
+    except Exception as e:
+        print ( 'Error occurred during library function call:', type(e).__name__ )
+        print ( 'Exception details:', str(e) )
+        return
 
     ##  Call the transform's destroy function
     func = pywrap + 'destroy' + _under + 'wrapper'
     _libFuncAttr = getattr ( _sharedLibAccess, func )
     _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
 
+    ##  Get the python answer using the same input
+    _dst_python = run_python_version ( _src, styp, fwd )
+
     ##  Check difference
     _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
-    if fwd:
-        dir = 'forward'
-    else:
-        dir = 'inverse'
-
-    print ( 'Difference between Python / Spiral(' + typecode + ') [' + dir + '] transforms = ' + str ( _diff ), flush = True )
+    dir = 'forward' if fwd else 'inverse'
+    msg = 'are' if _diff < 1e-7 else 'are NOT'
+    print ( f'Python / Spiral({typecode}) [{dir}] transforms {msg} equivalent, difference = {_diff}', flush = True )
 
     return;
 
 
-_sizesfile = 'dftbatch-sizes.txt'
+def main():
+    parser = argparse.ArgumentParser ( description = 'Validate FFTX built libraries against NumPy computed versions of the transforms' )
+    ##  Positional argument: libdir
+    parser.add_argument ( 'libdir', type=str, help='directory of the library' )
+    ##  Optional arguments
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument ( '-s', '--size', type=str, help='size of the transform (e.g., 16x80x2)' )
+    group.add_argument ( '-f', '--file', type=str, help='file containing sizes to loop over' )
+    args = parser.parse_args()
 
-if len(sys.argv) > 2:
-    ##  Optional problem size or file specified:
-    if sys.argv[2] == '-s':
-        ##  problem size is specified:  e.g., 80x80x80
-        _probsz = sys.argv[3]
-        _probsz = _probsz.rstrip()                  ##  remove training newline
-        _dims = re.split ( 'x', _probsz )
+    script_name = os.path.splitext ( os.path.basename ( sys.argv[0] ) )[0]
+    if script_name.startswith('val_'):
+        xfmseg = script_name.split('_')[1]
+        xform = xfmseg
 
-##        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
-        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length) x ' + _dims[2] + ' (stride type)', flush = True )
-        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
+    libdir = args.libdir.rstrip('/')
+    libfwd = 'libfftx_' + xform
+    libinv = 'libfftx_i' + xform
+    libext = '.dll' if sys.platform == 'win32' else '.dylib' if sys.platform == 'darwin' else '.so'
+    print ( f'library stems for fwd/inv xforms = {libfwd} / {libinv} lib ext = {libext}', flush = True )
 
-        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
+    if args.size:
+        dims = [int(d) for d in args.size.split('x')]
+        print ( f'Size = {dims[0]} (batches) x {dims[1]} (length) x {dims[2]} (stride type)', flush = True )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU' )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU' )
 
-        exit ()
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU' )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU' )
 
-    elif sys.argv[2] == '-f':
-        ##  Option sizes file is specified:  use the supplied filename to loop over desired sizes
-        _sizesfile = sys.argv[3]
-        _sizesfile = _sizesfile.rstrip()
+        sys.exit ()
 
+    if args.file:
+        sizesfile = args.file.rstrip()
     else:
-        print ( 'Unrecognized argument: ' + sys.argv[2] + ' ignoring remainder of command line', flush = True )
+        sizesfile = 'dftbatch-sizes.txt'
 
+    ##  Process the sizes file, extracting the dimentions and running the transform.  The
+    ##  sizes file contains records of the form:
+    ##      nbatch := 16; szns := 60; stridetype := 1;
+    ##  where nbatch is the batch size, szns is the DFT length, and stridetype inidcates if
+    ##  input, output, or both are read/written sequentially or strided.  Stride type can take
+    ##  value 1 - 4, with the following meaning:
+    ##      1:      Read sequantial, write sequential
+    ##      2:      Read strided, write sequential
+    ##      3:      Read sequantial, write strided
+    ##      4:      Read strided, write strided
 
-with open ( _sizesfile, 'r' ) as fil:
-    for line in fil.readlines():
-        ##  print ( 'Line read = ' + line, flush = True )
-        if re.match ( '[ \t]*#', line ):                ## ignore comment lines
-            continue
+    with open ( sizesfile, 'r' ) as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith('#') or not line:
+                continue
 
-        if re.match ( '[ \t]*$', line ):                ## skip lines consisting of whitespace
-            continue
+            line = re.sub ( ' ', '', line )                 ## suppress white space
+            m = re.match ( r'nbatch:=(\d+);szns:=(\d+);stridetype:=(\d+);', line)
+            if not m:
+                print ( f'Invalid line format: {line}', flush = True )
+                continue
 
-        # _dims = [ 0, 0 ]
-        # _nbat = re.sub ( '.*nbatch :=', '', line )      ## get number batches
-        # _nbat = re.sub ( ';.*', '', _nbat )
-        # _nbat = re.sub ( ' *', '', _nbat )              ## compress out white space
-        # _nbat = _nbat.rstrip()                          ## remove training newline
-        # _dims[0] = _nbat
-        
-        # line = re.sub ( '.*\[', '', line )              ## drop "szns := ["
-        # line = re.sub ( '\].*', '', line )              ## drop "];"
-        # line = re.sub ( ' *', '', line )                ## compress out white space
-        # line = line.rstrip()                            ## remove training newline
-        # _dims[1] = line
+            dims = [int(m.group(i)) for i in range(1, 4)]
+            print ( f'Size = {dims[0]} (batches) x {dims[1]} (length) x {dims[2]} (stride type)', flush = True )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU' )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU' )
 
-        _dims = [ 0, 0, 0 ]
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU' )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU' )
 
-        line = re.sub ( ' ', '', line )                 ## suppress white space
-        segs = re.split ( ';', line )                   ## expect 3 segments
-        chnk = re.split ( '=', segs[0] )
-        _dims[0] = chnk[1]
-
-        segs[1] = re.sub ( '\[', '', segs[1] )
-        segs[1] = re.sub ( '\]', '', segs[1] )
-        chnk = re.split ( '=', segs[1] )
-        _dims[1] = chnk[1]
-        
-        chnk = re.split ( '=', segs[2] )
-        _dims[2] = chnk[1]
-        
-        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length) x ' + _dims[2] + ' (stride type)', flush = True )
-##        print ( 'Size = ' + _dims[0] + ' (batches) x ' + _dims[1] + ' (length)', flush = True )
-        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
-
-        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
-
-    exit()
+if __name__ == '__main__':
+    main()

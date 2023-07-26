@@ -14,6 +14,7 @@
 #include <cstdio>      // perror
 #include <unistd.h>    // dup2
 #include <sys/types.h> // rest for open/close
+#include <sys/utsname.h> // check machine name
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <memory>
@@ -46,6 +47,14 @@ else ()
         message ( FATAL_ERROR "SPIRAL_HOME environment variable undefined and not specified on command line" )
     endif ()
     set ( SPIRAL_SOURCE_DIR ${SPIRAL_HOME} )
+endif ()
+
+if ( APPLE )
+    if ( ${CMAKE_OSX_ARCHITECTURES} MATCHES "arm64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64.*" )
+	    set ( ADDL_COMPILE_FLAGS -arch arm64 )
+    elseif ( ${CMAKE_OSX_ARCHITECTURES} MATCHES "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64.*")
+	    set ( ADDL_COMPILE_FLAGS -arch x86_64 )
+    endif ()
 endif ()
 
 add_library                ( tmp SHARED spiral_generated.c )
@@ -86,10 +95,10 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     std::ostringstream oss2;
     oss << "init_" << name << "_spiral";
     oss1 << name << "_spiral";
-    oss2 << "destory_" << name << "_spiral";
+    oss2 << "destroy_" << name << "_spiral";
     std::string init = oss.str();
     std::string transform = oss1.str();
-    std::string destory = oss2.str();
+    std::string destroy = oss2.str();
     if(!shared_lib) {
         std::cout << "Cannot open library: " << dlerror() << '\n';
         exit(0);
@@ -97,7 +106,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     else if(shared_lib){
         void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
         void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
-        void (*fn3) ()= (void (*)())dlsym(shared_lib, destory.c_str());
+        void (*fn3) ()= (void (*)())dlsym(shared_lib, destroy.c_str());
         auto start = std::chrono::high_resolution_clock::now();
         if(fn1) {
             fn1();
@@ -112,7 +121,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         if(fn3){
             fn3();
         }else {
-            if ( DEBUGOUT) std::cout << destory << "function didnt run" << std::endl;
+            std::cout << destroy << "function didnt run" << std::endl;
         }
         auto stop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float, std::milli> duration = stop - start;
@@ -159,7 +168,19 @@ void Executor::execute(std::string result) {
     //     std::cout << "failed to create temp directory for runtime code\n";
     //     exit(-1);
     // }
-    system("cmake . && make");
+    #if defined(_WIN32) || defined (_WIN64)
+        system("cmake . && make");
+    #elif defined(__APPLE__)
+        struct utsname unameData;
+        uname(&unameData);
+        std::string machine_name(unameData.machine);
+        if(machine_name == "arm64")
+            system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
+        else
+            system("cmake . && make");
+    #else
+        system("cmake . && make"); 
+    #endif
     check = chdir(current_working_dir.c_str());
     // if((check)) {
     //     std::cout << "failed to create temp directory for runtime code\n";

@@ -1,10 +1,10 @@
 ##  Copyright (c) 2018-2021, Carnegie Mellon University
 ##  See LICENSE for details
 
-# 1d batch of 1d and multidimensional of complex DFTs
+##  batch of 1D complex DFTs
 
-Load(fftx);;
-ImportAll(fftx);;
+Load(fftx);
+ImportAll(fftx);
 ImportAll(simt);
 
 ##  If the variable createJIT is defined and set true then load the jit module
@@ -19,7 +19,7 @@ elif codefor = "CPU" then
     conf := LocalConfig.fftx.defaultConf();
 else    
     conf := FFTXGlobals.defaultHIPConf();
-fi;;
+fi;
 
 if fwd then
     prefix := "fftx_dftbat_";
@@ -29,48 +29,50 @@ else
     prefix := "fftx_idftbat_";
     jitpref := "cache_idftbat_";
     sign   := 1;
-fi;;
+fi;
 
-ns := szns[1];;
-name := prefix::StringInt(nbatch)::"_type"::StringInt(stridetype)::"_len"::StringInt(szns[1]);;
-name := name::"_"::codefor;;
-jitname := jitpref::StringInt(nbatch)::"_type"::StringInt(stridetype)::"_len"::StringInt(szns[1]);;
-jitname := jitname::"_"::codefor::".txt";
+if 1 = 1 then
+    ##  stridetype 1 - 4 translates to a string indicating write stride & read stride
+    ##  Stride is indicated (in GAP) as APar (sequential) or AVec (strided);
+    ##  write stride appears first, followed by read stride
+    if stridetype = 1 then wstr := "AParAPar"; fi;
+    if stridetype = 2 then wstr := "AParAVec"; fi;
+    if stridetype = 3 then wstr := "AVecAPar"; fi;
+    if stridetype = 4 then wstr := "AVecAVec"; fi;
 
-tags := [[APar, APar], [APar, AVec], [AVec, APar]];;
+    name := prefix::StringInt(nbatch)::"_type_"::wstr::"_len_"::StringInt(szns)::"_"::codefor;
+    jitname := jitpref::StringInt(nbatch)::"_type_"::wstr::"_len_"::StringInt(szns)::"_"::codefor::".txt";
 
-PrintLine("fftx_dft-batch: name = ", name, " bat X stride X len = ", nbatch, " ", stridetype, " ", ns, " jitname = ", jitname);
-# t := let(batch := nbatch,
-#     apat := When(true, APar, AVec),
-#     k := sign,
-#     ##  name := "dft"::StringInt(Length(ns))::"d_batch",  
-#     TFCall(TRC(TTensorI(MDDFT(ns, k), batch, apat, apat)), 
-#         rec(fname := name, params := []))
-# );;
-t := let (
-    name := name,
-    TFCall ( TRC ( TTensorI ( TTensorI ( DFT ( ns, sign ), nbatch, APar, APar),
-                              nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
-             rec(fname := name, params := [] ) )
-);;
+    PrintLine("fftx_dft-batch: name = ", name, " bat = ", nbatch, " stride:", wstr,
+              " length = ", szns, " jitname = ", jitname);
 
-opts := conf.getOpts(t);;
-# temporary fix, need to update opts derivation
-opts.tags := opts.tags { [1, 2] };;
-Append ( opts.breakdownRules.TTensorI, [CopyFields ( IxA_L_split, rec(switch := true) ),
-                                        CopyFields ( L_IxA_split, rec(switch := true) ) ] );; 
+    tags := [ [APar, APar], [APar, AVec], [AVec, APar], [AVec, AVec] ];
+    if fwd then
+        t := let ( name := name,
+                   TFCall ( TRC ( TTensorI ( DFT ( szns, sign ), nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
+                            rec(fname := name, params := [] ) )
+                 );
+    else
+        t := let ( name := name,
+                   TFCall ( TRC ( TTensorI ( Scale (1/szns, DFT ( szns, sign )), nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
+                            rec(fname := name, params := [] ) )
+                 );
+    fi;
 
-if not IsBound ( libdir ) then
-    libdir := "srcs";
-fi;;
-##  We need the Spiral functions wrapped in 'extern C' for adding to a library
-opts.wrapCFuncs := true;;
+    opts := conf.getOpts(t);
+    if not IsBound ( libdir ) then
+        libdir := "srcs";
+    fi;
 
-tt := opts.tagIt(t);;
+    ##  We need the Spiral functions wrapped in 'extern C' for adding to a library
+    opts.wrapCFuncs := true;
+    Add ( opts.includes, "<float.h>" );
+    tt := opts.tagIt(t);
 
-c := opts.fftxGen(tt);;
-##  opts.prettyPrint(c);
-PrintTo(libdir::"/"::name::file_suffix, opts.prettyPrint(c));
+    c := opts.fftxGen(tt);
+    ##  opts.prettyPrint(c);
+    PrintTo ( libdir::"/"::name::file_suffix, opts.prettyPrint(c) );
+fi;
 
 ##  If the variable createJIT is defined and set true then output the JIT code to a file
 if ( IsBound(createJIT) and createJIT ) then
