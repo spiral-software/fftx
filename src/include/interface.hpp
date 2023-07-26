@@ -134,6 +134,40 @@ std::string getSPIRAL() {
     return tmp;
 }
 
+std::string getFromCache(std::string name, std::vector<int> sizes) {
+    std::ostringstream oss;
+    std::string tmp = getFFTX();
+    oss << tmp << "cache_" << name << "_" << sizes.at(0);
+    for(int i = 1; i< sizes.size(); i++) {
+        oss << "x" << sizes.at(i);
+    }
+    #if defined FFTX_HIP 
+        oss << "_HIP" << ".txt";
+    #elif defined FFTX_CUDA 
+        oss << "_CUDA" << ".txt";
+    #else
+        oss << "_CPU" << ".txt";
+    #endif
+    return oss.str();
+}
+
+void printToCache(std::string tmp, std::string name, std::vector<int> sizes) {
+    std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0);
+    for(int i = 1; i< sizes.size(); i++) {
+        std::cout << "x" << sizes.at(i);
+    }
+    #if defined FFTX_HIP
+        std::cout  << "_HIP" << ".txt\", PrintHIPJIT(c,opts));" << std::endl; 
+        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+    #elif defined FFTX_CUDA 
+        std::cout << "_CUDA" << ".txt\", PrintJIT2(c,opts));" << std::endl;   
+        std::cout << "PrintJIT2(c,opts);" << std::endl;
+    #else
+        std::cout <<  "_CPU" << ".txt\", opts.prettyPrint(c));" << std::endl; 
+        std::cout << "opts.prettyPrint(c);" << std::endl;
+    #endif
+}
+
 void getImportAndConf() {
     std::cout << "Load(fftx);\nImportAll(fftx);\n";
     #if (defined FFTX_HIP || FFTX_CUDA)
@@ -152,16 +186,7 @@ void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
-    #if defined FFTX_HIP
-        std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt\", PrintHIPJIT(c,opts));\n"; 
-        std::cout << "PrintHIPJIT(c,opts);\n";
-    #elif defined FFTX_CUDA 
-       std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt\", PrintJIT2(c,opts));\n";   
-       std::cout << "PrintJIT2(c,opts);\n";
-    #else
-        std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt\", opts.prettyPrint(c));\n"; 
-        std::cout << "opts.prettyPrint(c);\n";
-    #endif
+    printToCache(tmp, name, sizes);
 }
 
 class FFTXProblem {
@@ -191,7 +216,7 @@ public:
         args = args1;   
         sizes = sizes1;
     }
-    FFTXProblem(const std::vector<int>& sizes1, std::string name1) {  
+    FFTXProblem(const std::vector<int> sizes1, std::string name1) {  
         sizes = sizes1;
         name = name1;
     }
@@ -285,16 +310,7 @@ void FFTXProblem::transform(){
             run(executors.at(sizes));
         }
         else { //check filesystem cache
-            std::ostringstream oss;
-            std::string tmp = getFFTX();
-            #if defined FFTX_HIP 
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt";
-            #elif defined FFTX_CUDA 
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt";
-            #else
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt";
-            #endif
-            std::string file_name = oss.str();
+            std::string file_name = getFromCache(name, sizes);
             std::ifstream ifs ( file_name );
             if(ifs) {
                 if ( DEBUGOUT) std::cout << "found cached file on disk\n";
