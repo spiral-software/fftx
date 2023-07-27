@@ -27,39 +27,39 @@ void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
 
   int world_rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-  
+
   int col_color = world_rank % plan->r;
   int row_color = world_rank / plan->r;
 
   MPI_Comm_split(MPI_COMM_WORLD, row_color, world_rank, &(plan->row_comm));
-  MPI_Comm_split(MPI_COMM_WORLD, col_color, world_rank, &(plan->col_comm));  
- 
-  size_t kDim = K;  
+  MPI_Comm_split(MPI_COMM_WORLD, col_color, world_rank, &(plan->col_comm));
+
+  size_t kDim = K;
   if (!(plan->is_complex))
     {
       kDim = kDim / 2 + 1;
       if (kDim % (rr*cc)) //not a multiple of the number of processor
 	{
 	  size_t rem = kDim % (rr*cc);
-	  kDim = kDim + (rr*cc - rem);	  
-	}      
-    }  
-  
-  // initial layout is [4, 5, 0, 1, 2, 3], after first fft [0, 1, 2, 3, 4, 5]  
+	  kDim = kDim + (rr*cc - rem);
+	}
+    }
+
+  // initial layout is [4, 5, 0, 1, 2, 3], after first fft [0, 1, 2, 3, 4, 5]
   plan->shape[0] = M/plan->r;
-  plan->shape[1] = plan->r;  
+  plan->shape[1] = plan->r;
   plan->shape[2] = N/plan->r;
-  plan->shape[3] = plan->r;  
+  plan->shape[3] = plan->r;
   plan->shape[4] = kDim/plan->c;
   plan->shape[5] = plan->c;
-  
+
 }
 
 void destroy_2d_comms(fftx_plan plan) {
   if (plan){
     MPI_Comm_free(&(plan->row_comm));
     MPI_Comm_free(&(plan->col_comm));
-    
+
 #if CUDA_AWARE_MPI
   DEVICE_FREE(plan->send_buffer);
   DEVICE_FREE(plan->recv_buffer);
@@ -73,13 +73,13 @@ void destroy_2d_comms(fftx_plan plan) {
 fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
-  
+
   plan->b = batch;
   plan->is_embed = is_embedded;
   plan->is_complex = is_complex;
 
   init_2d_comms(plan, r, c,  M,  N, K);   //embedding uses the input sizes
-  
+
   DEVICE_MALLOC(&(plan->Q3), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
   DEVICE_MALLOC(&(plan->Q4), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
 
@@ -92,61 +92,61 @@ fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bo
   int inN = N * (is_embedded ? 2 : 1);
 
 
-  int outK = K * (is_embedded ? 2 : 1);
-  int outM = M * (is_embedded ? 2 : 1);
-  int outN = N * (is_embedded ? 2 : 1);
+  // int outK = K * (is_embedded ? 2 : 1);
+  // int outM = M * (is_embedded ? 2 : 1);
+  // int outN = N * (is_embedded ? 2 : 1);
 
-  
+
   batch_sizeX *= (is_embedded ? 2 : 1);
-  batch_sizeY *= (is_embedded ? 4 : 1);  
+  batch_sizeY *= (is_embedded ? 4 : 1);
 
-  
+
   if ((plan->is_complex))
     {
-      //read seq write strided  
+      //read seq write strided
       DEVICE_FFT_PLAN_MANY(&(plan->stg1), 1, &inK,
 			   &inK,             plan->b, inK*plan->b,
 			   &inK, batch_sizeZ*plan->b, plan->b,
 			   DEVICE_FFT_Z2Z, batch_sizeZ);
-      
-      //inverse plan -> read strided write seq  
+
+      //inverse plan -> read strided write seq
       DEVICE_FFT_PLAN_MANY(&(plan->stg1i), 1, &inK,
 			   &inK, batch_sizeZ*plan->b, plan->b,
-			   &inK,             plan->b, inK*plan->b,		       
+			   &inK,             plan->b, inK*plan->b,
 			   DEVICE_FFT_Z2Z, batch_sizeZ);
 
     }
   else
     {
-      //read seq write strided  
+      //read seq write strided
       DEVICE_FFT_PLAN_MANY(&(plan->stg1), 1, &inK,
 			   &inK,             plan->b, inK*plan->b,
 			   &inK, batch_sizeZ*plan->b, plan->b,
 			   DEVICE_FFT_D2Z, batch_sizeZ);
 
-      //inverse plan -> read strided write seq  
+      //inverse plan -> read strided write seq
       DEVICE_FFT_PLAN_MANY(&(plan->stg1i), 1, &inK,
 			   &inK, batch_sizeZ*plan->b, plan->b,
-			   &inK,             plan->b, inK*plan->b,		       
+			   &inK,             plan->b, inK*plan->b,
 			   DEVICE_FFT_Z2D, batch_sizeZ);
     }
-    
-  //read seq write strided  
+
+  //read seq write strided
   DEVICE_FFT_PLAN_MANY(&(plan->stg2), 1, &inM,
 		       &inM,           plan->b, inM*plan->b,
 		       &inM, batch_sizeX*plan->b, plan->b,
 		       DEVICE_FFT_Z2Z, batch_sizeX);
-			   
+
   //read seq write seq
   DEVICE_FFT_PLAN_MANY(&(plan->stg3), 1, &inN,
 		       &inN, plan->b, inN*plan->b,
 		       &inN, plan->b, inN*plan->b,
 		       DEVICE_FFT_Z2Z, batch_sizeY);
-  
+
   //read strided write seq
   DEVICE_FFT_PLAN_MANY(&(plan->stg2i), 1, &inM,
 		       &inM, batch_sizeX*plan->b, plan->b,
-		       &inM,           plan->b, inM*plan->b,		       
+		       &inM,           plan->b, inM*plan->b,
 		       DEVICE_FFT_Z2Z, batch_sizeX);
 
   return plan;
@@ -154,63 +154,70 @@ fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bo
 
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
   if (direction == DEVICE_FFT_FORWARD) {
-    if (plan->is_complex)
+    if (plan->is_complex) {
       for (int i = 0; i != plan->b; ++i) {
-	DEVICE_FFT_EXECZ2Z(plan->stg1, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
+        DEVICE_FFT_EXECZ2Z(plan->stg1, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
       }
-    else
+    } else {
       for (int i = 0; i != plan->b; ++i) {
-	DEVICE_FFT_EXECD2Z(plan->stg1, ((DEVICE_FFT_DOUBLEREAL  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i));
+        DEVICE_FFT_EXECD2Z(plan->stg1, ((DEVICE_FFT_DOUBLEREAL  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i));
       }
-    
+    }
+
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
-    
+
     for (int i = 0; i != plan->b; ++i) {
       DEVICE_FFT_EXECZ2Z(plan->stg2, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
     }
-    
+
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_2, plan->is_embed);
 
     for (int i = 0; i != plan->b; ++i) {
-    DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
-    }  
-    
+      DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
+    }
+
   } else if (direction == DEVICE_FFT_INVERSE) {
     for (int i = 0; i != plan->b; ++i) {
-      DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
-    }      
+      DEVICE_FFT_EXECZ2Z(
+        plan->stg3,
+        ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i),
+        ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i),
+        direction
+      );
+    }
+
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_3, plan->is_embed);
+
     for (int i = 0; i != plan->b; ++i){
       DEVICE_FFT_EXECZ2Z(plan->stg2i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
     }
-      
-    fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_4, plan->is_embed);      
 
-    if (plan->is_complex)
-      for (int i = 0; i != plan->b; ++i) {      
-	DEVICE_FFT_EXECZ2Z(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
+    fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_4, plan->is_embed);
+
+    if (plan->is_complex) {
+      for (int i = 0; i != plan->b; ++i) {
+        DEVICE_FFT_EXECZ2Z(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
       }
-    else  //untested
-      for (int i = 0; i != plan->b; ++i) {      
-	DEVICE_FFT_EXECZ2D(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLEREAL  *) out_buffer + i));
+    } else { // untested
+      for (int i = 0; i != plan->b; ++i) {
+        DEVICE_FFT_EXECZ2D(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLEREAL  *) out_buffer + i));
       }
-    
-  }      
+    }
+  }
 }
 
 void fftx_plan_destroy(fftx_plan plan) {
-  if (plan)
-    {
-      if (plan->c == 0)
-      	destroy_1d_comms(plan);
-      else
-      	destroy_2d_comms(plan);
-      
-      DEVICE_FREE(plan->Q3);
-      DEVICE_FREE(plan->Q4);     
-       
-      free(plan);
-    }
+  if (plan) {
+    if (plan->c == 0)
+      destroy_1d_comms(plan);
+    else
+      destroy_2d_comms(plan);
+
+    DEVICE_FREE(plan->Q3);
+    DEVICE_FREE(plan->Q4);
+
+    free(plan);
+  }
 }
 
 // perm: [a, b, c] -> [a, 2c, b]
@@ -252,7 +259,7 @@ void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, int 
 #if (!CUDA_AWARE_MPI)  //this copies data to the GPU to perform packing
   DEVICE_MEM_COPY(src, plan->recv_buffer, buffer_size * sizeof(complex<double>), MEM_COPY_HOST_TO_DEVICE);
 #endif
-  
+
   DEVICE_ERROR_T err;
   if (is_embedded) {
     err = pack_embedded(
@@ -282,7 +289,7 @@ void unpack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, in
 #if CPU_PERMUTE
   //copy data to recv buffer on host in order to unpack into the send_buffer
   DEVICE_MEM_COPY(plan->recv_buffer, src, buffer_size * sizeof(complex<double>), MEM_COPY_DEVICE_TO_HOST);
-  
+
   //the CPU code needs to be updated. It is currently the packing code.
   if (is_embedded) {
     // TODO:
@@ -316,7 +323,7 @@ void unpack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, in
   }
 #else
 
-  //this part of the code does unpacking on the GPU    
+  //this part of the code does unpacking on the GPU
   DEVICE_ERROR_T err;
   if (is_embedded) {
     //embedded unpack GPU code needs to be updated
@@ -335,7 +342,7 @@ void unpack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, in
   if (err != DEVICE_SUCCESS) {
     fprintf(stderr, "pack failed Y <- St1_Comm!\n");
     exit(-1);
-  } 
+  }
 #if (!CUDA_AWARE_MPI)  //this copies data to the GPU to perform packing
   DEVICE_MEM_COPY(plan->send_buffer, dst, buffer_size * sizeof(complex<double>), MEM_COPY_DEVICE_TO_HOST);
 #endif
@@ -354,7 +361,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         size_t buffer_size = plan->shape[0] * plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[5];
         int       sendSize = plan->shape[0] * plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1);
         int recvSize = sendSize;
-	
+
         // [xl, yl, zl, zr] -> [xl, yl, zl, xr]
         // [xl, (yl, zl), xr] -> [xl, xr, (yl, zl)]
 #if CUDA_AWARE_MPI
@@ -388,7 +395,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         size_t buffer_size = plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[0] * (is_embedded ? 2 : 1) * plan->shape[1];
         int sendSize       = plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[0] * (is_embedded ? 2 : 1);
         int recvSize = sendSize;
-	
+
         // [yl, zl, xl, xr] -> [yl, zl, xl, yr]
         // [yl, (zl, xl), yr] -> [yl, yr, (zl, xl)]
 #if CUDA_AWARE_MPI
@@ -414,7 +421,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
 #endif
       } // end FFTX_MPI_EMBED_2
       break;
-      
+
     case FFTX_MPI_EMBED_3:
       {
         // TODO: add embedded for inverse.
@@ -447,7 +454,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
 #endif
       } // end FFTX_MPI_EMBED_3
       break;
-      
+
     case FFTX_MPI_EMBED_4:
       {
         // [xl, xr, yl, zl]
