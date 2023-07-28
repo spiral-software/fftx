@@ -1,6 +1,7 @@
 #include "fftx3.hpp"
 #include "interface.hpp"
 #include "batch1ddftObj.hpp"
+#include <math.h>  
 // #include "ibatch1ddftObj.hpp"
 #include <string>
 #include <fstream>
@@ -33,7 +34,7 @@
 
 static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
 {
-    for ( int imm = 0; imm < sizes.at(0)*sizes.at(0)*sizes.at(0); imm++ ) {
+    for ( int imm = 0; imm < sizes.at(0)*sizes.at(1); imm++ ) {
         host_X[imm] = std::complex<double>(((double) rand()) / (double) (RAND_MAX/2), 0);
     }
     return;
@@ -94,8 +95,9 @@ int main(int argc, char* argv[])
 {
     int iterations = 1;
     int N = 32; // default cube dimensions
-    int read = 0;
-    int write = 1;
+    int B = 32;
+    int read = 1;
+    int write = 0;
     char *prog = argv[0];
     int baz = 0;
 
@@ -108,8 +110,9 @@ int main(int argc, char* argv[])
         case 's':
             argv++, argc--;
             N = atoi ( argv[1] );
-            // while ( argv[1][baz] != 'x' ) baz++;
-            // baz++ ;
+            while ( argv[1][baz] != 'x' ) baz++;
+            baz++ ;
+            B = atoi (& argv[1][baz]);
             // nn = atoi ( & argv[1][baz] );
             // while ( argv[1][baz] != 'x' ) baz++;
             // baz++ ;
@@ -126,7 +129,7 @@ int main(int argc, char* argv[])
             // kk = atoi ( & argv[1][baz] );
             break;
         case 'h':
-            printf ( "Usage: %s: [ -i iterations ] [ -s N ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]\n", argv[0] );
+            printf ( "Usage: %s: [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]\n", argv[0] );
             exit (0);
         default:
             printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
@@ -134,8 +137,8 @@ int main(int argc, char* argv[])
         argv++, argc--;
     }
     // int K_adj = (int) ( kk / 2 ) + 1;
-    std::cout << N << " " << read << " " << write << std::endl;
-    std::vector<int> sizes{N,read,write};
+    std::cout << N << " " << B << " " << read << " " << write << std::endl;
+    std::vector<int> sizes{N,B, read,write};
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
     // fftx::array_t<1,double> inputHost(domain);
@@ -143,9 +146,9 @@ int main(int argc, char* argv[])
     // fftx::array_t<1,double> outputHost(domain);
     // fftx::array_t<3,std::complex<double>> outDevfft1(outputd);
     // fftx::array_t<3,double> outDevfft2(domain);
-    std::vector<std::complex<double>> outDevfft1(N*N*N);
-    std::vector<std::complex<double>> inputHost(N*N*N);
-    std::vector<std::complex<double>> outputHost(N*N*N);
+    std::vector<std::complex<double>> outDevfft1(N*B);
+    std::vector<std::complex<double>> inputHost(N*B);
+    std::vector<std::complex<double>> outputHost(N*B);
 
 #if defined FFTX_CUDA
     CUdevice cuDevice;
@@ -221,7 +224,11 @@ int main(int argc, char* argv[])
     float *invdevmilliseconds = new float[iterations];
     bool check_buff = true;                // compare results of spiral - RTC with device fft
     
-    res = DEVICE_FFT_PLAN_MANY ( &plan, 1, &N, &N, 1, N, &N, N, 1, xfmtype, N);
+    
+    // res = DEVICE_FFT_PLAN_MANY ( &plan, 1, &N, NULL, 1, N, NULL, 1, N, xfmtype, B); //This is APAR APAR
+    //    res = DEVICE_FFT_PLAN_MANY ( &plan, 1, &N, NULL, 1, N, NULL, 1, N, xfmtype, B); //This is APAR AVec NOT WORKING
+       res = DEVICE_FFT_PLAN_MANY ( &plan, 1, &N, NULL, 1, B, NULL, 1, N, xfmtype, B); //This is AVEC APAR
+    // res = hipfftPlan1d(&plan, N, xfmtype, B);
     if ( res != DEVICE_FFT_SUCCESS ) {
         printf ( "Create DEVICE_FFT_PLAN_MANY failed with error code %d ... skip buffer check\n", res );
         check_buff = false;
@@ -278,7 +285,7 @@ int main(int argc, char* argv[])
             DEVICE_MEM_COPY ( outDevfft1.data(), (void*)tempX,
                               outDevfft1.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );    
         #endif              
-            printf ( "cube = [ %d, %d, %d ]\tBatch 1D FFT (Forward)\t", N, N, N );
+            printf ( "cube = [ %d, %d, %d ]\tBatch 1D FFT (Forward)\t", N, (int)sqrt(B), (int)sqrt(B) );
             checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.data(),
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.data(),
                                  (long) outDevfft1.size() );
@@ -286,7 +293,7 @@ int main(int argc, char* argv[])
     #endif
     }
     std::cout << "finished stuff" << std::endl;
-    exit(0);
+    // exit(0);
 //     std::cout << "normalize data for hermitian symmetry" << std::endl;
 
 //     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
@@ -418,8 +425,8 @@ int main(int argc, char* argv[])
 
     // delete[] mddft_cpu;
     // delete[] imddft_cpu;
-    delete[] batch1ddft_gpu;
-    delete[] ibatch1ddft_gpu;
+    // delete[] batch1ddft_gpu;
+    // delete[] ibatch1ddft_gpu;
 
     printf("%s: All done, exiting\n", prog);
   

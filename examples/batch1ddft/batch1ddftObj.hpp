@@ -2,8 +2,7 @@ using namespace fftx;
 
 std::string batch1ddft_script = "\n\
     transform := let(\n\
-        name := \"grid_dft\"::\"d_cont\",\n\
-        TFCall(TRC(TTensorI(DFT(N, sign), N*N, read, write)),\n\
+        TFCall(TRC(TTensorI(DFT(N, sign), B, read, write)),\n\
             rec(fname := name, params := []))\n\
     );";
 
@@ -15,13 +14,14 @@ public:
     }
     void semantics() {
         std::cout << "N := " << sizes.at(0) << ";" << std::endl;
-        if(sizes.at(1) == 0) {
+        std::cout << "B := " << sizes.at(1) << ";" << std::endl;
+        if(sizes.at(2) == 0) {
             std::cout << "read := APar;" << std::endl;
         }
         else{
             std::cout << "read := AVec;" << std::endl;
         }
-        if(sizes.at(2) == 0) {
+        if(sizes.at(3) == 0) {
             std::cout << "write := APar;" << std::endl;
         }
         else{
