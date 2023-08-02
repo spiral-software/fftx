@@ -39,7 +39,7 @@ void destroy_1d_comms(fftx_plan plan) {
 }
 
 
-fftx_plan fftx_plan_distributed_1d(
+fftx_plan fftx_plan_distributed_1d_spiral(
   int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex
 ) {
@@ -381,7 +381,7 @@ void fftx_mpi_rcperm_1d(
     } // end switch/case.
 }
 
-void fftx_execute_1d(
+void fftx_execute_1d_spiral(
   fftx_plan plan,
   double * out_buffer, double * in_buffer,
   int direction

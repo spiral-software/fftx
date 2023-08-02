@@ -84,7 +84,7 @@ void destroy_2d_comms(fftx_plan plan) {
   }
 }
 
-fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
+fftx_plan fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
   
@@ -187,7 +187,7 @@ fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bo
   return plan;
 }
 
-void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
+void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       

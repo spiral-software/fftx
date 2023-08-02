@@ -16,6 +16,6 @@ void init_1d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K);
 
 void destroy_1d_comms(fftx_plan plan);
 
-fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
+fftx_plan  fftx_plan_distributed_1d_spiral(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 
-void fftx_execute_1d(fftx_plan plan, double* out_buffer, double*in_buffer, int direction);
+void fftx_execute_1d_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, int direction);

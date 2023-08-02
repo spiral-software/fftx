@@ -48,8 +48,8 @@ struct fftx_plan_t {
 typedef fftx_plan_t* fftx_plan;
 
 //fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
-fftx_plan  fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
-void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
+fftx_plan  fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
+void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy(fftx_plan plan);
 
 // perm: [a, b, c] -> [a, c, b]
