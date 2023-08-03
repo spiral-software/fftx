@@ -5,7 +5,7 @@
 #include <hip/hiprtc.h>
 #include <hip/hip_runtime.h>
 #include <hipfft.h>
-#include "rocfft.h"
+#include <rocfft/rocfft.h>
 
 #define DEVICE_SUCCESS hipSuccess
 #define DEVICE_EVENT_T hipEvent_t
