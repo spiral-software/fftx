@@ -18,9 +18,15 @@ project ( rconv ${_lang_add} ${_lang_base} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes rconv3 )	##  prefixes only required for test${PROJECT_NAME}
+set ( _prefixes )	##  prefixes not required for test${PROJECT_NAME}, as it now uses RTC
 
-set (         BUILD_PROGS test${PROJECT_NAME}_lib )
+include ( CMakeDependentOption )
+cmake_dependent_option ( BLD_RCONV_EX "Build rconv example" ON "RCONV_LIB" OFF )
+
+if ( BLD_RCONV_EX )
+    ##  set ( BUILD_PROGS test${PROJECT_NAME}_lib )		## this requires a prebuilt library
+endif ()
+
 list ( APPEND BUILD_PROGS test${PROJECT_NAME} )
 
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
@@ -36,12 +42,6 @@ foreach ( _prog ${BUILD_PROGS} )
 	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
     endif ()
 
-    if ( ${_prog} STREQUAL "test${PROJECT_NAME}" )
-	set ( _pref ${_prefixes} )
-    else ()
-	set ( _pref )
-    endif ()
-
-    manage_deps_codegen ( ${_codegen} ${_stem} "${_pref}" )
-    add_includes_libs_to_target ( ${_prog} ${_stem} "${_pref}" )
+    manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
+    add_includes_libs_to_target ( ${_prog} ${_stem} "${_prefixes}" )
 endforeach ()

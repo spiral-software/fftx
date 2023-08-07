@@ -27,19 +27,6 @@ file ( GLOB _pkg_names RELATIVE ${_pkg_folder} CONFIGURE_DEPENDS ${_pkg_folder}/
 set ( _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR} )
 set ( _library_names )
 
-##  Don't attempt MPI library unless: MPI found, codegen != CPU
-##  lib_fftx_mpi is not generated code, want to get the header path and library first
-set ( _fftxmpi_libname )
-
-if ( ${MPI_FOUND} )
-    if ( NOT ${_codegen} STREQUAL "CPU" )
-	add_subdirectory ( lib_fftx_mpi )
-	set ( _fftxmpi_libname ${_lib_name} )
-	include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
-	list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
-    endif ()
-endif ()
-
 foreach ( _dir ${_pkg_names} )
     if ( IS_DIRECTORY ${_pkg_folder}/${_dir} AND EXISTS "${_pkg_folder}/${_dir}/CMakeLists.txt" )
         ##  Subdirectory exists and contains a CMakeLists.txt file -- add subir
@@ -59,6 +46,19 @@ foreach ( _dir ${_pkg_names} )
         message ( STATUS "Added sub-directory ${_dir} for pre-compiled library " )
     endif ()
 endforeach ()
+
+##  Don't attempt MPI library unless: MPI found, codegen != CPU
+##  lib_fftx_mpi is not generated code, want to get the header path and library first
+set ( _fftxmpi_libname )
+
+if ( ${MPI_FOUND} )
+    if ( NOT ${_codegen} STREQUAL "CPU" )
+	add_subdirectory ( lib_fftx_mpi )
+	set ( _fftxmpi_libname ${_lib_name} )
+	include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+	list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )
+    endif ()
+endif ()
 
 list ( APPEND _library_names ${_fftxmpi_libname} )
 set ( _library_names ${_library_names} PARENT_SCOPE )

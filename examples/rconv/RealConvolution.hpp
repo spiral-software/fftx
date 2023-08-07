@@ -6,15 +6,17 @@
 
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
+#include "interface.hpp"
+#include "rconvObj.hpp"
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
-#include "fftx_rconv_gpu_public.h"
-#else
-#include "fftx_rconv_cpu_public.h"
-#endif
+// #if defined(__CUDACC__) || defined(FFTX_HIP)
+// #include "fftx_rconv_gpu_public.h"
+// #else
+// #include "fftx_rconv_cpu_public.h"
+// #endif
 
 #include "device_macros.h"
-#include "rconv.fftx.precompile.hpp"
+// #include "rconv.fftx.precompile.hpp"
 
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).
@@ -56,28 +58,32 @@ public:
   }
 
   // constructor with FFTX handle
-  RealConvolution(fftx::handle_t (*a_functionPtr)
-                  (fftx::array_t<DIM, double>&,
-                   fftx::array_t<DIM, double>&,
-                   fftx::array_t<DIM, double>&),
+  RealConvolution(
+                  // (fftx::array_t<DIM, double>&,
+                  //  fftx::array_t<DIM, double>&,
+                  //  fftx::array_t<DIM, double>&),
+                  RCONVProblem rp,
+                  std::vector<int>& sizes,
                   fftx::box_t<DIM> a_domain,
                   fftx::box_t<DIM> a_fdomain)
   {
-    m_functionPtr = a_functionPtr;
+    // m_functionPtr = prob;
+    m_rp = rp;
+    m_sizes = sizes;
     m_domain = a_domain;
     m_fdomain = a_fdomain;
     m_tp = FFTX_HANDLE;
   }
   
-  // constructor with FFTX library transformer
-  RealConvolution(fftx::rconv<DIM>* a_transformerPtr)
-  {
-    m_transformerPtr = a_transformerPtr;
-    assert(m_transformerPtr->inputSize() == m_transformerPtr->outputSize());
-    m_domain = domainFromSize<DIM>(m_transformerPtr->inputSize());
-    m_fdomain = domainFromSize<DIM>(m_transformerPtr->sizeHalf());
-    m_tp = FFTX_LIB;
-  }
+  // // constructor with FFTX library transformer
+  // RealConvolution(fftx::rconv<DIM>* a_transformerPtr)
+  // {
+  //   m_transformerPtr = a_transformerPtr;
+  //   assert(m_transformerPtr->inputSize() == m_transformerPtr->outputSize());
+  //   m_domain = domainFromSize<DIM>(m_transformerPtr->inputSize());
+  //   m_fdomain = domainFromSize<DIM>(m_transformerPtr->sizeHalf());
+  //   m_tp = FFTX_LIB;
+  // }
   
   virtual bool isDefined()
   { return (m_tp != EMPTY); }
@@ -108,48 +114,65 @@ public:
         auto output_bytes = output_size * sizeof(double);
         auto symbol_bytes = symbol_size * sizeof(double);
 
-        double* inputPtr;
-        double* outputPtr;
-        double* symbolPtr;
-        DEVICE_MALLOC(&inputPtr, input_bytes);
-        DEVICE_MALLOC(&outputPtr, output_bytes);
-        DEVICE_MALLOC(&symbolPtr, symbol_bytes);
+#if defined FFTX_HIP 
+        hipDeviceptr_t inputPtr;
+        hipDeviceptr_t outputPtr;
+        hipDeviceptr_t symbolPtr;
+#else
+        CUdeviceptr inputPtr;
+        CUdeviceptr outputPtr;
+        CUdeviceptr symbolPtr;
+#endif      
+        DEVICE_MALLOC((void **)&inputPtr, input_bytes);
+        DEVICE_MALLOC((void **)&outputPtr, output_bytes);
+        DEVICE_MALLOC((void **)&symbolPtr, symbol_bytes);
 
-        DEVICE_MEM_COPY(inputPtr, a_input.m_data.local(), input_bytes,
+        DEVICE_MEM_COPY((void*)inputPtr, a_input.m_data.local(), input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
-        DEVICE_MEM_COPY(symbolPtr, a_symbol.m_data.local(), symbol_bytes,
+        DEVICE_MEM_COPY((void*)symbolPtr, a_symbol.m_data.local(), symbol_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
 
-        fftx::array_t<DIM, double> inputDevice(fftx::global_ptr<double>
-                                               (inputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, double> outputDevice(fftx::global_ptr<double>
-                                                (outputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, double> symbolDevice(fftx::global_ptr<double>
-                                                (symbolPtr, 0, 1), m_fdomain);
+#if defined FFTX_HIP
+        fftx::array_t<DIM, hipDeviceptr_t> inputDevice(fftx::global_ptr<hipDeviceptr_t>
+                                               (&inputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, hipDeviceptr_t> outputDevice(fftx::global_ptr<hipDeviceptr_t>
+                                                (&outputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, hipDeviceptr_t> symbolDevice(fftx::global_ptr<hipDeviceptr_t>
+                                                (&symbolPtr, 0, 1), m_fdomain);
 
-        if (m_tp == FFTX_HANDLE)
-          {
-            (*m_functionPtr)(inputDevice, outputDevice, symbolDevice);
-          }
-        else if (m_tp == FFTX_LIB)
-          {
-            m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
-          }
-        DEVICE_MEM_COPY(a_output.m_data.local(), outputPtr, output_bytes,
+        std::vector<void*> args{outputPtr, inputPtr, symbolPtr};
+#else
+        fftx::array_t<DIM, CUdeviceptr> inputDevice(fftx::global_ptr<CUdeviceptr>
+                                               (&inputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, CUdeviceptr> outputDevice(fftx::global_ptr<CUdeviceptr>
+                                                (&outputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, CUdeviceptr> symbolDevice(fftx::global_ptr<CUdeviceptr>
+                                                (&symbolPtr, 0, 1), m_fdomain);
+
+        std::vector<void*> args{&outputPtr, &inputPtr, &symbolPtr};
+#endif      
+        m_rp.setArgs(args);
+        m_rp.setSizes(m_sizes);
+        m_rp.transform();
+
+        // if (m_tp == FFTX_HANDLE)
+        //   {
+        //     (*m_functionPtr)(inputDevice, outputDevice, symbolDevice);
+        //   }
+        // else if (m_tp == FFTX_LIB)
+        //   {
+        //     m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
+        //   }
+        DEVICE_MEM_COPY(a_output.m_data.local(), (void*)outputPtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
 
-        DEVICE_FREE(inputPtr);
-        DEVICE_FREE(outputPtr);
+        DEVICE_FREE((void*)inputPtr);
+        DEVICE_FREE((void*)outputPtr);
 #else
-        // on CPU
-        if (m_tp == FFTX_HANDLE)
-          {
-            (*m_functionPtr)(a_input, a_output, a_symbol);
-          }
-        else if (m_tp == FFTX_LIB)
-          {
-            m_transformerPtr->transform(a_input, a_output, a_symbol);
-          }
+        std::vector<void*> args{(void*)a_input.m_data.local(), (void*)a_output.m_data.local(), (void*)a_symbol.m_data.local()};
+        m_rp.setArgs(args);
+        m_rp.setSizes(m_sizes);
+        m_rp.transform();
 #endif
       }
   }
@@ -159,6 +182,8 @@ protected:
   enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2};
 
   TransformType m_tp;
+  RCONVProblem m_rp;
+  std::vector<int> m_sizes;
   fftx::box_t<DIM> m_domain;
   fftx::box_t<DIM> m_fdomain;
 
@@ -168,7 +193,7 @@ protected:
                                    fftx::array_t<DIM, double>&);
   
   // case FFTX_LIB
-  fftx::rconv<DIM>* m_transformerPtr;
+  // fftx::rconv<DIM>* m_transformerPtr;
 };
 
 template<int DIM>
@@ -428,5 +453,4 @@ protected:
     return errPoisson;
   }
 };
-  
 #endif
