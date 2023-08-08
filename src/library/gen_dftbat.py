@@ -35,35 +35,48 @@ import os, stat
 import re
 import shutil
 
-################  Definitions pulled from SnowWhite __init__.py  ############
+################  Definitions pulled from SpiralPy / constants.py  ############
 
-SW_METADATA_START   = '!!START_METADATA!!'
-SW_METADATA_END     = '!!END_METADATA!!'
-SW_STR_DOUBLE       = 'Double'
-SW_STR_FORWARD      = 'Forward'
-SW_STR_INVERSE      = 'Inverse'
-SW_KEY_DESTROY          = 'Destroy'
-SW_KEY_DIMENSIONS       = 'Dimensions'
-SW_KEY_DIRECTION        = 'Direction'
-SW_KEY_EXEC             = 'Exec'
-SW_KEY_INIT             = 'Init'
-SW_KEY_NAMES            = 'Names'
-SW_KEY_PLATFORM         = 'Platform'
-SW_KEY_PRECISION        = 'Precision'
-SW_KEY_TRANSFORMS       = 'Transforms'
-SW_KEY_TRANSFORMTYPE    = 'TransformType'
-SW_KEY_TRANSFORMTYPES   = 'TransformTypes'
-SW_KEY_BATCHSIZE        = 'BatchSize'
+SP_METADATA_START   = '!!START_METADATA!!'
+SP_METADATA_END     = '!!END_METADATA!!'
+SP_STR_DOUBLE       = 'Double'
+SP_STR_SINGLE       = 'Single'
+SP_STR_FORWARD      = 'Forward'
+SP_STR_INVERSE      = 'Inverse'
+SP_STR_C            = 'C'
+SP_STR_FORTRAN      = 'Fortran'
 
-SW_TRANSFORM_BATDFT     = 'BATDFT'
-SW_TRANSFORM_BATMDDFT   = 'BATMDDFT'
-SW_KEY_READSTRIDE       = 'ReadStride'
-SW_KEY_WRITESTRIDE      = 'WriteStride'
+SP_STR_BLOCK        = 'Block'
+SP_STR_UNIT         = 'Unit'
 
-SW_STR_BLOCK        = 'Block'
-SW_STR_UNIT         = 'Unit'
+SP_TRANSFORM_BATDFT     = 'BATDFT'
+SP_TRANSFORM_BATMDDFT   = 'BATMDDFT'
+SP_TRANSFORM_DFT        = 'DFT'
+SP_TRANSFORM_MDDFT      = 'MDDFT'
+SP_TRANSFORM_MDRCONV    = 'MDRCONV'
+SP_TRANSFORM_MDRFSCONV  = 'MDRFSCONV'
+SP_TRANSFORM_MDPRDFT    = 'MDPRDFT'
+SP_TRANSFORM_UNKNOWN    = 'UNKNOWN'
 
-SW_TRANSFORM_MDRCONV    = 'MDRCONV'
+SP_KEY_BATCHSIZE        = 'BatchSize'
+SP_KEY_DESTROY          = 'Destroy'
+SP_KEY_DIMENSIONS       = 'Dimensions'
+SP_KEY_DIRECTION        = 'Direction'
+SP_KEY_EXEC             = 'Exec'
+SP_KEY_FILENAME         = 'Filename'
+SP_KEY_FUNCTIONS        = 'Functions'
+SP_KEY_INIT             = 'Init'
+SP_KEY_METADATA         = 'Metadata'
+SP_KEY_NAMES            = 'Names'
+SP_KEY_ORDER            = 'Order'
+SP_KEY_PLATFORM         = 'Platform'
+SP_KEY_PRECISION        = 'Precision'
+SP_KEY_READSTRIDE       = 'ReadStride'
+SP_KEY_SPIRALBUILDINFO  = 'SpiralBuildInfo'
+SP_KEY_TRANSFORMS       = 'Transforms'
+SP_KEY_TRANSFORMTYPE    = 'TransformType'
+SP_KEY_TRANSFORMTYPES   = 'TransformTypes'
+SP_KEY_WRITESTRIDE      = 'WriteStride'
 
 ###################################
 
@@ -80,7 +93,7 @@ if not re.match ( '_$', _file_stem ):                ## append an underscore if 
 
 _xform_name = _file_stem
 _xform_pref = ''
-_xform_sw_type = SW_TRANSFORM_BATDFT
+_xform_sp_type = SP_TRANSFORM_BATDFT
 
 if re.match ( '^.*_.*_', _file_stem ):
     _dims = re.split ( '_', _file_stem )
@@ -458,7 +471,7 @@ def create_metadata ( decor ):
     ##  remove last 3 chars of _metadata (they are an unwanted ',\\n')
     _str = _str + _metadata
     _str = _str[:-3]
-    _str = _str + '    ]\\\n}\\\n' + SW_METADATA_END + '";\n\n'
+    _str = _str + '    ]\\\n}\\\n' + SP_METADATA_END + '";\n\n'
 
     _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
     _str = _str + '//  without having to load the library).\n'
@@ -521,9 +534,9 @@ _extern_decls  = ''
 _all_sizes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
 
-_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SW_METADATA_START + '\\\n{\\\n'
-_metadata     += '    \\"' + SW_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_sw_type + '\\" ],\\\n'
-_metadata     += '    \\"' + SW_KEY_TRANSFORMS + '\\": [ \\\n'
+_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SP_METADATA_START + '\\\n{\\\n'
+_metadata     += '    \\"' + SP_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_sp_type + '\\" ],\\\n'
+_metadata     += '    \\"' + SP_KEY_TRANSFORMS + '\\": [ \\\n'
 
 
 with open ( _sizesfil, 'r' ) as fil:
@@ -579,8 +592,8 @@ with open ( _sizesfil, 'r' ) as fil:
 
 ##        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d' + '_' + _code_type
         stridestr = [ "AParAPar", "AParAVec", "AVecAPar", "AVecAVec" ]
-        _rdstride = SW_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 3 else SW_STR_BLOCK
-        _wrstride = SW_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 2 else SW_STR_BLOCK
+        _rdstride = SP_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 3 else SP_STR_BLOCK
+        _wrstride = SP_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 2 else SP_STR_BLOCK
 
         _func_stem = _file_stem + _nbat + '_type_' + stridestr[int(_stridetype)-1] + '_len_' + _nsize + '_' + _code_type
         _file_name = _func_stem + _file_suffix
@@ -621,24 +634,24 @@ with open ( _sizesfil, 'r' ) as fil:
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
 
-            _metadata += '        {    \\"' + SW_KEY_DIMENSIONS + '\\": [ ' + _nsize + ' ],\\\n'
-            _metadata += '             \\"' + SW_KEY_BATCHSIZE + '\\": ' + _nbat + ',\\\n'
-            _metadata += '             \\"' + SW_KEY_DIRECTION + '\\": \\"'
+            _metadata += '        {    \\"' + SP_KEY_DIMENSIONS + '\\": [ ' + _nsize + ' ],\\\n'
+            _metadata += '             \\"' + SP_KEY_BATCHSIZE + '\\": ' + _nbat + ',\\\n'
+            _metadata += '             \\"' + SP_KEY_DIRECTION + '\\": \\"'
             if _fwd == 'true':
-                _metadata += SW_STR_FORWARD
+                _metadata += SP_STR_FORWARD
             else:
-                _metadata += SW_STR_INVERSE
+                _metadata += SP_STR_INVERSE
             _metadata += '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_NAMES + '\\": {\\\n'
-            _metadata += '                 \\"' + SW_KEY_DESTROY + '\\": \\"destroy_' + _func_stem + '\\",\\\n'
-            _metadata += '                 \\"' + SW_KEY_EXEC + '\\": \\"' + _func_stem + '\\",\\\n'
-            _metadata += '                 \\"' + SW_KEY_INIT + '\\": \\"init_' + _func_stem + '\\" },\\\n'
-            _metadata += '             \\"' + SW_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
+            _metadata += '             \\"' + SP_KEY_NAMES + '\\": {\\\n'
+            _metadata += '                 \\"' + SP_KEY_DESTROY + '\\": \\"destroy_' + _func_stem + '\\",\\\n'
+            _metadata += '                 \\"' + SP_KEY_EXEC + '\\": \\"' + _func_stem + '\\",\\\n'
+            _metadata += '                 \\"' + SP_KEY_INIT + '\\": \\"init_' + _func_stem + '\\" },\\\n'
+            _metadata += '             \\"' + SP_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
             ##  For now all libs generated are double precision -- maybe look at this in future
-            _metadata += '             \\"' + SW_KEY_PRECISION + '\\": \\"' + SW_STR_DOUBLE + '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_READSTRIDE + '\\": \\"' + _rdstride + '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_WRITESTRIDE + '\\": \\"' + _wrstride + '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_sw_type + '\\"\\\n'
+            _metadata += '             \\"' + SP_KEY_PRECISION + '\\": \\"' + SP_STR_DOUBLE + '\\",\\\n'
+            _metadata += '             \\"' + SP_KEY_READSTRIDE + '\\": \\"' + _rdstride + '\\",\\\n'
+            _metadata += '             \\"' + SP_KEY_WRITESTRIDE + '\\": \\"' + _wrstride + '\\",\\\n'
+            _metadata += '             \\"' + SP_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_sp_type + '\\"\\\n'
             _metadata += '        },\\\n'
 
         else:

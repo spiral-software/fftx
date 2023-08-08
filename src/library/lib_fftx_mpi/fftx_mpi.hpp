@@ -22,8 +22,8 @@
 
 using namespace std;
 
-#define CPU_PERMUTE 1     //Todo: Fix CPU PERMUTE to work with batch + embedded
-#define CUDA_AWARE_MPI 0  
+#define CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
+#define CUDA_AWARE_MPI 0
 
 // implement on GPU.
 // [A, B, C] -> [B, A, C]
@@ -40,7 +40,7 @@ struct fftx_plan_t {
   bool is_complex;
   MPI_Comm row_comm, col_comm;
   size_t shape[6]; // used for buffers for A2A.
-  int M, N, K; // used for FFT sizes. 
+  int M, N, K; // used for FFT sizes.
   DEVICE_FFT_HANDLE stg3, stg2, stg1;
   DEVICE_FFT_HANDLE stg2i, stg1i;
 };

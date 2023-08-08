@@ -5,7 +5,7 @@ env:
   GITHUB_REPOSITORY: spiral-software/fftx
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-##  For now only re-gen docs when push to "patrick" branch; change to "main" when release is done
+##  For now only re-gen docs when push to "main" branch
 on:
   push:
     branches: [main]
@@ -34,12 +34,11 @@ jobs:
         repository: spiral-software/spiral-package-simt
         path: spiral/namespaces/packages/simt
         
-##  spiral-package-mpi is still "private" in spiralgen; enable checkout when available
-##    - name: Checkout repo spiral-package-mpi
-##      uses: actions/checkout@v2
-##      with:
-##        repository: spiral-software/spiral-package-mpi
-##        path: spiral/namespaces/packages/mpi
+    - name: Checkout repo spiral-package-mpi
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/spiral-package-mpi
+        path: spiral/namespaces/packages/mpi
 
     - name: install dependencies
       ##  uses: actions/checkout@v2
@@ -51,7 +50,7 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get -qqq update
         sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
-        sudo apt-get install -y python3.8
+        sudo apt-get install -y python3
         sudo apt-get install -y python3-pip
         pip install -U Sphinx 
         PATH=$PATH:/home/runner/.local/bin
