@@ -18,7 +18,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <memory>
-#include <unistd.h>    // dup2
+
+#if defined(_WIN32) || defined (_WIN64)
+  #include <io.h>
+  #define popen _popen
+  #define pclose _pclose
+#else
+  #include <unistd.h>    // dup2
+#endif
+
 #include <sys/types.h> // rest for open/close
 #include <fcntl.h>
 #include <stdexcept>
@@ -61,7 +69,7 @@ std::string exec(const char* cmd) {
     if (!pipe) {
         throw std::runtime_error("popen() failed!");
     }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    while (fgets(buffer.data(), (int) buffer.size(), pipe.get()) != nullptr) {
         // std::cout << buffer.data() << std::endl;
         result += buffer.data();
     }
@@ -231,7 +239,14 @@ void FFTXProblem::setName(std::string name1) {
 std::string FFTXProblem::semantics2() {
     std::string tmp = getSPIRAL();
     int p[2];
+
+#if defined(_WIN32) || defined (_WIN64)
+    if ( _pipe ( p, 4096, _O_BINARY ) == -1 )
+#define WRSIZECAST (unsigned int)
+#else
     if(pipe(p) < 0)
+#define WRSIZECAST
+#endif
         std::cout << "pipe failed\n";
     std::stringstream out; 
     std::streambuf *coutbuf = std::cout.rdbuf(out.rdbuf()); //save old buf
@@ -240,7 +255,7 @@ std::string FFTXProblem::semantics2() {
     printJITBackend(name, sizes);
     std::cout.rdbuf(coutbuf);
     std::string script = out.str();
-    int res = write(p[1], script.c_str(), script.size());
+    int res = write(p[1], script.c_str(), WRSIZECAST script.size() );
     close(p[1]);
     int save_stdin = redirect_input(p[0]);
     std::string result = exec(tmp.c_str());
