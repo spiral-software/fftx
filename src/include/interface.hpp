@@ -54,7 +54,7 @@
 class Executor;
 class FFTXProblem;
 
-std::string exec(const char* cmd) {
+inline std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
@@ -68,7 +68,7 @@ std::string exec(const char* cmd) {
     return result;
 }
 
-int redirect_input(const char* fname)
+inline int redirect_input(const char* fname)
 {
     int save_stdin = dup(0);
     //std::cout << "in redirect input " << fname << std::endl;
@@ -78,7 +78,7 @@ int redirect_input(const char* fname)
     return save_stdin;
 }
 
-int redirect_input(int input)
+inline int redirect_input(int input)
 {
     int save_stdin = dup(0);
     dup2(input, 0);
@@ -86,14 +86,14 @@ int redirect_input(int input)
     return save_stdin;
 }
 
-void restore_input(int saved_fd)
+inline void restore_input(int saved_fd)
 {
     close(0);
     dup2(saved_fd, 0);
     close(saved_fd);
 }
 
-transformTuple_t * getLibTransform(std::string name, std::vector<int> sizes) {
+inline transformTuple_t * getLibTransform(std::string name, std::vector<int> sizes) {
     if(name == "mddft") {
         return fftx_mddft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
     }
@@ -112,7 +112,7 @@ transformTuple_t * getLibTransform(std::string name, std::vector<int> sizes) {
     }
 }
 
-std::string getFFTX() {
+inline std::string getFFTX() {
      const char * tmp2 = std::getenv("FFTX_HOME");
     std::string tmp(tmp2 ? tmp2 : "");
     if (tmp.empty()) {
@@ -123,7 +123,7 @@ std::string getFFTX() {
     return tmp;
 }
 
-std::string getSPIRAL() {
+inline std::string getSPIRAL() {
     const char * tmp2 = std::getenv("SPIRAL_HOME");//required >8.3.1
     std::string tmp(tmp2 ? tmp2 : "");
     if (tmp.empty()) {
@@ -134,7 +134,41 @@ std::string getSPIRAL() {
     return tmp;
 }
 
-void getImportAndConf() {
+inline std::string getFromCache(std::string name, std::vector<int> sizes) {
+    std::ostringstream oss;
+    std::string tmp = getFFTX();
+    oss << tmp << "cache_" << name << "_" << sizes.at(0);
+    for(int i = 1; i< sizes.size(); i++) {
+        oss << "x" << sizes.at(i);
+    }
+    #if defined FFTX_HIP 
+        oss << "_HIP" << ".txt";
+    #elif defined FFTX_CUDA 
+        oss << "_CUDA" << ".txt";
+    #else
+        oss << "_CPU" << ".txt";
+    #endif
+    return oss.str();
+}
+
+inline void printToCache(std::string tmp, std::string name, std::vector<int> sizes) {
+    std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0);
+    for(int i = 1; i< sizes.size(); i++) {
+        std::cout << "x" << sizes.at(i);
+    }
+    #if defined FFTX_HIP
+        std::cout  << "_HIP" << ".txt\", PrintHIPJIT(c,opts));" << std::endl; 
+        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+    #elif defined FFTX_CUDA 
+        std::cout << "_CUDA" << ".txt\", PrintJIT2(c,opts));" << std::endl;   
+        std::cout << "PrintJIT2(c,opts);" << std::endl;
+    #else
+        std::cout <<  "_CPU" << ".txt\", opts.prettyPrint(c));" << std::endl; 
+        std::cout << "opts.prettyPrint(c);" << std::endl;
+    #endif
+}
+
+inline void getImportAndConf() {
     std::cout << "Load(fftx);\nImportAll(fftx);\n";
     #if (defined FFTX_HIP || FFTX_CUDA)
     std::cout << "ImportAll(simt);\nLoad(jit);\nImport(jit);\n";
@@ -148,20 +182,11 @@ void getImportAndConf() {
     #endif
 }
 
-void printJITBackend(std::string name, std::vector<int> sizes) {
+inline void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
-    #if defined FFTX_HIP
-        std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt\", PrintHIPJIT(c,opts));\n"; 
-        std::cout << "PrintHIPJIT(c,opts);\n";
-    #elif defined FFTX_CUDA 
-       std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt\", PrintJIT2(c,opts));\n";   
-       std::cout << "PrintJIT2(c,opts);\n";
-    #else
-        std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt\", opts.prettyPrint(c));\n"; 
-        std::cout << "opts.prettyPrint(c);\n";
-    #endif
+    printToCache(tmp, name, sizes);
 }
 
 class FFTXProblem {
@@ -191,7 +216,7 @@ public:
         args = args1;   
         sizes = sizes1;
     }
-    FFTXProblem(const std::vector<int>& sizes1, std::string name1) {  
+    FFTXProblem(const std::vector<int> sizes1, std::string name1) {  
         sizes = sizes1;
         name = name1;
     }
@@ -216,19 +241,19 @@ public:
 
 };
 
-void FFTXProblem::setArgs(const std::vector<void*>& args1) {
+inline void FFTXProblem::setArgs(const std::vector<void*>& args1) {
     args = args1;
 }
 
-void FFTXProblem::setSizes(const std::vector<int>& sizes1) {
+inline void FFTXProblem::setSizes(const std::vector<int>& sizes1) {
     sizes = sizes1;
 }
 
-void FFTXProblem::setName(std::string name1) {
+inline void FFTXProblem::setName(std::string name1) {
     name = name1;
 }
 
-std::string FFTXProblem::semantics2() {
+inline std::string FFTXProblem::semantics2() {
     std::string tmp = getSPIRAL();
     int p[2];
     if(pipe(p) < 0)
@@ -246,13 +271,15 @@ std::string FFTXProblem::semantics2() {
     std::string result = exec(tmp.c_str());
     restore_input(save_stdin);
     close(p[0]);
-    result.erase(result.size()-8);
+    while(result.back() != '}') {
+        result.pop_back();
+    }
     return result;
     // return nullptr;
 }
 
 
-void FFTXProblem::transform(){
+inline void FFTXProblem::transform(){
 
     transformTuple_t *tupl = getLibTransform(name, sizes);
     if(tupl != nullptr) { //check if fixed library has transform
@@ -285,21 +312,13 @@ void FFTXProblem::transform(){
             run(executors.at(sizes));
         }
         else { //check filesystem cache
-            std::ostringstream oss;
-            std::string tmp = getFFTX();
-            #if defined FFTX_HIP 
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_HIP" << ".txt";
-            #elif defined FFTX_CUDA 
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CUDA" << ".txt";
-            #else
-                oss << tmp << "cache_" << name << "_" << sizes.at(0) << "x" << sizes.at(1) << "x" << sizes.at(2) << "_CPU" << ".txt";
-            #endif
-            std::string file_name = oss.str();
+            std::string file_name = getFromCache(name, sizes);
             std::ifstream ifs ( file_name );
             if(ifs) {
                 if ( DEBUGOUT) std::cout << "found cached file on disk\n";
                 std::string fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
                                        ( std::istreambuf_iterator<char>()    ) );
+                res = fcontent;
                 Executor e;
                 e.execute(fcontent);
                 executors.insert(std::make_pair(sizes, e));
@@ -318,7 +337,7 @@ void FFTXProblem::transform(){
 }
 
 
-void FFTXProblem::run(Executor e) {
+inline void FFTXProblem::run(Executor e) {
     #if (defined FFTX_HIP || FFTX_CUDA)
     gpuTime = e.initAndLaunch(args);
     #else
@@ -326,11 +345,11 @@ void FFTXProblem::run(Executor e) {
     #endif
 }
 
-float FFTXProblem::getTime() {
+inline float FFTXProblem::getTime() {
    return gpuTime;
 }
 
-std::string FFTXProblem::returnJIT() {
+inline std::string FFTXProblem::returnJIT() {
     if(!res.empty()) {
         return res;
     }
