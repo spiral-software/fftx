@@ -11,7 +11,7 @@ set ( _incl_files fftx3.hpp fftx3utilities.h doxygen.config )
 list ( APPEND _incl_files cpubackend.hpp cudabackend.hpp dftbatlib.hpp fftxfft.hpp
                           hipbackend.hpp interface.hpp mddftlib.hpp mdprdftlib.hpp
                           transformlib.hpp )
-list ( APPEND _incl_files batch1dffftObj.hpp ibatch1dffftObj.hpp )
+list ( APPEND _incl_files batch1ddftObj.hpp ibatch1ddftObj.hpp )
 
 install ( FILES ${_incl_files}
           DESTINATION ${CMAKE_INSTALL_PREFIX}/include )
