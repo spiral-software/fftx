@@ -355,33 +355,65 @@ void fftx_mpi_rcperm_1d(
 void fftx_execute_1d(
   fftx_plan plan,
   double * out_buffer, double * in_buffer,
-  int direction
+  int direction,
+  bool use_fftx
 ) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  int inM = plan->M * (plan->is_embed ? 2 : 1);
+  int inN = plan->N * (plan->is_embed ? 2 : 1);
+  int inK = plan->K * (plan->is_embed ? 2 : 1);
+  int batch_sizeX = plan->N * plan->K/(int)plan->shape[5];
+  int batch_sizeY = plan->K * (int)plan->shape[0];
+  int batch_sizeZ = (int)plan->shape[0] * plan->N*(plan->is_embed ? 2 : 1);
+  std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
+  BATCH1DDFTProblem bdstg1(size_stg1, "b1dft");
+  std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
+  BATCH1DDFTProblem bdstg2(size_stg2, "b1dft");
+  std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+  BATCH1DDFTProblem bdstg3(size_stg3, "b1dft");	
+
+  std::vector<int> size_istg2 = {inN, batch_sizeY, 1, 0};  
+  IBATCH1DDFTProblem ibdstg2(size_istg2, "ib1dft");
+  std::vector<int> size_istg1 = {inM, batch_sizeX, 1, 0};  
+  IBATCH1DDFTProblem ibdstg1(size_istg1, "ib1dft");
 
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
       for (int i = 0; i < plan->b; i++) {
-        DEVICE_FFT_EXECZ2Z(
-          plan->stg1,
-          ((DEVICE_FFT_DOUBLECOMPLEX *) in_buffer) + i,
-          ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + i,
-          direction
-        );
+        if(use_fftx) {
+          std::vector<void*> args{plan->Q3 + i, in_buffer+i};
+          bdstg1.setArgs(args);
+          bdstg1.transform();
+        }
+        else {
+          DEVICE_FFT_EXECZ2Z(
+            plan->stg1,
+            ((DEVICE_FFT_DOUBLECOMPLEX *) in_buffer) + i,
+            ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + i,
+            direction
+          );
+        }
       }
 
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
       fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
 
       for (int i = 0; i < plan->b; ++i) {
-        DEVICE_FFT_EXECZ2Z(
-          plan->stg2,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + i,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
-          direction
-        );
+        if(use_fftx) {
+          std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
+          bdstg2.setArgs(args);
+          bdstg2.transform();
+        }
+        else {
+          DEVICE_FFT_EXECZ2Z(
+            plan->stg2,
+            ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + i,
+            ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
+            direction
+          );
+        }
       }
 
       double *stg2_output = (double *) plan->Q3;
@@ -394,12 +426,19 @@ void fftx_execute_1d(
       }
       // [Y, X'/px, Z] (no permutation on last stage)
       for (int i = 0; i < plan->b; ++i) {
-        DEVICE_FFT_EXECZ2Z(
-          plan->stg3,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
-          direction
-        );
+        if(use_fftx) {
+          std::vector<void*> args{out_buffer + i, stg3_input + i};
+          bdstg3.setArgs(args);
+          bdstg3.transform();
+        }
+        else {
+          DEVICE_FFT_EXECZ2Z(
+            plan->stg3,
+            ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
+            ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
+            direction
+          );
+        }
       }
     } else {
       //forward real
@@ -437,12 +476,19 @@ void fftx_execute_1d(
 
       // [Y, X'/px, Z] (no permutation on last stage)
       for (int i = 0; i < plan->b; ++i) {
-        DEVICE_FFT_EXECZ2Z(
-          plan->stg3,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
-          direction
-        );
+        if(use_fftx) {
+          std::vector<void*> args{out_buffer + i, stg3_input + i};
+          bdstg3.setArgs(args);
+          bdstg3.transform();
+        }
+        else {
+          DEVICE_FFT_EXECZ2Z(
+            plan->stg3,
+            ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
+            ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
+            direction
+          );
+        }
       }
     }
   } else if (direction == DEVICE_FFT_INVERSE) { // backward
@@ -450,7 +496,13 @@ void fftx_execute_1d(
     DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
     // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
     for (int i = 0; i < plan->b; i++) {
-      DEVICE_FFT_EXECZ2Z(plan->stg3, stg3i_input + i, stg3i_output + i, direction);
+      if(use_fftx) {
+        std::vector<void*> args{stg3i_output + i, stg3i_input + i};
+        bdstg3.setArgs(args);
+        bdstg3.transform();
+      }
+      else
+        DEVICE_FFT_EXECZ2Z(plan->stg3, stg3i_input + i, stg3i_output + i, direction);
     }
     // no permutation necessary, use previous output as input.
     DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
@@ -460,7 +512,13 @@ void fftx_execute_1d(
     //stage 2i
     // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
     for (int i = 0; i < plan->b; ++i) {
-      DEVICE_FFT_EXECZ2Z(plan->stg2i, stg2i_input + i, stg2i_output + i, direction);
+      if(use_fftx) {
+        std::vector<void*> args{stg2i_output + i, stg2i_input + i};
+        ibdstg2.setArgs(args);
+        ibdstg2.transform();
+      }
+      else
+        DEVICE_FFT_EXECZ2Z(plan->stg2i, stg2i_input + i, stg2i_output + i, direction);
     }
 
     DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
@@ -477,8 +535,15 @@ void fftx_execute_1d(
     //stage 1i
     for (int i = 0; i < plan->b; ++i) {
       if (plan->is_complex) {
-        //backward complex
-        DEVICE_FFT_EXECZ2Z(plan->stg1i, stg1i_input + i, stg1i_output + i, direction);
+        if(use_fftx) {
+          std::vector<void*> args{stg1i_output + i,  stg1i_input + i};
+          ibdstg1.setArgs(args);
+          ibdstg1.transform();
+        }
+        else{
+          //backward complex
+          DEVICE_FFT_EXECZ2Z(plan->stg1i, stg1i_input + i, stg1i_output + i, direction);
+        }
       } else {
         //backward real
         DEVICE_FFT_EXECZ2D(plan->stg1i, stg1i_input + i, ((DEVICE_FFT_DOUBLEREAL *) stg1i_output) + i);
