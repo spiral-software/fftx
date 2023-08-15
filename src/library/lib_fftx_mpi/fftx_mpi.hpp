@@ -11,6 +11,17 @@
 #include "fftx_gpu.h"
 #include "fftx_util.h"
 
+#include "interface.hpp"
+#include "batch1ddftObj.hpp"
+#include "ibatch1ddftObj.hpp"
+#if defined FFTX_CUDA
+#include "cudabackend.hpp"
+#elif defined FFTX_HIP
+#include "hipbackend.hpp"
+#else
+#include "cpubackend.hpp"
+#endif
+
 #define FFTX_MPI_EMBED_1 1
 #define FFTX_MPI_EMBED_2 2
 
@@ -49,7 +60,7 @@ typedef fftx_plan_t* fftx_plan;
 
 //fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 fftx_plan  fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
-void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
+void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction, bool use_fftx);
 void fftx_plan_destroy(fftx_plan plan);
 
 // perm: [a, b, c] -> [a, c, b]
