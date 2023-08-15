@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
 
   // ==== for timing, set by argument ====================
   if (argc != 10) {
-    printf("usage: %s <M> <N> <K> <batch> <grid dim> <embedded> <forward> <complex> <use_vendor_fft_library>\n", argv[0]);
+    printf("usage: %s <M> <N> <K> <batch> <grid dim> <embedded> <forward> <complex>\n", argv[0]);
     exit(-1);
   }
   int M = atoi(argv[1]);
@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
   bool is_embedded = 0 < atoi(argv[6]);
   bool is_forward = 0 < atoi(argv[7]);
   bool is_complex = 0 < atoi(argv[8]);
-  bool use_fftx = atoi(argv[9]) ? 0 : 1;
+  // bool use_fftx = atoi(argv[9]) ? 0 : 1;
   // -----------------------------------------------------
 
   MPI_Comm_size(MPI_COMM_WORLD, &p);
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
 
     double start_time = MPI_Wtime();
     
-    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer, (is_forward ? DEVICE_FFT_FORWARD: DEVICE_FFT_INVERSE), use_fftx);
+    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer, (is_forward ? DEVICE_FFT_FORWARD: DEVICE_FFT_INVERSE));
     
     double end_time = MPI_Wtime();
     
