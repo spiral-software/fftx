@@ -99,11 +99,11 @@ source get_spiral.sh
 
 ### 3. Generate library source code.
 
-**FFTX** builds libraries of transforms for a set of different sizes.  The library
-source code is generated from **SPIRAL** script specifications, and may be
-created before building **FFTX** itself.  If the sizes are pre-built the code will be
-added to libraries of pre-defined fixed size.  Alternatively, sizes not defined can have
-the code generated and compiled at run-time (RTC).
+**FFTX** builds libraries of transforms for a set of different sizes.  The library source
+code is generated from **SPIRAL** script specifications, and may be created before
+building **FFTX** itself.  If the sizes are pre-built the code will be added to libraries
+(the pre-defined fixed-size libraries).  Alternatively, sizes not defined can have the
+code generated and compiled at run-time (RTC).
 
 Before creating the library source code consider if you will be
 running on CPU only, or also utilizing a GPU.  If you create all the source code
@@ -116,12 +116,20 @@ examples) are to be built.  Each library has a flag (true/false) stating whether
 it will be built or not.  There is also a flag allowing the building of the
 example programs to be skipped (useful when you only need to build the libraries
 for an external application).  The script is self-documenting; edit the script
-to set the flags for the libraries either **true** or **false**.  Once you have
-made the appropriate choices simply run the script:
+to set the flags for the libraries either **true** or **false**.
+
+NOTE: It is strongly recommended that you build all libraries (even if you add few or no
+fixed size entries to the library).  This is because some of the header files are created
+automatically at build time.  At run time the API can check if a specific transform of the
+requested size exists in the library and use it if it exists.  If it doesn't exist then
+the desired transform can be generated and compiled on-the-fly (RTC).
+
+Once you have made the appropriate choices simply run the script:
 ```
-./config-fftx-libs.sh
+./config-fftx-libs.sh <platform>
+where <platform> is one of { CPU [default] | CUDA | HIP }
 ```
-No arguments are required for this script.  This script runs the
+If no argument is provided, then the platform defaults to CPU.  This script runs the
 **build-lib-code.sh** script in the **src/library** directory and will marshall
 the resources and options needed for the set of libraries selected.  This step
 can take quite a long time depending on the number of transforms and set of
@@ -146,7 +154,7 @@ From your **FFTX** home directory, set up a **build** folder (which can be given
 any name, and you may want to have separate ones for different backends).  When
 you configure using **CMake** you must specify the install prefix that **CMake**
 should use (the default location for **CMake** may be a directory for which you
-do not have write privilidges).  Do that by setting the environment variable
+do not have write privileges).  Do that by setting the environment variable
 **FFTX_HOME** and specifying either the directory path or the environment
 variable on the **CMake** command line.
 
@@ -166,6 +174,18 @@ cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -DCMAKE_CXX_COMPILER=hipcc -D_codegen=H
 make install
 ```
 
+When **FFTX** is built, the final step (of *make install*) creates a tree structure
+(at the location specified by **CMAKE_INSTALL_PREFIX**).  The following
+directories will be created/populated:
+
+|Directory Name|Description|
+|:-----|:-----|
+|**./CMakeIncludes**|CMake include files and functions to ease integration with **FFTX**|
+|**./bin**|Executables for example programs built as part of the **FFTX** distribution|
+|**./lib**|**FFTX** libraries, that can be called by external applications|
+|**./include**|Include files for using **FFTX** libraries|
+|**./cache_jit_files**|Folder containing the RTC code generated for any transform not <br>found in a fixed-size library|
+
 #### Building on Windows
 
 **FFTX** can be built on Windows, however, you need to be able to run a [bash]
@@ -182,18 +202,6 @@ cmake --build . --target install --config Release
 ```
 This shows an example building for CUDA on Windows, you can also build for CPU
 or AMD HIP as shown above (under Building for Linux).
-
-When **FFTX** is built, the final step (of *make install*) creates a tree structure
-(at the location specified by **CMAKE_INSTALL_PREFIX**).  The following
-directories will be created/populated:
-
-|Directory Name|Description|
-|:-----|:-----|
-|**./CMakeIncludes**|CMake include files and functions to ease integration with **FFTX**|
-|**./bin**|Executables for example programs built as part of the **FFTX** distribution|
-|**./lib**|**FFTX** libraries, that can be called by external applications|
-|**./include**|Include files for using **FFTX** libraries|
-|**./cache_jit_files**|Folder containing the RTC code generated for any transform not <br>found in a fixed-size library|
 
 ## Running FFTX Example Programs
 
@@ -225,7 +233,7 @@ external application linking with **FFTX** libraries is available in the
 **FFTX** builds libraries for 1D and 3D FFTs for a single device.  FFTs are
 built for a set of specific sizes, thus not all possible sizes will be found in
 the libraries.  There are default files specifying the sizes to build for each
-of: 1D FFTs, 3D FFTS, and distributed FFTs (defaults file names below).  You can
+of: 1D FFTs and 3D FFTs (default file names below).  You can
 customize the set of sizes to build by either editing these files **or** provide
 your own files -- just override the default file name in the
 **config-fftx-libs.sh** script.  If you provide your own file(s) just follow the
@@ -238,7 +246,6 @@ folder):
 |1D FFT|dftbatch-sizes.txt|Batch of 1D FFTs|
 |3D FFT|cube-sizes-cpu.txt|3D FFTs for CPU| 
 |3D FFT|cube-sizes-gpu.txt|3D FFTs for GPU| 
-|Distributed FFT|distdft_sizes.txt|Distributed FFTs|
 
 The following is a list of libraries potentially built:
 
@@ -253,8 +260,6 @@ The following is a list of libraries potentially built:
 |1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex (in development)|
 |1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex (in development)|
 |1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real (in development)|
-|Distributed FFT|fftx_distdft|Distributed 3D FFT complex to complex (in development)|
-|Distributed embedded FFT|fftx_distdft|Distributed embedded 3D FFT complex to complex (in development)|
 
 ### Library API
 

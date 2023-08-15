@@ -70,13 +70,11 @@ else
     PRDFTBAT_LIB=true
     MDDFT_LIB=true
     MDPRDFT_LIB=true
-    RCONV_LIB=false
-    DISTDFT_LIB=false
+    RCONV_LIB=true
     PSATD_LIB=false
     CPU_SIZES_FILE="cube-sizes-cpu.txt"
     GPU_SIZES_FILE="cube-sizes-gpu.txt"
     DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
-    DISTDFT_SIZES_FILE="distdft-sizes.txt"
     PSATD_SIZES_FILE="cube-psatd.txt"
 fi
 
@@ -146,11 +144,6 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py fftx_rconv $GPU_SIZES_FILE $build_type true &
-    fi
-    if [ "$DISTDFT_LIB" = true ]; then
-	waitspiral=true
-	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true false &
-	$pyexe gen_distdft.py fftx_distdft $DISTDFT_SIZES_FILE $build_type true true &
     fi
     if [ "$PSATD_LIB" = true ]; then
 	waitspiral=true
