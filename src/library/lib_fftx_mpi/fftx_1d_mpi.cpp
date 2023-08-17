@@ -10,10 +10,7 @@
 #include "fftx_util.h"
 
 #include "fftx_mpi.hpp"
-#include "fftx_mpi_spiral.hpp"
-#include "fftx_mpi_default.hpp"
-#include "fftx_1d_mpi_spiral.hpp"
-#include "fftx_1d_mpi_default.hpp"
+
 using namespace std;
 
 void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
@@ -42,8 +39,7 @@ void destroy_1d_comms(fftx_plan plan) {
 
 fftx_plan fftx_plan_distributed_1d(
   int p, int M, int N, int K,
-  int batch, bool is_embedded, bool is_complex
-) {
+  int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan;
   if(batch == 1 && is_complex == true) {

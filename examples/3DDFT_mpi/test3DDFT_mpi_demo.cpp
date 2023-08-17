@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
   int p;
 
   // ==== for timing, set by argument ====================
-  if (argc != 10) {
+  if (argc != 9) {
     printf("usage: %s <M> <N> <K> <batch> <grid dim> <embedded> <forward> <complex>\n", argv[0]);
     exit(-1);
   }
@@ -27,7 +27,6 @@ int main(int argc, char* argv[]) {
   bool is_embedded = 0 < atoi(argv[6]);
   bool is_forward = 0 < atoi(argv[7]);
   bool is_complex = 0 < atoi(argv[8]);
-  // bool use_fftx = atoi(argv[9]) ? 0 : 1;
   // -----------------------------------------------------
 
   MPI_Comm_size(MPI_COMM_WORLD, &p);

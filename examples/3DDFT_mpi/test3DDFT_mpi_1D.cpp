@@ -9,7 +9,7 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-  if (argc != 10) {
+  if (argc != 9) {
     printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <check>\n", argv[0]);
     exit(-1);
   }
@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
   bool is_forward  = 0 < atoi(argv[6]);
   bool is_complex  = 0 < atoi(argv[7]);
   bool check       = 0 < atoi(argv[8]);
-  // bool use_fftx    = atoi(argv[9]) ? 0 : 1;
   // (slowest to fastest)
   // R2C input is [K,       N, M]         doubles, block distributed Z.
   // C2R input is [N, M/2 + 1, K] complex doubles, block distributed X.

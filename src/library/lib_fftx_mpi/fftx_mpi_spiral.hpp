@@ -61,6 +61,4 @@ fftx_plan  fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int b
 void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy_spiral(fftx_plan plan);
 
-#include "fftx_1d_mpi.hpp"
-
 #endif

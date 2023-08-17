@@ -10,9 +10,6 @@
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"
 
-#include "fftx_1d_mpi.hpp"
-#include "fftx_1d_mpi_spiral.hpp"
-
 #include "interface.hpp"
 #include "batch1ddftObj.hpp"
 #include "ibatch1ddftObj.hpp"
@@ -23,7 +20,6 @@
 #else
 #include "cpubackend.hpp"
 #endif
-
 
 
 using namespace std;
@@ -187,9 +183,8 @@ fftx_plan fftx_plan_distributed_1d_spiral(
 void fftx_execute_1d_spiral(
   fftx_plan plan,
   double * out_buffer, double * in_buffer,
-  int direction,
-  bool use_fftx
-) {
+  int direction )
+{
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   int inM = plan->M * (plan->is_embed ? 2 : 1);

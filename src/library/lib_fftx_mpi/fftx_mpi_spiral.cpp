@@ -108,7 +108,8 @@ fftx_plan fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int ba
   return plan;
 }
 
-void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int direction, bool use_fftx) {
+void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, int direction)
+{
   int batch_sizeZ = plan->M/plan->r * plan->N/plan->c;
   int batch_sizeX = plan->N/plan->c * plan->K/plan->r;
   int batch_sizeY = plan->K/plan->r * plan->M/plan->c;
