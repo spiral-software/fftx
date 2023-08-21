@@ -9,8 +9,8 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-  if (argc != 10) {
-    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <check> <use_vendor_fft_library>\n", argv[0]);
+  if (argc != 9) {
+    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <check>\n", argv[0]);
     exit(-1);
   }
 
@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
   bool is_forward  = 0 < atoi(argv[6]);
   bool is_complex  = 0 < atoi(argv[7]);
   bool check       = 0 < atoi(argv[8]);
-  bool use_fftx    = atoi(argv[9]) ? 0 : 1;
   // (slowest to fastest)
   // R2C input is [K,       N, M]         doubles, block distributed Z.
   // C2R input is [N, M/2 + 1, K] complex doubles, block distributed X.
@@ -144,7 +143,7 @@ int main(int argc, char* argv[]) {
   fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
   for (int t = 0; t < 1; t++) {
     double start_time = MPI_Wtime();
-    fftx_execute_1d(plan, (double*)dev_out, (double*)dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE), use_fftx);
+    fftx_execute_1d(plan, (double*)dev_out, (double*)dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
 
     // for (int b = 0; b < batch; b++) {
     //   fftx_execute_1d(plan, (double*)dev_out + b, dev_in + b, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
