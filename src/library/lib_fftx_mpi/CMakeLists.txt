@@ -13,7 +13,14 @@ set ( _lib_name ${_lib_root} PARENT_SCOPE )
 
 ##  List the names of the source files to compile for the library
 
-set ( _source_files fftx_1d_gpu.cpp fftx_1d_mpi.cpp fftx_gpu.cpp fftx_mpi.cpp )
+set ( _source_files fftx_1d_gpu.cpp
+                    fftx_1d_mpi.cpp
+                    fftx_1d_mpi_default.cpp
+                    fftx_1d_mpi_spiral.cpp
+                    fftx_gpu.cpp
+                    fftx_mpi_default.cpp
+                    fftx_mpi_spiral.cpp
+                    fftx_mpi.cpp )
 
 foreach ( _src ${_source_files} )
     ##  set the desired language property
@@ -46,7 +53,15 @@ endif ()
 
 ##  List the names of the public header files for the library
 
-set ( _incl_files fftx_1d_gpu.h fftx_1d_mpi.hpp fftx_gpu.h fftx_mpi.hpp fftx_util.h )
+set ( _incl_files fftx_1d_gpu.h
+                  fftx_1d_mpi.hpp
+                  fftx_1d_mpi_default.hpp
+                  fftx_1d_mpi_spiral.hpp
+                  fftx_gpu.h
+                  fftx_mpi.hpp
+                  fftx_mpi_default.hpp
+                  fftx_mpi_spiral.hpp
+                  fftx_util.h )
 
 install ( TARGETS
           ${_lib_name}
