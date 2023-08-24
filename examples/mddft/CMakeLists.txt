@@ -26,7 +26,10 @@ endif ()
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
 
-LIST (APPEND ADDL_COMPILE_FLAGS -g -fpermissive )
+LIST (APPEND ADDL_COMPILE_FLAGS -g )
+if ( NOT WIN32 )
+    LIST (APPEND ADDL_COMPILE_FLAGS -fpermissive )
+endif ()
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Copyright (c) 2018-2022, Carnegie Mellon University
+## Copyright (c) 2018-2023, Carnegie Mellon University
 ## All rights reserved.
 ##
 ## See LICENSE file for full information
@@ -14,10 +14,10 @@
 
 ##  Build the libraries but only add a few [typically small] sizes to the library to
 ##  demonstrate the ability to run with both fixed sizes libraries and to generate code
-##  (RTC) as needed.  Ultimately, create all libraries but with no fixed transforms in
-##  them -- this will allow complete on the fly RTC but create the necessary APIs for
-##  library access thus supporting fboth fixed-sixed libraries and RTC as the user may
-##  prefer. 
+##  (RTC) as needed.  Ultimately, create all libraries but with few, if any, fixed
+##  transforms in them -- this will allow complete on the fly RTC but create the necessary
+##  APIs for library access thus supporting both fixed-sixed libraries and RTC as the
+##  user may prefer.
 
 ##  Whenever a library is built both the forward and inverse transforms (when applicable)
 ##  are built
@@ -36,10 +36,6 @@ MDPRDFT_LIB=true
 ##  Build the Real Convolution library
 RCONV_LIB=true
 
-##  Deprecated - do not build -- will be removed in next release
-##  Build the MPI distributed FFT library (MPI is required to build examples)
-##  DISTDFT_LIB=false
-
 ##  Build the PSATD fixed sizes library
 PSATD_LIB=false
 
@@ -53,10 +49,6 @@ GPU_SIZES_FILE="cube-sizes-gpu.txt"
 ##  File containing the sizes to build for the CPU version of batch 1D DFT and batch 1D PRDFT
 DFTBAT_SIZES_FILE="dftbatch-sizes.txt"
 
-##  Deprecated - do not build -- will be removed in next release
-##  File containing the sizes to build for the distributed FFT library
-##  DISTDFT_SIZES_FILE="distdft-sizes.txt"
-
 ##  File containing the sizes to build for the PSATD library
 PSATD_SIZES_FILE="cube-psatd.txt"
 
@@ -66,14 +58,27 @@ PSATD_SIZES_FILE="cube-psatd.txt"
 ##  flag is set to false, NO example programs will be built.
 BUILD_EXAMPLES=true
 
-##Build FFTX for CPU
-BUILD_FOR_CPU=false
+##  This script accecpts an argument passed on the command line indicating which
+##  architecture is to be built.  Choices are { CPU | CUDA | HIP }.  The default is CPU
+##  (if nothing is specified).  NOTE: This mechanism is used to facilitate building with
+##  spack.
 
-##  Build FFTX for CUDA
+BUILD_FOR_CPU=true
 BUILD_FOR_CUDA=false
+BUILD_FOR_HIP=false
 
-##  Build FFTX for HIP
-BUILD_FOR_HIP=true
+if [ $# -gt 0 ]; then
+    ##  Command line argument is present
+    targ=$1
+    if [ "$targ" == "CUDA" ]; then
+        BUILD_FOR_CPU=false
+        BUILD_FOR_CUDA=true
+    elif [ "$targ" == "HIP" ]; then
+        BUILD_FOR_CPU=false
+        BUILD_FOR_HIP=true
+    ##  else just build for CPU when neither CUDA or HIP are specified
+    fi
+fi
 
 #############################################################################################
 ##
@@ -93,14 +98,10 @@ echo "PRDFTBAT_LIB=$PRDFTBAT_LIB" >> build-lib-code-options.sh
 echo "MDDFT_LIB=$MDDFT_LIB" >> build-lib-code-options.sh
 echo "MDPRDFT_LIB=$MDPRDFT_LIB" >> build-lib-code-options.sh
 echo "RCONV_LIB=$RCONV_LIB" >> build-lib-code-options.sh
-##  Deprecated - do not build -- will be removed in next release
-##  echo "DISTDFT_LIB=$DISTDFT_LIB" >> build-lib-code-options.sh
 echo "PSATD_LIB=$PSATD_LIB" >> build-lib-code-options.sh
 echo "CPU_SIZES_FILE=$CPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "GPU_SIZES_FILE=$GPU_SIZES_FILE" >> build-lib-code-options.sh
 echo "DFTBAT_SIZES_FILE=$DFTBAT_SIZES_FILE" >> build-lib-code-options.sh
-##  Deprecated - do not build -- will be removed in next release
-##  echo "DISTDFT_SIZES_FILE=$DISTDFT_SIZES_FILE" >> build-lib-code-options.sh
 echo "PSATD_SIZES_FILE=$PSATD_SIZES_FILE" >> build-lib-code-options.sh
 
 popd
@@ -114,13 +115,14 @@ else
     echo "FFTX_HOME is not set; set it to `pwd`"
     export FFTX_HOME=`pwd`
 fi
-mkdir ${FFTX_HOME}/cache_jit_files
+mkdir -p -v ${FFTX_HOME}/cache_jit_files
 
 echo "Build for CPU = $BUILD_FOR_CPU"
 if [ "$BUILD_FOR_CPU" = true ]; then
     ##  Build the libraries for CPU
     pushd src/library
     ./build-lib-code.sh "CPU"
+    ##  echo "Run ./build-lib-code.sh CPU"
     popd
 fi
 
@@ -129,6 +131,7 @@ if [ "$BUILD_FOR_CUDA" = true ]; then
     ##  Build the libraries for CUDA
     pushd src/library
     ./build-lib-code.sh "CUDA"
+    ##  echo " Run ./build-lib-code.sh CUDA"
     popd
 fi
 
@@ -137,6 +140,7 @@ if [ "$BUILD_FOR_HIP" = true ]; then
     ##  Build the libraries for HIP
     pushd src/library
     ./build-lib-code.sh "HIP"
+    ##  echo "Run ./build-lib-code.sh HIP"
     popd
 fi
 
@@ -144,7 +148,7 @@ rm -f options.cmake
 touch options.cmake
 
 echo "##" >> options.cmake
-echo "## Copyright (c) 2018-2022, Carnegie Mellon University" >> options.cmake
+echo "## Copyright (c) 2018-2023, Carnegie Mellon University" >> options.cmake
 echo "## All rights reserved." >> options.cmake
 echo "##" >> options.cmake
 echo "## See LICENSE file for full information" >> options.cmake
@@ -184,14 +188,6 @@ else
     setopt="OFF"
 fi
 echo "option ( RCONV_LIB \"Build the Real Convolution library\" $setopt )" >> options.cmake
-
-##  Deprecated - do not build -- will be removed in next release
-##  if [ "$DISTDFT_LIB" = true ]; then
-##      setopt="ON"
-##  else
-##      setopt="OFF"
-##  fi
-##  echo "option ( DISTDFT_LIB \"Build the MPI distributed FFT library (MPI is required to build examples)\" $setopt )" >> options.cmake
 
 if [ "$PSATD_LIB" = true ]; then
     setopt="ON"

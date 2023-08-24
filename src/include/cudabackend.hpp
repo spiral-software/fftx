@@ -14,7 +14,15 @@
 #include <tuple>
 #include <iomanip>
 #include <cstdio>      // perror
-#include <unistd.h>    // dup2
+
+#if defined(_WIN32) || defined (_WIN64)
+  #include <io.h>
+  #define popen _popen
+  #define pclose _pclose
+#else
+  #include <unistd.h>    // dup2
+#endif
+
 #include <sys/types.h> // rest for open/close
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -163,8 +171,8 @@ inline void Executor::parseDataStructure(std::string input) {
                     case 0: //int
                     {
                         if(words.size() < 5) {
-                            int data1[size] = {0};
-                            data.push_back(&data1);
+                            int *data1 = new int[size];         //  int data1[size] = {0};
+                            data.push_back(/* & */ data1);
                         }
                         else {
                             int * data1 = new int[size];
@@ -178,8 +186,8 @@ inline void Executor::parseDataStructure(std::string input) {
                     case 1: //float
                     {
                         if(words.size() < 5) {
-                            float data1[size] = {0};
-                            data.push_back(&data1);
+                            float *data1 = new float[size];     //  float data1[size] = {0};
+                            data.push_back(/* & */ data1);
                         }
                         else {
                             float * data1 = new float[size];
@@ -193,8 +201,8 @@ inline void Executor::parseDataStructure(std::string input) {
                     case 2: //double
                     {
                         if(words.size() < 5) {
-                            double data1[size] = {0};
-                            data.push_back(&data1);
+                            double *data1 = new double[size];   //  double data1[size] = {0};
+                            data.push_back(/* & */ data1);
                         }
                         else {
                             double * data1 = new double[size];
@@ -210,8 +218,8 @@ inline void Executor::parseDataStructure(std::string input) {
                     case 3: //constant
                     {
                         if(words.size() < 5) {
-                            double data1[size] = {0};
-                            data.push_back(&data1);
+                            double *data1 = new double[size];   //  double data1[size] = {0};
+                            data.push_back(/* & */ data1);
                         }
                         break;
                     }
