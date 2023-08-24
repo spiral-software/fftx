@@ -20,17 +20,17 @@
 #include <fcntl.h>
 
 #include "device_macros.h"
-
+#pragma once
 #if defined ( PRINTDEBUG )
 #define DEBUGOUT 1
 #else
 #define DEBUGOUT 0
 #endif
 
-#pragma once
 
 
-std::string getCUDARuntime() {
+
+inline std::string getCUDARuntime() {
     const char * tmp2 = std::getenv("CUDA_HOME");
      std::string tmp(tmp2 ? tmp2 : "");
         if (tmp.empty()) {
@@ -103,7 +103,7 @@ class Executor {
         void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
 
-Executor::string_code Executor::hashit(std::string const& inString) {
+inline Executor::string_code Executor::hashit(std::string const& inString) {
     if(inString == "int") return zero;
     if(inString == "float") return one;
     if(inString == "double") return two;
@@ -114,7 +114,7 @@ Executor::string_code Executor::hashit(std::string const& inString) {
     return mone;
 }
 
-void Executor::parseDataStructure(std::string input) {
+inline void Executor::parseDataStructure(std::string input) {
     // std::cout << input << std::endl;
     // std::ifstream t(input);
     // std::stringstream ds;
@@ -226,7 +226,7 @@ void Executor::parseDataStructure(std::string input) {
     if ( DEBUGOUT ) std::cout << "parsed input\n";
 }
 
-void Executor::createProg() {
+inline void Executor::createProg() {
     DEVICE_RTC_SAFE_CALL(nvrtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     NULL, // name
@@ -236,14 +236,14 @@ void Executor::createProg() {
     if ( DEBUGOUT ) std::cout << "created program\n";
 }
 
-void Executor::getVars() {
+inline void Executor::getVars() {
     for(int i = 0; i < device_names.size(); i++) {
         DEVICE_RTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
     }
     if ( DEBUGOUT ) std::cout << "added variables\n";
 }
 
-void Executor::compileProg() {
+inline void Executor::compileProg() {
     const char *opts[] = {"--device-debug", "--relocatable-device-code=true","--gpu-architecture=compute_70"};
     compileResult = nvrtcCompileProgram(prog, 
     3, 
@@ -251,7 +251,7 @@ void Executor::compileProg() {
     if ( DEBUGOUT ) std::cout << "compiled program\n";
 }
 
-void Executor::getLogsAndPTX() {
+inline void Executor::getLogsAndPTX() {
     DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
     log = new char[logSize];
     DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
@@ -281,7 +281,7 @@ void Executor::getLogsAndPTX() {
     if ( DEBUGOUT ) std::cout << "created module\n";
 }
 
-void Executor::initializeVars() {
+inline void Executor::initializeVars() {
     for(int i = 0; i < device_names.size(); i++) {
         if ( DEBUGOUT ) std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
@@ -349,12 +349,12 @@ void Executor::initializeVars() {
     }
 }
 
-void Executor::destoryProg() {
+inline void Executor::destoryProg() {
     if ( DEBUGOUT ) std::cout << "destoryed program call\n";
     DEVICE_RTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
-float Executor::initAndLaunch(std::vector<void*>& args) {
+inline float Executor::initAndLaunch(std::vector<void*>& args) {
     if ( DEBUGOUT ) std::cout << "the kernel name is " << kernel_name << std::endl;
     DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
     if ( DEBUGOUT ) std::cout << "launched kernel\n";
@@ -376,7 +376,7 @@ float Executor::initAndLaunch(std::vector<void*>& args) {
     return getKernelTime();
 }
 
-void Executor::execute(std::string file_name) {
+inline void Executor::execute(std::string file_name) {
     //int count = *((int*)inputargs.at(0));
     // std::cout << "count is" << counts << std::endl;
     // std::cout << (char*)inputargs.at(inputargs.size()-1) << std::endl;
@@ -399,7 +399,7 @@ void Executor::execute(std::string file_name) {
     destoryProg();
 }
 
-float Executor::getKernelTime() {
+inline float Executor::getKernelTime() {
     return GPUtime;
 }
 
