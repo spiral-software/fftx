@@ -8,7 +8,7 @@ using namespace fftx;
 //     );
 // )"};
 
-std::string ibatch1ddft_script = "transform := let(\n\
+static std::string ibatch1ddft_script = "transform := let(\n\
          TFCall(TRC(TTensorI(DFT(N, sign), B, read, write)),\n\
             rec(fname := name, params := [])));";
 
