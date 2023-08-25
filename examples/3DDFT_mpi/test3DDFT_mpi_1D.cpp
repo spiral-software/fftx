@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) {
         << (is_embedded ? "embedded" : "") << ","
         << (is_forward ? "fwd" : "inv") << ","
         << (is_complex ? "complex" : "real") << ","
-        << (check == 1 ? "simple" : "local") << ","
+        << (check == 1 ? "first_elem" : "local") << ","
         << max_time;
       if (t < trials-1) { // only check last iter, will write its own end line.
         cout << endl;

@@ -13,6 +13,7 @@
 #include "fftx_mpi_default.hpp"
 #include "fftx_1d_mpi_default.hpp"
 
+#define FORCE_VENDOR_LIB 0
 
 using namespace std;
 
@@ -53,10 +54,14 @@ fftx_plan fftx_plan_distributed_1d(
   int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex) {
   fftx_plan plan;
+#if FORCE_VENDOR_LIB
+  {
+#else
   if(batch == 1 && is_complex) {
     plan = fftx_plan_distributed_1d_spiral(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {
+#endif
     plan = fftx_plan_distributed_1d_default(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }
@@ -275,9 +280,13 @@ void fftx_execute_1d(
   double * out_buffer, double * in_buffer,
   int direction
 ) {
+#if FORCE_VENDOR_LIB
+  {
+#else
   if (plan->use_fftx) {
     fftx_execute_1d_spiral(plan, out_buffer, in_buffer, direction);
   } else {
+#endif
     fftx_execute_1d_default(plan, out_buffer, in_buffer, direction);
   }
 }
