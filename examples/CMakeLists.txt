@@ -32,6 +32,7 @@ endif ()
 
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( mdprdft         TRUE      TRUE )
+manage_add_subdir ( batch1ddft    TRUE      TRUE )
 manage_add_subdir ( hockney       TRUE      FALSE )
 
 manage_add_subdir ( rconv         TRUE      TRUE )
