@@ -1,13 +1,6 @@
-// static constexpr auto batch1ddft_script{
-// R"(
-//     transform := let(
-//         TFCall(TRC(TTensorI(DFT(N, sign), B, read, write)),
-//             rec(fname := name, params := []))
-//     );
-// )"};
 
 static std::string batch1ddft_script = "transform := let(\n\
-         TFCall(TRC(TTensorI(DFT(N, sign), B, read, write)),\n\
+         TFCall(TRC(TTensorI(DFT(N, sign), B, write, read)),\n\
             rec(fname := name, params := [])));";
 
 class BATCH1DDFTProblem: public FFTXProblem {

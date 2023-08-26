@@ -1,15 +1,7 @@
 using namespace fftx;
 
-// static constexpr auto ibatch1ddft_script{
-// R"(
-//     transform := let (
-//         TFCall ( TRC ( TTensorI ( Scale (1/N, DFT ( N, sign )), B, read, write ) ),
-//             rec(fname := name, params := [] ) )
-//     );
-// )"};
-
 static std::string ibatch1ddft_script = "transform := let(\n\
-         TFCall(TRC(TTensorI(DFT(N, sign), B, read, write)),\n\
+         TFCall(TRC(TTensorI(DFT(N, sign), B, write, read)),\n\
             rec(fname := name, params := [])));";
 
 class IBATCH1DDFTProblem: public FFTXProblem {
