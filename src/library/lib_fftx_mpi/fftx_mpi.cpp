@@ -94,7 +94,7 @@ void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int dire
     fftx_execute_spiral(plan, out_buffer, in_buffer, direction);
   else
     fftx_execute_default(plan, out_buffer, in_buffer, direction);
-  
+
 }
 
 void fftx_plan_destroy(fftx_plan plan) {
@@ -105,7 +105,7 @@ void fftx_plan_destroy(fftx_plan plan) {
 }
 
 // perm: [a, b, c] -> [a, 2c, b]
-void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, int a, int b, int c, bool is_embedded) {
+void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, size_t a, size_t b, size_t c, bool is_embedded) {
   // size_t buffer_size = a * b * c * (is_embedded ? 2 : 1); // assume embedded
   size_t buffer_size = a * b * c;
 #if CPU_PERMUTE
