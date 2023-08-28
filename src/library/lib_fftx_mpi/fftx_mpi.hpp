@@ -55,7 +55,7 @@ fftx_plan  fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, b
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy(fftx_plan plan);
 
-void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, int a, int b, int c, bool is_embedded);
+void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, size_t a, size_t b, size_t c, bool is_embedded);
 void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded);
 
 #include "fftx_mpi_spiral.hpp"

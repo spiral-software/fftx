@@ -8,8 +8,6 @@
 
 using namespace std;
 
-
-
 __global__ void __unpack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
@@ -68,14 +66,14 @@ __global__ void __pack_embed(
 	size_t b,
 	size_t c
 ) {
- 
-    int ia = blockIdx.y;
-    int ib = blockIdx.x;
+
+    size_t ia = blockIdx.y;
+    size_t ib = blockIdx.x;
     src += (ia - a/2) *   b*c + ib * c;
     dst +=         ib * 2*c*a + ia * c;
-   
+
     double2 zero = {};
-    for (int ic = threadIdx.x; ic < c; ic += blockDim.x) {
+    for (size_t ic = threadIdx.x; ic < c; ic += blockDim.x) {
         dst[ic] = a/2 <= ia && ia < 3*a/2 ? src[ic] : zero;
     }
 }
@@ -90,14 +88,14 @@ __global__ void __unpack_embed(
 	size_t b,
 	size_t c
 ) {
- 
-    int ia = blockIdx.y;
-    int ib = blockIdx.x;
+
+    size_t ia = blockIdx.y;
+    size_t ib = blockIdx.x;
     src += (ia - a/2) *   b*c + ib * c;
     dst +=         ib * 2*c*a + ia * c;
-   
+
     double2 zero = {};
-    for (int ic = threadIdx.x; ic < c; ic += blockDim.x) {
+    for (size_t ic = threadIdx.x; ic < c; ic += blockDim.x) {
         dst[ic] = a/2 <= ia && ia < 3*a/2 ? src[ic] : zero;
     }
 }
@@ -114,7 +112,6 @@ DEVICE_ERROR_T pack(
 	size_t b_o_stride,
 	size_t copy_size
 ) {
-  
   __pack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size);
 	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
