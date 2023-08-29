@@ -17,17 +17,17 @@
 
 using namespace std;
 
-inline int ceil_div(int a, int b) {
+inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
 
 void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
   // can selectively do this for real fwd or inv.
-  int M0 = ceil_div(M, pp);
-  int M1 = pp;
+  size_t M0 = ceil_div(M, pp);
+  size_t M1 = pp;
 
-  int K0 = ceil_div(K, pp);
-  int K1 = pp;
+  size_t K0 = ceil_div(K, pp);
+  size_t K1 = pp;
 
   size_t max_size = (((size_t)M0)*((size_t)M1)*((size_t)N)*((size_t)K0)*((size_t)K1)*((size_t)(plan->is_embed ? 8 : 1))/(plan->r)) * plan->b;
 #if CUDA_AWARE_MPI
@@ -50,7 +50,6 @@ void destroy_1d_comms(fftx_plan plan) {
 #endif
   }
 }
-
 
 fftx_plan fftx_plan_distributed_1d(
   int p, int M, int N, int K,
@@ -120,15 +119,17 @@ void fftx_mpi_rcperm_1d(
             pack_embed(
               plan,
               (complex<double> *) X, (complex<double> *) Y,
-              plan->shape[4] * plan->shape[2] * plan->b,
+              plan->shape[4] * plan->N * plan->b,
               plan->shape[0],
               plan->shape[5],
               false
             );
             embed(
               (complex<double> *) Y, (complex<double> *) X,
-              plan->shape[2],
-              plan->shape[0] * plan->shape[5] * plan->shape[4] * plan->b
+              plan->shape[2], // faster
+              plan->shape[2], // faster padded
+              plan->shape[0] * plan->shape[5] * plan->shape[4], // slower
+              plan->b // copy size
             );
           } else {
             DEVICE_MEM_COPY(
@@ -152,14 +153,24 @@ void fftx_mpi_rcperm_1d(
       {
         if (is_embedded) {
           // [Y, ceil(X'/px), 2Z] <= [Y, ceil(X'/px), pz, ceil(Z/pz)]
-          int K0 = ceil_div(plan->K, plan->r);
-          int K1 = plan->r;
+          size_t K0 = ceil_div(plan->K, plan->r);
+          size_t K1 = plan->r;
+          // embed(
+          //   (complex<double> *) Y, (complex<double> *) X,
+          //   plan->K * plan->b, // fastest dim, to be doubled and embedded
+          //   K1 * K0 * plan->b, // faster padded dim, which K is embedded in.
+          //   plan->N*e * plan->shape[0] // slower dim
+          // );
+
           embed(
             (complex<double> *) Y, (complex<double> *) X,
-            plan->K * plan->b, // fastest dim, to be doubled and embedded
-            K1 * K0 * plan->b, // faster padded dim, which K is embedded in.
-            plan->N*e * plan->shape[0] // slower dim
+            plan->K, // fastest dim, to be doubled and embedded
+            K1 * K0, // faster padded dim, which K is embedded in.
+            plan->N*e * plan->shape[0], // slower dim
+            plan->b
           );
+
+
         } else {
           // NOTE: this case handled outside of this function.
           // swap pointers.
@@ -186,8 +197,8 @@ void fftx_mpi_rcperm_1d(
         if (is_embedded) {
           // [ceil(X'/px),          pz, Z/pz, Y] <= [ceil(X'/px),                 Z, Y] (reshape)
           // [         pz, ceil(X'/px), Z/pz, Y] <= [ceil(X'/px),          pz, Z/pz, Y] (permute)
-          int K0 = ceil_div(plan->K*e, plan->r);
-          int K1 = plan->r;
+          size_t K0 = ceil_div(plan->K*e, plan->r);
+          size_t K1 = plan->r;
           // arg size isn't supposed to be padded in the dim that it's going to be padded in.
           {
             pack(
@@ -231,9 +242,9 @@ void fftx_mpi_rcperm_1d(
           );
         } else {
           {
-            int a = plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
-            int b = plan->shape[5];
-            int c = plan->shape[0];
+            size_t a = plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
+            size_t b = plan->shape[5];
+            size_t c = plan->shape[0];
             pack(
               (complex<double> *) Y, (complex<double> *) X,
               b,   a, c*a,
