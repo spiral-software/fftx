@@ -26,7 +26,7 @@ std::string mdprdft_script = "szhalfcube := DropLast(szcube,1)::[Int(Last(szcube
     var_3:= Y;\n\
     symvar := var(\"sym\", TPtr(TReal));\n\
     transform := TFCall(TDecl(TDAG([\n\
-           TDAGNode(TTensorI(IMDPRDFT(szcube,sign),1,APar, APar), var_3,var_2),\n\
+           TDAGNode(TTensorI(MDPRDFT(szcube,sign),1,APar, APar), var_3,var_2),\n\
                   ]),\n\
             [var_1]\n\
             ),\n\
