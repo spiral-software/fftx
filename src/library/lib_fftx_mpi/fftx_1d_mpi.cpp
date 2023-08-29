@@ -17,14 +17,16 @@
 
 using namespace std;
 
+inline int ceil_div(int a, int b) {
+  return (a + b - 1) / b;
+}
+
 void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
   // can selectively do this for real fwd or inv.
-  int M0 = M / pp;
-  M0 += pp * M0 < M;
+  int M0 = ceil_div(M, pp);
   int M1 = pp;
 
-  int K0 = K / pp;
-  K0 += pp * K0 < K;
+  int K0 = ceil_div(K, pp);
   int K1 = pp;
 
   size_t max_size = (((size_t)M0)*((size_t)M1)*((size_t)N)*((size_t)K0)*((size_t)K1)*((size_t)(plan->is_embed ? 8 : 1))/(plan->r)) * plan->b;
@@ -149,14 +151,15 @@ void fftx_mpi_rcperm_1d(
     case FFTX_MPI_EMBED_2:
       {
         if (is_embedded) {
-          // TODO: copy buffer into embedded matrix
-          // [Y, X'/px, 2Z] <= [Y, X'/px, Z]
+          // [Y, ceil(X'/px), 2Z] <= [Y, ceil(X'/px), pz, ceil(Z/pz)]
+          int K0 = ceil_div(plan->K, plan->r);
+          int K1 = plan->r;
           embed(
             (complex<double> *) Y, (complex<double> *) X,
-            plan->shape[4] * plan->shape[5], // fastest dim, to be doubled and embedded
-            plan->shape[2]*e * plan->shape[0] * plan->b // slower dim
+            plan->K * plan->b, // fastest dim, to be doubled and embedded
+            K1 * K0 * plan->b, // faster padded dim, which K is embedded in.
+            plan->N*e * plan->shape[0] // slower dim
           );
-
         } else {
           // NOTE: this case handled outside of this function.
           // swap pointers.
@@ -181,32 +184,31 @@ void fftx_mpi_rcperm_1d(
         // [X'/px, pz, Z/pz, Y] <= [X'/px,        Z, Y] (reshape)
         // [pz, X'/px, Z/pz, Y] <= [X'/px, pz, Z/pz, Y] (permute)
         if (is_embedded) {
-          // TODO: fix this so we don't copy back and forth for inverse.
-          // b/c pack_embed assumes data is in recv_buffer.
           // [ceil(X'/px),          pz, Z/pz, Y] <= [ceil(X'/px),                 Z, Y] (reshape)
           // [         pz, ceil(X'/px), Z/pz, Y] <= [ceil(X'/px),          pz, Z/pz, Y] (permute)
-
-          DEVICE_MEM_COPY(
-            plan->recv_buffer, X,
-            sizeof(complex<double>) * plan->shape[0] * plan->K*e * plan->N*e * plan->b,
-            MEM_COPY_DEVICE_TO_HOST
-          );
-
-          // send <- recv
+          int K0 = ceil_div(plan->K*e, plan->r);
+          int K1 = plan->r;
           // arg size isn't supposed to be padded in the dim that it's going to be padded in.
-          pack_embed(
-            plan,
-            (complex<double> *) Y, (complex<double> *) X,
-            plan->shape[4]*e * plan->N*e * plan->b,
-            plan->shape[5],
-            plan->shape[0],
-            false
-          );
-          size_t sendSize = plan->shape[0] * plan->shape[4]*e * plan->N*e * plan->b;
+          {
+            pack(
+              (complex<double> *) Y, (complex<double> *) X,
+              plan->shape[0],
+              plan->K*e * plan->N*e * plan->b, // istride
+              K0 * plan->N*e * plan->b, // ostride
+              K1,
+              K0 * plan->N*e * plan->b,
+              plan->shape[0] * K0 * plan->N*e * plan->b,
+              K0 * plan->N*e * plan->b
+            );
+
+          }
+
+          // size_t sendSize = plan->shape[0] * plan->shape[4]*e * plan->N*e * plan->b;
+          size_t sendSize = plan->shape[0] * K0 * plan->N*e * plan->b;
           size_t recvSize = sendSize;
           DEVICE_MEM_COPY(
             plan->send_buffer, Y,
-            sizeof(complex<double>) * plan->shape[5] * sendSize,
+            sizeof(complex<double>) * K1 * sendSize,
             MEM_COPY_DEVICE_TO_HOST
           );
 
@@ -228,23 +230,17 @@ void fftx_mpi_rcperm_1d(
             MEM_COPY_HOST_TO_DEVICE
           );
         } else {
-          // TODO: fix this so we don't copy back and forth for inverse.
-          // b/c pack_embed assumes data is in recv_buffer.
-          DEVICE_MEM_COPY(
-            plan->recv_buffer, X,
-            sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
-            MEM_COPY_DEVICE_TO_HOST
-          );
-
-          // send <- recv
-          pack_embed(
-            plan,
-            (complex<double> *) Y, (complex<double> *) X,
-            plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
-            plan->shape[5],
-            plan->shape[0],
-            false
-          );
+          {
+            int a = plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
+            int b = plan->shape[5];
+            int c = plan->shape[0];
+            pack(
+              (complex<double> *) Y, (complex<double> *) X,
+              b,   a, c*a,
+              c, b*a,   a,
+              a
+            );
+          }
 
           size_t sendSize = plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
           size_t recvSize = sendSize;

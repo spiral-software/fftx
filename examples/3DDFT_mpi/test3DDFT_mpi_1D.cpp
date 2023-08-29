@@ -9,16 +9,13 @@
 using namespace std;
 
 #define DEBUG 0
+#define PRETTY_PRINT 1
 
 inline int ceil_div(int a, int b) {
   return (a + b - 1) / b;
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 9) {
-    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <check>\n", argv[0]);
-    exit(-1);
-  }
 
   MPI_Init(&argc, &argv);
 
@@ -28,6 +25,13 @@ int main(int argc, char* argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &p);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  if (argc != 10) {
+    if (rank == 0) {
+      printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <trials> <check>\n", argv[0]);
+    }
+    MPI_Finalize();
+    exit(-1);
+  }
   // X dim is size M,
   // Y dim is size N,
   // Z dim is size K.
@@ -41,10 +45,9 @@ int main(int argc, char* argv[]) {
   bool is_embedded = 0 < atoi(argv[5]);
   bool is_forward  = 0 < atoi(argv[6]);
   bool is_complex  = 0 < atoi(argv[7]);
+  int trials       = atoi(argv[8]);
+  int check        = atoi(argv[9]);
 
-  int check        = atoi(argv[8]);
-
-  int trials = 1;
 
   // 1: basic test (first element),
   // 2: full test (local comparison of all elements)
@@ -109,11 +112,11 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < M*e; i++) {
           for (int b = 0; b < batch; b++) {
             for (int c = 0; c < CI; c++) {
-            host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + c] = (
-              (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
-            ) ?
-              0.0 :
-              1.0 * rand() / RAND_MAX;
+              host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + c] = (
+                (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
+              ) ?
+                0.0 :
+                1.0 * rand() / RAND_MAX;
             }
           }
         }
@@ -171,6 +174,18 @@ int main(int argc, char* argv[]) {
     DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
+  if (PRETTY_PRINT) {
+    if (rank == 0) {
+      cout << "Problem size: " << M << " x " << N << " x " << K << endl;
+      cout << "Batch size  : " << batch << endl;
+      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
+      cout << "Embedded    : " << (is_embedded ? "Yes" : "No") << endl;
+      cout << "Direction   : " << (is_forward ? "Forward" : "Inverse") << endl;
+      cout << "MPI Ranks   : " << p << endl;
+      cout << "Times       : " << endl;
+    }
+  }
+
   fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
   for (int t = 0; t < trials; t++) {
 
@@ -182,17 +197,21 @@ int main(int argc, char* argv[]) {
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
     if (rank == 0) {
-      cout
-        << M << "," << N << "," << K << ","
-        << batch << ","
-        << p << ","
-        << (is_embedded ? "embedded" : "") << ","
-        << (is_forward ? "fwd" : "inv") << ","
-        << (is_complex ? "complex" : "real") << ","
-        << (check == 1 ? "first_elem" : "local") << ","
-        << max_time;
-      if (t < trials-1) { // only check last iter, will write its own end line.
-        cout << endl;
+      if (PRETTY_PRINT) {
+        cout << "\tTrial " << t << ": " << max_time << " seconds" << endl;
+      } else {
+        cout
+          << M << "," << N << "," << K << ","
+          << batch << ","
+          << p << ","
+          << (is_embedded ? "embedded" : "") << ","
+          << (is_forward ? "fwd" : "inv") << ","
+          << (is_complex ? "complex" : "real") << ","
+          << (check == 1 ? "first_elem" : "local") << ","
+          << max_time;
+        if (t < trials-1) { // only check last iter, will write its own end line.
+          cout << endl;
+        }
       }
     }
   }
@@ -255,8 +274,7 @@ int main(int argc, char* argv[]) {
       int Ki0 = ceil_div(Ki, p);
       int Ko0 = Ki0;
 
-      int Mo0 = ceil_div(M*e, p);
-      int Mo = p * Mo0;
+      int Mo = M*e;
 
       size_t out_size = sizeof(double) * Ko0 * N*e * Mo * batch * CO;
       DEVICE_MEM_COPY(host_out, dev_out, out_size, MEM_COPY_DEVICE_TO_HOST);
@@ -269,7 +287,6 @@ int main(int argc, char* argv[]) {
               for (int b = 0; b < batch; b++) {
                 for (int c = 0; c < CO; c++) {
                   int tst_idx = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO + c;
-
                   if (c == 0) {
                     if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > 1e-8) {
                       correct = false;
@@ -280,6 +297,14 @@ int main(int argc, char* argv[]) {
                     }
                   }
                 }
+                if (DEBUG) {
+                  int test_idx2 = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO;
+                  cout << "(" << k << "," << j << "," << i << ")\t";
+                  printf(
+                    "%12f %12f\n",
+                    host_out[test_idx2 + 0], host_out[test_idx2 + 1]
+                  );
+                }
               }
             }
           }
@@ -288,15 +313,19 @@ int main(int argc, char* argv[]) {
       MPI_Reduce(rank == 0 ? MPI_IN_PLACE : &correct, &correct, 1, MPI_C_BOOL, MPI_LAND, 0, MPI_COMM_WORLD);
     }
     if (rank == 0) {
-      if (correct) {
-        cout << ",1";
+      if (PRETTY_PRINT) {
+        cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
       } else {
-        cout << ",0";
+        if (correct) {
+          cout << ",1";
+        } else {
+          cout << ",0";
+        }
       }
     }
   } else if (check == 2) { // local 3D comparison, check all elements.
     // only check for N, M, K <= 32, and some small number of processors.
-    if (M > 32 || N > 32 || K > 32 || p > 4) {
+    if (M > 64 || N > 64 || K > 64 || p > 4) {
       if (rank == 0) {
         cout << ",X" << endl;
       }
@@ -525,6 +554,10 @@ int main(int argc, char* argv[]) {
       int m0 = ceil_div(m, p);
       int m1 = p;
 
+      if (DEBUG) {
+        printf("\n");
+      }
+
       // check href_out against htest_out.
       bool correct = true;
       if (is_forward) {
@@ -586,10 +619,14 @@ int main(int argc, char* argv[]) {
           }
         }
       }
-      if (correct) {
-        cout << ",1";
+      if (PRETTY_PRINT) {
+        cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
       } else {
-        cout << ",0";
+        if (correct) {
+          cout << ",1";
+        } else {
+          cout << ",0";
+        }
       }
 
       free(href_in);
