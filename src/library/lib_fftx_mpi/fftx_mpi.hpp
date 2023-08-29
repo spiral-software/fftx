@@ -38,6 +38,7 @@ struct fftx_plan_t {
   bool is_embed;
   bool is_forward;
   bool is_complex;
+  bool use_fftx;
   MPI_Comm row_comm, col_comm;
   size_t shape[6]; // used for buffers for A2A.
   int M, N, K; // used for FFT sizes.
@@ -47,16 +48,20 @@ struct fftx_plan_t {
 
 typedef fftx_plan_t* fftx_plan;
 
-//fftx_plan  fftx_plan_distributed_1d(int p, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
+void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K);
+void destroy_2d_comms(fftx_plan plan);
+
 fftx_plan  fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy(fftx_plan plan);
 
-// perm: [a, b, c] -> [a, c, b]
-void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, int a, int b, int c, bool is_embedded);
+void pack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, size_t a, size_t b, size_t c, bool is_embedded);
 void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded);
 
-
+#include "fftx_mpi_spiral.hpp"
+#include "fftx_mpi_default.hpp"
 #include "fftx_1d_mpi.hpp"
+#include "fftx_1d_mpi_spiral.hpp"
+#include "fftx_1d_mpi_default.hpp"
 
 #endif

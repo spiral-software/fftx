@@ -26,7 +26,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <memory>
-#include <unistd.h>    // dup2
+
+#if defined(_WIN32) || defined (_WIN64)
+  #include <io.h>
+  #define popen _popen
+  #define pclose _pclose
+#else
+  #include <unistd.h>    // dup2
+#endif
+
 #include <sys/types.h> // rest for open/close
 #include <fcntl.h>
 #include <stdexcept>
