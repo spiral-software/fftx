@@ -2,10 +2,20 @@
 
 ##  Source this script (don't just run it) so that it sets the environment variable for the parent shell
 
+if [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]]; then
+    ##  Running on windows; build with cmake
+    SPIRALEXE="spiral.bat"
+    BUILDCMD="cmake --build . --config Release --target install"
+else
+    ##  Not windows, assume Unix/Linux/Mac type
+    SPIRALEXE="spiral"
+    BUILDCMD="make install -j"
+fi
+
 if [ -v SPIRAL_HOME ]; then
     ##  SPIRAL_HOME is set; don't pull down another version of spiral
     echo "Using the spiral version installed at: $SPIRAL_HOME"
-    $SPIRAL_HOME/bin/spiral -B
+    $SPIRAL_HOME/bin/$SPIRALEXE -B
 else
     echo "SPIRAL_HOME is not set, install spiral"
 
@@ -23,13 +33,13 @@ else
     mkdir build
     cd build
     cmake ..
-    make install -j
+    $BUILDCMD
     popd
     popd
 
     ##  New version of spiral installed - report info to user
     echo "New version of spiral installed at: $SPIRAL_HOME"
-    $SPIRAL_HOME/bin/spiral -B
+    $SPIRAL_HOME/bin/$SPIRALEXE -B
 fi
 
 ##  Don't exit -- would exit the parent shell if source'd

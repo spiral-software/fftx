@@ -33,12 +33,6 @@ foreach ( _dir ${_pkg_names} )
 	if ( "${_dir}" STREQUAL "lib_fftx_mpi" )
 	    continue ()			## already handled
 	endif ()
-	if ( "${_dir}" MATCHES "distdft" )
-	    if ( NOT ${MPI_FOUND} )
-		##  Its a distributed DFT library - depends on MPI
-		continue ()
-	    endif ()
-	endif ()
         add_subdirectory ( "${_dir}" )
 	include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/${_dir} )
 	list ( APPEND _lib_include_dirs ${CMAKE_CURRENT_SOURCE_DIR}/${_dir} )

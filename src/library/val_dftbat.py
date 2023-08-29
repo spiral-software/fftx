@@ -69,7 +69,11 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
     _src = setup_input_array ( array_shape )
 
     ##  Setup function name and specify size to find in library
-    froot = libfwd[3:] if fwd else libinv[3:]
+    if sys.platform == 'win32':
+        froot = libfwd if fwd else libinv
+    else:
+        froot = libfwd[3:] if fwd else libinv[3:]
+
     pywrap = froot + platform + _under + 'python' + _under
 
     _xfmsz    = np.zeros(3).astype(ctypes.c_int)
@@ -144,8 +148,9 @@ def main():
         xform = xfmseg
 
     libdir = args.libdir.rstrip('/')
-    libfwd = 'libfftx_' + xform
-    libinv = 'libfftx_i' + xform
+    libprefix = '' if sys.platform == 'win32' else 'lib'
+    libfwd = libprefix + 'fftx_' + xform
+    libinv = libprefix + 'fftx_i' + xform
     libext = '.dll' if sys.platform == 'win32' else '.dylib' if sys.platform == 'darwin' else '.so'
     print ( f'library stems for fwd/inv xforms = {libfwd} / {libinv} lib ext = {libext}', flush = True )
 

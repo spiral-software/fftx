@@ -21,7 +21,6 @@
 #include "cpubackend.hpp"
 #endif
 
-
 using namespace std;
 
 fftx_plan fftx_plan_distributed_1d_spiral(
@@ -55,9 +54,9 @@ fftx_plan fftx_plan_distributed_1d_spiral(
   */
 
   // DFT sizes.
-  int inM = M * e;
-  int inN = N * e;
-  int inK = K * e;
+  // int inM = M * e;
+  // int inN = N * e;
+  // int inK = K * e;
 
   int M0 = -1;
   if (plan->is_complex) {

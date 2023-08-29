@@ -23,7 +23,6 @@ include ( CMakeDependentOption )
 cmake_dependent_option ( BLD_COMPARE_EX "Build compare example" ON "MDDFT_LIB;MDPRDFT_LIB" OFF )
 cmake_dependent_option ( BLD_RCONV_EX "Build rconv example" ON "RCONV_LIB" OFF )
 cmake_dependent_option ( BLD_VERIFY_EX "Build verify example" ON "MDDFT_LIB;MDPRDFT_LIB" OFF )
-cmake_dependent_option ( BLD_DISTDFT_MPI_EX "Build distributed DFT MPI example" ON "DISTDFT_LIB" OFF )
 
 ##                  subdir name   CPU       GPU
 
@@ -49,9 +48,7 @@ manage_add_subdir ( compare_cufft FALSE     TRUE )
 ##  Looked for MPI at top level CMake
 if ( ${MPI_FOUND} )
     ##  MPI installation found
-    ##  if ( BLD_DISTDFT_MPI_EX )
         manage_add_subdir ( 3DDFT_mpi     FALSE     TRUE )
-    ##  endif ()
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()
