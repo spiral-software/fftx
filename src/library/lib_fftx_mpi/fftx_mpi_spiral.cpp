@@ -39,13 +39,13 @@ fftx_plan fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int ba
   DEVICE_MALLOC(&(plan->Q3), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
   DEVICE_MALLOC(&(plan->Q4), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
 
-  int batch_sizeZ = M/r * N/c;
+  // int batch_sizeZ = M/r * N/c;
   int batch_sizeX = N/c * K/r;
   int batch_sizeY = K/r * M/c;
 
-  int inK = K * (is_embedded ? 2 : 1);
-  int inM = M * (is_embedded ? 2 : 1);
-  int inN = N * (is_embedded ? 2 : 1);
+  // int inK = K * (is_embedded ? 2 : 1);
+  // int inM = M * (is_embedded ? 2 : 1);
+  // int inN = N * (is_embedded ? 2 : 1);
 
 
   // int outK = K * (is_embedded ? 2 : 1);

@@ -12,7 +12,16 @@
 #include <cstdio>
 #include <string>
 #include <cstdio>      // perror
-#include <unistd.h>    // dup2
+
+#if defined(_WIN32) || defined (_WIN64)
+  #include <io.h>
+  #define pipe _pipe
+  #define popen _popen
+  #define pclose _pclose
+#else
+  #include <unistd.h>    // dup2
+#endif
+
 #include <sys/types.h> // rest for open/close
 #include <sys/utsname.h> // check machine name
 #include <sys/stat.h>
