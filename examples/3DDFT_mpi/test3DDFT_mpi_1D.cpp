@@ -10,6 +10,7 @@ using namespace std;
 
 #define DEBUG 0
 #define PRETTY_PRINT 1
+#define TOLERANCE 1e-8
 
 inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
@@ -124,7 +125,7 @@ int main(int argc, char* argv[]) {
                 (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
               ) ?
                 0.0 :
-                1.0 * rand() / RAND_MAX;
+                2.0 * rand() / RAND_MAX - 1.0;
             }
           }
         }
@@ -172,7 +173,7 @@ int main(int argc, char* argv[]) {
                 // simple check for inverse is all elements are equal to the first element.
                 host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (j == 0 && i == 0 && l == 0 && c == 0) ? 1.0 * M*e * N*e * K*e * (b + 1) : 0.0;
               } else {
-                host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 1.0 * rand() / RAND_MAX;
+                host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
               }
             }
           }
@@ -265,7 +266,7 @@ int main(int argc, char* argv[]) {
       // distribution is [Y, X'/p, Z, b]
       if (rank == 0) {
         for (size_t b = 0; b < batch; b++) {
-          if (abs(host_out[b*CO + 0] - first_elems[b]) > 1e-8) {
+          if (abs(host_out[b*CO + 0] - first_elems[b]) > TOLERANCE) {
             correct = false;
           }
         }
@@ -296,11 +297,11 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t tst_idx = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO + c;
                   if (c == 0) {
-                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > 1e-8) {
+                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > TOLERANCE) {
                       correct = false;
                     }
                   } else if (c == 1) {
-                    if (abs(host_out[tst_idx] -                     0.0) > 1e-8) {
+                    if (abs(host_out[tst_idx] -                     0.0) > TOLERANCE) {
                       correct = false;
                     }
                   }
@@ -579,8 +580,8 @@ int main(int argc, char* argv[]) {
                       size_t test_idx2 = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO;
                       size_t ref_idx2  = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO;
                       if (DEBUG) {
-                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < 1e-8;
-                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < 1e-8;
+                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < TOLERANCE;
+                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < TOLERANCE;
                         cout << "(" << k << "," << j << "," << i << ")\t";
                         printf(
                           "%12f %12f\t%12f %12f\t%s\n",
@@ -594,7 +595,7 @@ int main(int argc, char* argv[]) {
                       size_t tst_idx = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO + c;
                       size_t ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
 
-                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
+                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                         correct = false;
                       }
                     }
@@ -618,7 +619,7 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
                   size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
-                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
+                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                     correct = false;
                   }
                 }
