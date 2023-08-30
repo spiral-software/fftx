@@ -9,16 +9,14 @@
 using namespace std;
 
 #define DEBUG 0
+#define PRETTY_PRINT 1
+#define TOLERANCE 1e-8
 
-inline int ceil_div(int a, int b) {
+inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 9) {
-    printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <check>\n", argv[0]);
-    exit(-1);
-  }
 
   MPI_Init(&argc, &argv);
 
@@ -28,23 +26,37 @@ int main(int argc, char* argv[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &p);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  if (argc != 10) {
+    if (rank == 0) {
+      printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <trials> <check>\n", argv[0]);
+    }
+    MPI_Finalize();
+    exit(-1);
+  }
   // X dim is size M,
   // Y dim is size N,
   // Z dim is size K.
   // Sizes are given in real-space. i.e. M is size of input for R2C, output for C2R.
   // This allows the same plan to be used for both forward and inverse transforms.
-  int M = atoi(argv[1]);
-  int N = atoi(argv[2]);
-  int K = atoi(argv[3]);
+  size_t M = atoi(argv[1]);
+  size_t N = atoi(argv[2]);
+  size_t K = atoi(argv[3]);
 
-  int batch        = atoi(argv[4]);
+  size_t batch        = atoi(argv[4]);
   bool is_embedded = 0 < atoi(argv[5]);
   bool is_forward  = 0 < atoi(argv[6]);
   bool is_complex  = 0 < atoi(argv[7]);
+  int trials       = atoi(argv[8]);
+  int check        = atoi(argv[9]);
 
-  int check        = atoi(argv[8]);
+  if (trials <= 0) {
+    if (rank == 0) {
+      printf("Error: trials must be greater than 0\n");
+    }
+    MPI_Finalize();
+    exit(-1);
+  }
 
-  int trials = 1;
 
   // 1: basic test (first element),
   // 2: full test (local comparison of all elements)
@@ -58,16 +70,16 @@ int main(int argc, char* argv[]) {
   bool R2C = !is_complex &&  is_forward;
   bool C2R = !is_complex && !is_forward;
   bool C2C =  is_complex;
-  int e = is_embedded ? 2 : 1;
+  size_t e = is_embedded ? 2 : 1;
 
-  int Mi = C2R ? (M*e/2) + 1 : M*e;
-  int Mi0 = ceil_div(Mi, p);
-  int Mi1 = p;
+  size_t Mi = C2R ? (M*e/2) + 1 : M*e;
+  size_t Mi0 = ceil_div(Mi, p);
+  size_t Mi1 = p;
 
   double *host_in, *dev_in;
   double *host_out, *dev_out;
-  int CI = C2C || C2R ? 2 : 1; // complex input.
-  int CO = C2C || R2C ? 2 : 1; // complex output.
+  size_t CI = C2C || C2R ? 2 : 1; // complex input.
+  size_t CO = C2C || R2C ? 2 : 1; // complex output.
 
   if (is_forward) {
     /*
@@ -86,13 +98,13 @@ int main(int argc, char* argv[]) {
     */
     // TODO: what about when K % p != 0?
 
-    int Ki0 = ceil_div(K, p);
+    size_t Ki0 = ceil_div(K, p);
 
     size_t in_size = sizeof(double) * Ki0 * N   * M*e * batch * CI;
     host_in  = (double *) malloc(in_size);
-    int Mo = R2C ? (M*e/2+1) : M*e;
-    int Mo0 = ceil_div(Mo, p);
-    int Ko0 = Ki0; // embeds after collection from A2A.
+    size_t Mo = R2C ? (M*e/2+1) : M*e;
+    size_t Mo0 = ceil_div(Mo, p);
+    size_t Ko0 = Ki0; // embeds after collection from A2A.
     // TODO: check K here for rounding up.
     size_t out_size = sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO;
     host_out = (double *) malloc(out_size);
@@ -103,17 +115,17 @@ int main(int argc, char* argv[]) {
     // () is distributed
     // assume layout is [(pz), Z/pz, Y, X, b] (slowest to fastest).
     // embed X in the middle of dimension of twice the size, pad with zeros.
-    for (int l0 = 0; l0 < Ki0; l0++) {
-      int l = rank * Ki0 + l0;
-      for (int j = 0; j < N; j++) {
-        for (int i = 0; i < M*e; i++) {
-          for (int b = 0; b < batch; b++) {
-            for (int c = 0; c < CI; c++) {
-            host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + c] = (
-              (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
-            ) ?
-              0.0 :
-              1.0 * rand() / RAND_MAX;
+    for (size_t l0 = 0; l0 < Ki0; l0++) {
+      size_t l = rank * Ki0 + l0;
+      for (size_t j = 0; j < N; j++) {
+        for (size_t i = 0; i < M*e; i++) {
+          for (size_t b = 0; b < batch; b++) {
+            for (size_t c = 0; c < CI; c++) {
+              host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + c] = (
+                (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
+              ) ?
+                0.0 :
+                2.0 * rand() / RAND_MAX - 1.0;
             }
           }
         }
@@ -137,31 +149,31 @@ int main(int argc, char* argv[]) {
     [(pz), ceil(K*e/pz), N*e, px*ceil(Mo/px)] (stage3, permute)
     [(pz), ceil(K*e/pz), N*e, Mo] (stage3, permute, embed?)
     */
-    int Ki = K*e;
+    size_t Ki = K*e;
     size_t in_size = sizeof(double) * N*e * Mi0 * Ki * batch * CI;
     host_in  = (double *) malloc(in_size);
     DEVICE_MALLOC(&dev_in ,      in_size);
 
-    int Mo = M*e;
-    int Mo0 = ceil_div(Mo, p);
-    int Ko = Ki;
-    int Ko0 = ceil_div(Ko, p);
+    size_t Mo = M*e;
+    size_t Mo0 = ceil_div(Mo, p);
+    size_t Ko = Ki;
+    size_t Ko0 = ceil_div(Ko, p);
     size_t out_size = sizeof(double) * Ko0 * N*e * p*Mo0 * batch * CO;
     host_out = (double *) malloc(out_size);
     DEVICE_MALLOC(&dev_out,      out_size);
 
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
-    for (int j = 0; j < N*e; j++) {
-      for (int i0 = 0; i0 < Mi0; i0++) {
-        int i = rank * Mi0 + i0;
-        for (int l = 0; l < Ki; l++) {
-          for (int b = 0; b < batch; b++) {
-            for (int c = 0; c < CI; c++) {
+    for (size_t j = 0; j < N*e; j++) {
+      for (size_t i0 = 0; i0 < Mi0; i0++) {
+        size_t i = rank * Mi0 + i0;
+        for (size_t l = 0; l < Ki; l++) {
+          for (size_t b = 0; b < batch; b++) {
+            for (size_t c = 0; c < CI; c++) {
               if (check == 1) {
                 // simple check for inverse is all elements are equal to the first element.
                 host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (j == 0 && i == 0 && l == 0 && c == 0) ? 1.0 * M*e * N*e * K*e * (b + 1) : 0.0;
               } else {
-                host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 1.0 * rand() / RAND_MAX;
+                host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
               }
             }
           }
@@ -170,6 +182,18 @@ int main(int argc, char* argv[]) {
     }
     DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
+
+  if (PRETTY_PRINT) {
+    if (rank == 0) {
+      cout << "Problem size: " << M << " x " << N << " x " << K << endl;
+      cout << "Batch size  : " << batch << endl;
+      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
+      cout << "Embedded    : " << (is_embedded ? "Yes" : "No") << endl;
+      cout << "Direction   : " << (is_forward ? "Forward" : "Inverse") << endl;
+      cout << "MPI Ranks   : " << p << endl;
+      cout << "Times       : " << endl;
+    }
+  }
 
   fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
   for (int t = 0; t < trials; t++) {
@@ -182,17 +206,21 @@ int main(int argc, char* argv[]) {
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
     if (rank == 0) {
-      cout
-        << M << "," << N << "," << K << ","
-        << batch << ","
-        << p << ","
-        << (is_embedded ? "embedded" : "") << ","
-        << (is_forward ? "fwd" : "inv") << ","
-        << (is_complex ? "complex" : "real") << ","
-        << (check == 1 ? "first_elem" : "local") << ","
-        << max_time;
-      if (t < trials-1) { // only check last iter, will write its own end line.
-        cout << endl;
+      if (PRETTY_PRINT) {
+        cout << "\tTrial " << t << ": " << max_time << " seconds" << endl;
+      } else {
+        cout
+          << M << "," << N << "," << K << ","
+          << batch << ","
+          << p << ","
+          << (is_embedded ? "embedded" : "") << ","
+          << (is_forward ? "fwd" : "inv") << ","
+          << (is_complex ? "complex" : "real") << ","
+          << (check == 1 ? "first_elem" : "local") << ","
+          << max_time;
+        if (t < trials-1) { // only check last iter, will write its own end line.
+          cout << endl;
+        }
       }
     }
   }
@@ -203,26 +231,26 @@ int main(int argc, char* argv[]) {
     bool correct = true;
     if (is_forward) {
 
-      int Mo = R2C ? (M*e/2) + 1 : M*e;
-      int Mo0 = ceil_div(Mo, p);
+      size_t Mo = R2C ? (M*e/2) + 1 : M*e;
+      size_t Mo0 = ceil_div(Mo, p);
 
-      int Ki0 = ceil_div(K, p);
-      int Ko0 = Ki0; // embeds after collection from A2A.
+      size_t Ki0 = ceil_div(K, p);
+      size_t Ko0 = Ki0; // embeds after collection from A2A.
 
       DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO, MEM_COPY_DEVICE_TO_HOST);
 
       double *first_elems = (double *) malloc(sizeof(double) * batch);
-      for (int b = 0; b < batch; b++) {
+      for (size_t b = 0; b < batch; b++) {
         first_elems[b] = {};
       }
 
       // initial distribution is [ceil(Z/p), Y, X, b]
-      for (int l0 = 0; l0 < Ki0; l0++) {
-        int l = rank * Ki0 + l0;
+      for (size_t l0 = 0; l0 < Ki0; l0++) {
+        size_t l = rank * Ki0 + l0;
         if (l < K) {
-          for (int j = 0; j < N; j++) {
-            for (int i = 0; i < M*e; i++) {
-              for (int b = 0; b < batch; b++) {
+          for (size_t j = 0; j < N; j++) {
+            for (size_t i = 0; i < M*e; i++) {
+              for (size_t b = 0; b < batch; b++) {
                 first_elems[b] += host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + 0];
                 // skips imaginary elements.
               }
@@ -231,14 +259,14 @@ int main(int argc, char* argv[]) {
         }
       }
 
-      for (int b = 0; b < batch; b++) {
+      for (size_t b = 0; b < batch; b++) {
         MPI_Allreduce(MPI_IN_PLACE, first_elems + b, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       }
 
       // distribution is [Y, X'/p, Z, b]
       if (rank == 0) {
-        for (int b = 0; b < batch; b++) {
-          if (abs(host_out[b*CI + 0] - first_elems[b]) > 1e-8) {
+        for (size_t b = 0; b < batch; b++) {
+          if (abs(host_out[b*CO + 0] - first_elems[b]) > TOLERANCE) {
             correct = false;
           }
         }
@@ -251,34 +279,40 @@ int main(int argc, char* argv[]) {
       // inv output
       // [(pz), ceil(K*e/pz), N*e, Mo] (stage3, permute, embed?)
 
-      int Ki = K*e;
-      int Ki0 = ceil_div(Ki, p);
-      int Ko0 = Ki0;
+      size_t Ki = K*e;
+      size_t Ki0 = ceil_div(Ki, p);
+      size_t Ko0 = Ki0;
 
-      int Mo0 = ceil_div(M*e, p);
-      int Mo = p * Mo0;
+      size_t Mo = M*e;
 
       size_t out_size = sizeof(double) * Ko0 * N*e * Mo * batch * CO;
       DEVICE_MEM_COPY(host_out, dev_out, out_size, MEM_COPY_DEVICE_TO_HOST);
 
-      for (int k0 = 0; k0 < Ko0; k0++) {
-        int k = rank * Ko0 + k0;
+      for (size_t k0 = 0; k0 < Ko0; k0++) {
+        size_t k = rank * Ko0 + k0;
         if (k < K*e) {
-          for (int j = 0; j < N*e; j++) {
-            for (int i = 0; i < M*e; i++) {
-              for (int b = 0; b < batch; b++) {
-                for (int c = 0; c < CO; c++) {
-                  int tst_idx = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO + c;
-
+          for (size_t j = 0; j < N*e; j++) {
+            for (size_t i = 0; i < M*e; i++) {
+              for (size_t b = 0; b < batch; b++) {
+                for (size_t c = 0; c < CO; c++) {
+                  size_t tst_idx = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO + c;
                   if (c == 0) {
-                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > 1e-8) {
+                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > TOLERANCE) {
                       correct = false;
                     }
                   } else if (c == 1) {
-                    if (abs(host_out[tst_idx] -                     0.0) > 1e-8) {
+                    if (abs(host_out[tst_idx] -                     0.0) > TOLERANCE) {
                       correct = false;
                     }
                   }
+                }
+                if (DEBUG) {
+                  size_t test_idx2 = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO;
+                  cout << "(" << k << "," << j << "," << i << ")\t";
+                  printf(
+                    "%12f %12f\n",
+                    host_out[test_idx2 + 0], host_out[test_idx2 + 1]
+                  );
                 }
               }
             }
@@ -288,15 +322,19 @@ int main(int argc, char* argv[]) {
       MPI_Reduce(rank == 0 ? MPI_IN_PLACE : &correct, &correct, 1, MPI_C_BOOL, MPI_LAND, 0, MPI_COMM_WORLD);
     }
     if (rank == 0) {
-      if (correct) {
-        cout << ",1";
+      if (PRETTY_PRINT) {
+        cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
       } else {
-        cout << ",0";
+        if (correct) {
+          cout << ",1";
+        } else {
+          cout << ",0";
+        }
       }
     }
   } else if (check == 2) { // local 3D comparison, check all elements.
     // only check for N, M, K <= 32, and some small number of processors.
-    if (M > 32 || N > 32 || K > 32 || p > 4) {
+    if (M > 64 || N > 64 || K > 64 || p > 4) {
       if (rank == 0) {
         cout << ",X" << endl;
       }
@@ -304,16 +342,16 @@ int main(int argc, char* argv[]) {
     }
     double *href_in, *href_in_modified, *href_out, *htest_out;
     double *dref_in, *dref_out;
-    int root = 0;
-    int local_in_size, local_out_size;
+    size_t root = 0;
+    size_t local_in_size, local_out_size;
     if (is_forward) { // fwd, initially Z distributed
-      int Ki0 = ceil_div(K, p);
-      int Mo = R2C ? (M*e/2 + 1) : M*e;
-      int Mo0 = ceil_div(Mo, p);
+      size_t Ki0 = ceil_div(K, p);
+      size_t Mo = R2C ? (M*e/2 + 1) : M*e;
+      size_t Mo0 = ceil_div(Mo, p);
       local_in_size  = Ki0 * N   * M*e * batch * CI;
       local_out_size = K*e * N*e * Mo0 * batch * CO;
     } else { // inv, initially X distributed
-      int Kdim = ceil_div(K*e, p);
+      size_t Kdim = ceil_div(K*e, p);
       local_in_size  = K*e  * N*e * Mi0 * batch * CI; // 9/20, TODO: is this right?
       local_out_size = Kdim * N*e * M*e * batch * CO;
     }
@@ -359,15 +397,15 @@ int main(int argc, char* argv[]) {
           // put gathered data into embedded tensor.
           // layout is [pz, ceil(K/pz), N, M*e]
           // gathered layout is [Z, Y, 2X, b], pad Y and Z dims.
-          int Ki0 = ceil_div(K, p);
-          int Ki1 = p;
+          size_t Ki0 = ceil_div(K, p);
+          size_t Ki1 = p;
           // pad front and back slabs.
           // embed doubles, padding halves.
-          for (int k = 0; k < (K/2); k++) {
-            for (int j = 0; j < N*2; j++) {
-              for (int i = 0; i < Mi; i++) {
-                for (int b = 0; b < batch; b++) {
-                  for (int c = 0; c < CI; c++) {
+          for (size_t k = 0; k < (K/2); k++) {
+            for (size_t j = 0; j < N*2; j++) {
+              for (size_t i = 0; i < Mi; i++) {
+                for (size_t b = 0; b < batch; b++) {
+                  for (size_t c = 0; c < CI; c++) {
                     href_in_modified[(((    0 + k) * N*2*Mi + j * Mi + i)*batch + b)*CI + c] = 0;
                     href_in_modified[(((3*K/2 + k) * N*2*Mi + j * Mi + i)*batch + b)*CI + c] = 0;
                   }
@@ -375,16 +413,16 @@ int main(int argc, char* argv[]) {
               }
             }
           }
-          for (int k1 = 0; k1 < Ki1; k1++) {
-            for (int k0 = 0; k0 < Ki0; k0++) {
-              int k_i = k1 * Ki0 + k0;
-              int k_o = K/2 + k_i;
-              for (int j = 0; j < N*2; j++) {
-                int j_o = j;
-                int j_i = j_o - N/2;
-                for (int i = 0; i < Mi; i++) { // already embedded.
-                  for (int b = 0; b < batch; b++) {
-                    for (int c = 0; c < CI; c++) {
+          for (size_t k1 = 0; k1 < Ki1; k1++) {
+            for (size_t k0 = 0; k0 < Ki0; k0++) {
+              size_t k_i = k1 * Ki0 + k0;
+              size_t k_o = K/2 + k_i;
+              for (size_t j = 0; j < N*2; j++) {
+                size_t j_o = j;
+                size_t j_i = j_o - N/2;
+                for (size_t i = 0; i < Mi; i++) { // already embedded.
+                  for (size_t b = 0; b < batch; b++) {
+                    for (size_t c = 0; c < CI; c++) {
                       href_in_modified[
                         ((k_o * N*2*Mi + j_o * Mi + i)*batch + b)*CI + c
                       ] = (
@@ -412,14 +450,14 @@ int main(int argc, char* argv[]) {
         if (is_embedded) {
           // permute already embedded [px, Ye, X'/px, Ze] input.
           // input should be [Ze, Ye, X']
-          for (int i1 = 0; i1 < Mi1; i1++) {
-            for (int j = 0; j < N*2; j++) {
-              for (int i0 = 0; i0 < Mi0; i0++) {
-                int i = i1 * Mi0 + i0;
+          for (size_t i1 = 0; i1 < Mi1; i1++) {
+            for (size_t j = 0; j < N*2; j++) {
+              for (size_t i0 = 0; i0 < Mi0; i0++) {
+                size_t i = i1 * Mi0 + i0;
                 if (i < Mi) {
-                  for (int k = 0; k < K*2; k++) {
-                    for (int b = 0; b < batch; b++) {
-                      for (int c = 0; c < CI; c++) {
+                  for (size_t k = 0; k < K*2; k++) {
+                    for (size_t b = 0; b < batch; b++) {
+                      for (size_t c = 0; c < CI; c++) {
                         href_in_modified[
                           ((k * N*2*Mi + j * Mi + i) * batch + b) * CI + c
                         ] = href_in[
@@ -441,14 +479,14 @@ int main(int argc, char* argv[]) {
           // inverse input  layout is [px, Y, X'/px, Z]
           // inverse output layout is [Z, Y, X, b]
           // permute data to [Z, Y, X, b] from [px, Y, ceil(X'/px), Z] before calling cuFFT.
-          for (int i1 = 0; i1 < Mi1; i1++) {
-            for (int j = 0; j < N; j++) {
-              for (int i0 = 0; i0 < Mi0; i0++) {
-                int i = i1 * Mi0 + i0;
+          for (size_t i1 = 0; i1 < Mi1; i1++) {
+            for (size_t j = 0; j < N; j++) {
+              for (size_t i0 = 0; i0 < Mi0; i0++) {
+                size_t i = i1 * Mi0 + i0;
                 if (i < Mi) {
-                  for (int k = 0; k < K; k++) {
-                    for (int b = 0; b < batch; b++) {
-                      for (int c = 0; c < CI; c++) {
+                  for (size_t k = 0; k < K; k++) {
+                    for (size_t b = 0; b < batch; b++) {
+                      for (size_t c = 0; c < CI; c++) {
                       href_in_modified[
                         ((k * N*Mi + j * Mi + i) * batch + b) * CI + c
                       ] = href_in[
@@ -521,25 +559,29 @@ int main(int argc, char* argv[]) {
       }
 
       // TODO: fix for embedded.
-      int m = R2C ? (M*e/2) + 1 : M*e;
-      int m0 = ceil_div(m, p);
-      int m1 = p;
+      size_t m = R2C ? (M*e/2) + 1 : M*e;
+      size_t m0 = ceil_div(m, p);
+      size_t m1 = p;
+
+      if (DEBUG) {
+        printf("\n");
+      }
 
       // check href_out against htest_out.
       bool correct = true;
       if (is_forward) {
-        for (int i1 = 0; i1 < m1; i1++) {
-          for (int i0 = 0; i0 < m0; i0++) {
-            int i = i1 * m0 + i0;
+        for (size_t i1 = 0; i1 < m1; i1++) {
+          for (size_t i0 = 0; i0 < m0; i0++) {
+            size_t i = i1 * m0 + i0;
             if (i < m) {
-              for (int j = 0; j < N*e; j++) {
-                for (int k = 0; k < K*e; k++) {
-                  for (int b = 0; b < batch; b++) {
-                      int test_idx2 = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO;
-                      int ref_idx2  = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO;
+              for (size_t j = 0; j < N*e; j++) {
+                for (size_t k = 0; k < K*e; k++) {
+                  for (size_t b = 0; b < batch; b++) {
+                      size_t test_idx2 = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO;
+                      size_t ref_idx2  = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO;
                       if (DEBUG) {
-                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < 1e-8;
-                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < 1e-8;
+                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < TOLERANCE;
+                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < TOLERANCE;
                         cout << "(" << k << "," << j << "," << i << ")\t";
                         printf(
                           "%12f %12f\t%12f %12f\t%s\n",
@@ -549,11 +591,11 @@ int main(int argc, char* argv[]) {
                         );
                       }
 
-                    for (int c = 0; c < CO; c++) {
-                      int tst_idx = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO + c;
-                      int ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
+                    for (size_t c = 0; c < CO; c++) {
+                      size_t tst_idx = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO + c;
+                      size_t ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
 
-                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
+                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                         correct = false;
                       }
                     }
@@ -564,20 +606,20 @@ int main(int argc, char* argv[]) {
           }
         }
       } else { // inverse
-        for (int k = 0; k < K*e; k++) {
-          for (int j = 0; j < N*e; j++) {
-            for (int i = 0; i < M*e; i++) {
-              for (int b = 0; b < batch; b++) {
+        for (size_t k = 0; k < K*e; k++) {
+          for (size_t j = 0; j < N*e; j++) {
+            for (size_t i = 0; i < M*e; i++) {
+              for (size_t b = 0; b < batch; b++) {
 
                 if (DEBUG) {
-                  int ref_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
-                  int tst_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
+                  size_t ref_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
+                  size_t tst_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
                   printf("%f\t%f\n", href_out[ref_idx2], htest_out[tst_idx2]);
                 }
-                for (int c = 0; c < CO; c++) {
-                  int ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
-                  int tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
-                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > 1e-8) {
+                for (size_t c = 0; c < CO; c++) {
+                  size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
+                  size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
+                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                     correct = false;
                   }
                 }
@@ -586,10 +628,14 @@ int main(int argc, char* argv[]) {
           }
         }
       }
-      if (correct) {
-        cout << ",1";
+      if (PRETTY_PRINT) {
+        cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
       } else {
-        cout << ",0";
+        if (correct) {
+          cout << ",1";
+        } else {
+          cout << ",0";
+        }
       }
 
       free(href_in);
