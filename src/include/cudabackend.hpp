@@ -108,7 +108,7 @@ class Executor {
         float initAndLaunch(std::vector<void*>& args);
         void execute(std::string file_name);
         float getKernelTime();
-        void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
+        // void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
 
 inline Executor::string_code Executor::hashit(std::string const& inString) {

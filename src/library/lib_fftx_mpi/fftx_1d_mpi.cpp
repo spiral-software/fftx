@@ -10,11 +10,26 @@
 #include "fftx_util.h"
 
 #include "fftx_mpi.hpp"
+#include "fftx_mpi_default.hpp"
+#include "fftx_1d_mpi_default.hpp"
+
+#define FORCE_VENDOR_LIB 0
 
 using namespace std;
 
+inline size_t ceil_div(size_t a, size_t b) {
+  return (a + b - 1) / b;
+}
+
 void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
-  size_t max_size = M*N*K*(plan->is_embed ? 8 : 1)/(plan->r) * plan->b;
+  // can selectively do this for real fwd or inv.
+  size_t M0 = ceil_div(M, pp);
+  size_t M1 = pp;
+
+  size_t K0 = ceil_div(K, pp);
+  size_t K1 = pp;
+
+  size_t max_size = (((size_t)M0)*((size_t)M1)*((size_t)N)*((size_t)K0)*((size_t)K1)*((size_t)(plan->is_embed ? 8 : 1))/(plan->r)) * plan->b;
 #if CUDA_AWARE_MPI
   DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(complex<double>));
   DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(complex<double>));
@@ -36,27 +51,28 @@ void destroy_1d_comms(fftx_plan plan) {
   }
 }
 
-
 fftx_plan fftx_plan_distributed_1d(
   int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex) {
-
   fftx_plan plan;
-  if(batch == 1 && is_complex == true) {
+#if FORCE_VENDOR_LIB
+  {
+#else
+  if(batch == 1 && is_complex) {
     plan = fftx_plan_distributed_1d_spiral(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {
+#endif
     plan = fftx_plan_distributed_1d_default(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }
-    
   return plan;
 }
 
 void fftx_mpi_rcperm_1d(
   fftx_plan plan, double * Y, double *X, int stage, bool is_embedded
 ) {
-
+  size_t e = is_embedded ? 2 : 1;
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -82,6 +98,7 @@ void fftx_mpi_rcperm_1d(
             buffer_size * sizeof(complex<double>),
             MEM_COPY_DEVICE_TO_HOST
           );
+          // TODO: make sure buffer is padded out before send?
 
           // [pz, X'/px, Z/pz, Y] <= [X', Z/pz, Y]
           MPI_Alltoall(
@@ -91,31 +108,33 @@ void fftx_mpi_rcperm_1d(
             MPI_DOUBLE_COMPLEX,
             MPI_COMM_WORLD
           );
-          //      [X'/px, pz, Z/pz, Y] <= [pz, X'/px, Z/pz, Y]
-          // i.e. [X'/px,        Z, Y]
+          //      [ceil(X'/px), pz, Z/pz, Y] <= [pz, ceil(X'/px), Z/pz, Y]
+          // i.e. [ceil(X'/px),        Z, Y]
           if (is_embedded) {
             DEVICE_MEM_COPY(
               Y, plan->recv_buffer,
-              plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * sizeof(complex<double>) * plan->b,
+              sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
               MEM_COPY_HOST_TO_DEVICE
             );
             pack_embed(
               plan,
               (complex<double> *) X, (complex<double> *) Y,
-              plan->shape[4] * plan->shape[2] * plan->b,
+              plan->shape[4] * plan->N * plan->b,
               plan->shape[0],
               plan->shape[5],
               false
             );
             embed(
               (complex<double> *) Y, (complex<double> *) X,
-              plan->shape[2],
-              plan->shape[0] * plan->shape[5] * plan->shape[4] * plan->b
+              plan->shape[2], // faster
+              plan->shape[2], // faster padded
+              plan->shape[0] * plan->shape[5] * plan->shape[4], // slower
+              plan->b // copy size
             );
           } else {
             DEVICE_MEM_COPY(
               X, plan->recv_buffer,
-              plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * sizeof(complex<double>) * plan->b,
+              sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
               MEM_COPY_HOST_TO_DEVICE
             );
             pack_embed(
@@ -133,13 +152,24 @@ void fftx_mpi_rcperm_1d(
     case FFTX_MPI_EMBED_2:
       {
         if (is_embedded) {
-          // TODO: copy buffer into embedded matrix
-          // [Y, X'/px, 2Z] <= [Y, X'/px, Z]
+          // [Y, ceil(X'/px), 2Z] <= [Y, ceil(X'/px), pz, ceil(Z/pz)]
+          size_t K0 = ceil_div(plan->K, plan->r);
+          size_t K1 = plan->r;
+          // embed(
+          //   (complex<double> *) Y, (complex<double> *) X,
+          //   plan->K * plan->b, // fastest dim, to be doubled and embedded
+          //   K1 * K0 * plan->b, // faster padded dim, which K is embedded in.
+          //   plan->N*e * plan->shape[0] // slower dim
+          // );
+
           embed(
             (complex<double> *) Y, (complex<double> *) X,
-            plan->shape[4] * plan->shape[5], // fastest dim, to be doubled and embedded
-            plan->shape[2] * plan->shape[0] * plan->b // slower dim
+            plan->K, // fastest dim, to be doubled and embedded
+            K1 * K0, // faster padded dim, which K is embedded in.
+            plan->N*e * plan->shape[0], // slower dim
+            plan->b
           );
+
 
         } else {
           // NOTE: this case handled outside of this function.
@@ -165,50 +195,89 @@ void fftx_mpi_rcperm_1d(
         // [X'/px, pz, Z/pz, Y] <= [X'/px,        Z, Y] (reshape)
         // [pz, X'/px, Z/pz, Y] <= [X'/px, pz, Z/pz, Y] (permute)
         if (is_embedded) {
-          // don't care at the moment.
-        } else {
-          // TODO: fix this so we don't copy back and forth for inverse.
-          // b/c pack_embed assumes data is in recv_buffer.
+          // [ceil(X'/px),          pz, Z/pz, Y] <= [ceil(X'/px),                 Z, Y] (reshape)
+          // [         pz, ceil(X'/px), Z/pz, Y] <= [ceil(X'/px),          pz, Z/pz, Y] (permute)
+          size_t K0 = ceil_div(plan->K*e, plan->r);
+          size_t K1 = plan->r;
+          // arg size isn't supposed to be padded in the dim that it's going to be padded in.
+          {
+            pack(
+              (complex<double> *) Y, (complex<double> *) X,
+              plan->shape[0],
+              plan->K*e * plan->N*e * plan->b, // istride
+              K0 * plan->N*e * plan->b, // ostride
+              K1,
+              K0 * plan->N*e * plan->b,
+              plan->shape[0] * K0 * plan->N*e * plan->b,
+              K0 * plan->N*e * plan->b
+            );
+
+          }
+
+          // size_t sendSize = plan->shape[0] * plan->shape[4]*e * plan->N*e * plan->b;
+          size_t sendSize = plan->shape[0] * K0 * plan->N*e * plan->b;
+          size_t recvSize = sendSize;
           DEVICE_MEM_COPY(
-            plan->recv_buffer, X,
-            sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
+            plan->send_buffer, Y,
+            sizeof(complex<double>) * K1 * sendSize,
             MEM_COPY_DEVICE_TO_HOST
           );
 
-          // send <- recv
-          pack_embed(
-            plan,
-            (complex<double> *) Y, (complex<double> *) X,
-            plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b,
-            plan->shape[5],
-            plan->shape[0],
-            false
+          // [px, ceil(X'/px), Z/pz, Y] <= [pz, ceil(X'/px), Z/pz, Y] (all2all)
+          // [px*ceil(X'/px), Z/pz, Y] <=                      (reshape)
+          // kind of automatically strip the excess since X is slowest dim.
+          // [X', Z/pz, Y] <=                      (reshape)
+          MPI_Alltoall(
+            plan->send_buffer,  sendSize,
+            MPI_DOUBLE_COMPLEX,
+            plan->recv_buffer, recvSize,
+            MPI_DOUBLE_COMPLEX,
+            MPI_COMM_WORLD
+          );
+
+          DEVICE_MEM_COPY(
+            Y, plan->recv_buffer,
+            sizeof(complex<double>) * plan->shape[1] * recvSize,
+            MEM_COPY_HOST_TO_DEVICE
+          );
+        } else {
+          {
+            size_t a = plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
+            size_t b = plan->shape[5];
+            size_t c = plan->shape[0];
+            pack(
+              (complex<double> *) Y, (complex<double> *) X,
+              b,   a, c*a,
+              c, b*a,   a,
+              a
+            );
+          }
+
+          size_t sendSize = plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
+          size_t recvSize = sendSize;
+          DEVICE_MEM_COPY(
+            plan->send_buffer, Y,
+            sizeof(complex<double>) * plan->shape[5] * sendSize,
+            MEM_COPY_DEVICE_TO_HOST
+          );
+
+          // [px, X'/px, Z/pz, Y] <= [pz, X'/px, Z/pz, Y] (all2all)
+          // [       X', Z/pz, Y] <=                      (reshape)
+          MPI_Alltoall(
+            plan->send_buffer,  sendSize,
+            MPI_DOUBLE_COMPLEX,
+            plan->recv_buffer, recvSize,
+            MPI_DOUBLE_COMPLEX,
+            MPI_COMM_WORLD
+          );
+
+          DEVICE_MEM_COPY(
+            Y, plan->recv_buffer,
+            sizeof(complex<double>) * plan->shape[5] * recvSize,
+            MEM_COPY_HOST_TO_DEVICE
           );
         }
-        size_t sendSize = plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
-        size_t recvSize = sendSize;
-        DEVICE_MEM_COPY(
-          plan->send_buffer, Y,
-          sizeof(complex<double>) * plan->shape[5] * sendSize,
-          MEM_COPY_DEVICE_TO_HOST
-        );
-
-        // [px, X'/px, Z/pz, Y] <= [pz, X'/px, Z/pz, Y] (all2all)
-        // [       X', Z/pz, Y] <=                      (reshape)
-        MPI_Alltoall(
-          plan->send_buffer,  sendSize,
-          MPI_DOUBLE_COMPLEX,
-          plan->recv_buffer, recvSize,
-          MPI_DOUBLE_COMPLEX,
-          MPI_COMM_WORLD
-        );
-
-        DEVICE_MEM_COPY(
-          Y, plan->recv_buffer,
-          sizeof(complex<double>) * plan->shape[5] * recvSize,
-          MEM_COPY_HOST_TO_DEVICE
-        );
-      }
+      } // end FFTX_MPI_EMBED_4
       break;
     } // end switch/case.
 }
@@ -218,8 +287,13 @@ void fftx_execute_1d(
   double * out_buffer, double * in_buffer,
   int direction
 ) {
-  if(plan->use_fftx == true)
+#if FORCE_VENDOR_LIB
+  {
+#else
+  if (plan->use_fftx) {
     fftx_execute_1d_spiral(plan, out_buffer, in_buffer, direction);
-  else
+  } else {
+#endif
     fftx_execute_1d_default(plan, out_buffer, in_buffer, direction);
+  }
 }
