@@ -12,7 +12,7 @@ list ( APPEND _incl_files cpubackend.hpp cudabackend.hpp dftbatlib.hpp fftxfft.h
                           hipbackend.hpp interface.hpp mddftlib.hpp mdprdftlib.hpp
                           transformlib.hpp )
 list ( APPEND _incl_files batch1ddftObj.hpp ibatch1ddftObj.hpp )
-list ( APPEND _incl_files data_interaction.hpp mddftObj.hpp imddftObj.hpp mdprdftObj.hpp imdprdftObj.hpp)
+list ( APPEND _incl_files mddftObj.hpp imddftObj.hpp mdprdftObj.hpp imdprdftObj.hpp)
 
 install ( FILES ${_incl_files}
           DESTINATION ${CMAKE_INSTALL_PREFIX}/include )
