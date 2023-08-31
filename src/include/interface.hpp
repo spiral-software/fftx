@@ -45,11 +45,13 @@
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"
 #include "fftx_imdprdft_gpu_public.h"
+#include "fftx_rconv_gpu_public.h"
 #else
 #include "fftx_mddft_cpu_public.h"
 #include "fftx_imddft_cpu_public.h"
 #include "fftx_mdprdft_cpu_public.h"
 #include "fftx_imdprdft_cpu_public.h"
+#include "fftx_rconv_cpu_public.h"
 #endif
 #pragma once
 
@@ -113,6 +115,9 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
     }
     else if(name == "imdprdft") {
         return fftx_imdprdft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
+    else if(name == "rconv") {
+        return fftx_rconv_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
     }
     else {
         std::cout << "non-supported fixed library transform" << std::endl; 
