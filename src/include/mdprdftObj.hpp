@@ -18,7 +18,7 @@ using namespace fftx;
 //     )"
 // };
 
-std::string mdprdft_script = "szhalfcube := DropLast(szcube,1)::[Int(Last(szcube)/2)+1];\n\
+static std::string mdprdft_script = "szhalfcube := DropLast(szcube,1)::[Int(Last(szcube)/2)+1];\n\
     var_1:= var(\"var_1\", BoxND([0,0,0], TReal));\n\
     var_2:= var(\"var_2\", BoxND(szcube, TReal));\n\
     var_3:= var(\"var_3\", BoxND(szhalfcube, TReal));\n\
