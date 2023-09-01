@@ -79,6 +79,11 @@ fftx_plan fftx_plan_distributed_default(int r, int c, int M, int N, int K, int b
 		       &inM, batch_sizeX*plan->b, plan->b,
 		       DEVICE_FFT_Z2Z, batch_sizeX);
 
+  std::cout << "istride: " << plan->b << std::endl;
+  std::cout << "idist: " << inN*plan->b << std::endl;
+  std::cout << "ostride: " << plan->b << std::endl;
+  std::cout << "odist: " << inN*plan->b << std::endl;
+  std::cout << "batch: " << batch_sizeY << std::endl;
   //read seq write seq
   DEVICE_FFT_PLAN_MANY(&(plan->stg3), 1, &inN,
 		       &inN, plan->b, inN*plan->b,
