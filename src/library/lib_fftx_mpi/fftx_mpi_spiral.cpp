@@ -12,6 +12,8 @@
 #include "interface.hpp"
 #include "batch1ddftObj.hpp"
 #include "ibatch1ddftObj.hpp"
+#include "batch2ddftObj.hpp"
+#include "ibatch2ddftObj.hpp"
 #if defined FFTX_CUDA
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
@@ -56,55 +58,6 @@ fftx_plan fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int ba
   batch_sizeX *= (is_embedded ? 2 : 1);
   batch_sizeY *= (is_embedded ? 4 : 1);
 
-
-  // if ((plan->is_complex))
-  //   {
-  //     //read seq write strided
-  //     DEVICE_FFT_PLAN_MANY(&(plan->stg1), 1, &inK,
-	// 		   &inK,             plan->b, inK*plan->b,
-	// 		   &inK, batch_sizeZ*plan->b, plan->b,
-	// 		   DEVICE_FFT_Z2Z, batch_sizeZ);
-
-  //     //inverse plan -> read strided write seq
-  //     DEVICE_FFT_PLAN_MANY(&(plan->stg1i), 1, &inK,
-	// 		   &inK, batch_sizeZ*plan->b, plan->b,
-	// 		   &inK,             plan->b, inK*plan->b,
-	// 		   DEVICE_FFT_Z2Z, batch_sizeZ);
-
-  //   }
-  // else
-  //   {
-  //     //read seq write strided
-  //     DEVICE_FFT_PLAN_MANY(&(plan->stg1), 1, &inK,
-	// 		   &inK,             plan->b, inK*plan->b,
-	// 		   &inK, batch_sizeZ*plan->b, plan->b,
-	// 		   DEVICE_FFT_D2Z, batch_sizeZ);
-
-  //     //inverse plan -> read strided write seq
-  //     DEVICE_FFT_PLAN_MANY(&(plan->stg1i), 1, &inK,
-	// 		   &inK, batch_sizeZ*plan->b, plan->b,
-	// 		   &inK,             plan->b, inK*plan->b,
-	// 		   DEVICE_FFT_Z2D, batch_sizeZ);
-  //   }
-
-  // //read seq write strided
-  // DEVICE_FFT_PLAN_MANY(&(plan->stg2), 1, &inM,
-	// 	       &inM,           plan->b, inM*plan->b,
-	// 	       &inM, batch_sizeX*plan->b, plan->b,
-	// 	       DEVICE_FFT_Z2Z, batch_sizeX);
-
-  // //read seq write seq
-  // DEVICE_FFT_PLAN_MANY(&(plan->stg3), 1, &inN,
-	// 	       &inN, plan->b, inN*plan->b,
-	// 	       &inN, plan->b, inN*plan->b,
-	// 	       DEVICE_FFT_Z2Z, batch_sizeY);
-
-  // //read strided write seq
-  // DEVICE_FFT_PLAN_MANY(&(plan->stg2i), 1, &inM,
-	// 	       &inM, batch_sizeX*plan->b, plan->b,
-	// 	       &inM,           plan->b, inM*plan->b,
-	// 	       DEVICE_FFT_Z2Z, batch_sizeX);
-
   return plan;
 }
 
@@ -121,104 +74,135 @@ void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, i
   batch_sizeX *= (plan->is_embed ? 2 : 1);
   batch_sizeY *= (plan->is_embed ? 4 : 1);
 
-  std::vector<int> size_stg1 = {inK, batch_sizeZ, 0, 1};  
-  BATCH1DDFTProblem bdstg1(size_stg1, "b1dft");
-  std::vector<int> size_stg2 = {inM, batch_sizeX, 0, 1};  
-  BATCH1DDFTProblem bdstg2(size_stg2, "b1dft");
-  std::vector<int> size_stg3 = {inN, batch_sizeY, 0, 0};  
-  BATCH1DDFTProblem bdstg3(size_stg3, "b1dft");	
+  BATCH1DDFTProblem bdstg1;
+  BATCH1DDFTProblem bdstg2;
+  BATCH1DDFTProblem bdstg3;
+  IBATCH1DDFTProblem ibdstg1;
+  IBATCH1DDFTProblem ibdstg2;
 
+  BATCH2DDFTProblem b2dstg1;
+  BATCH2DDFTProblem b2dstg2;
+  BATCH2DDFTProblem b2dstg3;
+  IBATCH2DDFTProblem ib2dstg1;
+  IBATCH2DDFTProblem ib2dstg2;
+  std::vector<int> size_stg1 = {inK, batch_sizeZ, 0, 1}; 
+  std::vector<int> size_stg2 = {inM, batch_sizeX, 0, 1};
+  std::vector<int> size_stg3 = {inN, batch_sizeY, 0, 0};  
   std::vector<int> size_istg1 = {inK, batch_sizeZ, 1, 0};
-  IBATCH1DDFTProblem ibdstg1(size_istg1, "ib1dft");
-  std::vector<int> size_istg2 = {inM, batch_sizeX, 1, 0};  
-  IBATCH1DDFTProblem ibdstg2(size_istg2, "ib1dft");
-  
+  std::vector<int> size_istg2 = {inM, batch_sizeX, 1, 0}; 
+  if(plan->b == 1) {
+    size_stg1 = {inK, batch_sizeZ, 0, 1}; 
+    size_stg2 = {inM, batch_sizeX, 0, 1};
+    size_stg3 = {inN, batch_sizeY, 0, 0};  
+    size_istg1 = {inK, batch_sizeZ, 1, 0};
+    size_istg2 = {inM, batch_sizeX, 1, 0}; 
+    bdstg1.setSizes(size_stg1);
+    bdstg2.setSizes(size_stg2);
+    bdstg3.setSizes(size_stg3);
+    ibdstg1.setSizes(size_istg1);
+    ibdstg2.setSizes(size_istg2);
+    bdstg1.setName("b1dft");
+    bdstg2.setName("b1dft");
+    bdstg3.setName("b1dft");
+    ibdstg1.setName("ib1dft");
+    ibdstg2.setName("ib1dft");
+  } else {
+    size_stg1 = {inK,  plan->b, batch_sizeZ, 0, 1}; 
+    size_stg2 = {inM, plan->b, batch_sizeX, 0, 1};
+    size_stg3 = {inN, plan->b, batch_sizeY, 0, 0};  
+    size_istg1 = {inK, plan->b, batch_sizeZ, 1, 0};
+    size_istg2 = {inM,plan->b, batch_sizeX, 1, 0}; 
+    b2dstg1.setSizes(size_stg1);
+    b2dstg2.setSizes(size_stg2);
+    b2dstg3.setSizes(size_stg3);
+    ib2dstg1.setSizes(size_istg1);
+    ib2dstg2.setSizes(size_istg2);
+    b2dstg1.setName("b2dft");
+    b2dstg2.setName("b2dft");
+    b2dstg3.setName("b2dft");
+    ib2dstg1.setName("ib2dft");
+    ib2dstg2.setName("ib2dft");
+  }
 
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
-      for (int i = 0; i != plan->b; ++i) {
-        // if(use_fftx) {
+      if(plan->b == 1) {
+        for (int i = 0; i != plan->b; ++i) {
           std::vector<void*> args{plan->Q3 + i, in_buffer+i};
           bdstg1.setArgs(args);
           bdstg1.transform();
-        // } 
-        // else
-        //   DEVICE_FFT_EXECZ2Z(plan->stg1, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
+        }
+      } else{
+        std::vector<void*> args{plan->Q3, in_buffer};
+        b2dstg1.setArgs(args);
+        b2dstg1.transform();
       }
     }
-    // } else {
-    //   for (int i = 0; i != plan->b; ++i) {
-    //     DEVICE_FFT_EXECD2Z(plan->stg1, ((DEVICE_FFT_DOUBLEREAL  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i));
-    //   }
-    // }
 
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
-
-    for (int i = 0; i != plan->b; ++i) {
-      // if(use_fftx) {
+    if(plan->b == 1) {
+      for (int i = 0; i != plan->b; ++i) {
         std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
         bdstg2.setArgs(args);
         bdstg2.transform();
-      // } 
-      // else
-      //   DEVICE_FFT_EXECZ2Z(plan->stg2, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
+      }
+    } else {
+      std::vector<void*> args{plan->Q3, plan->Q4};
+      b2dstg2.setArgs(args);
+      b2dstg2.transform();
     }
 
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_2, plan->is_embed);
-
-    for (int i = 0; i != plan->b; ++i) {
-      // if(use_fftx) {
+    if(plan->b == 1) {
+      for (int i = 0; i != plan->b; ++i) {
         std::vector<void*> args{out_buffer + i, plan->Q4 + i};
         bdstg3.setArgs(args);
         bdstg3.transform();
-      // }
-      // else
-      //   DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
+      }
+    } else {
+      std::vector<void*> args{out_buffer, plan->Q4 };
+      b2dstg3.setArgs(args);
+      b2dstg3.transform();
     }
   } else if (direction == DEVICE_FFT_INVERSE) {
-    for (int i = 0; i != plan->b; ++i) {
-      // if(use_fftx) {
+    if(plan->b == 1) {
+      for (int i = 0; i != plan->b; ++i) {
         std::vector<void*> args{plan->Q3 + i, in_buffer + i};
         bdstg3.setArgs(args);
         bdstg3.transform();
-      // } 
-      // else {
-      //   DEVICE_FFT_EXECZ2Z(
-      //     plan->stg3,
-      //     ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i),
-      //     ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i),
-      //     direction
-      //   );
-      // }
+      }
+    } else {
+      std::vector<void*> args{plan->Q3, in_buffer};
+      b2dstg3.setArgs(args);
+      b2dstg3.transform();
     }
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_3, plan->is_embed);
-    for (int i = 0; i != plan->b; ++i){
-      // if(use_fftx) {
+    if(plan->b == 1) {
+      for (int i = 0; i != plan->b; ++i){
         std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
         ibdstg2.setArgs(args);
         ibdstg2.transform();
-      // }
-      // else
-      //   DEVICE_FFT_EXECZ2Z(plan->stg2i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
+      }
+    } else {
+      std::vector<void*> args{plan->Q3, plan->Q4};
+      ib2dstg2.setArgs(args);
+      ib2dstg2.transform();
     }
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_4, plan->is_embed);
 
     if (plan->is_complex) {
-      for (int i = 0; i != plan->b; ++i) {
-        // if(use_fftx) {
+      if(plan->b == 1) {
+        for (int i = 0; i != plan->b; ++i) {
           std::vector<void*> args{out_buffer + i, plan->Q4 + i};
           ibdstg1.setArgs(args);
           ibdstg1.transform();
-        // }
-        // else
-        //   DEVICE_FFT_EXECZ2Z(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
+        }
+      } else {
+        std::vector<void*> args{out_buffer, plan->Q4};
+        ib2dstg1.setArgs(args);
+        ib2dstg1.transform();
       }
     }
-    // } else { // untested
-    //   for (int i = 0; i != plan->b; ++i) {
-    //     DEVICE_FFT_EXECZ2D(plan->stg1i, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLEREAL  *) out_buffer + i));
-    //   }
-    // }
   }
 }
 
