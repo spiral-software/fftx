@@ -42,8 +42,8 @@ fftx_plan fftx_plan_distributed_1d_spiral(
 
   init_1d_comms(plan, p, M, N, K);   //embedding uses the input sizes
 
-  DEVICE_MALLOC((void**)&(plan->Q3), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC((void**)&(plan->Q4), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q3), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q4), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
 
   /*
     R2C is
