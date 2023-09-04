@@ -127,13 +127,19 @@ void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, i
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       if(plan->b == 1) {
-        for (int i = 0; i != plan->b; ++i) {
-          std::vector<void*> args{plan->Q3 + i, in_buffer+i};
-          bdstg1.setArgs(args);
-          bdstg1.transform();
-        }
-      } else{
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else
         std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
+        bdstg1.setArgs(args);
+        bdstg1.transform();
+      } else{
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else
+        std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
         b2dstg1.setArgs(args);
         b2dstg1.transform();
       }
@@ -141,50 +147,74 @@ void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, i
 
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
     if(plan->b == 1) {
-      for (int i = 0; i != plan->b; ++i) {
-        std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
-        bdstg2.setArgs(args);
-        bdstg2.transform();
-      }
-    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&plan->Q3, &plan->Q4};
+      #else
       std::vector<void*> args{plan->Q3, plan->Q4};
+      #endif
+      bdstg2.setArgs(args);
+      bdstg2.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&plan->Q3, &plan->Q4};
+      #else
+      std::vector<void*> args{plan->Q3, plan->Q4};
+      #endif
       b2dstg2.setArgs(args);
       b2dstg2.transform();
     }
 
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_2, plan->is_embed);
     if(plan->b == 1) {
-      for (int i = 0; i != plan->b; ++i) {
-        std::vector<void*> args{out_buffer + i, plan->Q4 + i};
-        bdstg3.setArgs(args);
-        bdstg3.transform();
-      }
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&out_buffer, &plan->Q4};
+      #else
+      std::vector<void*> args{out_buffer, plan->Q4};
+      #endif
+      bdstg3.setArgs(args);
+      bdstg3.transform();
     } else {
-      std::vector<void*> args{out_buffer, plan->Q4 };
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&out_buffer, &plan->Q4};
+      #else
+      std::vector<void*> args{out_buffer, plan->Q4};
+      #endif
       b2dstg3.setArgs(args);
       b2dstg3.transform();
     }
   } else if (direction == DEVICE_FFT_INVERSE) {
     if(plan->b == 1) {
-      for (int i = 0; i != plan->b; ++i) {
-        std::vector<void*> args{plan->Q3 + i, in_buffer + i};
-        bdstg3.setArgs(args);
-        bdstg3.transform();
-      }
-    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&plan->Q3, &in_buffer};
+      #else
       std::vector<void*> args{plan->Q3, in_buffer};
+      #endif
+      bdstg3.setArgs(args);
+      bdstg3.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&plan->Q3, &in_buffer};
+      #else
+      std::vector<void*> args{plan->Q3, in_buffer};
+      #endif
       b2dstg3.setArgs(args);
       b2dstg3.transform();
     }
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_3, plan->is_embed);
     if(plan->b == 1) {
-      for (int i = 0; i != plan->b; ++i){
-        std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
-        ibdstg2.setArgs(args);
-        ibdstg2.transform();
-      }
-    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&plan->Q3, &plan->Q4};
+      #else
       std::vector<void*> args{plan->Q3, plan->Q4};
+      #endif
+      ibdstg2.setArgs(args);
+      ibdstg2.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&plan->Q3, &plan->Q4};
+      #else
+      std::vector<void*> args{plan->Q3, plan->Q4};
+      #endif
       ib2dstg2.setArgs(args);
       ib2dstg2.transform();
     }
@@ -192,13 +222,19 @@ void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, i
 
     if (plan->is_complex) {
       if(plan->b == 1) {
-        for (int i = 0; i != plan->b; ++i) {
-          std::vector<void*> args{out_buffer + i, plan->Q4 + i};
-          ibdstg1.setArgs(args);
-          ibdstg1.transform();
-        }
-      } else {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&out_buffer, &plan->Q4};
+        #else
         std::vector<void*> args{out_buffer, plan->Q4};
+        #endif
+        ibdstg1.setArgs(args);
+        ibdstg1.transform();
+      } else {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&out_buffer, &plan->Q4};
+        #else
+        std::vector<void*> args{out_buffer, plan->Q4};
+        #endif
         ib2dstg1.setArgs(args);
         ib2dstg1.transform();
       }

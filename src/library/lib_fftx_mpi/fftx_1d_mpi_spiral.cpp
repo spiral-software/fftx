@@ -42,8 +42,8 @@ fftx_plan fftx_plan_distributed_1d_spiral(
 
   init_1d_comms(plan, p, M, N, K);   //embedding uses the input sizes
 
-  DEVICE_MALLOC(&(plan->Q3), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC(&(plan->Q4), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC((void**)&(plan->Q3), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC((void**)&(plan->Q4), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
 
   /*
     R2C is
@@ -151,13 +151,19 @@ void fftx_execute_1d_spiral(
     if (plan->is_complex) {
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
       if(plan->b  == 1){
-        for (int i = 0; i < plan->b; i++) {
-          std::vector<void*> args{plan->Q3 + i, in_buffer+i};
-          bdstg1.setArgs(args);
-          bdstg1.transform();
-        }
-      } else {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else 
         std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
+        bdstg1.setArgs(args);
+        bdstg1.transform();
+      } else {
+        #if defined FFTX_CUDA
+          std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else 
+          std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
         b2dstg1.setArgs(args);
         b2dstg1.transform();
       }
@@ -165,13 +171,19 @@ void fftx_execute_1d_spiral(
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
       fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
       if(plan->b == 1) {
-        for (int i = 0; i < plan->b; ++i) {
-          std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
-          bdstg2.setArgs(args);
-          bdstg2.transform();
-        }
-      } else {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&(plan->Q3), &(plan->Q4)};
+        #else 
         std::vector<void*> args{plan->Q3, plan->Q4};
+        #endif
+        bdstg2.setArgs(args);
+        bdstg2.transform();
+      } else {
+        #if defined FFTX_CUDA
+          std::vector<void*> args{&plan->Q3, &plan->Q4};
+        #else 
+          std::vector<void*> args{plan->Q3, plan->Q4};
+        #endif
         b2dstg2.setArgs(args);
         b2dstg2.transform();
       }
@@ -186,13 +198,19 @@ void fftx_execute_1d_spiral(
       }
       // [Y, X'/px, Z] (no permutation on last stage)
       if(plan->b == 1) {
-        for (int i = 0; i < plan->b; ++i) {
-          std::vector<void*> args{out_buffer + i, stg3_input + i};
-          bdstg3.setArgs(args);
-          bdstg3.transform();
-        }
-      } else {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&(out_buffer), &(stg3_input)};
+        #else 
         std::vector<void*> args{out_buffer, stg3_input};
+        #endif
+        bdstg3.setArgs(args);
+        bdstg3.transform();
+      } else {
+        #if defined FFTX_CUDA
+          std::vector<void*> args{&out_buffer, &stg3_input};
+        #else 
+          std::vector<void*> args{out_buffer, stg3_input};
+        #endif
         b2dstg3.setArgs(args);
         b2dstg3.transform();
       }
@@ -202,13 +220,19 @@ void fftx_execute_1d_spiral(
     DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
     // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
     if(plan->b == 1) {
-      for (int i = 0; i < plan->b; i++) {
-        std::vector<void*> args{stg3i_output + i, stg3i_input + i};
-        bdstg3.setArgs(args);
-        bdstg3.transform();
-      }
-    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg3i_output, &stg3i_input};
+      #else 
       std::vector<void*> args{stg3i_output, stg3i_input};
+      #endif
+      bdstg3.setArgs(args);
+      bdstg3.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg3i_output, &stg3i_input};
+      #else 
+      std::vector<void*> args{stg3i_output, stg3i_input};
+      #endif
       b2dstg3.setArgs(args);
       b2dstg3.transform();
     }
@@ -220,13 +244,19 @@ void fftx_execute_1d_spiral(
     //stage 2i
     // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
     if(plan->b == 1) {
-      for (int i = 0; i < plan->b; ++i) {
-        std::vector<void*> args{stg2i_output + i, stg2i_input + i};
-        ibdstg2.setArgs(args);
-        ibdstg2.transform();
-      }
-    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg2i_output, &stg2i_input};
+      #else 
       std::vector<void*> args{stg2i_output, stg2i_input};
+      #endif
+      ibdstg2.setArgs(args);
+      ibdstg2.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg2i_output, &stg2i_input};
+      #else 
+      std::vector<void*> args{stg2i_output, stg2i_input};
+      #endif
       ib2dstg2.setArgs(args);
       ib2dstg2.transform();
     }
@@ -244,17 +274,23 @@ void fftx_execute_1d_spiral(
 
     //stage 1i
     if(plan->b == 1) {
-      for (int i = 0; i < plan->b; ++i) {
-        if (plan->is_complex) {
-          std::vector<void*> args{stg1i_output + i,  stg1i_input + i};
-          ibdstg1.setArgs(args);
-          ibdstg1.transform();
-        }
+      if (plan->is_complex) {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&stg1i_output,  &stg1i_input};
+        #else 
+        std::vector<void*> args{stg1i_output,  stg1i_input};
+        #endif
+        ibdstg1.setArgs(args);
+        ibdstg1.transform();
       }
     } else {
-       std::vector<void*> args{stg1i_output,  stg1i_input};
-       ib2dstg1.setArgs(args);
-       ib2dstg1.transform();
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg1i_output,  &stg1i_input};
+      #else 
+      std::vector<void*> args{stg1i_output,  stg1i_input};
+      #endif
+      ib2dstg1.setArgs(args);
+      ib2dstg1.transform();
     }
   } // end backward.
 }
