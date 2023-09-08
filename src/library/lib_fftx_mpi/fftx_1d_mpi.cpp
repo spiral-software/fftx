@@ -58,11 +58,12 @@ fftx_plan fftx_plan_distributed_1d(
 #if FORCE_VENDOR_LIB
   {
 #else
-  if(is_complex && !is_embedded) {
+  if(!is_embedded) {
     plan = fftx_plan_distributed_1d_spiral(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {
 #endif
+    std::cout << "configuration not supported, using vendor backend" << std::endl;
     plan = fftx_plan_distributed_1d_default(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }

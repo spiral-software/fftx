@@ -120,7 +120,8 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
         return fftx_rconv_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
     }
     else {
-        std::cout << "non-supported fixed library transform" << std::endl; 
+        if(DEBUGOUT)
+            std::cout << "non-supported fixed library transform" << std::endl; 
         return nullptr;
     }
 }
