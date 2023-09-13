@@ -79,7 +79,7 @@ void destroy_2d_comms(fftx_plan plan) {
 fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan;
-  if(is_complex && !is_embedded) {
+   if(is_complex || (!is_complex && batch == 1)) {
     plan = fftx_plan_distributed_spiral(r, c, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {
