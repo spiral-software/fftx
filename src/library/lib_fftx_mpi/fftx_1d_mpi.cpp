@@ -58,7 +58,7 @@ fftx_plan fftx_plan_distributed_1d(
 #if FORCE_VENDOR_LIB
   {
 #else
-  if(!is_embedded) {
+  if(is_complex || (!is_complex && batch == 1)) {
     plan = fftx_plan_distributed_1d_spiral(p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {

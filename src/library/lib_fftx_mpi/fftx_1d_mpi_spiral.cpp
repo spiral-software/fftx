@@ -17,8 +17,8 @@
 #include "ibatch2ddftObj.hpp"
 #include "batch1dprdftObj.hpp"
 #include "ibatch1dprdftObj.hpp"
-#include "batch2dprdftObj.hpp"
-#include "ibatch2dprdftObj.hpp"
+// #include "batch2dprdftObj.hpp"
+// #include "ibatch2dprdftObj.hpp"
 #if defined FFTX_CUDA
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
@@ -96,22 +96,14 @@ void fftx_execute_1d_spiral(
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   int inM = plan->M * (plan->is_embed ? 2 : 1);
-  std::cout << "inM " << plan->M << std::endl;
   int inN = plan->N * (plan->is_embed ? 2 : 1);
-  std::cout << "inN " << plan->N << std::endl;
   int inK = plan->K * (plan->is_embed ? 2 : 1);
-  std::cout << "inK " << plan->K << std::endl;
   int batch_sizeX = plan->N * (int)plan->shape[4];
-  std::cout << "batch_sizeX: " << batch_sizeX << std::endl;
   int batch_sizeY = plan->K * (int)plan->shape[0];
-  std::cout << "batch_sizeY: " << batch_sizeY << std::endl;
   int batch_sizeZ = (int)plan->shape[0] * plan->N*(plan->is_embed ? 2 : 1);
-  std::cout << "batch_sizeZ: " << batch_sizeZ << std::endl;
   int batch_sizeY_inv = (int)plan->shape[0] * plan->K*(plan->is_embed ? 2 : 1);
-  std::cout << "batch_sizeY_inv: " << batch_sizeY_inv << std::endl;
   int K0 = ceil_div(plan->K*(plan->is_embed ? 2 : 1), plan->r); 
   int batch_sizeX_inv = plan->N * (plan->is_embed ? 2 : 1) * K0;
-  std::cout << "batch_sizeX_inv: " << batch_sizeX_inv << std::endl;
 
   
   BATCH1DDFTProblem bdstg1;
@@ -129,8 +121,8 @@ void fftx_execute_1d_spiral(
   BATCH1DPRDFTProblem bprdstg1;
   IBATCH1DPRDFTProblem ibprdstg1;
 
-  BATCH2DPRDFTProblem b2prdstg1;
-  IBATCH2DPRDFTProblem ib2prdstg1;
+  // BATCH2DPRDFTProblem b2prdstg1;
+  // IBATCH2DPRDFTProblem ib2prdstg1;
 
   std::vector<int> size_stg1;  
   std::vector<int> size_stg2;  
@@ -189,23 +181,24 @@ void fftx_execute_1d_spiral(
       bdstg3.setName("b1dft");
       ibprdstg1.setName("ib1prdft");
       ibdstg2.setName("ib1dft");
-    } else {
-      std::vector<int> size_stg1 = {inM, plan->b, batch_sizeX, 0, 1};  
-      std::vector<int> size_stg2 = {inN, plan->b, batch_sizeY, 0, 1};  
-      std::vector<int> size_stg3 = {inK, plan->b, batch_sizeZ, 0, 0};  
-      std::vector<int> size_istg2 = {inN, plan->b, batch_sizeY_inv, 1, 0};  
-      std::vector<int> size_istg1 = {inM, plan->b, batch_sizeX_inv, 1, 0};  
-      b2prdstg1.setSizes(size_stg1);
-      b2dstg2.setSizes(size_stg2);
-      b2dstg3.setSizes(size_stg3);
-      ib2prdstg1.setSizes(size_istg1);
-      ib2dstg2.setSizes(size_istg2);
-      b2prdstg1.setName("b2prdft");
-      b2dstg2.setName("b2dft");
-      b2dstg3.setName("b2dft");
-      ib2prdstg1.setName("ib2prdft");
-      ib2dstg2.setName("ib2dft");
     }
+    // } else {
+    //   std::vector<int> size_stg1 = {inM, plan->b, batch_sizeX, 0, 1};  
+    //   std::vector<int> size_stg2 = {inN, plan->b, batch_sizeY, 0, 1};  
+    //   std::vector<int> size_stg3 = {inK, plan->b, batch_sizeZ, 0, 0};  
+    //   std::vector<int> size_istg2 = {inN, plan->b, batch_sizeY_inv, 1, 0};  
+    //   std::vector<int> size_istg1 = {inM, plan->b, batch_sizeX_inv, 1, 0};  
+    //   b2prdstg1.setSizes(size_stg1);
+    //   b2dstg2.setSizes(size_stg2);
+    //   b2dstg3.setSizes(size_stg3);
+    //   ib2prdstg1.setSizes(size_istg1);
+    //   ib2dstg2.setSizes(size_istg2);
+    //   b2prdstg1.setName("b2prdft");
+    //   b2dstg2.setName("b2dft");
+    //   b2dstg3.setName("b2dft");
+    //   ib2prdstg1.setName("ib2prdft");
+    //   ib2dstg2.setName("ib2dft");
+    // }
   }
 
   if (direction == DEVICE_FFT_FORWARD) {
@@ -285,15 +278,16 @@ void fftx_execute_1d_spiral(
         #endif
         bprdstg1.setArgs(args);
         bprdstg1.transform();
-      } else {
-        #if defined FFTX_CUDA
-          std::vector<void*> args{&plan->Q3, &in_buffer};
-        #else 
-          std::vector<void*> args{plan->Q3, in_buffer};
-        #endif
-        b2prdstg1.setArgs(args);
-        b2prdstg1.transform();
       }
+      // } else {
+      //   #if defined FFTX_CUDA
+      //     std::vector<void*> args{&plan->Q3, &in_buffer};
+      //   #else 
+      //     std::vector<void*> args{plan->Q3, in_buffer};
+      //   #endif
+      //   b2prdstg1.setArgs(args);
+      //   b2prdstg1.transform();
+      // }
 
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
       fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
@@ -305,15 +299,16 @@ void fftx_execute_1d_spiral(
         #endif
         bdstg2.setArgs(args);
         bdstg2.transform();
-      } else {
-        #if defined FFTX_CUDA
-          std::vector<void*> args{&plan->Q3, &plan->Q4};
-        #else 
-          std::vector<void*> args{plan->Q3, plan->Q4};
-        #endif
-        b2dstg2.setArgs(args);
-        b2dstg2.transform();
-      }
+      } 
+      // else {
+      //   #if defined FFTX_CUDA
+      //     std::vector<void*> args{&plan->Q3, &plan->Q4};
+      //   #else 
+      //     std::vector<void*> args{plan->Q3, plan->Q4};
+      //   #endif
+      //   b2dstg2.setArgs(args);
+      //   b2dstg2.transform();
+      // }
 
       double *stg2_output = (double *) plan->Q3;
       double *stg3_input  = (double *) plan->Q4;
@@ -332,15 +327,16 @@ void fftx_execute_1d_spiral(
         #endif
         bdstg3.setArgs(args);
         bdstg3.transform();
-      } else {
-        #if defined FFTX_CUDA
-          std::vector<void*> args{&out_buffer, &stg3_input};
-        #else 
-          std::vector<void*> args{out_buffer, stg3_input};
-        #endif
-        b2dstg3.setArgs(args);
-        b2dstg3.transform();
-      }
+      } 
+      // else {
+      //   #if defined FFTX_CUDA
+      //     std::vector<void*> args{&out_buffer, &stg3_input};
+      //   #else 
+      //     std::vector<void*> args{out_buffer, stg3_input};
+      //   #endif
+      //   b2dstg3.setArgs(args);
+      //   b2dstg3.transform();
+      // }
     }
   } else if (direction == DEVICE_FFT_INVERSE) { // backward
     DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
@@ -427,15 +423,16 @@ void fftx_execute_1d_spiral(
           #endif
           ibprdstg1.setArgs(args);
           ibprdstg1.transform();
-      } else {
-        #if defined FFTX_CUDA
-        std::vector<void*> args{&stg1i_output,  &stg1i_input};
-        #else 
-        std::vector<void*> args{stg1i_output,  stg1i_input};
-        #endif
-        ib2prdstg1.setArgs(args);
-        ib2prdstg1.transform();
-      }
+      } 
+      // else {
+      //   #if defined FFTX_CUDA
+      //   std::vector<void*> args{&stg1i_output,  &stg1i_input};
+      //   #else 
+      //   std::vector<void*> args{stg1i_output,  stg1i_input};
+      //   #endif
+      //   ib2prdstg1.setArgs(args);
+      //   ib2prdstg1.transform();
+      // }
     }
   } // end backward.
 }
