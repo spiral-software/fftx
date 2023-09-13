@@ -200,7 +200,13 @@ inline void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
-    printToCache(tmp, name, sizes);
+    #if defined FFTX_HIP
+        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+    #elif defined FFTX_CUDA 
+        std::cout << "PrintJIT2(c,opts);" << std::endl;
+    #else
+        std::cout << "opts.prettyPrint(c);" << std::endl;
+    #endif
 }
 
 class FFTXProblem {
