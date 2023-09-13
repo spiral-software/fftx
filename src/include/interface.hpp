@@ -180,6 +180,10 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
         file_name.append("_CPU.txt");
     #endif
     cached_file.open(file_name);
+    while(spiral_out.back() != '}') {
+        spiral_out.pop_back();
+    }
+    spiral_out = spiral_out.substr(spiral_out.find("spiral> JIT BEGIN"));
     cached_file << spiral_out;
     cached_file.close();
 
