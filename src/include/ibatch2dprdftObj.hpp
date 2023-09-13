@@ -10,7 +10,7 @@ public:
     void randomProblemInstance() {
     }
     void semantics() {
-        std:cout << "Import(realdft);" << std::endl;
+        std::cout << "Import(realdft);" << std::endl;
         std::cout << "N := " << sizes.at(0) << ";" << std::endl;
         std::cout << "B := " << sizes.at(1) << ";" << std::endl;
         std::cout << "b := " << sizes.at(2) << ";" << std::endl;
