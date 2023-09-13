@@ -165,21 +165,24 @@ inline std::string getFromCache(std::string name, std::vector<int> sizes) {
     return oss.str();
 }
 
-inline void printToCache(std::string tmp, std::string name, std::vector<int> sizes) {
-    std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0);
+inline void printToCache(std::string spiral_out, std::string name, std::vector<int> sizes) {
+    std::ofstream cached_file;
+    std::string file_name;
+    file_name.append(getFFTX()+"cache_"+name+"_"+std::to_string(sizes.at(0)));
     for(int i = 1; i< sizes.size(); i++) {
-        std::cout << "x" << sizes.at(i);
+        file_name.append("x"+std::to_string(sizes.at(i)));
     }
     #if defined FFTX_HIP
-        std::cout  << "_HIP" << ".txt\", PrintHIPJIT(c,opts));" << std::endl; 
-        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+        file_name.append("_HIP.txt");
     #elif defined FFTX_CUDA 
-        std::cout << "_CUDA" << ".txt\", PrintJIT2(c,opts));" << std::endl;   
-        std::cout << "PrintJIT2(c,opts);" << std::endl;
+        file_name.append("_CUDA.txt");
     #else
-        std::cout <<  "_CPU" << ".txt\", opts.prettyPrint(c));" << std::endl; 
-        std::cout << "opts.prettyPrint(c);" << std::endl;
+        file_name.append("_CPU.txt");
     #endif
+    cached_file.open(file_name);
+    cached_file << spiral_out;
+    cached_file.close();
+
 }
 
 inline void getImportAndConf() {
@@ -362,6 +365,7 @@ inline void FFTXProblem::transform(){
                 e.execute(res);
                 executors.insert(std::make_pair(sizes, e));
                 run(e);
+                printToCache(res, name, sizes);
             }
         }
     }
