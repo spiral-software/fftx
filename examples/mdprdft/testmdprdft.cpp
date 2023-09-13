@@ -228,10 +228,10 @@ int main(int argc, char* argv[])
                                     (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.m_data.local(),
                                     (long) outDevfft1.m_domain.size() );
             }
+                DEVICE_FFT_DESTROY(plan);
     #endif
     }
 
-    DEVICE_FFT_DESTROY(plan);
 
     std::cout << "normalize data for hermitian symmetry" << std::endl;
 
