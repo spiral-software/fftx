@@ -314,7 +314,11 @@ inline void FFTXProblem::transform(){
         #else
             auto start = std::chrono::high_resolution_clock::now();
         #endif
+            #if defined FFTX_CUDA
+            ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), (*(double**)args.at(2)) );    
+            #else
             ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
+            #endif
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
