@@ -185,6 +185,8 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
     }
     #if (defined FFTX_CUDA || FFTX_HIP)
     spiral_out = spiral_out.substr(spiral_out.find("spiral> JIT BEGIN"));
+    #else
+    spiral_out = spiral_out.substr(spiral_out.find("#include"));
     #endif
     cached_file << spiral_out;
     cached_file.close();
