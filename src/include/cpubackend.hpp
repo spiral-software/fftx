@@ -146,16 +146,25 @@ void Executor::execute(std::string result) {
     if ( DEBUGOUT) std::cout << "entered CPU backend execute\n";
     std::string compile;
     
+    char buff[FILENAME_MAX]; //create string buffer to hold path
+    getcwd( buff, FILENAME_MAX );
+    std::string current_working_dir(buff);
+
+    struct stat sb;
+
+    if(stat((current_working_dir+"/temp").c_str(), &sb) == 0)
+        system("rm -rf temp");
+        
     if ( DEBUGOUT) {
         std::cout << "created compile\n";
     }
 
-    std::string result2 = result.substr(result.find("*/")+3, result.length());
+    std::string result2 = result.substr(result.find("#include"));
     int check = mkdir("temp", 0777);
-    // if((check)) {
-    //     std::cout << "failed to create temp directory for runtime code\n";
-    //     exit(-1);
-    // }
+    if(check != 0) {
+        std::cout << "failed to create temp directory for runtime code\n";
+        exit(-1);
+    }
     std::ofstream out("temp/spiral_generated.c");
     out << result2;
     out.close();
@@ -167,16 +176,12 @@ void Executor::execute(std::string result) {
     cmakelists.close();
     if ( DEBUGOUT )
         std::cout << "compiling\n";
-
-    char buff[FILENAME_MAX]; //create string buffer to hold path
-    getcwd( buff, FILENAME_MAX );
-    std::string current_working_dir(buff);
     
     check = chdir("temp");
-    // if(!(check)) {
-    //     std::cout << "failed to create temp directory for runtime code\n";
-    //     exit(-1);
-    // }
+    if(check != 0) {
+        std::cout << "failed to change to temp directory for runtime code\n";
+        exit(-1);
+    }
     #if defined(_WIN32) || defined (_WIN64)
         system("cmake . && make");
     #elif defined(__APPLE__)
@@ -191,10 +196,10 @@ void Executor::execute(std::string result) {
         system("cmake . && make"); 
     #endif
     check = chdir(current_working_dir.c_str());
-    // if((check)) {
-    //     std::cout << "failed to create temp directory for runtime code\n";
-    //     exit(-1);
-    // }
+    if(check != 0) {
+        std::cout << "failed to change to working directory for runtime code\n";
+        exit(-1);
+    }
     // system("cd ..;");
     if ( DEBUGOUT )
         std::cout << "finished compiling\n";

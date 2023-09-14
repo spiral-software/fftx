@@ -165,21 +165,32 @@ inline std::string getFromCache(std::string name, std::vector<int> sizes) {
     return oss.str();
 }
 
-inline void printToCache(std::string tmp, std::string name, std::vector<int> sizes) {
-    std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0);
+inline void printToCache(std::string spiral_out, std::string name, std::vector<int> sizes) {
+    std::ofstream cached_file;
+    std::string file_name;
+    file_name.append(getFFTX()+"cache_"+name+"_"+std::to_string(sizes.at(0)));
     for(int i = 1; i< sizes.size(); i++) {
-        std::cout << "x" << sizes.at(i);
+        file_name.append("x"+std::to_string(sizes.at(i)));
     }
     #if defined FFTX_HIP
-        std::cout  << "_HIP" << ".txt\", PrintHIPJIT(c,opts));" << std::endl; 
-        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+        file_name.append("_HIP.txt");
     #elif defined FFTX_CUDA 
-        std::cout << "_CUDA" << ".txt\", PrintJIT2(c,opts));" << std::endl;   
-        std::cout << "PrintJIT2(c,opts);" << std::endl;
+        file_name.append("_CUDA.txt");
     #else
-        std::cout <<  "_CPU" << ".txt\", opts.prettyPrint(c));" << std::endl; 
-        std::cout << "opts.prettyPrint(c);" << std::endl;
+        file_name.append("_CPU.txt");
     #endif
+    cached_file.open(file_name);
+    while(spiral_out.back() != '}') {
+        spiral_out.pop_back();
+    }
+    #if (defined FFTX_CUDA || FFTX_HIP)
+    spiral_out = spiral_out.substr(spiral_out.find("spiral> JIT BEGIN"));
+    #else
+    spiral_out = spiral_out.substr(spiral_out.find("#include"));
+    #endif
+    cached_file << spiral_out;
+    cached_file.close();
+
 }
 
 inline void getImportAndConf() {
@@ -200,7 +211,13 @@ inline void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
-    printToCache(tmp, name, sizes);
+    #if defined FFTX_HIP
+        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+    #elif defined FFTX_CUDA 
+        std::cout << "PrintJIT2(c,opts);" << std::endl;
+    #else
+        std::cout << "opts.prettyPrint(c);" << std::endl;
+    #endif
 }
 
 class FFTXProblem {
@@ -356,6 +373,7 @@ inline void FFTXProblem::transform(){
                 e.execute(res);
                 executors.insert(std::make_pair(sizes, e));
                 run(e);
+                printToCache(res, name, sizes);
             }
         }
     }
