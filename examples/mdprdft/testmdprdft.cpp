@@ -231,7 +231,6 @@ int main(int argc, char* argv[])
     #endif
     }
 
-    DEVICE_FFT_DESTROY(plan);
 
     std::cout << "normalize data for hermitian symmetry" << std::endl;
 
