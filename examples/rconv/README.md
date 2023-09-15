@@ -8,14 +8,18 @@ On the tests with random input and a constant-valued symbol,
 the number of rounds is specified with the flag `-i` (default 2).  
 There is also a `verbosity` setting that defaults to 0.   
 If `verbosity` is at least 1, then also writes out
-the maximum error for each of the three test categories.  
+the maximum error for each of the three test categories.
 If `verbosity` is at least 3, then also writes out
-the maximum error for every iteration with random input.
+the maximum error for every round with random input.
+
+* **testrconv**
 ```
 ./testrconv [-i rounds] [-v verbosity] [-s MMxNNxKK] [-h {print help message}]
 ```
 Runs tests of **FFTX** real 3D convolution transform
 on the fixed size `MMxNNxKK`, with default 24x32x40.
+
+* **testrconv_lib**
 ```
 ./testrconv_lib [-i rounds] [-v verbosity]
 ```
