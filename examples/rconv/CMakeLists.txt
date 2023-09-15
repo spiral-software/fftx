@@ -24,7 +24,7 @@ include ( CMakeDependentOption )
 cmake_dependent_option ( BLD_RCONV_EX "Build rconv example" ON "RCONV_LIB" OFF )
 
 if ( BLD_RCONV_EX )
-    ##  set ( BUILD_PROGS test${PROJECT_NAME}_lib )		## this requires a prebuilt library
+    set ( BUILD_PROGS test${PROJECT_NAME}_lib )		## this requires a prebuilt library
 endif ()
 
 list ( APPEND BUILD_PROGS test${PROJECT_NAME} )

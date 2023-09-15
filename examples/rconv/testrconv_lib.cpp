@@ -1,33 +1,43 @@
-#include <stdio.h>
-#include <cmath> // Without this, abs is the wrong function!
+#include <cmath> // Without this, abs returns zero!
 #include <random>
 
 #include "rconv_dims.h"
 
-#include "RealConvolution.hpp"
+#if defined(__CUDACC__) || defined(FFTX_HIP)
+#include "fftx_rconv_gpu_public.h"
+#else
+#include "fftx_rconv_cpu_public.h"
+#endif
+
+#include "rconv.fftx.precompile.hpp"
+
 #include "fftx3utilities.h"
 
+#include "device_macros.h"
+#include "RealConvolution.hpp"
+
 template<int DIM>
-void rconvDimension(fftx::rconv<DIM>& a_transformer,
+void rconvDimension(std::vector<int> sizes,
+                    fftx::box_t<DIM> a_domain,
+                    fftx::box_t<DIM> a_fdomain,
                     int a_rounds,
                     int a_verbosity)
 {
-  if (!a_transformer.isDefined())
-    {
-      return;
-    }
-
   std::cout << "***** test " << DIM << "D real convolution on "
-            << a_transformer.inputSize() << std::endl;
+            << a_domain << std::endl;
 
-  RealConvolution<DIM> fun(&a_transformer);
+  // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
+  RCONVProblem rp("rconv");
+  RealConvolution<DIM> fun(rp, sizes, a_domain, a_fdomain);
   TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
 }
+
 
 void rconvSize(fftx::point_t<3> a_size,
                int a_rounds,
                int a_verbosity)
 {
+  // Size from a_size, offset from rconv_dims.
   fftx::box_t<3> fulldomain(fftx::point_t<3>
                             ({{rconv_dims::offx+1,
                                   rconv_dims::offy+1,
@@ -52,25 +62,37 @@ void rconvSize(fftx::point_t<3> a_size,
                                   rconv_dims::offz+a_size[2]}})
 #endif
                             );
-  fftx::rconv<3> tfm(a_size); // does initialization
-  rconvDimension(tfm, a_rounds, a_verbosity);
+  // fftx::rconv<3> tfm(a_size); // does initialization
+  // rconvDimension(tfm, a_rounds, a_verbosity);
+  std::vector<int> sizes{a_size[0], a_size[1], a_size[2]};
+  rconvDimension(sizes, fulldomain, halfdomain, a_rounds, a_verbosity);
 }
   
 int main(int argc, char* argv[])
 {
   // { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
-  printf("Usage:  %s [verbosity=0] [rounds=20]\n", argv[0]);
-  printf("verbosity 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations\n");
+  char *prog = argv[0];
   int verbosity = 0;
-  int rounds = 20;
-  if (argc > 1)
-    {
-      verbosity = atoi(argv[1]);
-      if (argc > 2)
-        {
-          rounds = atoi(argv[2]);
-        }
-    }
+  int rounds = 2;
+  while ( argc > 1 && argv[1][0] == '-' ) {
+      switch ( argv[1][1] ) {
+      case 'i':
+          argv++, argc--;
+          rounds = atoi ( argv[1] );
+          break;
+      case 'v':
+          argv++, argc--;
+          verbosity = atoi ( argv[1] );
+          break;
+      case 'h':
+          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          exit (0);
+      default:
+          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+      }
+      argv++, argc--;
+  }
+
   printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
 
   /*
@@ -108,6 +130,6 @@ int main(int argc, char* argv[])
   // rconvDimension(tfm, rconv_dims::domain3, rconv_dims::fdomain3,
   //                rounds, verbosity);
 
-  printf("%s: All done, exiting\n", argv[0]);
+  printf("%s: All done, exiting\n", prog);
   return 0;
 }
