@@ -1,4 +1,5 @@
 #include "fftx3.hpp"
+#include "fftx3utilities.h"
 #include "interface.hpp"
 #include "mdprdftObj.hpp"
 #include "imdprdftObj.hpp"
@@ -22,11 +23,27 @@
 
 static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
 {
+    srand(time(NULL));
     for ( int imm = 0; imm < sizes.at(0); imm++ ) {
         for ( int inn = 0; inn < sizes.at(1); inn++ ) {
             for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
                 int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
                 host_X[offset] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+            }
+        }
+    }
+    return;
+}
+
+static void buildInputBuffer_complex ( double *host_X, std::vector<int> sizes )
+{
+    srand(time(NULL));
+    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
+        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
+            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
+                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+                host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+                host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
             }
         }
     }
@@ -231,25 +248,6 @@ int main(int argc, char* argv[])
     #endif
     }
 
-
-    std::cout << "normalize data for hermitian symmetry" << std::endl;
-
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    for ( int ii = 0; ii < mm * nn * K_adj; ii++ ) {
-        outputHost.m_data.local()[ii] /= ( mm * nn * K_adj );
-    }
-#else
-    for ( int ii = 0; ii < mm * nn * K_adj; ii++ ) {
-        tempX[ii] /= ( mm * nn * K_adj );
-    }
-#endif
-    std::cout << "normalization finished" << std::endl;
-
-// #if defined FFTX_CUDA || defined FFTX_HIP
-//     std::complex<double> * tempX2;
-//     DEVICE_MALLOC(&tempX2, outputHost.m_domain.size() * sizeof(std::complex<double>));
-// #endif 
-
     // setup the inverse transform (we'll reuse the device fft plan already created)
 #if defined FFTX_CUDA
     std::vector<void*> args1{&dY,&tempX,&dsym};
@@ -272,8 +270,13 @@ int main(int argc, char* argv[])
         check_buff = false;
     }
 #endif
+
+    std::vector<int> sizes2{mm,nn,K_adj};
+    std::complex<double> *hostinp_complex = (std::complex<double> *) outputHost.m_data.local();
     for (int itn = 0; itn < iterations; itn++)
     {
+        buildInputBuffer_complex((double*)hostinp_complex, sizes2);
+        symmetrizeHermitian(outputHost, outputHost2);
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)    
         DEVICE_MEM_COPY (tempX, outputHost.m_data.local(), (  mm * nn * K_adj ) * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE );
     #endif
