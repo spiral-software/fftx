@@ -248,25 +248,6 @@ int main(int argc, char* argv[])
     #endif
     }
 
-
-//     std::cout << "normalize data for hermitian symmetry" << std::endl;
-
-// #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-//     for ( int ii = 0; ii < mm * nn * K_adj; ii++ ) {
-//         outputHost.m_data.local()[ii] /= ( mm * nn * K_adj );
-//     }
-// #else
-//     for ( int ii = 0; ii < mm * nn * K_adj; ii++ ) {
-//         tempX[ii] /= ( mm * nn * K_adj );
-//     }
-// #endif
-//     std::cout << "normalization finished" << std::endl;
-
-// #if defined FFTX_CUDA || defined FFTX_HIP
-//     std::complex<double> * tempX2;
-//     DEVICE_MALLOC(&tempX2, outputHost.m_domain.size() * sizeof(std::complex<double>));
-// #endif 
-
     // setup the inverse transform (we'll reuse the device fft plan already created)
 #if defined FFTX_CUDA
     std::vector<void*> args1{&dY,&tempX,&dsym};
