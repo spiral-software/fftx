@@ -1,8 +1,5 @@
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
-// #include "rconv2.fftx.codegen.hpp"
-// #include "rconv3.fftx.codegen.hpp"
-// #include "rconv.h"
 
 #include "RealConvolution.hpp"
 #include "fftx3utilities.h"
@@ -109,6 +106,6 @@ int main(int argc, char* argv[])
   rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
   // rconv3::destroy();
   
-  printf("%s: All done, exiting\n", argv[0]);
+  printf("%s: All done, exiting\n", prog);
   return 0;
 }
