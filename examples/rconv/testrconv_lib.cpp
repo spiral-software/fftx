@@ -71,8 +71,6 @@ void rconvSize(fftx::point_t<3> a_size,
 int main(int argc, char* argv[])
 {
   // { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
-  printf("Usage:  %s [verbosity=0] [rounds=20]\n", argv[0]);
-  printf("verbosity 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations\n");
   char *prog = argv[0];
   int verbosity = 0;
   int rounds = 2;
