@@ -5,6 +5,7 @@
 #include <random>
 
 #include "fftx3.hpp"
+#include "interface.hpp"
 // #include "fftx3utilities.h"
 
 // Define {init|destroy|run}TransformFunc and transformTuple if undefined.
@@ -64,6 +65,16 @@ fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size)
   bx.lo = fftx::point_t<DIM>::Unit();
   bx.hi = a_size;
   return bx;
+}
+
+template<int DIM, typename T>
+double absMaxRelDiffArray(fftx::array_t<DIM, T>& a_arr1,
+                          fftx::array_t<DIM, T>& a_arr2)
+{
+  double absDiffMax = absMaxDiffArray(a_arr1, a_arr2);
+  double abs1Max = absMaxArray(a_arr1);
+  double rel = absDiffMax / abs1Max;
+  return rel;
 }
 
 #if defined(__CUDACC__) || defined(FFTX_HIP)
@@ -232,6 +243,43 @@ public:
     m_tp = FFTX_LIB;
   }
   
+  // constructor with FFTXProblem
+  TransformFunction(FFTXProblem* a_transformProblemPtr,
+                    int a_sign)
+  {
+    m_transformProblemPtr = a_transformProblemPtr;
+    std::vector<int>& sizes = m_transformProblemPtr->sizes;
+    fftx::point_t<DIM> domainsize({{sizes[0], sizes[1], sizes[2]}});
+    m_fullExtents = domainsize;
+    m_name = m_transformProblemPtr->name;
+    m_sign = a_sign;
+    // FIXME: This is right for mddft/imddft but wrong for mdprdft/imdprdft.
+    // m_inDomain = domainFromSize<DIM>(m_fullExtents);
+    // m_outDomain = domainFromSize<DIM>(m_fullExtents);
+    const int nx = sizes[0];
+    const int ny = sizes[1];
+    const int nz = sizes[2];
+#if FFTX_COMPLEX_TRUNC_LAST
+    const int fx = nx;
+    const int fy = ny;
+    const int fz = nz/2 + 1;
+#else
+    const int fx = nx/2 + 1;
+    const int fy = ny;
+    const int fz = nz;
+#endif
+    fftx::box_t<DIM> fullDomain(fftx::point_t<3>({{1, 1, 1}}),
+                                fftx::point_t<3>({{nx, ny, nz}}));
+    fftx::box_t<DIM> truncDomain(fftx::point_t<3>({{1, 1, 1}}),
+                                 fftx::point_t<3>({{fx, fy, fz}}));
+    m_inDomain = (m_name == "imdprdft") ? truncDomain : fullDomain;
+    m_outDomain = (m_name == "mdprdft") ? truncDomain : fullDomain;
+    // m_inDomain = domainFromSize<DIM>(m_transformerPtr->inputSize());
+    // m_outDomain = domainFromSize<DIM>(m_transformerPtr->outputSize());
+    // m_fullExtents = m_transformerPtr->size();
+    m_tp = FFTX_PROBLEM;
+  }
+  
 #if defined(__CUDACC__) || defined(FFTX_HIP)
   // constructor with device library transformer
   TransformFunction(deviceTransform3dType<T_IN, T_OUT>& a_deviceTfm3dType,
@@ -292,7 +340,10 @@ public:
       {
         std::cout << "calling exec on empty TransformFunction" << std::endl;
       }
-    else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB || m_tp == DEVICE_LIB)
+    else if (m_tp == FFTX_HANDLE ||
+             m_tp == FFTX_LIB ||
+             m_tp == FFTX_PROBLEM ||
+             m_tp == DEVICE_LIB)
       {
 #if defined(__CUDACC__) || defined(FFTX_HIP)
         // on GPU
@@ -336,6 +387,35 @@ public:
               {
                 m_transformerPtr->transform2(inputDevice, outputDevice);
               }
+            else if (m_tp == FFTX_PROBLEM)
+              {
+#if defined FFTX_CUDA
+                CUdevice cuDevice;
+                CUcontext context;
+                cuInit(0);
+                cuDeviceGet(&cuDevice, 0);
+                cuCtxCreate(&context, 0, cuDevice);
+                //  CUdeviceptr  dX, dY, dsym;
+                std::complex<double> *dX, *dY, *dsym;
+                std::vector<void*> args{&dY, &dX, &dsym};
+#elif defined FFTX_HIP
+                hipDeviceptr_t  dX, dY, dsym;
+                std::vector<void*> args{dY, dX, dsym};
+#endif
+                dX = (double *) inputDevice.m_data.local();
+                dY = (double *) outputDevice.m_data.local();
+                // dsym = new double[m_outDomain.size()]; // FIXME: check this
+                dsym = new double[m_fullExtents[0]*m_fullExtents[1]*m_fullExtents[2]];
+#if defined FFTX_CUDA
+                std::vector<void*> args{&dY, &dX, &dsym};
+#elif defined FFTX_HIP
+                std::vector<void*> args{dY, dX, dsym};
+#endif
+                m_transformProblemPtr->setArgs(args);
+                // FIXME: Need to get inputDevice and outputDevice somehow.
+                // They are in std::vector<void*> args.
+                m_transformProblemPtr->transform();
+              }
           }
         DEVICE_MEM_COPY(outputHostPtr, outputDevicePtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
@@ -352,13 +432,28 @@ public:
           {
             m_transformerPtr->transform2(a_inArray, a_outArray);
           }
+        else if (m_tp == FFTX_PROBLEM)
+          {
+            T_IN* inputHostPtr = a_inArray.m_data.local();
+            T_OUT* outputHostPtr = a_outArray.m_data.local();
+            double *dX, *dY, *dsym;
+            dX = (double *) inputHostPtr;
+            dY = (double *) outputHostPtr;
+            // dsym = new double[m_outDomain.size()]; // FIXME: check this
+            dsym = new double[m_fullExtents[0]*m_fullExtents[1]*m_fullExtents[2]];
+            std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
+            m_transformProblemPtr->setArgs(args);
+            // FIXME: Need to get a_inArray and a_outArray somehow.
+            // They are in std::vector<void*> args.
+            m_transformProblemPtr->transform();
+          }
 #endif
       }
   }
 
 protected:
 
-  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2, DEVICE_LIB = 3 };
+  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2, DEVICE_LIB = 3 , FFTX_PROBLEM = 4 };
 
   TransformType m_tp;
   fftx::box_t<DIM> m_inDomain;
@@ -374,6 +469,9 @@ protected:
   
   // case FFTX_LIB
   fftx::transformer<DIM, T_IN, T_OUT>* m_transformerPtr;
+
+  // case FFTX_PROBLEM
+  FFTXProblem* m_transformProblemPtr;
 
 #if defined(__CUDACC__) || defined(FFTX_HIP)
   // case DEVICE_LIB
@@ -479,9 +577,9 @@ public:
     updateMax(err, test1());
     updateMax(err, test2());
     updateMax(err, test3());
-    printf("%dD test on %s in %d rounds max error %11.5e\n",
+    printf("%dD test on %s in %d rounds max relative error %11.5e\n",
            DIM, m_tfm.name().c_str(), m_rounds, err);
-    //    printf("%dD test on NAME in %d rounds max error %11.5e\n",
+    //    printf("%dD test on NAME in %d rounds max relative error %11.5e\n",
     //           DIM, m_rounds, err);
   }
 
@@ -666,16 +764,16 @@ protected:
         m_tfm.exec(inB, outB);
         sumArrays(LCout, outA, outB, alphaOut, betaOut);
         m_tfm.exec(LCin, outLCin);
-        double err = absMaxDiffArray(outLCin, LCout);
+        double err = absMaxRelDiffArray(outLCin, LCout);
         updateMax(errtest1, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD linearity test round %d max error %11.5e\n", DIM, itn, err);
+            printf("%dD linearity test round %d max relative error %11.5e\n", DIM, itn, err);
           }
       }
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD Test 1 (linearity) in %d rounds: max error %11.5e\n", DIM, m_rounds, errtest1);
+        printf("%dD Test 1 (linearity) in %d rounds: max relative error %11.5e\n", DIM, m_rounds, errtest1);
       }
     return errtest1;
   }
@@ -692,7 +790,7 @@ protected:
     updateMax(errtest2, test2impulseRandom(outputVar)); // only if output is complex
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD Test 2 (impulses) in %d rounds: max error %11.5e\n",
+        printf("%dD Test 2 (impulses) in %d rounds: max relative error %11.5e\n",
                DIM, m_rounds, errtest2);
       }
     return errtest2;
@@ -706,10 +804,10 @@ protected:
     setUnitImpulse(inImpulse, m_inDomain.lo);
     setConstant(all1out, scalarVal<T_OUT>(1.));
     m_tfm.exec(inImpulse, outImpulse);
-    double errtest2impulse1 = absMaxDiffArray(outImpulse, all1out);
+    double errtest2impulse1 = absMaxRelDiffArray(outImpulse, all1out);
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD unit impulse low corner test: max error %11.5e\n",
+        printf("%dD unit impulse low corner test: max relative error %11.5e\n",
                DIM, errtest2impulse1);
       }
     return errtest2impulse1;
@@ -742,17 +840,17 @@ protected:
         diffArrays(inImpulseMinusRand, inImpulse, inRand);
         m_tfm.exec(inImpulseMinusRand, outImpulseMinusRand);
         sumArrays(mysum, outRand, outImpulseMinusRand);
-        double err = absMaxDiffArray(mysum, all1out);
+        double err = absMaxRelDiffArray(mysum, all1out);
         updateMax(errtest2impulsePlus, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random + unit impulse low corner test round %d max error %11.5e\n", DIM, itn, err);
+            printf("%dD random + unit impulse low corner test round %d max relative error %11.5e\n", DIM, itn, err);
           }
       }
 
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD unit impulse low corner test in %d rounds: max error %11.5e\n",
+        printf("%dD unit impulse low corner test in %d rounds: max relative error %11.5e\n",
              DIM, m_rounds, errtest2impulsePlus);
       }
     return errtest2impulsePlus;
@@ -772,10 +870,10 @@ protected:
     fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
     m_tfm.exec(all1in, outImpulse);
 
-    double errtest2constant = absMaxDiffArray(outImpulse, magImpulse);
+    double errtest2constant = absMaxRelDiffArray(outImpulse, magImpulse);
     if (m_verbosity >= SHOW_SUBTESTS)
     {
-       printf("%dD constant test: max error %11.5e\n",
+       printf("%dD constant test: max relative error %11.5e\n",
               DIM, errtest2constant);
     }
     return errtest2constant;
@@ -811,18 +909,18 @@ protected:
 
         sumArrays(outSum, outRand, outConstantMinusRand);
       
-        double err = absMaxDiffArray(outSum, magImpulse);
+        double err = absMaxRelDiffArray(outSum, magImpulse);
         updateMax(errtest2constantPlus, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random + constant test round %d max error %11.5e\n",
+            printf("%dD random + constant test round %d max relative error %11.5e\n",
                    DIM, itn, err);
           }
       }
 
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD random + constant test in %d rounds: max error %11.5e\n",
+        printf("%dD random + constant test in %d rounds: max relative error %11.5e\n",
                DIM, m_rounds, errtest2constantPlus);
       }
     return errtest2constantPlus;
@@ -853,18 +951,18 @@ protected:
         // waves defined on m_outDomain,
         // but based on the full m_inDomain extents.
         setProductWaves(outCheck, fullExtents, rpoint, m_sign);
-        double err = absMaxDiffArray(outImpulse, outCheck);
+        double err = absMaxRelDiffArray(outImpulse, outCheck);
         updateMax(errtest2impulseRandom, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random impulse test round %d max error %11.5e\n",
+            printf("%dD random impulse test round %d max relative error %11.5e\n",
                    DIM, itn, err);
           }
       }
 
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD random impulse in %d rounds: max error %11.5e\n",
+        printf("%dD random impulse in %d rounds: max relative error %11.5e\n",
                DIM, m_rounds, errtest2impulseRandom);
       }
     return errtest2impulseRandom;
@@ -879,7 +977,7 @@ protected:
     updateMax(errtest3, test3frequency(inputVar)); // only if input is complex
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD Test 3 (shifts) in %d rounds: max error %11.5e\n",
+        printf("%dD Test 3 (shifts) in %d rounds: max relative error %11.5e\n",
                DIM, m_rounds, errtest3);
       }
     return errtest3;
@@ -913,18 +1011,18 @@ protected:
             m_tfm.exec(inRand, outRand);
             m_tfm.exec(inRandRot, outRandRot);
             productArrays(outRandRotMult, outRandRot, rotator);
-            double err = absMaxDiffArray(outRandRotMult, outRand);
+            double err = absMaxRelDiffArray(outRandRotMult, outRand);
             updateMax(errtest3timeDim[d], err);
             updateMax(errtest3time, errtest3timeDim[d]);
             if (m_verbosity >= SHOW_ROUNDS)
               {
-                printf("%dD dim %d time-shift test %d max error %11.5e\n",
+                printf("%dD dim %d time-shift test %d max relative error %11.5e\n",
                        DIM, d, itn, err);
               }
           }
         if (m_verbosity >= SHOW_SUBTESTS)
           {
-            printf("%dD dim %d time-shift test in %d rounds: max error %11.5e\n",
+            printf("%dD dim %d time-shift test in %d rounds: max relative error %11.5e\n",
                    DIM, d, m_rounds, errtest3timeDim[d]);
           }
       }
@@ -964,17 +1062,17 @@ protected:
             m_tfm.exec(inRand, outRand);
             m_tfm.exec(inRandMult, outRandMult);
             rotate(outRandMultRot, outRandMult, d, m_sign);
-            double err = absMaxDiffArray(outRandMultRot, outRand);
+            double err = absMaxRelDiffArray(outRandMultRot, outRand);
             updateMax(errtest3frequencyDim[d], err);
             updateMax(errtest3frequency, errtest3frequencyDim[d]);
             if (m_verbosity >= SHOW_ROUNDS)
               {
-                printf("%dD dim %d frequency-shift test %d max error %11.5e\n", DIM, d, itn, err);
+                printf("%dD dim %d frequency-shift test %d max relative error %11.5e\n", DIM, d, itn, err);
               }
           }
         if (m_verbosity >= SHOW_SUBTESTS)
           {
-            printf("%dD dim %d frequency-shift test in %d rounds: max error %11.5e\n",
+            printf("%dD dim %d frequency-shift test in %d rounds: max relative error %11.5e\n",
                    DIM, d, m_rounds, errtest3frequencyDim[d]);
           }
       }
