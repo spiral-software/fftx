@@ -6,16 +6,17 @@
 #include "mddft2.fftx.codegen.hpp"
 #include "imddft2.fftx.codegen.hpp"
 */
-#include "mddft3.fftx.codegen.hpp"
-#include "imddft3.fftx.codegen.hpp"
+//#include "mddft3.fftx.codegen.hpp"
+//#include "imddft3.fftx.codegen.hpp"
 /*
 #include "prdft1.fftx.codegen.hpp"
 #include "iprdft1.fftx.codegen.hpp"
 #include "prdft2.fftx.codegen.hpp"
 #include "iprdft2.fftx.codegen.hpp"
 */
-#include "prdft3.fftx.codegen.hpp"
-#include "iprdft3.fftx.codegen.hpp"
+//#include "prdft3.fftx.codegen.hpp"
+//#include "iprdft3.fftx.codegen.hpp"
+#include "fftx3.hpp"
 #include "fftx3utilities.h"
 // #include "verify.h"
 #include "device_macros.h"
