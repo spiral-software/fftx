@@ -3,6 +3,12 @@ FFTX Project
 
 This is the public repository for the **FFTX** API source, examples, and documentation.
 
+### License
+
+This project is licensed under the BSD License (available [**here**](https://www.github.com/spiral-software/fftx/blob/main/License.txt))
+
+Copyright (c) 2018-2023, Carnegie Mellon University.  All rights reserved.
+
 ## Building FFTX
 
 ### Prerequisites
@@ -35,7 +41,7 @@ To build and use **FFTX**, follow these steps:
 If you already have SPIRAL installed (and have the **SPIRAL_HOME** environment variable
 set) FFTX will use that installation and you can skip to step 2, "Clone the FFTX repository".
 
-If you want to manually install SPIRAL follow these steps; alternatively, skip to step 2,
+If you want to manually install SPIRAL follow the steps below; alternatively, skip to step 2,
 "Clone the FFTX repository" and have FFTX pull down the necessary SPIRAL repositories and
 perform the build steps.
 
@@ -100,63 +106,60 @@ source get_spiral.sh
 ### 3. Generate library source code.
 
 **FFTX** builds libraries of transforms for a set of different sizes.  The library source
-code is generated from **SPIRAL** script specifications, and may be created before
-building **FFTX** itself.  If the sizes are pre-built the code will be added to libraries
-(the pre-defined fixed-size libraries).  Alternatively, sizes not defined can have the
-code generated and compiled at run-time (RTC).
+code is generated from **SPIRAL** script specifications, and must be created before
+building **FFTX** itself.  For the sizes that are pre-built the code will be added to
+libraries (the pre-defined fixed-size libraries).  Alternatively, sizes not defined can
+have the code generated and compiled at run-time (RTC).
 
-Before creating the library source code consider if you will be
-running on CPU only, or also utilizing a GPU.  If you create all the source code
-(and related **cmake** scripts and library APIs) for GPU and then try building
-for CPU only you may encounter compiler errors or unexpected results.
+Before creating the library source code consider if you will be running on CPU only, or
+also utilizing a GPU.  If you create all the source code (and related **cmake** scripts
+and library APIs) for GPU and then try building for CPU only you may encounter compiler
+errors or unexpected results.  It is recommended that you have separate installs for CPU
+and GPU.
 
 The shell script **config-fftx-libs.sh** is a utility script in the **FFTX** home
-directory that allows you to configure which libraries (and by extension, which
-examples) are to be built.  Each library has a flag (true/false) stating whether
-it will be built or not.  There is also a flag allowing the building of the
-example programs to be skipped (useful when you only need to build the libraries
-for an external application).  The script is self-documenting; edit the script
-to set the flags for the libraries either **true** or **false**.
+directory that marshalls resources for building the libraries and examples.  There is a
+flag that enables or disables the building of examples (enabled by default).  NOTE: All
+libraries **should be created**; creating the library is a pre-requisite to creating its
+API files (files which are required later when building the RTC code).  Building the
+examples may be turned off if you only need to build the libraries for an external
+application).  The script is self-documenting; typically it should not be edited (unless
+you need to disable building the examples).
 
-NOTE: It is strongly recommended that you build all libraries (even if you add few or no
-fixed size entries to the library).  This is because some of the header files are created
+NOTE: It is required that you build all libraries (even if you add few or no
+fixed size entries to the library).  This is because the API header files are created
 automatically at build time.  At run time the API can check if a specific transform of the
 requested size exists in the library and use it if it exists.  If it doesn't exist then
 the desired transform can be generated and compiled on-the-fly (RTC).
 
-Once you have made the appropriate choices simply run the script:
+Run the script as follows:
 ```
 ./config-fftx-libs.sh <platform>
-where <platform> is one of { CPU [default] | CUDA | HIP }
+##  where <platform> is one of { CPU [default] | CUDA | HIP }
 ```
-If no argument is provided, then the platform defaults to CPU.  This script runs the
-**build-lib-code.sh** script in the **src/library** directory and will marshall
-the resources and options needed for the set of libraries selected.  This step
-can take quite a long time depending on the number of transforms and set of
-sizes to create.  The code is targeted to run on a CPU, a GPU (either CUDA or
-HIP) depending on the selections made in the configure script.  Depending on the
-number of sizes being built for each transform this process can take a
-considerable amount of time.  By default, only a very small number of fixed sizes will be
-created for the fixed-size libraries. 
+If no argument is provided, then the platform defaults
+to CPU.  This script runs the **build-lib-code.sh** script in the **src/library**
+directory and will marshall the resources and options needed for the set of libraries.
+This step can take quite some time depending on the number of transforms and set of sizes
+to create.  The code is targeted to run on a CPU or a GPU (either CUDA or HIP) depending
+on the platform specified with the script.  By default, only a small number of fixed sizes
+will be created for the fixed-size libraries.
 
-The text file **`build-lib-code-failures.txt`** will contain a list of all library
+The text file **`build-lib-code-failures.txt`** will contain a list of any library
 transforms that failed to generate in this step.
 
-Running **config-fftx-libs.sh** also creates a file called **options.cmake**.
-The options defined in this file indicate the library choices made in the shell
-script and are used by **CMake** to determine which examples are to be built; as
-a rule, one should not attempt to build an example whose dependent libraries are
-not built.
+Running **config-fftx-libs.sh** also creates a file called **options.cmake**.  The options
+defined in this file are used by **CMake** to determine what is actually compiled at build
+time.
 
 ### 4. Compile library source code and examples.
 
-From your **FFTX** home directory, set up a **build** folder (which can be given
-any name, and you may want to have separate ones for different backends).  When
-you configure using **CMake** you must specify the install prefix that **CMake**
-should use (the default location for **CMake** may be a directory for which you
-do not have write privileges).  Do that by setting the environment variable
-**FFTX_HOME** and specifying either the directory path or the environment
-variable on the **CMake** command line.
+From your **FFTX** home directory, set up a **build** folder (which can be given any name,
+and you may want to have separate ones for different backends).  When you configure using
+**CMake** you must specify the install prefix that **CMake** should use (the system
+default location for **CMake** may be a directory for which you do not have write
+privileges).  Do that by setting the environment variable **FFTX_HOME** and specifying
+either the directory path or the environment variable on the **CMake** command line.
 
 **NOTES:**
 * You will need **FFTX_HOME** set in order to use or reference **FFTX** artifacts externally.<br>
@@ -190,11 +193,10 @@ directories will be created/populated:
 
 **FFTX** can be built on Windows, however, you need to be able to run a [bash]
 shell script as mentioned above to build the library source code.  To build
-**FFTX**, edit **config-fftx-libs.sh** as described above, then open a shell and
-do the following:
+**FFTX**, open a shell and do the following:
 ```
 cd fftx
-./config-fftx-libs.sh
+./config-fftx-libs.sh <platform> where <platform> is one of { CPU [default] | CUDA | HIP }
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..
@@ -215,9 +217,14 @@ etc.  Since we set **RPATH** to point to where the libraries are installed, you
 likely will not need to adjust the library path variable, typically
 **LD_LIBRARY_PATH**.
 
+NOTE: On Windows **RPATH** does not work correctly.  If you encounter "missing library"
+errors when trying to run add the directory containing the installed libraries to your
+**PATH**.
+
 The README in the **examples** folder
 [**here**](https://github.com/spiral-software/fftx/blob/master/examples/README.md)
-contains a list of examples, how to run them, and how to add a new example.
+contains a list of examples, how to run them, and how to add a new example.  More datails
+about individual examples may be found in the individual example folder's README file.
 
 ## Libraries
 
@@ -247,7 +254,7 @@ folder):
 |3D FFT|cube-sizes-cpu.txt|3D FFTs for CPU| 
 |3D FFT|cube-sizes-gpu.txt|3D FFTs for GPU| 
 
-The following is a list of libraries potentially built:
+The following is a list of the libraries built:
 
 |Type|Name|Description|
 |:-----:|:-----|:-----|
@@ -256,8 +263,8 @@ The following is a list of libraries potentially built:
 |3D FFT|fftx_mdprdft|Forward 3D FFT real to complex|
 |3D FFT|fftx_imdprdft|Inverse 3D FFT complex to real|
 |3D Convolution|fftx_rconv|3D real convolution|
-|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex (in development)|
-|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex (in development)|
+|1D FFT|fftx_dftbat|Forward batch of 1D FFT complex to complex|
+|1D FFT|fftx_idftbat|Inverse batch of 1D FFT complex to complex|
 |1D FFT|fftx_prdftbat|Forward batch of 1D FFT real to complex (in development)|
 |1D FFT|fftx_iprdftbat|Inverse batch of 1D FFT complex to real (in development)|
 
