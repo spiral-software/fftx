@@ -415,19 +415,9 @@ public:
               }
             else if (m_tp == FFTX_PROBLEM)
               {
-#if defined FFTX_CUDA
-                CUdevice cuDevice;
-                CUcontext context;
-                cuInit(0);
-                cuDeviceGet(&cuDevice, 0);
-                cuCtxCreate(&context, 0, cuDevice);
-                // CUdeviceptr  dX, dY, dsym;
                 T_IN* dX;
                 T_OUT* dY;
                 double* dsym;
-#elif defined FFTX_HIP
-                hipDeviceptr_t  dX, dY, dsym;
-#endif
                 dX = inputDevicePtr;
                 dY = outputDevicePtr;
                 dsym = symDevicePtr;
