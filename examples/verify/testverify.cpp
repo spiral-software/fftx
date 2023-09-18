@@ -133,9 +133,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
 {
   {
     std::string name = "mddft";
-    //    std::cout << "***** test " << DIM << "D MDDFT on complex "
-    //              << a_domain << std::endl;
-    std::cout << "***** test " << DIM << "D MDDFT size "
+    std::cout << "***** test " << DIM << "D MDDFT complex-to-complex size "
               << a_fullExtents << std::endl;
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       funprob(&a_mddft, -1);
@@ -145,9 +143,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
 
   {
     std::string name = "imddft";
-    //    std::cout << "***** test " << DIM << "D IMDDFT on complex "
-    //              << a_domain << std::endl;
-    std::cout << "***** test " << DIM << "D IMDDFT size "
+    std::cout << "***** test " << DIM << "D IMDDFT complex-to-complex size "
               << a_fullExtents << std::endl;
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       funprob(&a_imddft, 1);
@@ -157,9 +153,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
 
   {
     std::string name = "mdprdft";
-    //    std::cout << "***** test " << DIM << "D PRDFT from real "
-    //              << a_domain << " to complex " << a_fdomain << std::endl;
-    std::cout << "***** test " << DIM << "D PRDFT size "
+    std::cout << "***** test " << DIM << "D PRDFT real-to-complex size "
               << a_fullExtents << std::endl;
     TransformFunction<DIM, double, std::complex<double>>
       funprob(&a_mdprdft, -1);
@@ -169,9 +163,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
 
   {
     std::string name = "imdprdft";
-    //    std::cout << "***** test " << DIM << "D IPRDFT from complex "
-    //              << a_fdomain << " to real " << a_domain << std::endl;
-    std::cout << "***** test " << DIM << "D IPRDFT size "
+    std::cout << "***** test " << DIM << "D IPRDFT complex-to-real size "
               << a_fullExtents << std::endl;
     TransformFunction<DIM, std::complex<double>, double>
       funprob(&a_imdprdft, 1);

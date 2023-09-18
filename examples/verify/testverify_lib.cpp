@@ -76,7 +76,6 @@ int main(int argc, char* argv[])
             VerifyTransform<3, std::complex<double>, std::complex<double>>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, -1, rounds, verbosity);
        }
 
       {
@@ -88,7 +87,6 @@ int main(int argc, char* argv[])
             VerifyTransform<3, std::complex<double>, std::complex<double>>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, 1, rounds, verbosity);
        }
 
       {
@@ -100,7 +98,6 @@ int main(int argc, char* argv[])
             VerifyTransform<3, double, std::complex<double>>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, -1, rounds, verbosity);
       }
 
       {
@@ -112,10 +109,9 @@ int main(int argc, char* argv[])
             VerifyTransform<3, std::complex<double>, double>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, 1, rounds, verbosity);
       }
     }
 
-  printf("%s: All done, exiting\n", argv[0]);
+  printf("%s: All done, exiting\n", prog);
   return 0;
 }

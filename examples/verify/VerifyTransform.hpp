@@ -67,6 +67,47 @@ fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size)
   return bx;
 }
 
+template<int DIM>
+fftx::point_t<DIM> truncatedComplexDimensions(fftx::point_t<DIM>& a_size)
+{
+  fftx::point_t<DIM> truncSize = a_size;
+#if FFTX_COMPLEX_TRUNC_LAST
+  truncSize[DIM-1] = a_size[DIM-1]/2 + 1;
+#else
+  truncSize[0] = a_size[0]/2 + 1;
+#endif
+  return truncSize;
+}
+
+// mddft:  complex on full domain to complex on full domain
+// imddft:  complex on full domain to complex on full domain
+// mdprdft:  real on full domain to complex on truncated domain
+// imdprdft:  complex on truncated domain to real on full domain
+
+template<int DIM>
+fftx::box_t<DIM> inDomainFromSize(std::string& a_name,
+                                  fftx::point_t<DIM>& a_size)
+{
+  fftx::box_t<DIM> bx = domainFromSize(a_size);
+  if (a_name == "imdprdft")
+    { // this is the only case of truncated input domain
+      bx.hi = truncatedComplexDimensions(a_size);
+    }
+  return bx;
+}
+
+template<int DIM>
+fftx::box_t<DIM> outDomainFromSize(std::string& a_name,
+                                   fftx::point_t<DIM>& a_size)
+{
+  fftx::box_t<DIM> bx = domainFromSize(a_size);
+  if (a_name == "mdprdft")
+    { // this is the only case of truncated output domain
+      bx.hi = truncatedComplexDimensions(a_size);
+    }
+  return bx;
+}
+
 template<int DIM, typename T>
 double absMaxRelDiffArray(fftx::array_t<DIM, T>& a_arr1,
                           fftx::array_t<DIM, T>& a_arr2)
@@ -94,6 +135,8 @@ struct deviceTransform3dType
   DEVICE_FFT_TYPE m_tp;
 
   int m_dir;
+
+  fftx::point_t<3> m_size;
 
   fftx::point_t<3> size(fftx::box_t<3> a_inputDomain,
                         fftx::box_t<3> a_outputDomain)
@@ -253,50 +296,28 @@ public:
     m_fullExtents = domainsize;
     m_name = m_transformProblemPtr->name;
     m_sign = a_sign;
-    // FIXME: This is right for mddft/imddft but wrong for mdprdft/imdprdft.
-    // m_inDomain = domainFromSize<DIM>(m_fullExtents);
-    // m_outDomain = domainFromSize<DIM>(m_fullExtents);
-    const int nx = sizes[0];
-    const int ny = sizes[1];
-    const int nz = sizes[2];
-#if FFTX_COMPLEX_TRUNC_LAST
-    const int fx = nx;
-    const int fy = ny;
-    const int fz = nz/2 + 1;
-#else
-    const int fx = nx/2 + 1;
-    const int fy = ny;
-    const int fz = nz;
-#endif
-    fftx::box_t<DIM> fullDomain(fftx::point_t<3>({{1, 1, 1}}),
-                                fftx::point_t<3>({{nx, ny, nz}}));
-    fftx::box_t<DIM> truncDomain(fftx::point_t<3>({{1, 1, 1}}),
-                                 fftx::point_t<3>({{fx, fy, fz}}));
-    m_inDomain = (m_name == "imdprdft") ? truncDomain : fullDomain;
-    m_outDomain = (m_name == "mdprdft") ? truncDomain : fullDomain;
-    // m_inDomain = domainFromSize<DIM>(m_transformerPtr->inputSize());
-    // m_outDomain = domainFromSize<DIM>(m_transformerPtr->outputSize());
-    // m_fullExtents = m_transformerPtr->size();
+    m_inDomain = inDomainFromSize(m_name, m_fullExtents);
+    m_outDomain = outDomainFromSize(m_name, m_fullExtents);
+    std::cout << "input on " << m_inDomain << ", output on " << m_outDomain << std::endl;
     m_tp = FFTX_PROBLEM;
   }
   
 #if defined(__CUDACC__) || defined(FFTX_HIP)
   // constructor with device library transformer
   TransformFunction(deviceTransform3dType<T_IN, T_OUT>& a_deviceTfm3dType,
-                    fftx::box_t<DIM> a_inDomain,
-                    fftx::box_t<DIM> a_outDomain,
                     fftx::point_t<DIM> a_fullExtents,
                     std::string& a_name,
                     int a_sign)
   {
-    m_deviceTfm3dPtr = new deviceTransform3d<T_IN, T_OUT>(a_deviceTfm3dType,
-                                                          a_inDomain,
-                                                          a_outDomain);
-    m_inDomain = a_inDomain;
-    m_outDomain = a_outDomain;
-    m_fullExtents = m_deviceTfm3dPtr->m_tfmSize;
-    m_sign = a_sign;
+    m_fullExtents = a_fullExtents;
     m_name = a_name;
+    m_sign = a_sign;
+    m_inDomain = inDomainFromSize(m_name, m_fullExtents);
+    m_outDomain = outDomainFromSize(m_name, m_fullExtents);
+    std::cout << "input on " << m_inDomain << ", output on " << m_outDomain << std::endl;
+    m_deviceTfm3dPtr = new deviceTransform3d<T_IN, T_OUT>(a_deviceTfm3dType,
+                                                          m_inDomain,
+                                                          m_outDomain);
     m_tp = DEVICE_LIB;
   }
 #endif
@@ -316,7 +337,7 @@ public:
 
   fftx::box_t<DIM>& inDomain()
   { return m_inDomain; }
-      
+
   fftx::box_t<DIM>& outDomain()
   { return m_outDomain; }
 
@@ -332,7 +353,7 @@ public:
   {
     return m_fullExtents;
   }
-  
+
   virtual void exec(fftx::array_t<DIM, T_IN>& a_inArray,
                     fftx::array_t<DIM, T_OUT>& a_outArray)
   {
@@ -397,23 +418,18 @@ public:
                 cuCtxCreate(&context, 0, cuDevice);
                 //  CUdeviceptr  dX, dY, dsym;
                 std::complex<double> *dX, *dY, *dsym;
-                std::vector<void*> args{&dY, &dX, &dsym};
 #elif defined FFTX_HIP
                 hipDeviceptr_t  dX, dY, dsym;
-                std::vector<void*> args{dY, dX, dsym};
 #endif
                 dX = (double *) inputDevice.m_data.local();
                 dY = (double *) outputDevice.m_data.local();
-                // dsym = new double[m_outDomain.size()]; // FIXME: check this
-                dsym = new double[m_fullExtents[0]*m_fullExtents[1]*m_fullExtents[2]];
+                dsym = new double[pointProduct(m_fullExtents)];
 #if defined FFTX_CUDA
                 std::vector<void*> args{&dY, &dX, &dsym};
 #elif defined FFTX_HIP
                 std::vector<void*> args{dY, dX, dsym};
 #endif
                 m_transformProblemPtr->setArgs(args);
-                // FIXME: Need to get inputDevice and outputDevice somehow.
-                // They are in std::vector<void*> args.
                 m_transformProblemPtr->transform();
               }
           }
@@ -439,13 +455,11 @@ public:
             double *dX, *dY, *dsym;
             dX = (double *) inputHostPtr;
             dY = (double *) outputHostPtr;
-            // dsym = new double[m_outDomain.size()]; // FIXME: check this
-            dsym = new double[m_fullExtents[0]*m_fullExtents[1]*m_fullExtents[2]];
+            dsym = new double[pointProduct(m_fullExtents)];
             std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
             m_transformProblemPtr->setArgs(args);
-            // FIXME: Need to get a_inArray and a_outArray somehow.
-            // They are in std::vector<void*> args.
             m_transformProblemPtr->transform();
+            delete[] dsym;
           }
 #endif
       }
