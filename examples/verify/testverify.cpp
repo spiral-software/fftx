@@ -1,24 +1,7 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
-/*
-#include "mddft1.fftx.codegen.hpp"
-#include "imddft1.fftx.codegen.hpp"
-#include "mddft2.fftx.codegen.hpp"
-#include "imddft2.fftx.codegen.hpp"
-*/
-//#include "mddft3.fftx.codegen.hpp"
-//#include "imddft3.fftx.codegen.hpp"
-/*
-#include "prdft1.fftx.codegen.hpp"
-#include "iprdft1.fftx.codegen.hpp"
-#include "prdft2.fftx.codegen.hpp"
-#include "iprdft2.fftx.codegen.hpp"
-*/
-//#include "prdft3.fftx.codegen.hpp"
-//#include "iprdft3.fftx.codegen.hpp"
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-// #include "verify.h"
 #include "device_macros.h"
 
 #include "VerifyTransform.hpp"
@@ -60,16 +43,7 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
     std::cout << "Now MDDFTProblem" << std::endl;
     // std::vector<int> sizes{mm,nn,kk};
     std::vector<int> sizes{fullExtents[0], fullExtents[1], fullExtents[2]};
-    /*
-#if defined FFTX_CUDA
-    std::vector<void*> args{&dY, &dX, &dsym};
-#elif defined FFTX_HIP
-    std::vector<void*> args{dY, dX, dsym};
-#else
-    std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
-#endif
-    */
-    std::vector<void*> args;
+    std::vector<void*> args; // fill this in later
     MDDFTProblem mdp(args, sizes, "mddft");
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       // funprob(&mdp, a_domain, a_domain, fullExtents, name, -1);
@@ -83,8 +57,6 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
       fun(a_mddft, a_domain, a_domain, fullExtents, name, -1);
     VerifyTransform<DIM, std::complex<double>, std::complex<double>>
       (fun, a_rounds, a_verbosity);
-
-    // verifyTransform(a_mddft, a_domain, a_domain, fullextents, -1, a_rounds, a_verbosity);
   }
 
   {
@@ -95,7 +67,6 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
       fun(a_imddft, a_domain, a_domain, fullExtents, name, 1);
     VerifyTransform<DIM, std::complex<double>, std::complex<double>>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_imddft, a_domain, a_domain, fullextents, 1, a_rounds, a_verbosity);
   }
 
   {
@@ -106,7 +77,6 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
       fun(a_prdft, a_domain, a_fdomain, fullExtents, name, -1);
     VerifyTransform<DIM, double, std::complex<double>>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_prdft, a_domain, a_fdomain, fullextents, -1, a_rounds, a_verbosity);
   }
 
   {
@@ -117,7 +87,6 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
       fun(a_iprdft, a_fdomain, a_domain, fullExtents, name, 1);
     VerifyTransform<DIM, std::complex<double>, double>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_iprdft, a_fdomain, a_domain, fullextents, 1, a_rounds, a_verbosity);
   }
 }
                     
@@ -263,7 +232,7 @@ int main(int argc, char* argv[])
   */
 
   std::vector<int> sizes{mm, nn, kk};
-  std::vector<void*> args;
+  std::vector<void*> args; // fill this in later
   MDDFTProblem mddft(args, sizes, "mddft");
   IMDDFTProblem imddft(args, sizes, "imddft");
   MDPRDFTProblem mdprdft(args, sizes, "mdprdft");
