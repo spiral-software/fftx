@@ -1,7 +1,7 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftx_mddft_gpu_public.h"
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"

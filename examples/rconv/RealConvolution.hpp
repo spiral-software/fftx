@@ -9,7 +9,7 @@
 #include "interface.hpp"
 #include "rconvObj.hpp"
 
-// #if defined(__CUDACC__) || defined(FFTX_HIP)
+// #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 // #include "fftx_rconv_gpu_public.h"
 // #else
 // #include "fftx_rconv_cpu_public.h"
@@ -104,7 +104,7 @@ public:
       }
     else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB)
       {
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
         // on GPU
         auto input_size = m_domain.size();
         auto output_size = m_domain.size();
