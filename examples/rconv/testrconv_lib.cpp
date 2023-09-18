@@ -9,7 +9,7 @@
 #include "fftx_rconv_cpu_public.h"
 #endif
 
-#include "rconv.fftx.precompile.hpp"
+// #include "rconv.fftx.precompile.hpp"
 
 #include "fftx3utilities.h"
 
