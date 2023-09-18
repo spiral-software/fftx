@@ -22,7 +22,7 @@ Reference: Funda Ergün,
 On the tests with random data or a random position,
 the number of rounds is specified with the flag `-i` (default 2).
 
-There is also a `verbosity` setting that defaults to 0.   
+There is also a `verbosity` setting with the flag `-v` that defaults to 0.   
 If `verbosity` is at least 1, then also writes out the maximum relative error for each of the three test categories.   
 If `verbosity` is at least 2, then also writes out the maximum relative error for each type of test within each category.  
 If `verbosity` is at least 3, then also writes out the maximum relative error for every round with random input.
