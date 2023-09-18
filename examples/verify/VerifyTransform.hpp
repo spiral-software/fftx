@@ -118,7 +118,7 @@ double absMaxRelDiffArray(fftx::array_t<DIM, T>& a_arr1,
   return rel;
 }
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
 
 template<typename T_IN, typename T_OUT>
 struct deviceTransform3dType
@@ -302,7 +302,7 @@ public:
     m_tp = FFTX_PROBLEM;
   }
   
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
   // constructor with device library transformer
   TransformFunction(deviceTransform3dType<T_IN, T_OUT>& a_deviceTfm3dType,
                     fftx::point_t<DIM> a_fullExtents,
@@ -324,7 +324,7 @@ public:
   
   ~TransformFunction()
   {
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
     if (m_tp == DEVICE_LIB)
       {
         // FIXME: This destructor gets called 3 times.
@@ -366,7 +366,7 @@ public:
              m_tp == FFTX_PROBLEM ||
              m_tp == DEVICE_LIB)
       {
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
         // on GPU
         auto input_size = m_inDomain.size();
         auto output_size = m_outDomain.size();
@@ -383,6 +383,11 @@ public:
         DEVICE_MALLOC(&inputDevicePtr, input_bytes);
         DEVICE_MALLOC(&outputDevicePtr, output_bytes);
 
+        auto sym_size = pointProduct(m_fullExtents);
+        auto sym_bytes = sym_size * sizeof(double);
+        double* symDevicePtr;
+        DEVICE_MALLOC(&symDevicePtr, sym_bytes);
+        
         DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
 
@@ -416,14 +421,16 @@ public:
                 cuInit(0);
                 cuDeviceGet(&cuDevice, 0);
                 cuCtxCreate(&context, 0, cuDevice);
-                //  CUdeviceptr  dX, dY, dsym;
-                std::complex<double> *dX, *dY, *dsym;
+                // CUdeviceptr  dX, dY, dsym;
+                T_IN* dX;
+                T_OUT* dY;
+                double* dsym;
 #elif defined FFTX_HIP
                 hipDeviceptr_t  dX, dY, dsym;
 #endif
-                dX = (double *) inputDevice.m_data.local();
-                dY = (double *) outputDevice.m_data.local();
-                dsym = new double[pointProduct(m_fullExtents)];
+                dX = inputDevicePtr;
+                dY = outputDevicePtr;
+                dsym = symDevicePtr;
 #if defined FFTX_CUDA
                 std::vector<void*> args{&dY, &dX, &dsym};
 #elif defined FFTX_HIP
@@ -438,6 +445,7 @@ public:
 
         DEVICE_FREE(inputDevicePtr);
         DEVICE_FREE(outputDevicePtr);
+        DEVICE_FREE(symDevicePtr);
 #else
         // on CPU
         if (m_tp == FFTX_HANDLE)
@@ -456,6 +464,7 @@ public:
             dX = (double *) inputHostPtr;
             dY = (double *) outputHostPtr;
             dsym = new double[pointProduct(m_fullExtents)];
+            // dsym = new std::complex<double>[pointProduct(m_fullExtents)];
             std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
             m_transformProblemPtr->setArgs(args);
             m_transformProblemPtr->transform();
@@ -487,7 +496,7 @@ protected:
   // case FFTX_PROBLEM
   FFTXProblem* m_transformProblemPtr;
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
   // case DEVICE_LIB
   deviceTransform3d<T_IN, T_OUT>* m_deviceTfm3dPtr;
 #endif
