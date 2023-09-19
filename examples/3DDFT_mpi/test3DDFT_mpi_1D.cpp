@@ -426,9 +426,9 @@ int main(int argc, char* argv[]) {
                       href_in_modified[
                         ((k_o * N*2*Mi + j_o * Mi + i)*batch + b)*CI + c
                       ] = (
-                        (0 <= j_i && j_i < N) &&
+                        (j_i < N) &&
                         // (0 <= i && i < Mi) &&
-                        (0 <= k_i && k_i < K)
+                        (k_i < K)
                       ) ? href_in[
                         ((k1 * Ki0*N*Mi + k0 * N*Mi + j_i * Mi + i) * batch + b) * CI + c
                       ] : 0.0;
