@@ -10,9 +10,12 @@ The process to follow when adding a new example is also described.
 Each example is expected to reside in its own directory
 under **examples**; the directory
 should be named for the transform or problem it illustrates or tests.
-At its most basic, an example consists of a driver program that
-defines the transform, a test harness to exercise the transform,
+At its most basic, an example consists of a test harness to exercise the transform,
 and a **cmake** file to build the example.
+
+Most [newer] examples are structured this way.  A header file (typically named *transform*Obj.hpp provides the **Spiral** specification such that **Spiral** can generate the code for the transform.  The header files for defined transforms are maintained in **$FFTX_HOME/src/include**.
+
+However, a couple of older examples, developed before run-time code generation (RTC) was introduced are structured a little differently.  In those latter cases, there is a driver program that defines the transform and requires a 2-phase compilation approach (compile the driver program, generate a **Spiral** specification for the transform, then run **Spiral** to generate the source code and finally compile the code along with the test harness).  This approach is deprecated.
 
 ### Naming conventions for examples
 
@@ -20,17 +23,12 @@ The folder containing the example should be named for the transform or problem
 being illustrated, e.g., **mddft**.  This name will be used as the *project*
 name in the **cmake** file (details below).
 
-Within each folder there should be one (or possibly several) file(s) defining
-transforms to be tested.  These *driver* programs are named as
-*prefix*.*stem*.**cpp**, where *prefix* is the transform name, e.g., **mddft**;
+Within each folder there may be one (or possibly several) sample / test programs allowing different transforms to be tested.  In the older style examples, there may be one or more *driver* programs, named as *prefix*.*stem*.**cpp**, where *prefix* is the transform name, e.g., **mddft**;
 *stem* is the root or stem, currently always **fftx**.
 
-There should also be one test harness program used to exercise the transform(s)
+There will be at least one test harness program used to exercise the transform(s)
 defined.  The naming convention for the test harness is
-**test**_project_.**cpp**.  There may be two flavours of the test harness: one
-named with a **.cpp** suffix used to exercise a CPU version of the transform(s)
-and one named with a **.cu** suffix used to exercise a GPU version of the
-transform(s).
+**test**_project_.**cpp**.  The suffix for programs is **.cpp**, in general the codes were developed using macros (see **device_macros.h**) that define the appropiate code or API depending on whether one is building for CPU, CUDA, or HIP.  The CMakeLists.txt in each folder set appropriate properties on source files for the intended compiler (e.g., hipcc for HIP or nvcc for CUDA).
 
 The **cmake** file is named in the usual standard way as: `CMakeLists.txt`.
 
@@ -38,14 +36,12 @@ The **cmake** file is named in the usual standard way as: `CMakeLists.txt`.
 
 To add a new example to **FFTX**:
 1. Create a folder in **fftx/examples**, called *project*.
-2. In the newly created *project* folder, add your transform
-definition(s), named *prefix*.**fftx.cpp**.
-3. In the *project* folder, add a test harness named **test**_project_,
-with either, or both, suffixes: **.cpp**, or **.cu**.
+2. Add your transform definition(s) in header files to **src/include**.
+3. In the *project* folder, add a test harness named **test**_project_**.cpp**.
 4. In the *project* folder, add (or copy and edit)
 a **CMakeLists.txt** file (instructions for editing below).
 
-### Setting up the cmake file
+### Setting up the Cmake file
 
 The **cmake** file, **CMakeLists.txt**, has a section in the beginning to
 specify a few names;
@@ -66,12 +62,18 @@ the same name as the example folder, e.g., **mddft**
 project ( mddft ${_lang_add} ${_lang_base} )
 ```
 
-**2.** As noted above, the file naming convention for the
-*driver* programs is *prefix.stem*.**cpp**.
+**2.** All newer examples should simply define *stem* and *prefix* as follows:
+```
+set ( _stem fftx )
+set ( _prefixes )
+```
+
+**[Deprecated]** The older style examples use a file naming convention for the
+*driver* programs as: *prefix.stem*.**cpp**.
 Specify the *stem* and *prefix(es)* used; e.g., from the **mddft** example:
 ```
 set ( _stem fftx )
-set ( _prefixes mddft imddft )
+set ( _prefixes mddft3 imddft3 )
 ```
 
 **3.** Check the test harness program name.
@@ -83,25 +85,15 @@ The test harness program name is expected to be **test**_*project*:
 
 Finally, add an entry to the **CMakeLists.txt** file in
 the **examples** folder.
-We use a **cmake** function, **manage_add_subdir,** to control this.  If the
-example you add depends on libraries built in **FFTX**, then the call to
-**manage_add_subdir** should be conditional based on a CMake dependent option
-derived from the options (see the file **options.cmake** in the **FFTX** root
-directory) indicating if the required libraries were built.  As a rule, one
-should not attempt to build an example whose dependent libraries have not been
-built.  The **manage_add_subdir** function should be called with parameters:
-example directory name and TRUE/FALSE flags for building for CPU and GPU, as in:
+We use a **cmake** function, **manage_add_subdir,** to control this.
+The **manage_add_subdir** function should be called with parameters:
+example directory name and TRUE/FALSE flags for building for
+CPU and GPU, as in:
 ```
-if ( BLD_COMPARE_EX )
-    manage_add_subdir ( compare       FALSE     TRUE )
-endif ()
-
+manage_add_subdir ( compare       FALSE     TRUE )
 manage_add_subdir ( mddft         TRUE      TRUE )
-manage_add_subdir ( hockney       TRUE      FALSE )
+manage_add_subdir ( mdprdft       TRUE      TRUE )
 ```
-**BLD_COMPARE_EX** is a CMake dependent option derived from the build status for
-the **mddft** and **mdprdft** libraries; the compare examples depend on thoise
-libraries and we don't build it unless those libraries are also built.
 
 ## Running FFTX example programs
 
@@ -121,15 +113,27 @@ typically **LD_LIBRARY_PATH**.
 
 * **mddft**
 ```
-./testmddft [iterations]
+./testmddft: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]
 ```
 Runs the forward and inverse complex-to-complex 3D FFTs
-the number of times specified by `iterations` (default 20)
-on the fixed size `[fftx_nx, fftx_ny, fftx_nz]` where
-`fftx_nx`, `fftx_ny`, and `fftx_nz` are defined in the file `test_plan.h`,
+the number of times specified by `iterations` (default 2)
+on the fixed size `[24, 32, 40]`,
 and displays the
 amount of time taken for each iteration by the CPU and by the GPU
 (if running on GPU).
+When a size is specified (e.g., `-s 64x64x64`), it will run the given size.  In all cases if a predefined transform of the appropraite size is found in a library it will be used; otherwise, RTC generates the required size.
+
+* **mdprdft**
+```
+./testmdprdft: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]
+```
+Runs the forward (real-to-complex) and inverse (complex-to-real) 3D FFTs
+the number of times specified by `iterations` (default 2)
+on the fixed size `[24, 32, 40]`,
+and displays the
+amount of time taken for each iteration by the CPU and by the GPU
+(if running on GPU).
+When a size is specified (e.g., `-s 64x64x64`), it will run the given size.  In all cases if a predefined transform of the appropraite size is found in a library it will be used; otherwise, RTC generates the required size.
 
 * **compare_cufft**
 ```
@@ -204,26 +208,6 @@ to indicate progress through the different stages, as can be useful
 for debugging purposes.  
 If `verbosity` is at least 3, then all entries in the output
 that are not equal to 1 are written out.
-
-* **hockney**
-```
-./testhockney [verbosity]
-```
-Runs **FFTX** functions in Hockney's algorithm on a 3D domain of length `n`
-on input of length `ns` and output of length `nd`, where
-`n`, `ns`, and `nd` are defined in the file `hockney.h`.
-The formula is
-```
-output[id, jd, kd] =
-sum_{is, js, ks} ( input([is, js, ks]) * G([id-is, jd-js, kd-ks]) )
-```
-where `n`-1-`nd` &le; `id`, `jd`, `kd` &le; `n`-1, and the sum is
-over the range 0 &le; `is`, `js`, `ks` &le; `ns`-1.  
-The `[verbosity]` setting defaults to 0.  
-If `verbosity` is at least 1, then also checks that the output matches
-that from a direct computation, which can be slow.  
-If `verbosity` is at least 2, then also writes out the output arrays
-for both the **FFTX** transformation and the direct computation.
 
 * **rconv**   
 These examples run tests of **FFTX** real 3D convolution transforms:
