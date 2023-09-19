@@ -4,7 +4,6 @@
 #include "RealConvolution.hpp"
 #include "fftx3utilities.h"
 
-
 // using namespace fftx;
 // fftx::handle_t (a_transform)
 template<int DIM>
@@ -27,6 +26,7 @@ void rconvDimension(std::vector<int> sizes,
 int main(int argc, char* argv[])
 {
   int mm = 24, nn = 32, kk = 40; // default cube dimensions
+  int offx = 3, offy = 5, offz = 11; // offsets
   char *prog = argv[0];
   int baz = 0;
   int verbosity = 0;
@@ -62,8 +62,7 @@ int main(int argc, char* argv[])
   
   printf("Running size %dx%dx%d with verbosity %d, random %d rounds\n", mm, nn, kk, verbosity, rounds);
   // std::cout << mm << " " << nn << " " << kk << std::endl;
-  std::vector<int> sizes{mm,nn,kk};
-
+  std::vector<int> sizes{mm, nn, kk};
 
   /*
     Set up random number generator.
@@ -83,26 +82,13 @@ int main(int argc, char* argv[])
   /*
     3-dimensional tests.
   */
-  // rconv3::init();
-  const int offx = 3;
-  const int offy = 5;
-  const int offz = 11;
+  fftx::point_t<3> fullExtents({{mm, nn, kk}});
+  fftx::point_t<3> truncExtents = truncatedComplexDimensions(fullExtents);
+  fftx::point_t<3> offsets({{offx, offy, offz}});
+  
+  fftx::box_t<3> domain3 = domainFromSize(fullExtents, offsets);
+  fftx::box_t<3> fdomain3 = domainFromSize(truncExtents, offsets);
 
-  #if FFTX_COMPLEX_TRUNC_LAST
-  const int fx = mm;
-  const int fy = nn;
-  const int fz = kk/2 + 1;
-  #else
-  const int fx = mm/2 + 1;
-  const int fy = nn;
-  const int fz = kk;
-  #endif
-
-  box_t<3> domain3(point_t<3>({{offx+1, offy+1, offz+1}}),
-                   point_t<3>({{offx+mm, offy+nn, offz+kk}}));
-  box_t<3> fdomain3(point_t<3>({{offx+1, offy+1, offz+1}}),
-                    point_t<3>({{offx+fx, offy+fy, offz+fz}}));
-  // std::cout << domain3 << std::endl;
   rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
   // rconv3::destroy();
   

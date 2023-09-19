@@ -1,7 +1,7 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftx_mddft_gpu_public.h"
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"
@@ -29,18 +29,28 @@
 int main(int argc, char* argv[])
 {
   // { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
-  printf("Usage:  %s [verbosity=0] [rounds=20]\n", argv[0]);
-  printf("verbosity 0 for summary, 1 for categories, 2 for subtests, 3 for rounds\n");
+  char *prog = argv[0];
   int verbosity = 0;
-  int rounds = 20;
-  if (argc > 1)
-    {
-      verbosity = atoi(argv[1]);
-      if (argc > 2)
-        {
-          rounds = atoi(argv[2]);
-        }
-    }
+  int rounds = 2;
+  while ( argc > 1 && argv[1][0] == '-' ) {
+      switch ( argv[1][1] ) {
+      case 'i':
+          argv++, argc--;
+          rounds = atoi ( argv[1] );
+          break;
+      case 'v':
+          argv++, argc--;
+          verbosity = atoi ( argv[1] );
+          break;
+      case 'h':
+          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          exit (0);
+      default:
+          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+      }
+      argv++, argc--;
+  }
+
   printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
 
   /*
@@ -66,7 +76,6 @@ int main(int argc, char* argv[])
             VerifyTransform<3, std::complex<double>, std::complex<double>>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, -1, rounds, verbosity);
        }
 
       {
@@ -78,7 +87,6 @@ int main(int argc, char* argv[])
             VerifyTransform<3, std::complex<double>, std::complex<double>>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, 1, rounds, verbosity);
        }
 
       {
@@ -90,7 +98,6 @@ int main(int argc, char* argv[])
             VerifyTransform<3, double, std::complex<double>>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, -1, rounds, verbosity);
       }
 
       {
@@ -102,10 +109,9 @@ int main(int argc, char* argv[])
             VerifyTransform<3, std::complex<double>, double>
               (fun, rounds, verbosity);
           }
-        // verifyTransform(tfm, 1, rounds, verbosity);
       }
     }
 
-  printf("%s: All done, exiting\n", argv[0]);
+  printf("%s: All done, exiting\n", prog);
   return 0;
 }

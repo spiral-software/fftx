@@ -110,7 +110,7 @@ the examples will be placed in the **$FFTX_HOME/bin** directory.
 So to run the programs (with default input parameters), you can simply do:
 ```
 cd $FFTX_HOME/bin
-./testcompare_device
+./testrconv_lib
 ./testverify
 ```
 etc. Since we set RPATH to point to where the libraries are installed,
@@ -130,80 +130,6 @@ on the fixed size `[fftx_nx, fftx_ny, fftx_nz]` where
 and displays the
 amount of time taken for each iteration by the CPU and by the GPU
 (if running on GPU).
-
-* **compare_cufft**
-```
-./testcompare_cufft [verbosity] [iterations]
-```
-Runs forward and inverse complex-to-complex 3D FFTs,
-both **FFTX**-generated and either cuFFT (for CUDA) or rocFFT (for HIP),
-for `iterations` iterations (default 20)
-on the fixed size `[fftx_nx, fftx_ny, fftx_nz]` where
-`fftx_nx`, `fftx_ny`, and `fftx_nz` are defined in the file `test_comp.h`.   
-Writes whether or not the results of **FFTX** and cuFFT/rocFFT match,
-and the average time on CPU and GPU for **FFTX** and cuFFT/rocFFT,
-both including and not including the first iteration.  
-The `[verbosity]` setting defaults to 0.  
-If `verbosity` is at least 1, then also writes out minimum and maximum times.  
-If `verbosity` is at least 2, then also writes out the time for every
-iteration.  
-If `verbosity` is at least 3, then also writes out every point
-where **FFTX** and cuFFT/rocFFT fail to match.
-
-* **compare**   
-All of these tests run four different 3D FFTs:
-forward and inverse
-complex to complex, real to complex, and complex to real.
-They may run **FFTX**-generated transforms,
-the device library transforms (cuFFT on CUDA, rocFFT on HIP),
-or both.   
-```
-./testcompare_device [verbosity] [iterations]
-```
-Runs the four transforms,
-both **FFTX**-generated and cuFFT/rocFFT,
-the number of times specified by `iterations` (default 20),
-for all 3D sizes in the **FFTX** library.   
-Writes whether or not the results of **FFTX** and cuFFT/rocFFT match,
-and the average time on CPU and GPU for **FFTX** and cuFFT/rocFFT,
-both including and not including the first iteration.  
-The `[verbosity]` setting defaults to 0.  
-If `verbosity` is at least 1, then also writes out minimum and maximum times.  
-If `verbosity` is at least 2, then also writes out the time for every
-iteration.  
-If `verbosity` is at least 3, then also writes out every point
-where **FFTX** and cuFFT/rocFFT fail to match.
-```
-./testconstant [nx] [ny] [nz] [which] [verbosity]
-```
-Runs the four transforms
-with a constant-valued array input on size `[nx, ny, nz]`,
-and writes out the maximum error in the results.  
-If `which` is set to 0, then only cuFFT or rocFFT is run.  
-If `which` is set to 1, then only the **FFTX** library routine is run.  
-If `which` is set to 2, then both **FFTX** and cuFFT/rocFFT are run.  
-The `[verbosity]` setting defaults to 0.  
-If `verbosity` is at least 2, then diagnostic messages are written out
-to indicate progress through the different stages, as can be useful
-for debugging purposes.  
-If `verbosity` is at least 3, then all nonzero entries in the output
-are written out.
-```
-./testimpulse [nx] [ny] [nz] [which] [verbosity]
-```
-Runs forward and inverse complex-to-complex, real-to-complex, and
-complex-to-real 3D FFTs,
-with a unit-impulse array input on size `[nx, ny, nz]`,
-and writes out the maximum error in the results.  
-If `which` is set to 0, then only cuFFT or rocFFT is run.  
-If `which` is set to 1, then only the **FFTX** library routine is run.  
-If `which` is set to 2, then both **FFTX** and cuFFT/rocFFT are run.  
-The `[verbosity]` setting defaults to 0.  
-If `verbosity` is at least 2, then diagnostic messages are written out
-to indicate progress through the different stages, as can be useful
-for debugging purposes.  
-If `verbosity` is at least 3, then all entries in the output
-that are not equal to 1 are written out.
 
 * **hockney**
 ```
