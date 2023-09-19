@@ -1,15 +1,13 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
-#include "rconv_dims.h"
-
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftx_rconv_gpu_public.h"
 #else
 #include "fftx_rconv_cpu_public.h"
 #endif
 
-#include "rconv.fftx.precompile.hpp"
+// #include "rconv.fftx.precompile.hpp"
 
 #include "fftx3utilities.h"
 
@@ -37,31 +35,14 @@ void rconvSize(fftx::point_t<3> a_size,
                int a_rounds,
                int a_verbosity)
 {
-  // Size from a_size, offset from rconv_dims.
-  fftx::box_t<3> fulldomain(fftx::point_t<3>
-                            ({{rconv_dims::offx+1,
-                                  rconv_dims::offy+1,
-                                  rconv_dims::offz+1}}),
-                            fftx::point_t<3>
-                            ({{rconv_dims::offx+a_size[0],
-                                  rconv_dims::offy+a_size[1],
-                                  rconv_dims::offz+a_size[2]}}));
+  int offx = 3, offy = 5, offz = 11;
+  fftx::point_t<3> offsets({{offx, offy, offz}});
+
+  fftx::point_t<3> truncSize = truncatedComplexDimensions(a_size);
+
+  fftx::box_t<3> fulldomain = domainFromSize(a_size, offsets);
+  fftx::box_t<3> halfdomain = domainFromSize(truncSize, offsets);
   
-  fftx::box_t<3> halfdomain(fftx::point_t<3>
-                            ({{rconv_dims::offx+1,
-                                  rconv_dims::offy+1,
-                                  rconv_dims::offz+1}}),
-                            fftx::point_t<3>
-#if FFTX_COMPLEX_TRUNC_LAST
-                            ({{rconv_dims::offx+a_size[0],
-                                  rconv_dims::offy+a_size[1],
-                                  rconv_dims::offz+a_size[2]/2+1}})
-#else
-                            ({{rconv_dims::offx+a_size[0]/2+1,
-                                  rconv_dims::offy+a_size[1],
-                                  rconv_dims::offz+a_size[2]}})
-#endif
-                            );
   // fftx::rconv<3> tfm(a_size); // does initialization
   // rconvDimension(tfm, a_rounds, a_verbosity);
   std::vector<int> sizes{a_size[0], a_size[1], a_size[2]};

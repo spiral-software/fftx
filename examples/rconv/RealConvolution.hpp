@@ -9,7 +9,7 @@
 #include "interface.hpp"
 #include "rconvObj.hpp"
 
-// #if defined(__CUDACC__) || defined(FFTX_HIP)
+// #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 // #include "fftx_rconv_gpu_public.h"
 // #else
 // #include "fftx_rconv_cpu_public.h"
@@ -40,12 +40,28 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
 }
 
 template<int DIM>
-fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size)
+fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size,
+                                const fftx::point_t<DIM>& a_offset = fftx::point_t<DIM>::Zero())
 {
   fftx::box_t<DIM> bx;
-  bx.lo = fftx::point_t<DIM>::Unit();
-  bx.hi = a_size;
+  for (int d = 0; d < DIM; d++)
+    {
+      bx.lo[d] = a_offset[d] + 1;
+      bx.hi[d] = a_offset[d] + a_size[d];
+    }
   return bx;
+}
+
+template<int DIM>
+fftx::point_t<DIM> truncatedComplexDimensions(fftx::point_t<DIM>& a_size)
+{
+  fftx::point_t<DIM> truncSize = a_size;
+#if FFTX_COMPLEX_TRUNC_LAST
+  truncSize[DIM-1] = a_size[DIM-1]/2 + 1;
+#else
+  truncSize[0] = a_size[0]/2 + 1;
+#endif
+  return truncSize;
 }
 
 template<int DIM>
@@ -104,7 +120,7 @@ public:
       }
     else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB)
       {
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
         // on GPU
         auto input_size = m_domain.size();
         auto output_size = m_domain.size();

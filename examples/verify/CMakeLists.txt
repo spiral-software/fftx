@@ -18,7 +18,8 @@ project ( verify ${_lang_add} ${_lang_base} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
+## set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
+set ( _prefixes )
 
 ##  prefixes are only required for test${PROJECT_NAME}
 

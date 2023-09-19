@@ -17,8 +17,6 @@ project ( examples )
 
 ##                  subdir name   CPU       GPU
 
-manage_add_subdir ( compare       FALSE     TRUE )
-manage_add_subdir ( compare_cufft FALSE     TRUE )
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( mdprdft       TRUE      TRUE )
 

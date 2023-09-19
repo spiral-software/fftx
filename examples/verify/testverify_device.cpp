@@ -2,13 +2,10 @@
 #include <random>
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-#include "verify_device.h"
-// #include "device_macros.h"
 
 #include "VerifyTransform.hpp"
 
-void verify3d(fftx::box_t<3> a_domain,
-              fftx::box_t<3> a_fdomain,
+void verify3d(fftx::point_t<3> a_fullExtents,
               int a_rounds,
               deviceTransform3dType<std::complex<double>, std::complex<double>>& a_mddft,
               deviceTransform3dType<std::complex<double>, std::complex<double>>& a_imddft,
@@ -16,50 +13,44 @@ void verify3d(fftx::box_t<3> a_domain,
               deviceTransform3dType<std::complex<double>, double>& a_iprdft,
               int a_verbosity)
 {
-  fftx::point_t<3> fullExtents = a_domain.extents();
-
   {
     std::string name = "mddft";
-    std::cout << "***** test 3D MDDFT on complex "
-              << a_domain << std::endl;
+    std::cout << "***** test 3D MDDFT complex-to-complex size "
+              << a_fullExtents << std::endl;
     TransformFunction<3, std::complex<double>, std::complex<double>>
-      fun(a_mddft, a_domain, a_domain, fullExtents, name, -1);
+      fun(a_mddft, a_fullExtents, name, -1);
     VerifyTransform<3, std::complex<double>, std::complex<double>>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_mddft, a_domain, a_domain, fullextents, -1, a_rounds, a_verbosity);
   }
 
   {
     std::string name = "imddft";
-    std::cout << "***** test 3D IMDDFT on complex "
-              << a_domain << std::endl;
+    std::cout << "***** test 3D IMDDFT complex-to-complex size "
+              << a_fullExtents << std::endl;
     TransformFunction<3, std::complex<double>, std::complex<double>>
-      fun(a_imddft, a_domain, a_domain, fullExtents, name, 1);
+      fun(a_imddft, a_fullExtents, name, 1);
     VerifyTransform<3, std::complex<double>, std::complex<double>>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_imddft, a_domain, a_domain, fullextents, 1, a_rounds, a_verbosity);
   }
 
   {
     std::string name = "mdprdft";
-    std::cout << "***** test 3D PRDFT from real "
-              << a_domain << " to complex " << a_fdomain << std::endl;
+    std::cout << "***** test 3D PRDFT real-to-complex size "
+              << a_fullExtents << std::endl;
     TransformFunction<3, double, std::complex<double>>
-      fun(a_prdft, a_domain, a_fdomain, fullExtents, name, -1);
+      fun(a_prdft, a_fullExtents, name, -1);
     VerifyTransform<3, double, std::complex<double>>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_prdft, a_domain, a_fdomain, fullextents, -1, a_rounds, a_verbosity);
   }
 
   {
     std::string name = "imdprdft";
-    std::cout << "***** test 3D IPRDFT from complex "
-              << a_fdomain << " to real " << a_domain << std::endl;
+    std::cout << "***** test 3D IPRDFT complex-to-real size "
+              << a_fullExtents << std::endl;
     TransformFunction<3, std::complex<double>, double>
-      fun(a_iprdft, a_fdomain, a_domain, fullExtents, name, 1);
+      fun(a_iprdft, a_fullExtents, name, 1);
     VerifyTransform<3, std::complex<double>, double>
       (fun, a_rounds, a_verbosity);
-    // verifyTransform(a_iprdft, a_fdomain, a_domain, fullextents, 1, a_rounds, a_verbosity);
   }
 }
                     
@@ -67,19 +58,42 @@ void verify3d(fftx::box_t<3> a_domain,
 int main(int argc, char* argv[])
 {
   // { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
-  printf("Usage:  %s [verbosity=0] [rounds=20]\n", argv[0]);
-  printf("verbosity 0 for summary, 1 for categories, 2 for subtests, 3 for rounds\n");
+  int mm = 24, nn = 32, kk = 40; // default cube dimensions
+  char *prog = argv[0];
+  int baz = 0;
   int verbosity = 0;
-  int rounds = 20;
-  if (argc > 1)
-    {
-      verbosity = atoi(argv[1]);
-      if (argc > 2)
-        {
-          rounds = atoi(argv[2]);
-        }
-    }
-  printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
+  int rounds = 2;
+  while ( argc > 1 && argv[1][0] == '-' ) {
+      switch ( argv[1][1] ) {
+      case 'i':
+          argv++, argc--;
+          rounds = atoi ( argv[1] );
+          break;
+      case 's':
+          argv++, argc--;
+          mm = atoi ( argv[1] );
+          while ( argv[1][baz] != 'x' ) baz++;
+          baz++ ;
+          nn = atoi ( & argv[1][baz] );
+          while ( argv[1][baz] != 'x' ) baz++;
+          baz++ ;
+          kk = atoi ( & argv[1][baz] );
+          break;
+      case 'v':
+          argv++, argc--;
+          verbosity = atoi ( argv[1] );
+          break;
+      case 'h':
+          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+          exit (0);
+      default:
+          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+      }
+      argv++, argc--;
+  }
+
+  printf("Running size %dx%dx%d with verbosity %d, random %d rounds\n",
+         mm, nn, kk, verbosity, rounds);
 
   /*
     Set up random number generator.
@@ -88,11 +102,12 @@ int main(int argc, char* argv[])
   generator = std::mt19937(rd());
   unifRealDist = std::uniform_real_distribution<double>(-0.5, 0.5);
 
-  verify3d(verify::domain3, verify::fdomain3, rounds,
+  fftx::point_t<3> fullExtents({{mm, nn, kk}});
+  verify3d(fullExtents, rounds,
            mddft3dDevice, imddft3dDevice,
            mdprdft3dDevice, imdprdft3dDevice,
            verbosity);
   
-  printf("%s: All done, exiting\n", argv[0]);
+  printf("%s: All done, exiting\n", prog);
   return 0;
 }
