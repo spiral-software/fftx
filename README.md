@@ -223,7 +223,7 @@ errors when trying to run add the directory containing the installed libraries t
 
 The README in the **examples** folder
 [**here**](https://github.com/spiral-software/fftx/blob/master/examples/README.md)
-contains a list of examples, how to run them, and how to add a new example.  More datails
+contains a list of examples, how to run them, and how to add a new example.  More details
 about individual examples may be found in the individual example folder's README file.
 
 ## Libraries
@@ -303,16 +303,16 @@ with the **FFTX** libraries.  An external application should include this file
 following helper functions to compile/link with the **FFTX** libraries.  Two
 functions are available:
 
-1.  **FFTX_find_libraries**() -- This function finds the **FFTX** libraries, linker
+1.  **FFTX_add_includes_libs_to_target** ( target ) -- This function adds the
+include file paths, the linker library path, and the library names to the
+specified target.
+2.  **FFTX_find_libraries**() -- This function finds the **FFTX** libraries, linker
 library path, and include file paths and exposes the following variables:
 |CMake Variable Name|Description|
 |:-----|:-----|
 |**FFTX_LIB_INCLUDE_PATHS**|Include paths for **FFTX** include & library headers|
 |**FFTX_LIB_NAMES**|List of **FFTX** libraries|
 |**FFTX_LIB_LIBRARY_PATH**|Path to libraries (for linker)|
-2.  **FFTX_add_includes_libs_to_target** ( target ) -- This function adds the
-include file paths, the linker library path, and the library names to the
-specified target.
 
 An application will typically need only call
 **FFTX_add_includes_libs_to_target**(), and let **FFTX** handle the assignment
@@ -322,9 +322,51 @@ access the named variables above is it necessary to call
 
 ### External Application Linking With FFTX
 
-A complete example of an external application that builds test programs
-utilizing the **FFTX** libraries is available at 
+A complete example of an external application that builds test programs utilizing the
+**FFTX** libraries is available at
 [**fftx-demo-extern-app**](https://www.github.com/spiral-software/fftx-demo-extern-app).
-If you're interested in how to link an external application with **FFTX** please
-download this example and review the **`CMakeLists.txt`** therein for specific
-details.
+If you're interested in how to link an external application with **FFTX** please download
+this example and review the **`CMakeLists.txt`** therein for specific details.  As an
+example, in brief, the required steps to add the Poisson test program (using **cmake**)
+are:
+
+```
+set ( POISSON1_TEST poissonTest )
+
+##  FFTX_HOME must be defined in the environment or on the command line
+if ( DEFINED ENV{FFTX_HOME} )
+    message ( STATUS "FFTX_HOME = $ENV{FFTX_HOME}" )
+    set ( FFTX_SOURCE_DIR $ENV{FFTX_HOME} )
+else ()
+    if ( "x${FFTX_HOME}" STREQUAL "x" )
+        message ( FATAL_ERROR "FFTX_HOME environment variable undefined and not specified on command line" )
+    endif ()
+    set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
+endif ()
+
+##  Include FFTX CMake functions
+include ( "${FFTX_SOURCE_DIR}/CMakeIncludes/FFTXCmakeFunctions.cmake" )
+
+add_executable          ( ${POISSON1_TEST} ${POISSON1_TEST}.cpp )
+target_link_libraries   ( ${POISSON1_TEST} PRIVATE dl )
+
+FFTX_add_includes_libs_to_target ( ${POISSON1_TEST} )
+```
+
+The Poisson test program is a CPU only sample program using the FFTX library and RTC
+interfaces.  When the program is run it accepts a single argument, **nx**, that specifies
+the dimension of a cube to test.  If no argument is provided, a default value of **128**
+is used.  The program may be run for different size cubes as follows:
+
+```
+poissonTest             ## defaults to 128^8; runs codegen
+poissonTest -nx 80      ## Size 80^3, is present in the FFTX libraries
+poissonTest -nx 64      ## Size 64^3, is present in the FFTX libraries
+poissonTest -nx 224     ## Size 224^3; runs codegen
+```
+
+For sizes in the FFTX libraries the program calls into the library and runs immediately.
+For sizes not in the libraries, **Spiral** is run to generate the required source code,
+which is then compiled into a temporary library and executed.  The source code is cached
+(meaning that if the specific size is run again, **Spiral** is not required as the source
+code is reused).
