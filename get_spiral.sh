@@ -12,7 +12,7 @@ else
     BUILDCMD="make install -j"
 fi
 
-if [ -v SPIRAL_HOME ]; then
+if [ -n "$SPIRAL_HOME" ]; then
     ##  SPIRAL_HOME is set; don't pull down another version of spiral
     echo "Using the spiral version installed at: $SPIRAL_HOME"
     $SPIRAL_HOME/bin/$SPIRALEXE -B

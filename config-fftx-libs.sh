@@ -107,7 +107,7 @@ popd
 
 ##  Make a directory for cached JIT files (may be written by code gen from build-lib-code or
 ##  at run time to cache files created during the RTC process
-if [ -v FFTX_HOME ]; then
+if [ -n "$FFTX_HOME" ]; then
     ##  FFTX_HOME is set
     echo "FFTX_HOME = $FFTX_HOME"
 else
