@@ -147,13 +147,14 @@ void Executor::execute(std::string result) {
     std::string compile;
     
     char buff[FILENAME_MAX]; //create string buffer to hold path
-    getcwd( buff, FILENAME_MAX );
+    char* getcwdret = getcwd( buff, FILENAME_MAX );
     std::string current_working_dir(buff);
 
     struct stat sb;
 
+    int systemret;
     if(stat((current_working_dir+"/temp").c_str(), &sb) == 0)
-        system("rm -rf temp");
+        systemret = system("rm -rf temp");
         
     if ( DEBUGOUT) {
         std::cout << "created compile\n";
@@ -183,24 +184,24 @@ void Executor::execute(std::string result) {
         exit(-1);
     }
     #if defined(_WIN32) || defined (_WIN64)
-        system("cmake . && make");
+        systemret = system("cmake . && make");
     #elif defined(__APPLE__)
         struct utsname unameData;
         uname(&unameData);
         std::string machine_name(unameData.machine);
         if(machine_name == "arm64")
-            system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
+            systemret = system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
         else
-            system("cmake . && make");
+            systemret = system("cmake . && make");
     #else
-        system("cmake . && make"); 
+        systemret = system("cmake . && make"); 
     #endif
     check = chdir(current_working_dir.c_str());
     if(check != 0) {
         std::cout << "failed to change to working directory for runtime code\n";
         exit(-1);
     }
-    // system("cd ..;");
+    // systemret = system("cd ..;");
     if ( DEBUGOUT )
         std::cout << "finished compiling\n";
 }

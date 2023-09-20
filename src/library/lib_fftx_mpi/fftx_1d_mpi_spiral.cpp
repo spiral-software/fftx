@@ -61,9 +61,9 @@ fftx_plan fftx_plan_distributed_1d_spiral(
   */
 
   // DFT sizes.
-  int inM = M * e;
-  int inN = N * e;
-  int inK = K * e;
+  //  int inM = M * e;
+  //  int inN = N * e;
+  //  int inK = K * e;
 
   int M0 = plan->is_complex ? ceil_div(M*e, p) : ceil_div(M*e/2+1, p);
   int M1 = p;
