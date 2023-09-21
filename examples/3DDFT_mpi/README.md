@@ -32,7 +32,8 @@ The output data is laid out as ``[(X0), Y, X1, Z]``, where ``X0`` and ``X1`` are
 
 For an inverse transform, the input data is laid out as ``[(X0), Y, X1, Z]`` and the output data is laid out as ``[(Z0), Z1, Y, X]``.
 
-* Example configurations
+* **Example configurations**
+
 The following examples configurations have been verified on Frontier on 4 ranks with 1 GPU per rank.
 
 | M   | N | K  | Batch | Embedded | Forward | Complex | Check |
@@ -74,7 +75,8 @@ The following examples configurations have been verified on Frontier on 4 ranks 
 | 192  |192 | 192 |  1    |    1     |    0    |    0    |    1  |
 | 192  |192 | 192 |  1    |    1     |    1    |    0    |    1  |
 
-** Limitations
+* **Limitations**
+
 Limited testing on Frontier for batch > 1 has been
 verified to be correct. Due to cuFFT's unique alignment requirements,
 batch > 1 configurations is currently not supported for NVIDIA devices.
