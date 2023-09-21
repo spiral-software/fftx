@@ -1,5 +1,11 @@
-Test 1D Distributed 3DDFT
-================================
+Test 1D Distributed 3D DFT (test3DDFT_mpi_1D.x)
+============================================
+This example routines
+allows the running of various different distributed 3DDFTs over
+MPI. The MPI ranks are assumed to be organized in a linear array, and
+the 3D DFT is partitioned along the Z dimension. The local computation
+is performed on the GPU assigned to the local rank..
+
 To run::
 
     mpirun -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>
@@ -25,3 +31,50 @@ The local tensor is of size ``[K/p, N, M]``.
 The output data is laid out as ``[(X0), Y, X1, Z]``, where ``X0`` and ``X1`` are the slower and faster dimensions, respectively, of the ``X`` dimension that is tiled by ``M/p``.
 
 For an inverse transform, the input data is laid out as ``[(X0), Y, X1, Z]`` and the output data is laid out as ``[(Z0), Z1, Y, X]``.
+
+* Example configurations
+The following examples configurations have been verified on Frontier on 4 ranks with 1 GPU per rank.
+
+| M   | N | K  | Batch | Embedded | Forward | Complex | Check |
+|-----|---|----|-------|----------|---------|---------|-------|
+| 32  |32 | 32 |  1    |    1     |    0    |    1    |    1  |
+| 32  |32 | 32 |  1    |    1     |    1    |    1    |    1  |
+| 32  |32 | 32 |  1    |    1     |    0    |    0    |    1  |
+| 32  |32 | 32 |  1    |    1     |    1    |    0    |    1  |
+| 40  |40 | 40 |  1    |    1     |    0    |    1    |    1  |
+| 40  |40 | 40 |  1    |    1     |    1    |    1    |    1  |
+| 40  |40 | 40 |  1    |    1     |    0    |    0    |    1  |
+| 40  |40 | 40 |  1    |    1     |    1    |    0    |    1  |
+| 48  |48 | 48 |  1    |    1     |    0    |    1    |    1  |
+| 48  |48 | 48 |  1    |    1     |    1    |    1    |    1  |
+| 48  |48 | 48 |  1    |    1     |    0    |    0    |    1  |
+| 48  |48 | 48 |  1    |    1     |    1    |    0    |    1  |
+| 64  |64 | 64 |  1    |    1     |    0    |    1    |    1  |
+| 64  |64 | 64 |  1    |    1     |    1    |    1    |    1  |
+| 64  |64 | 64 |  1    |    1     |    0    |    0    |    1  |
+| 64  |64 | 64 |  1    |    1     |    1    |    0    |    1  |
+| 80  |80 | 80 |  1    |    1     |    0    |    1    |    1  |
+| 80  |80 | 80 |  1    |    1     |    1    |    1    |    1  |
+| 80  |80 | 80 |  1    |    1     |    0    |    0    |    1  |
+| 80  |80 | 80 |  1    |    1     |    1    |    0    |    1  |
+| 96  |96 | 96 |  1    |    1     |    0    |    1    |    1  |
+| 96  |96 | 96 |  1    |    1     |    1    |    1    |    1  |
+| 96  |96 | 96 |  1    |    1     |    0    |    0    |    1  |
+| 96  |96 | 96 |  1    |    1     |    1    |    0    |    1  |
+| 128  |128 | 128 |  1    |    1     |    0    |    1    |    1  |
+| 128  |128 | 128 |  1    |    1     |    1    |    1    |    1  |
+| 128  |128 | 128 |  1    |    1     |    0    |    0    |    1  |
+| 128  |128 | 128 |  1    |    1     |    1    |    0    |    1  |
+| 160  |160 | 160 |  1    |    1     |    0    |    1    |    1  |
+| 160  |160 | 160 |  1    |    1     |    1    |    1    |    1  |
+| 160  |160 | 160 |  1    |    1     |    0    |    0    |    1  |
+| 160  |160 | 160 |  1    |    1     |    1    |    0    |    1  |
+| 192  |192 | 192 |  1    |    1     |    0    |    1    |    1  |
+| 192  |192 | 192 |  1    |    1     |    1    |    1    |    1  |
+| 192  |192 | 192 |  1    |    1     |    0    |    0    |    1  |
+| 192  |192 | 192 |  1    |    1     |    1    |    0    |    1  |
+
+** Limitations
+Limited testing on Frontier for batch > 1 has been
+verified to be correct. Due to cuFFT's unique alignment requirements,
+batch > 1 configurations is currently not supported for NVIDIA devices.
