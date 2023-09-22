@@ -99,11 +99,6 @@ if [ $build_type = "CPU" ]; then
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
     fi
-    if [ "$waitspiral" = true ]; then
-	wait		##  wait for the child processes to complete
-    fi
-
-    waitspiral=false
     ##  Build the remaining libraries for the specified target
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
@@ -134,6 +129,11 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
 	waitspiral=true
 	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true &
 	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false &
+    fi
+    if [ "$PRDFTBAT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
+	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
     fi
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
