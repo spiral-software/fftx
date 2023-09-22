@@ -12,7 +12,7 @@ To run with MPI::
 
 To run with Slurm::
 
-     srun <Slurm options> -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>
+     srun <Slurm/Network options> -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>
      
 where:
     ``ranks`` - number of MPI ranks to distributed the 3D DFT.
