@@ -308,7 +308,12 @@ inline std::string FFTXProblem::semantics2() {
     int save_stdin = redirect_input(p[0]);
     std::string result = exec(tmp.c_str());
     restore_input(save_stdin);
-    close(p[0]);
+
+    #if defined(_WIN32) || defined (_WIN64)
+        // Crashes on windows if close p[0], so no-op
+    #else
+        close(p[0]);
+    #endif
     while(result.back() != '}') {
         result.pop_back();
     }
