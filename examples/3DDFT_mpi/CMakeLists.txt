@@ -20,7 +20,7 @@ project ( 3DDFT_mpi ${_lang_add} ${_lang_base} )
 set ( _stem fftx )
 set ( _prefixes )
 ##  set ( BUILD_PROGS test${PROJECT_NAME} test${PROJECT_NAME}_embedded )
-set ( BUILD_PROGS test${PROJECT_NAME}_demo test${PROJECT_NAME}_1D )
+set ( BUILD_PROGS test${PROJECT_NAME}_2D test${PROJECT_NAME}_1D )
 
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
