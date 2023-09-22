@@ -6,14 +6,18 @@ MPI. The MPI ranks are assumed to be organized in a linear array, and
 the 3D DFT is partitioned along the Z dimension. The local computation
 is performed on the GPU assigned to the local rank..
 
-To run::
+To run with MPI::
 
     mpirun -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>
 
+To run with Slurm::
+
+     srun <Slurm options> -n <ranks> ./test3DDFT_mpi_1D.x <M> <N> <K> <batch> <embedded> <forward> <complex> <check>
+     
 where:
     ``ranks`` - number of MPI ranks to distributed the 3D DFT.
 
-    ``M``, ``N``, ``K`` - describe the size of the dimensions of the 3D DFT for X, Y, and Z, respectively.
+    ``M``, ``N``, ``K`` - describe the input size of the dimensions of the 3D DFT for X, Y, and Z, respectively.
 
     ``batch`` - describes the number of 3D DFTs that are computed at a time. This has been tested with 1.
 
