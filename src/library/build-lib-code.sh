@@ -90,29 +90,29 @@ if [ $build_type = "CPU" ]; then
     if [ "$DFTBAT_LIB" = true ]; then
 	##  Build DFT batch for CPU
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true &
-	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false &
+	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true
+	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false
     fi
     if [ "$PRDFTBAT_LIB" = true ]; then
 	##  Build PRDFT batch for CPU
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
-	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
+	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true
+	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false
     fi
     ##  Build the remaining libraries for the specified target
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type true &
-	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type false &
+	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type true
+	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type false
     fi
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type true &
-	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type false &
+	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type true
+	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type false
     fi
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_rconv $CPU_SIZES_FILE $build_type true &
+	$pyexe gen_files.py fftx_rconv $CPU_SIZES_FILE $build_type true
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
