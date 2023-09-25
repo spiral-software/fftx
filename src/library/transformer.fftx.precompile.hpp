@@ -159,9 +159,10 @@ namespace fftx {
     
     virtual std::string name()
     {
-      char buffer[50];
-      sprintf(buffer, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
-              this->m_size[0], this->m_size[1], this->m_size[2]);
+#define BUFFERLEN 50
+      char buffer[BUFFERLEN];
+      snprintf(buffer, BUFFERLEN, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
+               this->m_size[0], this->m_size[1], this->m_size[2]);
       std::string str(buffer);
       return str;
     }

@@ -18,9 +18,7 @@ project ( verify ${_lang_add} ${_lang_base} )
 ##  Test program name is:  test<project name>.{cpp|cu}
 
 set ( _stem fftx )
-set ( _prefixes mddft3 imddft3 prdft3 iprdft3 )
-
-##  prefixes are only required for test${PROJECT_NAME}
+set ( _prefixes )
 
 if ( ( ${_codegen} STREQUAL "CUDA" ) OR ( ${_codegen} STREQUAL "HIP" ) )
     set  (        BUILD_PROGS test${PROJECT_NAME}_device )
@@ -42,12 +40,6 @@ foreach ( _prog ${BUILD_PROGS} )
 	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CXX )
     elseif ( ${_codegen} STREQUAL "CUDA" )
 	set_source_files_properties ( ${_prog}.${_desired_suffix} PROPERTIES LANGUAGE CUDA )
-    endif ()
-
-    if ( ${_prog} STREQUAL "test${PROJECT_NAME}" )
-	set ( _pref ${_prefixes} )
-    else ()
-	set ( _pref )
     endif ()
 
     manage_deps_codegen ( ${_codegen} ${_stem} "${_pref}" )

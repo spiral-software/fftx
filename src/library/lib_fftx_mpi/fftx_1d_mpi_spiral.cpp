@@ -13,6 +13,12 @@
 #include "interface.hpp"
 #include "batch1ddftObj.hpp"
 #include "ibatch1ddftObj.hpp"
+#include "batch2ddftObj.hpp"
+#include "ibatch2ddftObj.hpp"
+#include "batch1dprdftObj.hpp"
+#include "ibatch1dprdftObj.hpp"
+// #include "batch2dprdftObj.hpp"
+// #include "ibatch2dprdftObj.hpp"
 #if defined FFTX_CUDA
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
@@ -22,6 +28,10 @@
 #endif
 
 using namespace std;
+
+inline int ceil_div(int a, int b) {
+  return (a + b - 1) / b;
+}
 
 fftx_plan fftx_plan_distributed_1d_spiral(
   int p, int M, int N, int K,
@@ -40,9 +50,6 @@ fftx_plan fftx_plan_distributed_1d_spiral(
 
   init_1d_comms(plan, p, M, N, K);   //embedding uses the input sizes
 
-  DEVICE_MALLOC(&(plan->Q3), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC(&(plan->Q4), M*e*N*e*K*e / p * sizeof(complex<double>) * batch);
-
   /*
     R2C is
     [K, N,       M]
@@ -54,128 +61,30 @@ fftx_plan fftx_plan_distributed_1d_spiral(
   */
 
   // DFT sizes.
-  // int inM = M * e;
-  // int inN = N * e;
-  // int inK = K * e;
+  //  int inM = M * e;
+  //  int inN = N * e;
+  //  int inK = K * e;
 
-  int M0 = -1;
-  if (plan->is_complex) {
-    M0 = (M*e)/p;
-  } else {
-    M0 = (M*e/2 + 1)/p;
-  }
-  // pad up if M' not divisible by p.
-  M0 += M0*p < M*e;
+  int M0 = plan->is_complex ? ceil_div(M*e, p) : ceil_div(M*e/2+1, p);
   int M1 = p;
 
+  int K0 = ceil_div(K, p);
+  int K1 = p;
+
   // set shape
-  plan->shape[0] = M0; // this overwrites M/p if r2c or c2r, right?
+  plan->shape[0] = M0;
   plan->shape[1] = M1;
   plan->shape[2] = N;
   plan->shape[3] = 1;
-  plan->shape[4] = K/p;
-  plan->shape[5] = p;
+  plan->shape[4] = K0;
+  plan->shape[5] = K1;
 
-  // if (plan->is_complex) {
-  //   //only correct if not embedded
-  //   int batch_sizeX = N * K/p;  // stage 1, dist Z
-  //   // int batch_sizeX = inN*inK/p;
-  //   DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg1),  1, &inM,
-  //       &inM, plan->b, inM*plan->b,
-  //       &inM, batch_sizeX*plan->b, plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeX
-  //   );
-  //   int batch_sizeY = K * M0;   // stage 2, dist X
-  //   // int batch_sizeY = inM*inK/p;
-  //   DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg2),  1, &inN,
-  //       &inN, plan->b, inN*plan->b,
-  //       &inN, batch_sizeY*plan->b, plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeY
-  //   );
-  //   int batch_sizeZ = M0 * N*e; // stage 3, dist X
-  //   // int batch_sizeZ = inN*inM/p;
-  //   DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg3), 1, &inK,
-  //       &inK, plan->b, inK*plan->b,
-  //       &inK, plan->b, inK*plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeZ
-  //   );
+  int invK0 = ceil_div(K*e, p);
 
-  //   DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg2i),  1, &inN,
-  //       &inN, batch_sizeY*plan->b, plan->b,
-  //       &inN, plan->b, inN*plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeY
-  //   );
+  size_t buff_size = ((size_t) M0) * ((size_t) M1) * ((size_t) N*e) * 1 * ((size_t) invK0) * ((size_t) batch); // can either omit M1 or K1. arbit omit K1.
+  DEVICE_MALLOC(&(plan->Q3), sizeof(complex<double>) * buff_size * batch);
+  DEVICE_MALLOC(&(plan->Q4), sizeof(complex<double>) * buff_size * batch);
 
-  //   DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg1i),  1, &inM,
-  //       &inM, batch_sizeX*plan->b, plan->b,
-  //       &inM, plan->b, inM*plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeX
-  //   );
-  // } else {
-  //   int xr = inM;
-  //   int xc = inM/2 + 1;
-  //   // slowest to fastest
-  //   // [X', Z/pz, Y, b] <= [Z/pz, Y, X, b] (read seq, write strided)
-  //   // X' is complex size M/2 + 1
-  //   int batch_sizeX = N * K/p;  // stage 1, dist Z
-  //   DEVICE_FFT_PLAN_MANY(
-  //     &(plan->stg1), 1, &xr,
-  //     &xr, plan->b, xr*plan->b,
-  //     &xc, batch_sizeX*plan->b, plan->b,
-  //     DEVICE_FFT_D2Z, batch_sizeX
-  //   );
-  //   // [Y, X'/px, Z] <= [X'/px, Z, Y] (read seq, write strided)
-  //   // if embedded, put output in
-  //   // [Y, X'/px, 2Z]
-  //   {
-  //     int batch_sizeY = K * M0;   // stage 2, dist X
-  //     DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg2),  1, &inN,
-  //       &inN, plan->b, inN*plan->b,
-  //       &inN, batch_sizeY*plan->b, plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeY
-  //     );
-
-  //     int batch_sizeZ = M0 * N*e; // stage 3, dist X
-  //     // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
-  //     DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg3), 1, &inK,
-  //       &inK, plan->b, inK*plan->b,
-  //       &inK, plan->b, inK*plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeZ
-  //     );
-  //   }
-
-  //   // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
-  //   // TODO: update for embedded
-  //   {
-  //     // int M0 = (M*e)/p;
-  //     int M0 = ((M*e)/2 + 1)/p;
-  //     M0 += (M0*p < M*e);
-  //     int batch_sizeY = K * M0;   // stage 2, dist X
-  //     DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg2i), 1, &inN,
-  //       &inN, batch_sizeY*plan->b, plan->b,
-  //       &inN, plan->b, inN*plan->b,
-  //       DEVICE_FFT_Z2Z, batch_sizeY
-  //     );
-
-  //   // [Z/pz, Y, X] <= [X', Z/pz, Y] (read strided, write seq)
-  //   // X' is complex size M, X is (M-1)*2
-  //   // TODO: update for embedded
-  //     DEVICE_FFT_PLAN_MANY(
-  //       &(plan->stg1i), 1, &xr,
-  //       &xc, batch_sizeX*plan->b, plan->b,
-  //       &xr, plan->b, xr*plan->b,
-  //       DEVICE_FFT_Z2D, batch_sizeX
-  //     );
-  //   }
-  // }
   return plan;
 }
 
@@ -189,57 +98,148 @@ void fftx_execute_1d_spiral(
   int inM = plan->M * (plan->is_embed ? 2 : 1);
   int inN = plan->N * (plan->is_embed ? 2 : 1);
   int inK = plan->K * (plan->is_embed ? 2 : 1);
-  int batch_sizeX = plan->N * plan->K/(int)plan->shape[5];
+  int batch_sizeX = plan->N * (int)plan->shape[4];
   int batch_sizeY = plan->K * (int)plan->shape[0];
   int batch_sizeZ = (int)plan->shape[0] * plan->N*(plan->is_embed ? 2 : 1);
-  std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
-  BATCH1DDFTProblem bdstg1(size_stg1, "b1dft");
-  std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
-  BATCH1DDFTProblem bdstg2(size_stg2, "b1dft");
-  std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
-  BATCH1DDFTProblem bdstg3(size_stg3, "b1dft");	
+  int batch_sizeY_inv = (int)plan->shape[0] * plan->K*(plan->is_embed ? 2 : 1);
+  int K0 = ceil_div(plan->K*(plan->is_embed ? 2 : 1), plan->r); 
+  int batch_sizeX_inv = plan->N * (plan->is_embed ? 2 : 1) * K0;
 
-  std::vector<int> size_istg2 = {inN, batch_sizeY, 1, 0};  
-  IBATCH1DDFTProblem ibdstg2(size_istg2, "ib1dft");
-  std::vector<int> size_istg1 = {inM, batch_sizeX, 1, 0};  
-  IBATCH1DDFTProblem ibdstg1(size_istg1, "ib1dft");
+  
+  BATCH1DDFTProblem bdstg1;
+  BATCH1DDFTProblem bdstg2;
+  BATCH1DDFTProblem bdstg3;
+  IBATCH1DDFTProblem ibdstg1;
+  IBATCH1DDFTProblem ibdstg2;
+
+  BATCH2DDFTProblem b2dstg1;
+  BATCH2DDFTProblem b2dstg2;
+  BATCH2DDFTProblem b2dstg3;
+  IBATCH2DDFTProblem ib2dstg1;
+  IBATCH2DDFTProblem ib2dstg2;
+
+  BATCH1DPRDFTProblem bprdstg1;
+  IBATCH1DPRDFTProblem ibprdstg1;
+
+  // BATCH2DPRDFTProblem b2prdstg1;
+  // IBATCH2DPRDFTProblem ib2prdstg1;
+
+  std::vector<int> size_stg1;  
+  std::vector<int> size_stg2;  
+  std::vector<int> size_stg3;  
+  std::vector<int> size_istg2;  
+  std::vector<int> size_istg1; 
+
+  if(plan->is_complex) {
+    if(plan->b == 1) {
+      std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
+      std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
+      std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg2 = {inN, batch_sizeY_inv, 1, 0};  
+      std::vector<int> size_istg1 = {inM, batch_sizeX_inv, 1, 0}; 
+      bdstg1.setSizes(size_stg1);
+      bdstg2.setSizes(size_stg2);
+      bdstg3.setSizes(size_stg3);
+      ibdstg1.setSizes(size_istg1);
+      ibdstg2.setSizes(size_istg2);
+      bdstg1.setName("b1dft");
+      bdstg2.setName("b1dft");
+      bdstg3.setName("b1dft");
+      ibdstg1.setName("ib1dft");
+      ibdstg2.setName("ib1dft");
+    } else {
+      std::vector<int> size_stg1 = {inM, plan->b, batch_sizeX, 0, 1};  
+      std::vector<int> size_stg2 = {inN, plan->b, batch_sizeY, 0, 1};  
+      std::vector<int> size_stg3 = {inK, plan->b, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg2 = {inN, plan->b, batch_sizeY_inv, 1, 0};  
+      std::vector<int> size_istg1 = {inM, plan->b, batch_sizeX_inv, 1, 0};  
+      b2dstg1.setSizes(size_stg1);
+      b2dstg2.setSizes(size_stg2);
+      b2dstg3.setSizes(size_stg3);
+      ib2dstg1.setSizes(size_istg1);
+      ib2dstg2.setSizes(size_istg2);
+      b2dstg1.setName("b2dft");
+      b2dstg2.setName("b2dft");
+      b2dstg3.setName("b2dft");
+      ib2dstg1.setName("ib2dft");
+      ib2dstg2.setName("ib2dft");
+    }
+  } else {
+    if(plan->b == 1) {
+      std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
+      std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
+      std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg2 = {inN, batch_sizeY_inv, 1, 0};  
+      std::vector<int> size_istg1 = {inM, batch_sizeX_inv, 1, 0}; 
+      bprdstg1.setSizes(size_stg1);
+      bdstg2.setSizes(size_stg2);
+      bdstg3.setSizes(size_stg3);
+      ibprdstg1.setSizes(size_istg1);
+      ibdstg2.setSizes(size_istg2);
+      bprdstg1.setName("b1prdft");
+      bdstg2.setName("b1dft");
+      bdstg3.setName("b1dft");
+      ibprdstg1.setName("ib1prdft");
+      ibdstg2.setName("ib1dft");
+    }
+    // } else {
+    //   std::vector<int> size_stg1 = {inM, plan->b, batch_sizeX, 0, 1};  
+    //   std::vector<int> size_stg2 = {inN, plan->b, batch_sizeY, 0, 1};  
+    //   std::vector<int> size_stg3 = {inK, plan->b, batch_sizeZ, 0, 0};  
+    //   std::vector<int> size_istg2 = {inN, plan->b, batch_sizeY_inv, 1, 0};  
+    //   std::vector<int> size_istg1 = {inM, plan->b, batch_sizeX_inv, 1, 0};  
+    //   b2prdstg1.setSizes(size_stg1);
+    //   b2dstg2.setSizes(size_stg2);
+    //   b2dstg3.setSizes(size_stg3);
+    //   ib2prdstg1.setSizes(size_istg1);
+    //   ib2dstg2.setSizes(size_istg2);
+    //   b2prdstg1.setName("b2prdft");
+    //   b2dstg2.setName("b2dft");
+    //   b2dstg3.setName("b2dft");
+    //   ib2prdstg1.setName("ib2prdft");
+    //   ib2dstg2.setName("ib2dft");
+    // }
+  }
 
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
-      for (int i = 0; i < plan->b; i++) {
-        // if(use_fftx) {
-          std::vector<void*> args{plan->Q3 + i, in_buffer+i};
-          bdstg1.setArgs(args);
-          bdstg1.transform();
-        // }
-        // else {
-        //   DEVICE_FFT_EXECZ2Z(
-        //     plan->stg1,
-        //     ((DEVICE_FFT_DOUBLECOMPLEX *) in_buffer) + i,
-        //     ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + i,
-        //     direction
-        //   );
-        // }
+      if(plan->b  == 1){
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else 
+        std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
+        bdstg1.setArgs(args);
+        bdstg1.transform();
+      } else {
+        #if defined FFTX_CUDA
+          std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else 
+          std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
+        b2dstg1.setArgs(args);
+        b2dstg1.transform();
       }
 
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
       fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
-
-      for (int i = 0; i < plan->b; ++i) {
-        // if(use_fftx) {
-          std::vector<void*> args{plan->Q3 + i, plan->Q4 + i};
-          bdstg2.setArgs(args);
-          bdstg2.transform();
-        // }
-        // else {
-        //   DEVICE_FFT_EXECZ2Z(
-        //     plan->stg2,
-        //     ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + i,
-        //     ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
-        //     direction
-        //   );
-        // }
+      if(plan->b == 1) {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&(plan->Q3), &(plan->Q4)};
+        #else 
+        std::vector<void*> args{plan->Q3, plan->Q4};
+        #endif
+        bdstg2.setArgs(args);
+        bdstg2.transform();
+      } else {
+        #if defined FFTX_CUDA
+          std::vector<void*> args{&plan->Q3, &plan->Q4};
+        #else 
+          std::vector<void*> args{plan->Q3, plan->Q4};
+        #endif
+        b2dstg2.setArgs(args);
+        b2dstg2.transform();
       }
 
       double *stg2_output = (double *) plan->Q3;
@@ -251,85 +251,113 @@ void fftx_execute_1d_spiral(
         stg3_input = stg2_output;
       }
       // [Y, X'/px, Z] (no permutation on last stage)
-      for (int i = 0; i < plan->b; ++i) {
-        // if(use_fftx) {
-          std::vector<void*> args{out_buffer + i, stg3_input + i};
-          bdstg3.setArgs(args);
-          bdstg3.transform();
-        // }
-        // else {
-        //   DEVICE_FFT_EXECZ2Z(
-        //     plan->stg3,
-        //     ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
-        //     ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
-        //     direction
-        //   );
-        // }
+      if(plan->b == 1) {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&(out_buffer), &(stg3_input)};
+        #else 
+        std::vector<void*> args{out_buffer, stg3_input};
+        #endif
+        bdstg3.setArgs(args);
+        bdstg3.transform();
+      } else {
+        #if defined FFTX_CUDA
+          std::vector<void*> args{&out_buffer, &stg3_input};
+        #else 
+          std::vector<void*> args{out_buffer, stg3_input};
+        #endif
+        b2dstg3.setArgs(args);
+        b2dstg3.transform();
       }
+    } else {
+      // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
+      if(plan->b  == 1){
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&plan->Q3, &in_buffer};
+        #else 
+        std::vector<void*> args{plan->Q3, in_buffer};
+        #endif
+        bprdstg1.setArgs(args);
+        bprdstg1.transform();
+      }
+      // } else {
+      //   #if defined FFTX_CUDA
+      //     std::vector<void*> args{&plan->Q3, &in_buffer};
+      //   #else 
+      //     std::vector<void*> args{plan->Q3, in_buffer};
+      //   #endif
+      //   b2prdstg1.setArgs(args);
+      //   b2prdstg1.transform();
+      // }
+
+      // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y] // is this right? should batch be inner?
+      fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
+      if(plan->b == 1) {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&(plan->Q3), &(plan->Q4)};
+        #else 
+        std::vector<void*> args{plan->Q3, plan->Q4};
+        #endif
+        bdstg2.setArgs(args);
+        bdstg2.transform();
+      } 
+      // else {
+      //   #if defined FFTX_CUDA
+      //     std::vector<void*> args{&plan->Q3, &plan->Q4};
+      //   #else 
+      //     std::vector<void*> args{plan->Q3, plan->Q4};
+      //   #endif
+      //   b2dstg2.setArgs(args);
+      //   b2dstg2.transform();
+      // }
+
+      double *stg2_output = (double *) plan->Q3;
+      double *stg3_input  = (double *) plan->Q4;
+      if (plan->is_embed) {
+        fftx_mpi_rcperm_1d(plan, stg3_input, stg2_output, FFTX_MPI_EMBED_2, plan->is_embed);
+      } else {
+        // no permutation necessary, use previous output as input.
+        stg3_input = stg2_output;
+      }
+      // [Y, X'/px, Z] (no permutation on last stage)
+      if(plan->b == 1) {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&(out_buffer), &(stg3_input)};
+        #else 
+        std::vector<void*> args{out_buffer, stg3_input};
+        #endif
+        bdstg3.setArgs(args);
+        bdstg3.transform();
+      } 
+      // else {
+      //   #if defined FFTX_CUDA
+      //     std::vector<void*> args{&out_buffer, &stg3_input};
+      //   #else 
+      //     std::vector<void*> args{out_buffer, stg3_input};
+      //   #endif
+      //   b2dstg3.setArgs(args);
+      //   b2dstg3.transform();
+      // }
     }
-    // } else {
-    //   //forward real
-    //   // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
-    //   for (int i = 0; i < plan->b; i++) {
-    //     DEVICE_FFT_EXECD2Z(
-    //       plan->stg1,
-    //       ((DEVICE_FFT_DOUBLEREAL    *) in_buffer) + i,
-    //       ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + i
-    //     );
-    //   }
-    //   // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y]
-    //   fftx_mpi_rcperm_1d(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
-
-    //   // [Y, X'/px, Z] <= [X'/px, Z, Y]
-    //   // TODO: change plan to put output in embedded space?
-    //   // [Y, X'/px, 2Z]
-    //   for (int i = 0; i < plan->b; ++i) {
-    //     DEVICE_FFT_EXECZ2Z(
-    //       plan->stg2,
-    //       ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + i,
-    //       ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + i,
-    //       direction
-    //     );
-    //   }
-
-    //   double *stg2_output = (double *) plan->Q3;
-    //   double *stg3_input  = (double *) plan->Q4;
-    //   if (plan->is_embed) {
-    //     fftx_mpi_rcperm_1d(plan, stg3_input, stg2_output, FFTX_MPI_EMBED_2, plan->is_embed);
-    //   } else {
-    //     // no permutation necessary, use previous output as input.
-    //     stg3_input = stg2_output;
-    //   }
-
-    //   // [Y, X'/px, Z] (no permutation on last stage)
-    //   for (int i = 0; i < plan->b; ++i) {
-    //     if(use_fftx) {
-    //       std::vector<void*> args{out_buffer + i, stg3_input + i};
-    //       bdstg3.setArgs(args);
-    //       bdstg3.transform();
-    //     }
-    //     else {
-    //       DEVICE_FFT_EXECZ2Z(
-    //         plan->stg3,
-    //         ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + i,
-    //         ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + i,
-    //         direction
-    //       );
-    //     }
-    //   }
-    // }
   } else if (direction == DEVICE_FFT_INVERSE) { // backward
     DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
     DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
     // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
-    for (int i = 0; i < plan->b; i++) {
-      // if(use_fftx) {
-        std::vector<void*> args{stg3i_output + i, stg3i_input + i};
-        bdstg3.setArgs(args);
-        bdstg3.transform();
-      // }
-      // else
-      //   DEVICE_FFT_EXECZ2Z(plan->stg3, stg3i_input + i, stg3i_output + i, direction);
+    if(plan->b == 1) {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg3i_output, &stg3i_input};
+      #else 
+      std::vector<void*> args{stg3i_output, stg3i_input};
+      #endif
+      bdstg3.setArgs(args);
+      bdstg3.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg3i_output, &stg3i_input};
+      #else 
+      std::vector<void*> args{stg3i_output, stg3i_input};
+      #endif
+      b2dstg3.setArgs(args);
+      b2dstg3.transform();
     }
     // no permutation necessary, use previous output as input.
     DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
@@ -338,14 +366,22 @@ void fftx_execute_1d_spiral(
 
     //stage 2i
     // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
-    for (int i = 0; i < plan->b; ++i) {
-      // if(use_fftx) {
-        std::vector<void*> args{stg2i_output + i, stg2i_input + i};
-        ibdstg2.setArgs(args);
-        ibdstg2.transform();
-      // }
-      // else
-      //   DEVICE_FFT_EXECZ2Z(plan->stg2i, stg2i_input + i, stg2i_output + i, direction);
+    if(plan->b == 1) {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg2i_output, &stg2i_input};
+      #else 
+      std::vector<void*> args{stg2i_output, stg2i_input};
+      #endif
+      ibdstg2.setArgs(args);
+      ibdstg2.transform();
+    } else {
+      #if defined FFTX_CUDA
+      std::vector<void*> args{&stg2i_output, &stg2i_input};
+      #else 
+      std::vector<void*> args{stg2i_output, stg2i_input};
+      #endif
+      ib2dstg2.setArgs(args);
+      ib2dstg2.transform();
     }
 
     DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
@@ -360,21 +396,43 @@ void fftx_execute_1d_spiral(
     DEVICE_FFT_DOUBLECOMPLEX *stg1i_output = (DEVICE_FFT_DOUBLECOMPLEX *) out_buffer;
 
     //stage 1i
-    for (int i = 0; i < plan->b; ++i) {
-      if (plan->is_complex) {
-        // if(use_fftx) {
-          std::vector<void*> args{stg1i_output + i,  stg1i_input + i};
+    if(plan->is_complex) {
+      if(plan->b == 1) {
+          #if defined FFTX_CUDA
+          std::vector<void*> args{&stg1i_output,  &stg1i_input};
+          #else 
+          std::vector<void*> args{stg1i_output,  stg1i_input};
+          #endif
           ibdstg1.setArgs(args);
           ibdstg1.transform();
-        // }
-        // else{
-        //   //backward complex
-        //   DEVICE_FFT_EXECZ2Z(plan->stg1i, stg1i_input + i, stg1i_output + i, direction);
-        // }
-      // } else {
-      //   //backward real
-      //   DEVICE_FFT_EXECZ2D(plan->stg1i, stg1i_input + i, ((DEVICE_FFT_DOUBLEREAL *) stg1i_output) + i);
+      } else {
+        #if defined FFTX_CUDA
+        std::vector<void*> args{&stg1i_output,  &stg1i_input};
+        #else 
+        std::vector<void*> args{stg1i_output,  stg1i_input};
+        #endif
+        ib2dstg1.setArgs(args);
+        ib2dstg1.transform();
       }
+    } else {
+      if(plan->b == 1) {
+          #if defined FFTX_CUDA
+          std::vector<void*> args{&stg1i_output,  &stg1i_input};
+          #else 
+          std::vector<void*> args{stg1i_output,  stg1i_input};
+          #endif
+          ibprdstg1.setArgs(args);
+          ibprdstg1.transform();
+      } 
+      // else {
+      //   #if defined FFTX_CUDA
+      //   std::vector<void*> args{&stg1i_output,  &stg1i_input};
+      //   #else 
+      //   std::vector<void*> args{stg1i_output,  stg1i_input};
+      //   #endif
+      //   ib2prdstg1.setArgs(args);
+      //   ib2prdstg1.transform();
+      // }
     }
   } // end backward.
 }

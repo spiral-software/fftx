@@ -36,8 +36,6 @@
 #endif
 
 
-
-
 inline std::string getCUDARuntime() {
     const char * tmp2 = std::getenv("CUDA_HOME");
      std::string tmp(tmp2 ? tmp2 : "");
@@ -231,6 +229,7 @@ inline void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
+    if( DEBUGOUT ) std::cout << kernels << std::endl;
     if ( DEBUGOUT ) std::cout << "parsed input\n";
 }
 
@@ -275,7 +274,7 @@ inline void Executor::getLogsAndPTX() {
     DEVICE_RTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     ptx = new char[ptxSize];
     DEVICE_RTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    // DEVICE_SAFE_CALL(cuInit(0));
+    DEVICE_SAFE_CALL(cuInit(0));
     // DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
     // DEVICE_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
     DEVICE_SAFE_CALL(cuLinkCreate(0, 0, 0, &linkState));

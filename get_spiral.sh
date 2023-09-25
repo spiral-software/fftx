@@ -12,7 +12,7 @@ else
     BUILDCMD="make install -j"
 fi
 
-if [ -v SPIRAL_HOME ]; then
+if [ -n "$SPIRAL_HOME" ]; then
     ##  SPIRAL_HOME is set; don't pull down another version of spiral
     echo "Using the spiral version installed at: $SPIRAL_HOME"
     $SPIRAL_HOME/bin/$SPIRALEXE -B
@@ -21,16 +21,30 @@ else
 
     ##  We are in the root directory of the FFTX source tree, go up one level and install spiral
     pushd ..
-    git clone https://github.com/spiral-software/spiral-software
-    pushd spiral-software
+    if [[ -d "spiral-software" ]]; then
+        ##  Directory exists; use it and just do a git pull
+        pushd spiral-software
+        git pull
+    else
+        ##  Directory does NOT exist - clone the repo
+        git clone https://github.com/spiral-software/spiral-software
+        pushd spiral-software
+    fi
     export SPIRAL_HOME=`pwd`
     pushd namespaces/packages
-    git clone https://github.com/spiral-software/spiral-package-fftx fftx
-    git clone https://github.com/spiral-software/spiral-package-simt simt
-    git clone https://github.com/spiral-software/spiral-package-mpi mpi
-    git clone https://github.com/spiral-software/spiral-package-jit jit
+
+    ##  For each of the spiral packages: test if it exists (pull to refresh)
+    ##  otherwise; clone the package
+    for pkg in fftx jit mpi simt ; do
+        if [[ -d "$pkg" ]]; then
+            pushd $pkg ; git pull ; popd
+        else
+            git clone https://github.com/spiral-software/spiral-package-$pkg $pkg
+        fi
+    done
+
     popd
-    mkdir build
+    mkdir -p build
     cd build
     cmake ..
     $BUILDCMD
@@ -38,7 +52,7 @@ else
     popd
 
     ##  New version of spiral installed - report info to user
-    echo "New version of spiral installed at: $SPIRAL_HOME"
+    echo "New/updated version of spiral installed at: $SPIRAL_HOME"
     $SPIRAL_HOME/bin/$SPIRALEXE -B
 fi
 

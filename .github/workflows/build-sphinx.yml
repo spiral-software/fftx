@@ -34,6 +34,12 @@ jobs:
         repository: spiral-software/spiral-package-simt
         path: spiral/namespaces/packages/simt
         
+    - name: Checkout repo spiral-package-jit
+      uses: actions/checkout@v2
+      with:
+        repository: spiral-software/spiral-package-jit
+        path: spiral/namespaces/packages/jit
+        
     - name: Checkout repo spiral-package-mpi
       uses: actions/checkout@v2
       with:

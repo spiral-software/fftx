@@ -45,11 +45,13 @@
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"
 #include "fftx_imdprdft_gpu_public.h"
+#include "fftx_rconv_gpu_public.h"
 #else
 #include "fftx_mddft_cpu_public.h"
 #include "fftx_imddft_cpu_public.h"
 #include "fftx_mdprdft_cpu_public.h"
 #include "fftx_imdprdft_cpu_public.h"
+#include "fftx_rconv_cpu_public.h"
 #endif
 #pragma once
 
@@ -114,8 +116,12 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
     else if(name == "imdprdft") {
         return fftx_imdprdft_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
     }
+    else if(name == "rconv") {
+        return fftx_rconv_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
     else {
-        std::cout << "non-supported fixed library transform" << std::endl; 
+        if(DEBUGOUT)
+            std::cout << "non-supported fixed library transform" << std::endl; 
         return nullptr;
     }
 }
@@ -159,21 +165,32 @@ inline std::string getFromCache(std::string name, std::vector<int> sizes) {
     return oss.str();
 }
 
-inline void printToCache(std::string tmp, std::string name, std::vector<int> sizes) {
-    std::cout << "PrintTo(\"" << tmp << "cache_" << name << "_" << sizes.at(0);
+inline void printToCache(std::string spiral_out, std::string name, std::vector<int> sizes) {
+    std::ofstream cached_file;
+    std::string file_name;
+    file_name.append(getFFTX()+"cache_"+name+"_"+std::to_string(sizes.at(0)));
     for(int i = 1; i< sizes.size(); i++) {
-        std::cout << "x" << sizes.at(i);
+        file_name.append("x"+std::to_string(sizes.at(i)));
     }
     #if defined FFTX_HIP
-        std::cout  << "_HIP" << ".txt\", PrintHIPJIT(c,opts));" << std::endl; 
-        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+        file_name.append("_HIP.txt");
     #elif defined FFTX_CUDA 
-        std::cout << "_CUDA" << ".txt\", PrintJIT2(c,opts));" << std::endl;   
-        std::cout << "PrintJIT2(c,opts);" << std::endl;
+        file_name.append("_CUDA.txt");
     #else
-        std::cout <<  "_CPU" << ".txt\", opts.prettyPrint(c));" << std::endl; 
-        std::cout << "opts.prettyPrint(c);" << std::endl;
+        file_name.append("_CPU.txt");
     #endif
+    cached_file.open(file_name);
+    while(spiral_out.back() != '}') {
+        spiral_out.pop_back();
+    }
+    #if (defined FFTX_CUDA || FFTX_HIP)
+    spiral_out = spiral_out.substr(spiral_out.find("spiral> JIT BEGIN"));
+    #else
+    spiral_out = spiral_out.substr(spiral_out.find("#include"));
+    #endif
+    cached_file << spiral_out;
+    cached_file.close();
+
 }
 
 inline void getImportAndConf() {
@@ -194,7 +211,13 @@ inline void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
     std::cout << "GASMAN(\"collect\");\n";
-    printToCache(tmp, name, sizes);
+    #if defined FFTX_HIP
+        std::cout << "PrintHIPJIT(c,opts);" << std::endl;
+    #elif defined FFTX_CUDA 
+        std::cout << "PrintJIT2(c,opts);" << std::endl;
+    #else
+        std::cout << "opts.prettyPrint(c);" << std::endl;
+    #endif
 }
 
 class FFTXProblem {
@@ -285,7 +308,12 @@ inline std::string FFTXProblem::semantics2() {
     int save_stdin = redirect_input(p[0]);
     std::string result = exec(tmp.c_str());
     restore_input(save_stdin);
-    close(p[0]);
+
+    #if defined(_WIN32) || defined (_WIN64)
+        // Crashes on windows if close p[0], so no-op
+    #else
+        close(p[0]);
+    #endif
     while(result.back() != '}') {
         result.pop_back();
     }
@@ -308,7 +336,11 @@ inline void FFTXProblem::transform(){
         #else
             auto start = std::chrono::high_resolution_clock::now();
         #endif
+            #if defined FFTX_CUDA
+            ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), (*(double**)args.at(2)) );    
+            #else
             ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
+            #endif
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
@@ -346,6 +378,7 @@ inline void FFTXProblem::transform(){
                 e.execute(res);
                 executors.insert(std::make_pair(sizes, e));
                 run(e);
+                printToCache(res, name, sizes);
             }
         }
     }

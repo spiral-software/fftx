@@ -18,20 +18,31 @@
   #define pipe _pipe
   #define popen _popen
   #define pclose _pclose
+
+  #include <direct.h>
+  #define getcwd _getcwd
+  #define chdir _chdir
 #else
   #include <unistd.h>    // dup2
 #endif
 
 #include <sys/types.h> // rest for open/close
+#if defined(__APPLE__)
 #include <sys/utsname.h> // check machine name
+#endif
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <memory>
 #include <stdexcept>
 #include <array>
+
+#if defined(_WIN32) || defined (_WIN64)
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
+
 #include <stdlib.h>
-#include <sys/mman.h>
 #include <cstring>
 #include <chrono>
 #include <regex>
@@ -68,7 +79,7 @@ endif ()
 
 add_library                ( tmp SHARED spiral_generated.c )
 target_include_directories ( tmp PRIVATE ${SPIRAL_SOURCE_DIR}/namespaces )
-target_compile_options     ( tmp PRIVATE -shared -fPIC ${_addl_options} )
+target_compile_options     ( tmp PRIVATE ${_addl_options} )
 
 if ( WIN32 )
     set_property    ( TARGET tmp PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )
@@ -92,13 +103,29 @@ class Executor {
 
 float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     if ( DEBUGOUT) std::cout << "Loading shared library\n";
-    #if defined(_WIN32) || defined (_WIN64)
-        shared_lib = dlopen("temp/libtmp.dll", RTLD_LAZY);
+
+    #if defined (_WIN32) || defined (_WIN64)
+        shared_lib = (void *)LoadLibrary("temp/Release/tmp.dll");
     #elif defined(__APPLE__)
         shared_lib = dlopen("temp/libtmp.dylib", RTLD_LAZY);
     #else
         shared_lib = dlopen("temp/libtmp.so", RTLD_LAZY); 
     #endif
+
+    if(!shared_lib) {
+        #if defined (_WIN32) || defined (_WIN64)
+        int error = GetLastError();
+        char * errorMessage;
+            FormatMessage ( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+                            NULL, error, 0, (char *)&errorMessage, 0, NULL );
+            std::cout << "Cannot open library: " << (errorMessage) << std::endl;
+            LocalFree(errorMessage);
+        #else
+            std::cout << "Cannot open library: " << dlerror() << '\n';
+        #endif
+        exit(0);
+    }
+
     std::ostringstream oss;
     std::ostringstream oss1;
     std::ostringstream oss2;
@@ -108,36 +135,43 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     std::string init = oss.str();
     std::string transform = oss1.str();
     std::string destroy = oss2.str();
-    if(!shared_lib) {
-        std::cout << "Cannot open library: " << dlerror() << '\n';
-        exit(0);
-    }
-    else if(shared_lib){
+
+    #if defined (_WIN32) || defined (_WIN64)
+        void (*fn1) ()= (void (*)()) GetProcAddress ( (HMODULE) shared_lib, init.c_str() );
+        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *)) GetProcAddress ( (HMODULE) shared_lib, transform.c_str() );
+        void (*fn3) ()= (void (*)()) GetProcAddress ( (HMODULE) shared_lib, destroy.c_str() );
+    #else
         void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
         void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
         void (*fn3) ()= (void (*)())dlsym(shared_lib, destroy.c_str());
-        auto start = std::chrono::high_resolution_clock::now();
-        if(fn1) {
-            fn1();
-        }else {
-            std::cout << init << "function didnt run" << std::endl;
-        }
-        if(fn2) {
-            fn2((double*)args.at(0),(double*)args.at(1), (double*)args.at(2));
-        }else {
-            std::cout << transform << "function didnt run" << std::endl;
-        }
-        if(fn3){
-            fn3();
-        }else {
-            std::cout << destroy << "function didnt run" << std::endl;
-        }
-        auto stop = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float, std::milli> duration = stop - start;
-        CPUTime = duration.count();
-        dlclose(shared_lib);
+    #endif
+
+    auto start = std::chrono::high_resolution_clock::now();
+    if(fn1) {
+        fn1();
+    }else {
+        std::cout << init << "function didnt run" << std::endl;
     }
-    // system("rm -rf temp");
+    if(fn2) {
+        fn2((double*)args.at(0),(double*)args.at(1), (double*)args.at(2));
+    }else {
+        std::cout << transform << "function didnt run" << std::endl;
+    }
+    if(fn3){
+        fn3();
+    }else {
+        std::cout << destroy << "function didnt run" << std::endl;
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float, std::milli> duration = stop - start;
+    CPUTime = duration.count();
+        
+    #if defined (_WIN32) || defined (_WIN64)
+        FreeLibrary ( (HMODULE) shared_lib );
+    #else
+        dlclose(shared_lib);
+    #endif
+
     return getKernelTime();
 }
 
@@ -146,56 +180,68 @@ void Executor::execute(std::string result) {
     if ( DEBUGOUT) std::cout << "entered CPU backend execute\n";
     std::string compile;
     
+    char buff[FILENAME_MAX]; //create string buffer to hold path
+    char* getcwdret = getcwd( buff, FILENAME_MAX );
+    std::string current_working_dir(buff);
+
+    struct stat sb;
+
+    int systemret;
+    if(stat((current_working_dir+"/temp").c_str(), &sb) == 0)
+        systemret = system("rm -rf temp");
+        
     if ( DEBUGOUT) {
         std::cout << "created compile\n";
     }
 
-    std::string result2 = result.substr(result.find("*/")+3, result.length());
-    int check = mkdir("temp", 0777);
-    // if((check)) {
-    //     std::cout << "failed to create temp directory for runtime code\n";
-    //     exit(-1);
-    // }
+    std::string result2 = result.substr(result.find("#include"));
+    #if defined (_WIN32) || defined (_WIN64)
+        int check = _mkdir("temp");
+    #else
+        int check = mkdir("temp", 0777);
+    #endif
+    if(check != 0) {
+        std::cout << "failed to create temp directory for runtime code\n";
+        exit(-1);
+    }
     std::ofstream out("temp/spiral_generated.c");
     out << result2;
     out.close();
     std::ofstream cmakelists("temp/CMakeLists.txt");
     if(DEBUGOUT)
-        cmakelists << "set ( _addl_options -Wall -Wextra )" << std::endl;
+        cmakelists << "set ( _addl_options -Wall )" << std::endl;       //  -Wextra
 
     cmakelists << cmake_script;
     cmakelists.close();
     if ( DEBUGOUT )
         std::cout << "compiling\n";
-
-    char buff[FILENAME_MAX]; //create string buffer to hold path
-    getcwd( buff, FILENAME_MAX );
-    std::string current_working_dir(buff);
     
     check = chdir("temp");
-    // if(!(check)) {
-    //     std::cout << "failed to create temp directory for runtime code\n";
-    //     exit(-1);
-    // }
+    if(check != 0) {
+        std::cout << "failed to change to temp directory for runtime code\n";
+        exit(-1);
+    }
+
     #if defined(_WIN32) || defined (_WIN64)
-        system("cmake . && make");
+        systemret = system("cmake . && cmake --build . --config Release");      //  --target install
     #elif defined(__APPLE__)
         struct utsname unameData;
         uname(&unameData);
         std::string machine_name(unameData.machine);
         if(machine_name == "arm64")
-            system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
+            systemret = system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
         else
-            system("cmake . && make");
+            systemret = system("cmake . && make");
     #else
-        system("cmake . && make"); 
+        systemret = system("cmake . && make"); 
     #endif
+
     check = chdir(current_working_dir.c_str());
-    // if((check)) {
-    //     std::cout << "failed to create temp directory for runtime code\n";
-    //     exit(-1);
-    // }
-    // system("cd ..;");
+    if(check != 0) {
+        std::cout << "failed to change to working directory for runtime code\n";
+        exit(-1);
+    }
+    // systemret = system("cd ..;");
     if ( DEBUGOUT )
         std::cout << "finished compiling\n";
 }
