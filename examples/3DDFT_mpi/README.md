@@ -2,7 +2,9 @@ Test 1D Distributed 3D DFT (test3DDFT_mpi_1D.x)
 ============================================
 This example routines
 allows the running of various different distributed 3DDFTs over
-MPI. The MPI ranks are assumed to be organized in a linear array, and
+MPI, including the Plane Wave (PW) version for the embedded sphere to cube
+distributed FFT used in Materials and Chemistry codes based on a plane
+wave basis for the electron wave functions. The MPI ranks are assumed to be organized in a linear array, and
 the 3D DFT is partitioned along the Z dimension. The local computation
 is performed on the GPU assigned to the local rank..
 
@@ -19,13 +21,13 @@ where:
 
     ``M``, ``N``, ``K`` - describe the input size of the dimensions of the 3D DFT for X, Y, and Z, respectively.
 
-    ``batch`` - describes the number of 3D DFTs that are computed at a time. This has been tested with 1.
+    ``batch`` - describes the number of 3D DFTs that are computed at a time. 
 
-    ``embedded`` - determines whether the input tensor is embedded in the center of a tensor twice the size in each dimension [2K, 2N, 2N]. This has been tested with 0.
+    ``embedded`` - determines whether the input tensor is embedded in the center of a tensor twice the size in each dimension [2K, 2N, 2M]. To perform the PW FFT the half sized Fourier space sphere/ellipsoid should be embedded in an array of size [K,N,M] padded with zeros outside the sphere and passed into this routine. The output in real space will be the double sized grid. 
 
     ``forward`` - 1 for a forward transform and 0 for an inverse transform.
 
-    ``complex`` - 1 for a complex-to-complex transform, or 0 if the input or output is real (e.g. R2C or C2R). This has been tested with 1.
+    ``complex`` - 1 for a complex-to-complex transform, or 0 if the input or output is real (e.g. R2C or C2R). 
 
     ``check`` - 1 to check the distributed computation with an equivalent 3D transform using vendor libraries only on rank 0. This should be 0 for problem sizes that would be too large to fit in device memory.
 
