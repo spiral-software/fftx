@@ -9,11 +9,13 @@
 
 pyexe="not_found"
 trypy="python"
-which $trypy > /dev/null
+echo "See if $trypy is in the PATH"
+which $trypy > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
     ##  Found $trypy, test its version
-    vpy=`$trypy --version 2>&1 | sed -e 's/Python //' | sed -e 's/\..*//'`
+    echo "$trypy found in PATH, check version"
+    vpy="$($trypy --version 2>&1 | sed -e 's/Python //' | sed -e 's/\..*//')"
     if [ $vpy -eq "2" ]; then
 	##  python is version 2, look for python3 executable
 	trypy="python3"
@@ -23,10 +25,11 @@ if [ $? -eq 0 ]; then
     fi
 else
     ##  $trypy NOT FOUND, look for python3...
+    echo "$trypy not found, look for python3"
     trypy="python3"
 fi
 if [ $pyexe == "not_found" ]; then
-    which $trypy > /dev/null
+    which $trypy > /dev/null 2>&1
     if [ $? -ne 0 ]; then
 	echo "NO suitable python executable found ... exiting"
 	exit 9
@@ -35,7 +38,8 @@ if [ $pyexe == "not_found" ]; then
     pyexe=$trypy
 fi
 
-echo "Python executable is $pyexe"
+vpy="$($pyexe --version 2>&1 | awk '{print $2}')"
+echo "Python executable is $pyexe (version $vpy)"
 
 if [ $# -eq 0 ]; then
     build_type="CPU"
@@ -95,11 +99,6 @@ if [ $build_type = "CPU" ]; then
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
     fi
-    if [ "$waitspiral" = true ]; then
-	wait		##  wait for the child processes to complete
-    fi
-
-    waitspiral=false
     ##  Build the remaining libraries for the specified target
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
@@ -130,6 +129,11 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
 	waitspiral=true
 	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true &
 	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false &
+    fi
+    if [ "$PRDFTBAT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
+	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
     fi
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
