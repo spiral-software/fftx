@@ -1,19 +1,14 @@
 using namespace fftx;
 
-
-static constexpr auto dftbat_script{
-R"(
-    ns := szns;
-    name := transform_spiral;
-    tags := [[APar, APar], [APar, AVec], [AVec, APar]];
-
-    t := let(
-        name := name,
-        TFCall ( TRC ( TTensorI ( TTensorI ( DFT ( ns, sign ), abatch, APar, APer ),
-                                  nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
-                 rec ( fname := name, params := [] ) )
-    );
-)"};
+static std::string dftbat_script = "ns := szns;\n\
+    name := transform_spiral;\n\
+    tags := [[APar, APar], [APar, AVec], [AVec, APar]];\n\
+    t := let(\n\
+        name := name,\n\
+        TFCall ( TRC ( TTensorI ( TTensorI ( DFT ( ns, sign ), abatch, APar, APer ),\n\
+                                  nbatch, tags[stridetype][1], tags[stridetype][2] ) ),\n\
+                 rec ( fname := name, params := [] ) )\n\
+    );";
 
 
 class DFTBATProblem: public FFTXProblem {

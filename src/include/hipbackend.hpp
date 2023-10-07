@@ -367,6 +367,9 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
     const char* name;
     DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
     DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
+
+    if ( DEBUGOUT ) std::cout << "configuring device execution environment " << std::endl; 
+    DEVICE_SAFE_CALL(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
     // // // Execute parent kernel.
     if ( DEBUGOUT ) std::cout << "launched kernel\n";
     if ( DEBUGOUT )
