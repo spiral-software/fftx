@@ -78,7 +78,6 @@ if 1 = 1 then
 	cachedir := GetEnv("FFTX_HOME");
 	if (cachedir = "") then cachedir := "../.."; fi;
         cachedir := cachedir::"/cache_jit_files/";
-        GASMAN ( "collect" );
         if ( codefor = "HIP" ) then PrintTo ( cachedir::jitname, PrintHIPJIT ( c, opts ) ); fi;
         if ( codefor = "CUDA" ) then PrintTo ( cachedir::jitname, PrintJIT2 ( c, opts ) ); fi;
         if ( codefor = "CPU" ) then PrintTo ( cachedir::jitname, opts.prettyPrint ( c ) ); fi;
