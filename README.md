@@ -308,6 +308,7 @@ include file paths, the linker library path, and the library names to the
 specified target.
 2.  **FFTX_find_libraries**() -- This function finds the **FFTX** libraries, linker
 library path, and include file paths and exposes the following variables:
+
 |CMake Variable Name|Description|
 |:-----|:-----|
 |**FFTX_LIB_INCLUDE_PATHS**|Include paths for **FFTX** include & library headers|
