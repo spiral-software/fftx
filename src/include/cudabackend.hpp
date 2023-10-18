@@ -364,6 +364,12 @@ inline void Executor::destoryProg() {
 inline float Executor::initAndLaunch(std::vector<void*>& args) {
     if ( DEBUGOUT ) std::cout << "the kernel name is " << kernel_name << std::endl;
     DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
+
+    if ( DEBUGOUT ) std::cout << "configuring device execution environment " << std::endl;
+    DEVICE_SAFE_CALL(cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 1073741824));
+    DEVICE_SAFE_CALL(cuFuncSetCacheConfig(kernel, CU_FUNC_CACHE_PREFER_L1));
+     
+
     if ( DEBUGOUT ) std::cout << "launched kernel\n";
     CUevent start, stop;
     DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));

@@ -1,22 +1,19 @@
 using namespace fftx;
 
+static std::string mddft_script = "var_1:= var(\"var_1\", BoxND([0,0,0], TReal));\n\
+var_2:= var(\"var_2\", BoxND(szcube, TReal));\n\
+var_3:= var(\"var_3\", BoxND(szcube, TReal));\n\
+var_2:= X;\n\
+var_3:= Y;\n\
+symvar := var(\"sym\", TPtr(TReal));\n\
+transform := TFCall(TDecl(TDAG([\n\
+        TDAGNode(TTensorI(MDDFT(szcube,sign),1,APar, APar), var_3,var_2),\n\
+                ]),\n\
+        [var_1]\n\
+        ),\n\
+    rec(fname:=name, params:= [symvar])\n\
+);";
 
-static constexpr auto mddft_script{
-R"(
-var_1:= var("var_1", BoxND([0,0,0], TReal));
-var_2:= var("var_2", BoxND(szcube, TReal));
-var_3:= var("var_3", BoxND(szcube, TReal));
-var_2:= X;
-var_3:= Y;
-symvar := var("sym", TPtr(TReal));
-transform := TFCall(TDecl(TDAG([
-        TDAGNode(TTensorI(MDDFT(szcube,sign),1,APar, APar), var_3,var_2),
-                ]),
-        [var_1]
-        ),
-    rec(fname:=name, params:= [symvar])
-);
-)"};
 
 
 class MDDFTProblem: public FFTXProblem {
