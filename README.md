@@ -39,10 +39,10 @@ To build and use **FFTX**, follow these steps:
 ### 1. Install SPIRAL and associated packages
 
 If you already have SPIRAL installed (and have the **SPIRAL_HOME** environment variable
-set) FFTX will use that installation and you can skip to step 2, "Clone the FFTX repository".
+set) FFTX will use that installation and you can skip to [step 2, "Clone the FFTX repository"](#2-clone-the-fftx-repository).
 
-If you want to manually install SPIRAL follow the steps below; alternatively, skip to step 2,
-"Clone the FFTX repository" and have FFTX pull down the necessary SPIRAL repositories and
+If you want to manually install SPIRAL follow the steps below; alternatively, skip to
+[step 2, "Clone the FFTX repository"](#2-clone-the-fftx-repository) and have FFTX pull down the necessary SPIRAL repositories and
 perform the build steps.
 
 Clone **spiral-software** (available [**here**](https://www.github.com/spiral-software/spiral-software))
@@ -92,14 +92,16 @@ you want to install **FFTX** (which is not necessarily the same directory
 where you have cloned **FFTX**; you may want to have separate installation
 directories for different backends).
 
-If you have not already installed SPIRAL you can have it downloaded and built from the
+If you have not already installed SPIRAL and the SPIRAL packages required for FFTX, you can have them downloaded and built from the
 repositories by sourcing the **get_spiral.sh** shell script now.  This script checks the
 definition of the **SPIRAL_HOME** environment variable, and if undefined it will get the
 SPIRAL code, build it and export a definition for **SPIRAL_HOME**.  Make sure you source
-(vs run) the script:
+(vs. run) the script:
 ```
-. get_spiral.sh
+. ./get_spiral.sh
+```
 or
+```
 source get_spiral.sh
 ```
 
@@ -118,7 +120,7 @@ errors or unexpected results.  It is recommended that you have separate installs
 and GPU.
 
 The shell script **config-fftx-libs.sh** is a utility script in the **FFTX** home
-directory that marshalls resources for building the libraries and examples.  There is a
+directory that marshals resources for building the libraries and examples.  There is a
 flag that enables or disables the building of examples (enabled by default).  NOTE: All
 libraries **should be created**; creating the library is a pre-requisite to creating its
 API files (files which are required later when building the RTC code).  Building the
@@ -139,7 +141,7 @@ Run the script as follows:
 ```
 If no argument is provided, then the platform defaults
 to CPU.  This script runs the **build-lib-code.sh** script in the **src/library**
-directory and will marshall the resources and options needed for the set of libraries.
+directory and will marshal the resources and options needed for the set of libraries.
 This step can take quite some time depending on the number of transforms and set of sizes
 to create.  The code is targeted to run on a CPU or a GPU (either CUDA or HIP) depending
 on the platform specified with the script.  By default, only a small number of fixed sizes
@@ -308,6 +310,7 @@ include file paths, the linker library path, and the library names to the
 specified target.
 2.  **FFTX_find_libraries**() -- This function finds the **FFTX** libraries, linker
 library path, and include file paths and exposes the following variables:
+
 |CMake Variable Name|Description|
 |:-----|:-----|
 |**FFTX_LIB_INCLUDE_PATHS**|Include paths for **FFTX** include & library headers|
