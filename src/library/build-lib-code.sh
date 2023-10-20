@@ -86,7 +86,6 @@ if [ $build_type = "CPU" ]; then
     ##  Generate code for CPU
     echo "Generate CPU code ..."
     waitspiral=false
-    waitafterbatch=true
 
     if [ "$DFTBAT_LIB" = true ]; then
 	##  Build DFT batch for CPU
@@ -100,7 +99,7 @@ if [ $build_type = "CPU" ]; then
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
     fi
-    if [ "$waitafterbatch" = true ]; then
+    if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
     fi
     ##  Build the remaining libraries for the specified target
