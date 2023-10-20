@@ -98,7 +98,7 @@ definition of the **SPIRAL_HOME** environment variable, and if undefined it will
 SPIRAL code, build it and export a definition for **SPIRAL_HOME**.  Make sure you source
 (vs. run) the script:
 ```
-./get_spiral.sh
+. ./get_spiral.sh
 ```
 or
 ```
