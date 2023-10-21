@@ -16,7 +16,7 @@ project ( batch1ddft ${_lang_add} ${_lang_base} )
 
 set ( _stem fftx )
 set ( _prefixes  )
-set ( BUILD_PROGS test${PROJECT_NAME} testbatch2ddft)
+set ( BUILD_PROGS test${PROJECT_NAME})
  
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
