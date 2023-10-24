@@ -113,6 +113,7 @@ int main(int argc, char* argv[])
             iterations = atoi ( argv[1] );
             break;
         case 's':
+            baz = 0;
             argv++, argc--;
             N = atoi ( argv[1] );
             while ( argv[1][baz] != 'x' ) baz++;
@@ -124,6 +125,7 @@ int main(int argc, char* argv[])
             // kk = atoi ( & argv[1][baz] );
             break;
         case 'r':
+            baz = 0;
             argv++, argc--;
             read = atoi ( argv[1] );
             while ( argv[1][baz] != 'x' ) baz++;
