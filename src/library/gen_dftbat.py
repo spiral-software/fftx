@@ -194,8 +194,8 @@ def start_header_file ( type, codefor ):
 
     return _str;
 
-##  The new version for generating dftbat code has 3 parameters: number batches, length, and stride type.
-##  Use point_t<3> to hold the arguments (nbatch, length, and stridetype).
+##  When generating batch FFT we have 4 parameters: length, # batches, read-stride and write-stride types.
+##  Use point_t<4> to hold the arguments (length, nbatch, read-stride and write-stride).
 
 def body_public_header ( codefor ):
     "Add the body details for the public header file"
@@ -203,17 +203,17 @@ def body_public_header ( codefor ):
     _str =        '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of length N + 1, where N is the number of unique instances of the\n'
     _str = _str + '//  transform in the library.  Each element is a struct of type\n'
-    _str = _str + '//  fftx::point_t<3> specifying # of batches, transform dimension, and stride type\n\n'
+    _str = _str + '//  fftx::point_t<4> specifying FFT length, # batches, read-stride type and write-stride type\n\n'
 
-    _str = _str + 'fftx::point_t<3> * ' + _file_stem + codefor + 'QuerySizes ();\n'
+    _str = _str + 'fftx::point_t<4> * ' + _file_stem + codefor + 'QuerySizes ();\n'
     _str = _str + '#define ' + _file_stem + 'QuerySizes ' + _file_stem + codefor + 'QuerySizes\n\n'
 
     _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the,\n'
     _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-    _str = _str + '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n'
+    _str = _str + '//  Accepts fftx::point_t<4> specifying size, and pointers to the output\n'
     _str = _str + '//  (returned) data and the input data.\n\n'
 
-    _str = _str + 'void ' + _file_stem + codefor + 'Run ( fftx::point_t<3> req, double * output, double * input );\n'
+    _str = _str + 'void ' + _file_stem + codefor + 'Run ( fftx::point_t<4> req, double * output, double * input );\n'
     _str = _str + '#define ' + _file_stem + 'Run ' + _file_stem + codefor + 'Run\n\n'
 
     _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
@@ -221,7 +221,7 @@ def body_public_header ( codefor ):
     _str = _str + '//  information the user may call the init function to setup for the transform,\n'
     _str = _str + '//  then run the transform repeatedly, and finally tear down (using destroy function).\n\n'
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<3> req );\n'
+    _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<4> req );\n'
     _str = _str + '#define ' + _file_stem + 'Tuple ' + _file_stem + codefor + 'Tuple\n\n'
 
     _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
@@ -263,14 +263,14 @@ def library_api ( mkvers, decor, type ):
         _str = _str + '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   if (err != hipSuccess) {  printf("%s(%i) : %s: %s\\n", __FILE__, __LINE__, (str), hipGetErrorString(err) );  /* exit(-1); */ } }\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
-    _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying\n'
+    _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<4> specifying\n'
     _str = _str + '//  the number of batches and the transform dimension.  The final entry in the list\n'
     _str = _str + '//  is a zero entry.\n\n'
 
-    _str = _str + 'fftx::point_t<3> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
-    _str = _str + '    fftx::point_t<3> *wp = (fftx::point_t<3> *) malloc ( sizeof ( AllSizes3_' + type + ' ) );\n'
+    _str = _str + 'fftx::point_t<4> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
+    _str = _str + '    fftx::point_t<4> *wp = (fftx::point_t<4> *) malloc ( sizeof ( AllSizes4_' + type + ' ) );\n'
     _str = _str + '    if ( wp != NULL)\n'
-    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes3_' + type + ', sizeof ( AllSizes3_' + type + ' ) );\n\n'
+    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes4_' + type + ', sizeof ( AllSizes4_' + type + ' ) );\n\n'
     _str = _str + '    return wp;\n'
     _str = _str + '}\n\n'
 
@@ -280,16 +280,17 @@ def library_api ( mkvers, decor, type ):
     _str = _str + '//  then run the transform repeatedly, and finally tear down (using the destroy\n'
     _str = _str + '//  function).  Returns NULL if requested size is not found\n\n'
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<3> req )\n'
+    _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<4> req )\n'
     _str = _str + '{\n'
     _str = _str + '    int indx;\n'
-    _str = _str + '    int numentries = sizeof ( AllSizes3_' + type + ' ) / sizeof ( fftx::point_t<3> ) - 1;    // last entry is { 0, 0 }\n'
+    _str = _str + '    int numentries = sizeof ( AllSizes4_' + type + ' ) / sizeof ( fftx::point_t<4> ) - 1;    // last entry is { 0, 0 }\n'
     _str = _str + '    transformTuple_t *wp = NULL;\n\n'
 
     _str = _str + '    for ( indx = 0; indx < numentries; indx++ ) {\n'
-    _str = _str + '        if ( req[0] == AllSizes3_' + type + '[indx][0] &&\n'
-    _str = _str + '             req[1] == AllSizes3_' + type + '[indx][1] &&\n'
-    _str = _str + '             req[2] == AllSizes3_' + type + '[indx][2] ) {\n'
+    _str = _str + '        if ( req[0] == AllSizes4_' + type + '[indx][0] &&\n'
+    _str = _str + '             req[1] == AllSizes4_' + type + '[indx][1] &&\n'
+    _str = _str + '             req[2] == AllSizes4_' + type + '[indx][2] &&\n'
+    _str = _str + '             req[3] == AllSizes4_' + type + '[indx][3] ) {\n'
     _str = _str + '            // found a match\n'
     _str = _str + '            wp = (transformTuple_t *) malloc ( sizeof ( transformTuple_t ) );\n'
     _str = _str + '            if ( wp != NULL) {\n'
@@ -304,10 +305,10 @@ def library_api ( mkvers, decor, type ):
 
     _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the\n'
     _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-    _str = _str + '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n'
+    _str = _str + '//  Accepts fftx::point_t<4> specifying size, and pointers to the output\n'
     _str = _str + '//  (returned) data and the input data.\n\n'
 
-    _str = _str + 'void ' + _file_stem + decor + 'Run ( fftx::point_t<3> req, double * output, double * input )\n'
+    _str = _str + 'void ' + _file_stem + decor + 'Run ( fftx::point_t<4> req, double * output, double * input )\n'
     _str = _str + '{\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( req );\n'
     _str = _str + '    if ( wp == NULL )\n'
@@ -350,8 +351,8 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'int  ' + _file_stem + decor + 'python_init_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<3> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
+    _str = _str + '    fftx::point_t<4> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];  rsz[3] = req[3];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- return false\n'
@@ -380,15 +381,16 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         ##                     nbatch * ((len/2) + 1) * 2 doubles (for R2C, output)
         ##     IPRDFTBAT:      nbatch * ((len/2) + 1) * 2 doubles (for C2R, input)
         ##                     nbatch * len     doubles (for C2R, output)
+        ##  Note: req[0] is FFT length; req[1] is batch size
         if xfm == 'dftbat' or xfm == 'idftbat':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * 2);\n'
+            _str = _str + '    int ndoubin  = (int)(req[1] * req[0] * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[1] * req[0] * 2);\n'
         elif xfm == 'prdftbat':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * ((int)(req[1]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubin  = (int)(req[1] * req[0] );\n'
+            _str = _str + '    int ndoubout = (int)(req[1] * ((int)(req[0]/2) + 1) * 2);\n'
         elif xfm == 'iprdftbat':
-            _str = _str + '    int ndoubin  = (int)(req[0] * ((int)(req[1]/2) + 1) * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] );\n'
+            _str = _str + '    int ndoubin  = (int)(req[1] * ((int)(req[0]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[1] * req[0] );\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
         _str = _str + '    ' + _mmalloc + ' ( &dev_in,  sizeof(double) * ndoubin  );\n'
@@ -404,8 +406,8 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'void ' + _file_stem + decor + 'python_run_wrapper ( int * req, double * output, double * input )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<3> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
+    _str = _str + '    fftx::point_t<4> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];  rsz[3] = req[3];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
@@ -413,14 +415,14 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     if type == 'CUDA' or type == 'HIP':
         if xfm == 'dftbat' or xfm == 'idftbat':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * 2);\n'
+            _str = _str + '    int ndoubin  = (int)(req[1] * req[0] * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[1] * req[0] * 2);\n'
         elif xfm == 'prdftbat':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * ((int)(req[1]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubin  = (int)(req[1] * req[0] );\n'
+            _str = _str + '    int ndoubout = (int)(req[1] * ((int)(req[0]/2) + 1) * 2);\n'
         elif xfm == 'iprdftbat':
-            _str = _str + '    int ndoubin  = (int)(req[0] * ((int)(req[1]/2) + 1) * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] );\n'
+            _str = _str + '    int ndoubin  = (int)(req[1] * ((int)(req[0]/2) + 1) * 2);\n'
+            _str = _str + '    int ndoubout = (int)(req[1] * req[0] );\n'
 
         _str = _str + '    if ( ndoubin  == 0 )\n        return;\n\n'
         _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
@@ -437,8 +439,8 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + 'void ' + _file_stem + decor + 'python_destroy_wrapper ( int * req )\n{\n'
     _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<3> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
+    _str = _str + '    fftx::point_t<4> rsz;\n'
+    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];  rsz[3] = req[3];\n'
     _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
     _str = _str + '    if ( wp == NULL )\n'
     _str = _str + '        //  Requested size not found -- just return\n'
@@ -531,7 +533,8 @@ def cmake_library ( decor, type ):
 
 
 _extern_decls  = ''
-_all_sizes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
+_all_sizes     = '//  Entries in AllSizes4 table:  { FFT length, #batches, read stride type, write stride type },\n\n'
+_all_sizes    += 'static fftx::point_t<4> AllSizes4_' + _code_type + '[] = {\n'
 _tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
 
 _metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SP_METADATA_START + '\\\n{\\\n'
@@ -561,19 +564,21 @@ with open ( _sizesfil, 'r' ) as fil:
         ##  testscript.write ( 'createJIT := true;\n' )
         testscript.close()
 
-        ##  3 parameter logic: for nbatch, length, and stride type
+        ##  4 parameter logic: for nbatch, length, read-stride type and write-stride type
         line = re.sub ( ' ', '', line )                 ## suppress white space
-        segs = re.split ( ';', line )                   ## expect 3 segments
+        line = re.sub ( '"', '', line )                 ## strip double quotes (spiral requires them)
+        segs = re.split ( ';', line )                   ## expect 4 segments
         _dims = re.split ( '=', segs[0] )
-        _nbat = _dims[1]
-
-        _dims = re.sub ( '\[', '', segs[1] )
-        _dims = re.sub ( '\]', '', _dims )
-        _dims = re.split ( '=', _dims )
         _nsize = _dims[1]
 
+        _dims = re.split ( '=', segs[1] )
+        _nbat = _dims[1]
+
         _dims = re.split ( '=', segs[2] )
-        _stridetype = _dims[1]
+        _rdstridetype = _dims[1]
+
+        _dims = re.split ( '=', segs[3] )
+        _wrstridetype = _dims[1]
 
         ##  Assume gap file is named {_orig_file_stem}-frame.g
         ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
@@ -590,12 +595,7 @@ with open ( _sizesfil, 'r' ) as fil:
         else:
             cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
 
-##        _func_stem = _file_stem + _nbat + '_' + _dims + '_1d' + '_' + _code_type
-        stridestr = [ "AParAPar", "AParAVec", "AVecAPar", "AVecAVec" ]
-        _rdstride = SP_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 3 else SP_STR_BLOCK
-        _wrstride = SP_STR_UNIT if int(_stridetype) == 1 or int(_stridetype) == 2 else SP_STR_BLOCK
-
-        _func_stem = _file_stem + _nbat + '_type_' + stridestr[int(_stridetype)-1] + '_len_' + _nsize + '_' + _code_type
+        _func_stem = _file_stem + _nsize + '_bat_' + _nbat + '_' + _wrstridetype + '_' + _rdstridetype + '_' + _code_type
         _file_name = _func_stem + _file_suffix
         src_file_path = _srcs_dir + '/' + _file_name
         failure_written = False
@@ -629,8 +629,10 @@ with open ( _sizesfil, 'r' ) as fil:
 
             _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem + '( double *output, double *input );  }\n\n'
 
-            ##  Identify transform by # batches, xform size, and stride type
-            _all_sizes = _all_sizes + '    { ' + _nbat + ', ' + _nsize + ', ' + _stridetype + ' },\n'
+            ##  Identify transform by FFT len, # batches, read stride type and write stride type
+            _rd = 0 if _rdstridetype == 'APar' else 1
+            _wr = 0 if _wrstridetype == 'APar' else 1
+            _all_sizes = _all_sizes + '    { ' + _nsize + ', ' + _nbat + ', ' + str(_rd) + ', ' + str(_wr) + ' },\n'
             _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
             _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
 
@@ -649,8 +651,8 @@ with open ( _sizesfil, 'r' ) as fil:
             _metadata += '             \\"' + SP_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
             ##  For now all libs generated are double precision -- maybe look at this in future
             _metadata += '             \\"' + SP_KEY_PRECISION + '\\": \\"' + SP_STR_DOUBLE + '\\",\\\n'
-            _metadata += '             \\"' + SP_KEY_READSTRIDE + '\\": \\"' + _rdstride + '\\",\\\n'
-            _metadata += '             \\"' + SP_KEY_WRITESTRIDE + '\\": \\"' + _wrstride + '\\",\\\n'
+            _metadata += '             \\"' + SP_KEY_READSTRIDE + '\\": \\"' + _rdstridetype + '\\",\\\n'
+            _metadata += '             \\"' + SP_KEY_WRITESTRIDE + '\\": \\"' + _wrstridetype + '\\",\\\n'
             _metadata += '             \\"' + SP_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_sp_type + '\\"\\\n'
             _metadata += '        },\\\n'
 
@@ -676,7 +678,7 @@ with open ( _sizesfil, 'r' ) as fil:
     _header_fil.write ( _filebody )
     _header_fil.write ( _extern_decls )
     _header_fil.write ( _tuple_funcs + '    { NULL, NULL, NULL }\n};\n\n' )
-    _header_fil.write ( _all_sizes + '    { 0, 0, 0 }\n};\n\n' )
+    _header_fil.write ( _all_sizes + '    { 0, 0, 0, 0 }\n};\n\n' )
     _header_fil.write ( '#endif\n\n' )
     _header_fil.close ()
 
