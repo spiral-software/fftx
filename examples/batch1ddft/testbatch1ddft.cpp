@@ -192,7 +192,6 @@ int main(int argc, char* argv[])
     std::vector<void*> args{(void*)tempX,(void*)dX};
     std::string descrip = "CPU";                //  "CPU";
     std::string devfft = "fftw";
-    std::string devfft  = "rocfft";
 #endif
 
 BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
