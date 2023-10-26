@@ -123,6 +123,11 @@ if re.match ( 'hip', _code_type, re.IGNORECASE ):
     _code_type = 'HIP'
     _file_suffix = '.cpp'
 
+if re.match ( 'sycl', _code_type, re.IGNORECASE ):
+    ##  SYCL selected
+    _code_type = 'SYCL'
+    _file_suffix = '.cpp'
+
 if re.match ( 'cpu', _code_type, re.IGNORECASE ):
     ##  CPU code gen selected
     _code_type = 'CPU'
@@ -261,6 +266,8 @@ def library_api ( mkvers, decor, type ):
     elif type == 'HIP':
         _str = _str + '#include <hip/hip_runtime.h>\n\n'
         _str = _str + '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   if (err != hipSuccess) {  printf("%s(%i) : %s: %s\\n", __FILE__, __LINE__, (str), hipGetErrorString(err) );  /* exit(-1); */ } }\n\n'
+    elif type == 'SYCL':
+        _str = _str + '#include <CL/sycl.hpp>\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<4> specifying\n'
@@ -346,7 +353,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     _str = _str + 'extern "C" {\n\n'
 
     # if mkvers:
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + 'static double *dev_in, *dev_out;\n\n'
 
     _str = _str + 'int  ' + _file_stem + decor + 'python_init_wrapper ( int * req )\n{\n'
@@ -365,7 +372,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _cph2dev = 'cudaMemcpyHostToDevice'
         _cpdev2h = 'cudaMemcpyDeviceToHost'
         _memfree = 'cudaFree'
-    elif type == 'HIP':
+    elif type == 'HIP' or type == 'SYCL':
         _mmalloc = 'hipMalloc'
         _errchk  = 'checkLastHipError ( "Error: " );'
         _mmemcpy = 'hipMemcpy'
@@ -373,7 +380,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _cpdev2h = 'hipMemcpyDeviceToHost'
         _memfree = 'hipFree'
 
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         ##  Adjust for batches / dimension
         ##  Amount of data space to malloc depends on transform:
         ##     DFTBAT/IDFTBAT: nbatch * len * 2 doubles (for C2C, both input & output)
@@ -399,7 +406,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + '    //  Call the init function\n'
     _str = _str + '    ( * wp->initfp )();\n'
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ' + _errchk +  '\n\n'
 
     _str = _str + '    return 1;\n}\n\n'
@@ -413,7 +420,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         if xfm == 'dftbat' or xfm == 'idftbat':
             _str = _str + '    int ndoubin  = (int)(req[1] * req[0] * 2);\n'
             _str = _str + '    int ndoubout = (int)(req[1] * req[0] * 2);\n'
@@ -428,7 +435,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
 
     _str = _str + '    //  Call the run function\n'
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ( * wp->runfp )( dev_out, dev_in );\n'
         _str = _str + '    ' + _errchk  + '\n\n'
         _str = _str + '    ' + _mmemcpy + ' ( output, dev_out, sizeof(double) * ndoubout, ' + _cpdev2h + ' );\n'
@@ -446,13 +453,13 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ' + _memfree + ' ( dev_out );\n'
         _str = _str + '    ' + _memfree + ' ( dev_in  );\n\n'
 
     _str = _str + '    //  Tear down / cleanup\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ' + _errchk + '\n\n'
 
     _str = _str + '    return;\n}\n\n}\n'
@@ -515,6 +522,8 @@ def cmake_library ( decor, type ):
         _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n'
     elif type == 'HIP':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
+    elif type == 'SYCL':
+        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${SYCL_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
     elif type == 'CPU':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n\n'
         
@@ -698,7 +707,8 @@ with open ( _sizesfil, 'r' ) as fil:
     _hfil = _srcs_dir + '/' + _file_stem + _decor + 'libentry' + _file_suffix
     _api_file = open ( _hfil, 'w' )
     _filebody = library_api ( True, _decor, _code_type )
-    _filebody = _filebody + python_cuda_api ( True, _decor, _code_type, _xform_root )
+    if _code_type != 'SYCL':
+        _filebody = _filebody + python_cuda_api ( True, _decor, _code_type, _xform_root )
     _api_file.write ( _filebody )
     _api_file.close ()
 
