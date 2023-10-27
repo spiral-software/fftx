@@ -104,6 +104,12 @@ if ( ${_codegen} STREQUAL "CUDA" )
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
 endif ()
 
+if ( ${_codegen} STREQUAL "SYCL" )
+    ##  Setup what we need to build for SYCL
+    list ( APPEND LIBS_FOR_SYCL OpenCL )
+    list ( APPEND ADDL_COMPILE_FLAGS -fsycl -DFFTX_SYCL )
+endif ()
+
 if ( "x${DIM_X}" STREQUAL "x" )
     ##  DIM_X is not defined (on command line).  Assume building with default sizes only
     message ( STATUS "Building for default size example only" )
@@ -116,9 +122,14 @@ endif ()
 ##  Set include paths and require C++ 11 standard
 
 set ( FFTX_INCLUDE ${FFTX_PROJECT_SOURCE_DIR}/include )
-set ( CMAKE_C_STANDARD 11)
-set ( CMAKE_CXX_STANDARD 11)
-
+if ( ${_codegen} STREQUAL "SYCL" )
+    set ( CMAKE_C_STANDARD 17)
+    set ( CMAKE_CXX_STANDARD 17)
+else ()
+    set ( CMAKE_C_STANDARD 11)
+    set ( CMAKE_CXX_STANDARD 11)
+endif ()
+  
 ##  Don't add ${FFTX_INCLUDE} to the list of include_directories
 include_directories ( ${SPIRAL_SOURCE_DIR}/profiler/targets
     ${SPIRAL_SOURCE_DIR}/profiler/targets/include )

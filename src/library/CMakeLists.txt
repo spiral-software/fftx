@@ -46,7 +46,7 @@ endforeach ()
 set ( _fftxmpi_libname )
 
 if ( ${MPI_FOUND} )
-    if ( NOT ${_codegen} STREQUAL "CPU" )
+    if ( NOT ${_codegen} STREQUAL "CPU" AND NOT ${_codegen} STREQUAL "SYCL" )
 	add_subdirectory ( lib_fftx_mpi )
 	set ( _fftxmpi_libname ${_lib_name} )
 	include_directories ( ${CMAKE_CURRENT_SOURCE_DIR}/lib_fftx_mpi )

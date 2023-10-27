@@ -31,6 +31,7 @@ BUILD_EXAMPLES=true
 BUILD_FOR_CPU=true
 BUILD_FOR_CUDA=false
 BUILD_FOR_HIP=false
+BUILD_FOR_SYCL=false
 
 if [ $# -gt 0 ]; then
     ##  Command line argument is present
@@ -41,7 +42,10 @@ if [ $# -gt 0 ]; then
     elif [ "$targ" == "HIP" ]; then
         BUILD_FOR_CPU=false
         BUILD_FOR_HIP=true
-    ##  else just build for CPU when neither CUDA or HIP are specified
+    elif [ "$targ" == "SYCL" ]; then
+        BUILD_FOR_CPU=false
+        BUILD_FOR_SYCL=true
+    ##  else just build for CPU when none of CUDA, HIP, or SYCL are specified
     fi
 fi
 
@@ -140,6 +144,15 @@ if [ "$BUILD_FOR_HIP" = true ]; then
     pushd src/library
     ./build-lib-code.sh "HIP"
     ##  echo "Run ./build-lib-code.sh HIP"
+    popd
+fi
+
+echo "Build for SYCL = $BUILD_FOR_SYCL"
+if [ "$BUILD_FOR_SYCL" = true ]; then
+    ##  Build the libraries for SYCL
+    pushd src/library
+    ./build-lib-code.sh "SYCL"
+    ##  echo "Run ./build-lib-code.sh SYCL"
     popd
 fi
 
