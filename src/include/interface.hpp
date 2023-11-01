@@ -46,12 +46,16 @@
 #include "fftx_mdprdft_gpu_public.h"
 #include "fftx_imdprdft_gpu_public.h"
 #include "fftx_rconv_gpu_public.h"
+#include "fftx_dftbat_gpu_public.h"
+#include "fftx_idftbat_gpu_public.h"
 #else
 #include "fftx_mddft_cpu_public.h"
 #include "fftx_imddft_cpu_public.h"
 #include "fftx_mdprdft_cpu_public.h"
 #include "fftx_imdprdft_cpu_public.h"
 #include "fftx_rconv_cpu_public.h"
+#include "fftx_dftbat_cpu_public.h"
+#include "fftx_idftbat_cpu_public.h"
 #endif
 #pragma once
 
@@ -118,6 +122,12 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
     }
     else if(name == "rconv") {
         return fftx_rconv_Tuple(fftx::point_t<3>({{sizes.at(0), sizes.at(1), sizes.at(2)}}));
+    }
+    else if(name == "dftbat" || name == "b1dft") {
+        return fftx_dftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
+    }
+    else if(name == "idftbat" || name == "ib1dft") {
+        return fftx_idftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
     }
     else {
         if(DEBUGOUT)
@@ -337,9 +347,15 @@ inline void FFTXProblem::transform(){
             auto start = std::chrono::high_resolution_clock::now();
         #endif
             #if defined FFTX_CUDA
-            ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), (*(double**)args.at(2)) );    
+            if(name != "dftbat" && name != "b1dft" && name != "idftbat" && name != "ib1dft")
+                ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), (*(double**)args.at(2)) );
+            else
+                ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), *((double**)args.at(1)) );    
             #else
-            ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
+            if(name != "dftbat" && name != "b1dft" && name != "idftbat" && name != "ib1dft")
+                ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
+            else
+                ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(1) );
             #endif
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
             DEVICE_EVENT_RECORD ( custop );

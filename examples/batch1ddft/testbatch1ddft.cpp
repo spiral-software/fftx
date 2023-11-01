@@ -119,10 +119,6 @@ int main(int argc, char* argv[])
             while ( argv[1][baz] != 'x' ) baz++;
             baz++ ;
             B = atoi (& argv[1][baz]);
-            // nn = atoi ( & argv[1][baz] );
-            // while ( argv[1][baz] != 'x' ) baz++;
-            // baz++ ;
-            // kk = atoi ( & argv[1][baz] );
             break;
         case 'r':
             baz = 0;
@@ -131,9 +127,6 @@ int main(int argc, char* argv[])
             while ( argv[1][baz] != 'x' ) baz++;
             baz++ ;
             write = atoi ( & argv[1][baz] );
-            // while ( argv[1][baz] != 'x' ) baz++;
-            // baz++ ;
-            // kk = atoi ( & argv[1][baz] );
             break;
         case 'h':
             printf ( "Usage: %s: [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]\n", argv[0] );
@@ -152,7 +145,7 @@ int main(int argc, char* argv[])
     else
         writes = "Strided";
 
-    std::cout << N << " " << B << " " << reads << " " << writes << std::endl;
+     if ( DEBUGOUT ) std::cout << N << " " << B << " " << reads << " " << writes << std::endl;
     std::vector<int> sizes{N,B, read,write};
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
@@ -166,7 +159,7 @@ int main(int argc, char* argv[])
 
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    std::cout << "allocating memory" << std::endl;
+     if ( DEBUGOUT ) std::cout << "allocating memory" << std::endl;
     DEVICE_MALLOC((void**)&dX, inputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void **)&dY, outputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
@@ -192,7 +185,6 @@ int main(int argc, char* argv[])
     std::vector<void*> args{(void*)tempX,(void*)dX};
     std::string descrip = "CPU";                //  "CPU";
     std::string devfft = "fftw";
-    std::string devfft  = "rocfft";
 #endif
 
 BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
@@ -212,26 +204,26 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     
     
     if(read == 0 && write == 0) {
-        std::cout << "APAR, APAR" << std::endl;
+         if ( DEBUGOUT ) std::cout << "APAR, APAR" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N, //plan, rank, n,
                                     &N,   1,  N, // iembed, istride, idist,
                                     &N,   1,  N, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     } else if(read == 0 && write == 1) { 
-        std::cout << "APAR, AVEC" << std::endl;
+         if ( DEBUGOUT ) std::cout << "APAR, AVEC" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N, //plan, rank, n,
                                     &N,   1,  N, // iembed, istride, idist,
                                     &N,   B,  1, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }else if(read == 1 && write == 0) {
-        std::cout << "AVEC, APAR" << std::endl;
+         if ( DEBUGOUT ) std::cout << "AVEC, APAR" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N,  //plan, rank, n,
                                     &N,   B,  1,  // iembed, istride, idist,
                                     &N,   1,  N,  // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }
     else {
-        std::cout << "AVEC, AVEC" << std::endl;
+         if ( DEBUGOUT ) std::cout << "AVEC, AVEC" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N,  //plan, rank, n,
                                     &N,   B,  1,  // iembed, istride, idist,
                                     &N,   B,  1,  // oembed, ostride, odist,
@@ -296,14 +288,13 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
                               outDevfft1.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );    
         #endif
 
-            printf ( "DFT = %d Batch = %d Read = %s, Write = %s \tBatch 1D FFT (Forward)\t", N, B, reads.c_str(), writes.c_str());
+            printf ( "DFT = %d Batch = %d Read = %s Write = %s \tBatch 1D FFT (Forward)\t", N, B, reads.c_str(), writes.c_str());
             checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.data(),
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.data(),
                                  (long) outDevfft1.size() );
         }
     #endif
     }
-
 
 #if defined FFTX_CUDA
     std::vector<void*> args2{&dY,&tempX};
@@ -320,7 +311,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     for (int itn = 0; itn < iterations; itn++)
     {
         ib1dft.transform();
-        // batch1ddft_gpu[itn] = ib1prdft.getTime();
+        ibatch1ddft_gpu[itn] = ib1dft.getTime();
         //gatherOutput(outputHost, args);
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
      #if defined(FFTX_HIP)
@@ -345,7 +336,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
             }
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
+            DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
 
         #if defined FFTX_HIP
             DEVICE_MEM_COPY ( outDevfft2.data(), dY,
@@ -366,11 +357,31 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     }
 
 
-    // for(int i = 0; i < outputHost2.size(); i++) {
-    //     std::cout<< outputHost2[i] <<  " " << outDevfft2[i] << std::endl;
-    // }
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );        //  , devfft.c_str() );
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\t%.7e\n", itn, batch1ddft_gpu[itn], devmilliseconds[itn] );
+    }
 
-    // std::cout << "finished stuff" << std::endl;
+    printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\t%.7e\n", itn, ibatch1ddft_gpu[itn], invdevmilliseconds[itn] );
+    }
+#else
+     printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\n", itn, batch1ddft_gpu[itn]);
+    }
+
+    printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\n", itn, ibatch1ddft_gpu[itn]);
+    }
+#endif
 
     printf("%s: All done, exiting\n", prog);
   
