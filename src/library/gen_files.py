@@ -1,6 +1,6 @@
 #! python
 
-##  Copyright (c) 2018-2022, Carnegie Mellon University
+##  Copyright (c) 2018-2023, Carnegie Mellon University
 ##  See LICENSE for details
 
 ##  This script reads a file of cube sizes (command line arg), that contains several cube size
@@ -123,6 +123,11 @@ if re.match ( 'hip', _code_type, re.IGNORECASE ):
     _code_type = 'HIP'
     _file_suffix = '.cpp'
 
+if re.match ( 'sycl', _code_type, re.IGNORECASE ):
+    ##  SYCL selected
+    _code_type = 'SYCL'
+    _file_suffix = '.cpp'
+
 if re.match ( 'cpu', _code_type, re.IGNORECASE ):
     ##  CPU code gen selected
     _code_type = 'CPU'
@@ -165,7 +170,7 @@ def start_header_file ( type, codefor, xfm ):
         
     _str = '#ifndef ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n'
     _str = _str + '#define ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n\n'
-    _str = _str + '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str = _str + '//  Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '//  See LICENSE for details\n\n'
 
     _str = _str + '#include "fftx3.hpp"\n\n'
@@ -262,7 +267,7 @@ def library_api ( mkvers, decor, type, xfm ):
     else:
         codefor = type + '_'
 
-    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str =        '//  Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '//  See LICENSE for details\n\n'
 
     _str = _str + '#include <stdio.h>\n'
@@ -277,6 +282,8 @@ def library_api ( mkvers, decor, type, xfm ):
     elif type == 'HIP':
         _str = _str + '#include <hip/hip_runtime.h>\n\n'
         _str = _str + '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  exit(-1); } }\n\n'
+    elif type == 'SYCL':
+        _str = _str + '#include <CL/sycl.hpp>\n\n'
 
     _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
     _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying the X,\n'
@@ -368,7 +375,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     _str = _str + 'extern "C" {\n\n'
 
     # if mkvers:
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
 
     _str = _str + 'int  ' + _file_stem + decor + 'python_init_wrapper ( int * req )\n{\n'
@@ -387,7 +394,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _cph2dev = 'cudaMemcpyHostToDevice'
         _cpdev2h = 'cudaMemcpyDeviceToHost'
         _memfree = 'cudaFree'
-    elif type == 'HIP':
+    elif type == 'HIP' or type == 'SYCL':
         _mmalloc = 'hipMalloc'
         _errchk  = 'checkLastHipError ( "Error: " );'
         _mmemcpy = 'hipMemcpy'
@@ -395,7 +402,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _cpdev2h = 'hipMemcpyDeviceToHost'
         _memfree = 'hipFree'
 
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         ##  Amount of data space to malloc depends on transform:
         ##     MDDFT/IMDDFT:   x * y * z * 2 doubles (for C2C, both input & output)
         ##     MDPRDFT:        x * y * z     doubles (for R2C, input)
@@ -423,7 +430,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 
     _str = _str + '    //  Call the init function\n'
     _str = _str + '    ( * wp->initfp )();\n'
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ' + _errchk +  '\n\n'
 
     _str = _str + '    return 1;\n}\n\n'
@@ -442,7 +449,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         if xfm == 'mddft' or xfm == 'imddft':
             _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
             _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
@@ -460,7 +467,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
 
     _str = _str + '    //  Call the run function\n'
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
         _str = _str + '    ' + _errchk  + '\n\n'
         _str = _str + '    ' + _mmemcpy + ' ( output, dev_out, sizeof(double) * ndoubout, ' + _cpdev2h + ' );\n'
@@ -478,14 +485,14 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
     _str = _str + '        //  Requested size not found -- just return\n'
     _str = _str + '        return;\n\n'
 
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ' + _memfree + ' ( dev_out );\n'
         _str = _str + '    ' + _memfree + ' ( dev_sym );\n'
         _str = _str + '    ' + _memfree + ' ( dev_in  );\n\n'
 
     _str = _str + '    //  Tear down / cleanup\n'
     _str = _str + '    ( * wp->destroyfp ) ();\n'
-    if type == 'CUDA' or type == 'HIP':
+    if type == 'CUDA' or type == 'HIP' or type == 'SYCL':
         _str = _str + '    ' + _errchk + '\n\n'
 
     _str = _str + '    return;\n}\n\n}\n'
@@ -496,7 +503,7 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
 def create_metadata ( decor ):
     "Create a compileable module to be added to the library that contains the metadata for the library"
 
-    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str =        '//  Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '//  See LICENSE for details\n\n'
 
     _str = _str + '#include <stdio.h>\n'
@@ -523,7 +530,7 @@ def create_metadata ( decor ):
 
 
 def cmake_library ( decor, type ):
-    _str =        '##\n## Copyright (c) 2018-2022, Carnegie Mellon University\n'
+    _str =        '##\n## Copyright (c) 2018-2023, Carnegie Mellon University\n'
     _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
 
     _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
@@ -537,19 +544,9 @@ def cmake_library ( decor, type ):
         _str = _str + 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n'
 
     _str = _str + 'include ( SourceList.cmake )\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'include ( SourceList' + type + '.cmake )\n'
-
-    # _str = _str + 'list    ( APPEND _source_files ${_lib_root}_CPU_libentry.cpp' + ' )\n'
     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_metadata' + _file_suffix + ' )\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_' + type + '_libentry' + _file_suffix + ' )\n\n'
-    ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
-
     _str = _str + 'set ( _incl_files ${_lib_root}_public.h )\n\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'list    ( APPEND _incl_files ${_lib_root}_' + type + '_public.h )\n\n'
 
     _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'
     if type == 'CUDA':
@@ -558,9 +555,11 @@ def cmake_library ( decor, type ):
         _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n'
     elif type == 'HIP':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
+    elif type == 'SYCL':
+        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${SYCL_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
     elif type == 'CPU':
         _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n\n'
-        
+
     _str = _str + 'if ( WIN32 )\n'
     _str = _str + '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n'
     _str = _str + 'endif ()\n\n'
@@ -734,7 +733,8 @@ with open ( _sizesfil, 'r' ) as fil:
     _hfil = _srcs_dir + '/' + _file_stem + _decor + 'libentry' + _file_suffix
     _api_file = open ( _hfil, 'w' )
     _filebody = library_api ( True, _decor, _code_type, _xform_root )
-    _filebody = _filebody + python_cuda_api ( True, _decor, _code_type, _xform_root )
+    if _code_type != 'SYCL':
+        _filebody = _filebody + python_cuda_api ( True, _decor, _code_type, _xform_root )
     _api_file.write ( _filebody )
     _api_file.close ()
 
