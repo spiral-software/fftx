@@ -73,6 +73,7 @@ if 1 = 1 then
     c := opts.fftxGen(tt);
     ##  opts.prettyPrint(c);
     PrintTo(libdir::"/"::name::file_suffix, opts.prettyPrint(c));
+fi;
 
 ##  If the variable createJIT is defined and set true then output the JIT code to a file
 if ( IsBound(createJIT) and createJIT ) then
