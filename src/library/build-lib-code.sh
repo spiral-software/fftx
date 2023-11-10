@@ -3,7 +3,7 @@
 ##  Script to generate the source code for the libraries
 
 ##  Expects either 0 or 1 argument:  no arg ==> build CPU code only
-##  arg1 = { CPU | CUDA | HIP } ==> build code for the respective target
+##  arg1 = { CPU | CUDA | HIP | SYCL } ==> build code for the respective target
 
 ##  A user may have both python & python3 in their PATH; try to find a python version 3...
 
@@ -44,7 +44,7 @@ echo "Python executable is $pyexe (version $vpy)"
 if [ $# -eq 0 ]; then
     build_type="CPU"
 else
-    if [ $1 = "CPU" ] || [ $1 = "CUDA" ] || [ $1 = "HIP" ]; then
+    if [ $1 = "CPU" ] || [ $1 = "CUDA" ] || [ $1 = "HIP" ] || [ $1 = "SYCL" ]; then
 	build_type=$1
     else
 	echo "$1 -- build type parameter not recognized, terminating"
@@ -98,6 +98,9 @@ if [ $build_type = "CPU" ]; then
 	waitspiral=true
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
 	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
+    fi
+    if [ "$waitspiral" = true ]; then
+	wait		##  wait for the child processes to complete
     fi
     ##  Build the remaining libraries for the specified target
     if [ "$MDDFT_LIB" = true ]; then
@@ -158,4 +161,41 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     fi    
 fi
 
+if [[ $build_type = "SYCL" ]]; then
+    ##  Create empty libraries for SYCL
+    echo "Generating empty libraries for $build_type ..."
+    waitspiral=false
+
+    if [ "$DFTBAT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_dftbat.py fftx_dftbat empty-sizes.txt $build_type true &
+	$pyexe gen_dftbat.py fftx_dftbat empty-sizes.txt $build_type false &
+    fi
+    if [ "$PRDFTBAT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_dftbat.py fftx_prdftbat empty-sizes.txt $build_type true &
+	$pyexe gen_dftbat.py fftx_prdftbat empty-sizes.txt $build_type false &
+    fi
+    if [ "$MDDFT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_files.py fftx_mddft empty-sizes.txt $build_type true &
+	$pyexe gen_files.py fftx_mddft empty-sizes.txt $build_type false &
+    fi
+    if [ "$MDPRDFT_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_files.py fftx_mdprdft empty-sizes.txt $build_type true &
+	$pyexe gen_files.py fftx_mdprdft empty-sizes.txt $build_type false &
+    fi
+    if [ "$RCONV_LIB" = true ]; then
+	waitspiral=true
+	$pyexe gen_files.py fftx_rconv empty-sizes.txt $build_type true &
+    fi
+    # if [ "$PSATD_LIB" = true ]; then
+    # 	waitspiral=true
+    # 	$pyexe gen_files.py fftx_psatd $PSATD_SIZES_FILE $build_type true &
+    # fi
+    if [ "$waitspiral" = true ]; then
+	wait		##  wait for the child processes to complete
+    fi    
+fi
 exit 0

@@ -30,7 +30,27 @@ source code check the version of **python**, and if it is version 2.X it will
 try to run **python3** instead.  A user, therefore, should not have to worry
 whether **python** or **python3** comes first in the user's path.
 
-To build and use **FFTX**, follow these steps:
+### Summary
+
+A brief summary of the steps necessary to install FFTX follows; these steps outline the
+most straight forward case (building for CPU only), for more complex installs and to
+utilize GPUs please follow the more detailed instructions below. 
+
+```
+1.  Make a directory to hold the download code and cd to it (e.g., mkdir ~/work ; cd ~/work)
+2.  git clone https://github.com/spiral-software/fftx
+3.  cd fftx
+4.  export FFTX_HOME=`pwd`
+5.  unset SPIRAL_HOME
+6.  source ./get_spiral.sh
+7.  ./config-fftx-libs.sh 
+8.  mkdir build
+9.  cd build/
+10. cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CPU ..
+11. make install -j
+```
+
+To build and use **FFTX**, including how to utilize GPUs, please follow these steps:
 1. [Install **SPIRAL** and associated packages.](#1-install-spiral-and-associated-packages)
 2. [Clone the **FFTX** repository.](#2-clone-the-fftx-repository)
 3. [Generate library source code.](#3-generate-library-source-code)
@@ -39,10 +59,10 @@ To build and use **FFTX**, follow these steps:
 ### 1. Install SPIRAL and associated packages
 
 If you already have SPIRAL installed (and have the **SPIRAL_HOME** environment variable
-set) FFTX will use that installation and you can skip to step 2, "Clone the FFTX repository".
+set) FFTX will use that installation and you can skip to [step 2, "Clone the FFTX repository"](#2-clone-the-fftx-repository).
 
-If you want to manually install SPIRAL follow the steps below; alternatively, skip to step 2,
-"Clone the FFTX repository" and have FFTX pull down the necessary SPIRAL repositories and
+If you want to manually install SPIRAL follow the steps below; alternatively, skip to
+[step 2, "Clone the FFTX repository"](#2-clone-the-fftx-repository) and have FFTX pull down the necessary SPIRAL repositories and
 perform the build steps.
 
 Clone **spiral-software** (available [**here**](https://www.github.com/spiral-software/spiral-software))
@@ -92,14 +112,16 @@ you want to install **FFTX** (which is not necessarily the same directory
 where you have cloned **FFTX**; you may want to have separate installation
 directories for different backends).
 
-If you have not already installed SPIRAL you can have it downloaded and built from the
+If you have not already installed SPIRAL and the SPIRAL packages required for FFTX, you can have them downloaded and built from the
 repositories by sourcing the **get_spiral.sh** shell script now.  This script checks the
 definition of the **SPIRAL_HOME** environment variable, and if undefined it will get the
 SPIRAL code, build it and export a definition for **SPIRAL_HOME**.  Make sure you source
-(vs run) the script:
+(vs. run) the script:
 ```
-. get_spiral.sh
+. ./get_spiral.sh
+```
 or
+```
 source get_spiral.sh
 ```
 
@@ -118,7 +140,7 @@ errors or unexpected results.  It is recommended that you have separate installs
 and GPU.
 
 The shell script **config-fftx-libs.sh** is a utility script in the **FFTX** home
-directory that marshalls resources for building the libraries and examples.  There is a
+directory that marshals resources for building the libraries and examples.  There is a
 flag that enables or disables the building of examples (enabled by default).  NOTE: All
 libraries **should be created**; creating the library is a pre-requisite to creating its
 API files (files which are required later when building the RTC code).  Building the
@@ -139,7 +161,7 @@ Run the script as follows:
 ```
 If no argument is provided, then the platform defaults
 to CPU.  This script runs the **build-lib-code.sh** script in the **src/library**
-directory and will marshall the resources and options needed for the set of libraries.
+directory and will marshal the resources and options needed for the set of libraries.
 This step can take quite some time depending on the number of transforms and set of sizes
 to create.  The code is targeted to run on a CPU or a GPU (either CUDA or HIP) depending
 on the platform specified with the script.  By default, only a small number of fixed sizes
@@ -189,7 +211,7 @@ directories will be created/populated:
 |**./include**|Include files for using **FFTX** libraries|
 |**./cache_jit_files**|Folder containing the RTC code generated for any transform not <br>found in a fixed-size library|
 
-#### Building on Windows
+### Building on Windows
 
 **FFTX** can be built on Windows, however, you need to be able to run a [bash]
 shell script as mentioned above to build the library source code.  To build
@@ -308,6 +330,7 @@ include file paths, the linker library path, and the library names to the
 specified target.
 2.  **FFTX_find_libraries**() -- This function finds the **FFTX** libraries, linker
 library path, and include file paths and exposes the following variables:
+
 |CMake Variable Name|Description|
 |:-----|:-----|
 |**FFTX_LIB_INCLUDE_PATHS**|Include paths for **FFTX** include & library headers|
