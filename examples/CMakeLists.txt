@@ -19,13 +19,7 @@ project ( examples )
 
 manage_add_subdir ( batch1ddft    TRUE      TRUE )
 manage_add_subdir ( mddft         TRUE      TRUE )
-<<<<<<< Updated upstream
 manage_add_subdir ( mdprdft       TRUE      TRUE )
-=======
-manage_add_subdir (batch1ddft       TRUE    TRUE)
-manage_add_subdir ( mdprdft         TRUE      TRUE )
-manage_add_subdir ( hockney       TRUE      FALSE )
->>>>>>> Stashed changes
 
 manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
