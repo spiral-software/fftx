@@ -65,7 +65,11 @@
 #define DEBUGOUT 0
 #endif
 
+#if defined ( PRINTSCRIPT )
+#define PRINTSCRIPT 1
+#else
 #define PRINTSCRIPT 0
+#endif
 
 class Executor;
 class FFTXProblem;
