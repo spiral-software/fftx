@@ -327,8 +327,9 @@ inline std::string FFTXProblem::semantics2() {
     #endif
     if(PRINTSCRIPT) std::cout << script << std::endl;
     if(result.find("spiral> JIT BEGIN") == std::string::npos) {
-      if(DEBUGOUT) std::cout << script << std::endl;
-      std::cout << "\nSPIRAL Code Generation has encountered an error.\nPlease raise an issue with the developement team.\nProgram Terminating..." << std::endl;
+      //  if(DEBUGOUT) std::cout << script << std::endl;
+      std::cout << script << std::endl;
+      std::cout << "\nSPIRAL Code Generation has encountered an error.\nPlease raise an issue with the development team, enclosing a copy of the above script.\nProgram Terminating..." << std::endl;
       exit(-1);
     } 
     while(result.back() != '}') {
