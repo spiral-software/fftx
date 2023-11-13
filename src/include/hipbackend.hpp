@@ -368,8 +368,12 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
     DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
     DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
 
-    if ( DEBUGOUT ) std::cout << "configuring device execution environment " << std::endl; 
-    DEVICE_SAFE_CALL(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
+    if ( DEBUGOUT ) std::cout << "configuring device execution environment " << std::endl;
+    int version;
+    DEVICE_SAFE_CALL(hipRuntimeGetVersion(&version));
+    if ( DEBUGOUT )printf ( "ROCm version: %d\n", version );
+    if(version > 50700000) 
+      DEVICE_SAFE_CALL(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
     // // // Execute parent kernel.
     if ( DEBUGOUT ) std::cout << "launched kernel\n";
     if ( DEBUGOUT )
@@ -382,7 +386,6 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
                           kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
                           0, nullptr, nullptr, // shared mem and stream
                           (void**)&config));
-    hipDeviceSynchronize();
     }
     DEVICE_SAFE_CALL(hipEventRecord(stop,0));
     DEVICE_SAFE_CALL(hipEventSynchronize(stop));
