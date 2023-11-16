@@ -29,6 +29,22 @@
 
 using namespace std;
 
+BATCH1DDFTProblem bdstg1;
+BATCH1DDFTProblem bdstg2;
+BATCH1DDFTProblem bdstg3;
+IBATCH1DDFTProblem ibdstg1;
+IBATCH1DDFTProblem ibdstg2;
+
+BATCH2DDFTProblem b2dstg1;
+BATCH2DDFTProblem b2dstg2;
+BATCH2DDFTProblem b2dstg3;
+IBATCH2DDFTProblem ib2dstg1;
+IBATCH2DDFTProblem ib2dstg2;
+
+BATCH1DPRDFTProblem bprdstg1;
+IBATCH1DPRDFTProblem ibprdstg1;
+
+
 fftx_plan fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
@@ -77,21 +93,6 @@ void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer, i
 
   batch_sizeX *= (plan->is_embed ? 2 : 1);
   batch_sizeY *= (plan->is_embed ? 4 : 1);
-
-  BATCH1DDFTProblem bdstg1;
-  BATCH1DDFTProblem bdstg2;
-  BATCH1DDFTProblem bdstg3;
-  IBATCH1DDFTProblem ibdstg1;
-  IBATCH1DDFTProblem ibdstg2;
-
-  BATCH2DDFTProblem b2dstg1;
-  BATCH2DDFTProblem b2dstg2;
-  BATCH2DDFTProblem b2dstg3;
-  IBATCH2DDFTProblem ib2dstg1;
-  IBATCH2DDFTProblem ib2dstg2;
-
-  BATCH1DPRDFTProblem bprdstg1;
-  IBATCH1DPRDFTProblem ibprdstg1;
 
   // BATCH2DPRDFTProblem b2prdstg1;
   // IBATCH2DPRDFTProblem ib2prdstg1;
