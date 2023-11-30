@@ -37,10 +37,12 @@
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
 #include "hipbackend.hpp"
+#elif defined FFTX_SYCL
+#include "syclbackend.hpp"
 #else
 #include "cpubackend.hpp"
 #endif
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
 #include "fftx_mddft_gpu_public.h"
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"
@@ -143,7 +145,7 @@ inline std::string getFFTX() {
         std::cout << "[ERROR] No such variable found, please download and set FFTX_HOME env variable" << std::endl;
         exit(-1);
     }
-    tmp += "/cache_jit_files/"; 
+    tmp += "/cache_jit_files/";
     return tmp;
 }
 
@@ -169,6 +171,8 @@ inline std::string getFromCache(std::string name, std::vector<int> sizes) {
         oss << "_HIP" << ".txt";
     #elif defined FFTX_CUDA 
         oss << "_CUDA" << ".txt";
+    #elif defined FFTX_SYCL
+	oss << "_SYCL" << ".txt";
     #else
         oss << "_CPU" << ".txt";
     #endif
@@ -186,6 +190,8 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
         file_name.append("_HIP.txt");
     #elif defined FFTX_CUDA 
         file_name.append("_CUDA.txt");
+    #elif defined FFTX_SYCL
+	file_name.append("_SYCL.txt");
     #else
         file_name.append("_CPU.txt");
     #endif
@@ -193,7 +199,7 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
     while(spiral_out.back() != '}') {
         spiral_out.pop_back();
     }
-    #if (defined FFTX_CUDA || FFTX_HIP)
+    #if (defined FFTX_CUDA || FFTX_HIP || FFTX_SYCL)
     spiral_out = spiral_out.substr(spiral_out.find("spiral> JIT BEGIN"));
     #else
     spiral_out = spiral_out.substr(spiral_out.find("#include"));
@@ -205,13 +211,15 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
 
 inline void getImportAndConf() {
     std::cout << "Load(fftx);\nImportAll(fftx);\n";
-    #if (defined FFTX_HIP || FFTX_CUDA)
+    #if (defined FFTX_HIP || FFTX_CUDA || FFTX_SYCL)
     std::cout << "ImportAll(simt);\nLoad(jit);\nImport(jit);\n";
     #endif
     #if defined FFTX_HIP 
     std::cout << "conf := FFTXGlobals.defaultHIPConf();\n";
     #elif defined FFTX_CUDA 
     std::cout << "conf := LocalConfig.fftx.confGPU();\n";
+    #elif defined FFTX_SYCL
+    std::cout << "conf := FFTXGlobals.defaultOpenCLConf();\n";
     #else
     std::cout << "conf := LocalConfig.fftx.defaultConf();\n";
     #endif
@@ -225,6 +233,8 @@ inline void printJITBackend(std::string name, std::vector<int> sizes) {
         std::cout << "PrintHIPJIT(c,opts);" << std::endl;
     #elif defined FFTX_CUDA 
         std::cout << "PrintJIT2(c,opts);" << std::endl;
+    #elif defined FFTX_SYCL
+	std::cout << "PrintOpenCLJIT(c,opts);" << std::endl;
     #else
         std::cout << "opts.prettyPrint(c);" << std::endl;
     #endif
@@ -402,7 +412,7 @@ inline void FFTXProblem::transform(){
 
 
 inline void FFTXProblem::run(Executor e) {
-    #if (defined FFTX_HIP || FFTX_CUDA)
+    #if (defined FFTX_HIP || FFTX_CUDA || FFTX_SYCL)
     gpuTime = e.initAndLaunch(args);
     #else
     gpuTime = e.initAndLaunch(args, name);
