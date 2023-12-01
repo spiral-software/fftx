@@ -219,6 +219,13 @@ int main(int argc, char* argv[])
     #endif
         mddft_gpu[itn] = mdp.getTime();
 
+	#if defined (FFTX_SYCL)
+	{
+		sycl::host_accessor h_acc(buf_Y);
+		std::cout << h_acc[0] << std::endl;
+	}
+    #endif
+
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
@@ -266,6 +273,13 @@ int main(int argc, char* argv[])
                           outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
     #endif
         imddft_gpu[itn] = imdp.getTime();
+	
+	#if defined (FFTX_SYCL)
+	{
+		sycl::host_accessor h_acc(buf_Y);
+		std::cout << h_acc[0] << std::endl;
+	}
+    #endif
 
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         //  Run the device fft plan on the same input data

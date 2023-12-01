@@ -28,7 +28,7 @@ manage_add_subdir ( verify        TRUE      TRUE )
 ##  Looked for MPI at top level CMake
 if ( ${MPI_FOUND} )
     ##  MPI installation found
-    manage_add_subdir ( 3DDFT_mpi     FALSE     TRUE )
+    manage_add_subdir ( 3DDFT_mpi     FALSE     FALSE )
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()
