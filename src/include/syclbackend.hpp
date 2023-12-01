@@ -68,7 +68,7 @@ class Executor {
         cl_program ocl_program;
         
     
-        float GPUtime;
+        float GPUtime = 0;
     public:
         string_code hashit(std::string const& inString);
         void parseDataStructure(std::string input);
@@ -406,10 +406,10 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
                 sycl::nd_range<3>(grid*block, block),
                 sycl_kernel);
                 }).wait();
-    }
+	}
     auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    GPUtime = duration.count();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+	GPUtime = duration.count();
     return getKernelTime();
 }
 
