@@ -614,7 +614,7 @@ def build_code_files ( script ):
             ##  Assumption: gap file is named {script.orig_file_stem}-frame.g
             ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
             script.frame_file = re.sub ( '_$', '', script.orig_file_stem ) + '-frame.g'
-            
+
             _spiralhome = os.environ.get('SPIRAL_HOME')
             _catfils = os.path.join ( _spiralhome, 'gap', 'bin', 'catfiles.py' )
             cmdstr = f'"{sys.executable}" "{_catfils}" "{myscrf}" "{testsf}" "{script.frame_file}"'
@@ -627,7 +627,7 @@ def build_code_files ( script ):
             else:
                 cmdstr = os.path.join ( _spiralhome, 'bin', 'spiral' ) + ' < ' + myscrf
 
-            script.func_stem = f'{script.file_stem}{dims[0]}_bat_{dims[1]}_{m.group(3)}_{m.group(4)}_{script.args.platform}'
+            script.func_stem = f'{script.file_stem}{dims[0]}_bat_{dims[1]}_{m.group(4)}_{m.group(3)}_{script.args.platform}'
             script.file_name = script.func_stem + script.file_suffix
             script.src_file_path = script.srcs_dir + '/' + script.file_name
             failure_written = False
