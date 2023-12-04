@@ -94,6 +94,7 @@ jobs:
       run: |
         set -x
         cd $SPIRAL_HOME/../fftx
+        ls -l
         echo "Convert FFTX README.md to RST file in docs folder"
         docker run --rm -v $SPIRAL_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst README.md
 
