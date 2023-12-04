@@ -99,9 +99,6 @@ jobs:
         ##  docker run --rm -v $SPIRAL_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst /github/workspace/README.md
         docker run --rm -v $SPIRAL_HOME:/github/workspace -w /github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst README.md
 
-    - name: Move README.rst to docs folder
-      run: mv /github/workspace/docs/README.rst /github/workspace/docs/
-
     - name: build the docs
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
