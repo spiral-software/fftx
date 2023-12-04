@@ -108,6 +108,7 @@ jobs:
         PATH=$PATH:/home/runner/.local/bin
         echo $PATH
         cd $SPIRAL_HOME/../fftx
+        ls -l docs
         mkdir build && cd build
         cmake -DFFTX_MAKE_DOCS=True ..
         make Sphinx
