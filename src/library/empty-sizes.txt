@@ -1,0 +1,6 @@
+##
+##  This file, empty-sizes.txt, is a placeholder for SYCL
+##  No sizes are defined here as only RTC is supported for SYCL
+##  This file is used as the sizes file for all SYCL libraries, so each library will
+##  have just the skeletal header and declarations files built.
+##

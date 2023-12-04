@@ -15,7 +15,6 @@
 
 Load(fftx);
 ImportAll(fftx);
-##  ImportAll(simt);
 
 ##  If the variable createJIT is defined and set true then load the jit module
 if ( IsBound(createJIT) and createJIT ) then
@@ -25,10 +24,12 @@ fi;
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
+elif codefor = "HIP" then
+    conf := FFTXGlobals.defaultHIPConf();
+elif codefor = "SYCL" then
+    conf := FFTXGlobals.defaultOpenCLConf();
 elif codefor = "CPU" then
     conf := LocalConfig.fftx.defaultConf();
-else    
-    conf := FFTXGlobals.defaultHIPConf();
 fi;
 
 if fwd then
@@ -55,17 +56,6 @@ if 1 = 1 then
                TFCall ( TRC ( TTensorI ( DFT ( fftlen, sign ), nbatch, _wr, _rd ) ),
                         rec(fname := name, params := [] ) )
               );
-    # if fwd then
-    #     t := let ( name := name,
-    #                TFCall ( TRC ( TTensorI ( DFT ( fftlen, sign ), nbatch, _wr, _rd ) ),
-    #                         rec(fname := name, params := [] ) )
-    #              );
-    # else
-    #     t := let ( name := name,
-    #                TFCall ( TRC ( TTensorI ( Scale (1/fftlen, DFT ( fftlen, sign )), nbatch, _wr, _rd ) ),
-    #                         rec(fname := name, params := [] ) )
-    #              );
-    # fi;
 
     opts := conf.getOpts(t);
     if not IsBound ( libdir ) then
@@ -74,11 +64,7 @@ if 1 = 1 then
 
     ##  We need the Spiral functions wrapped in 'extern C' for adding to a library
     opts.wrapCFuncs := true;
-    Add ( opts.includes, "<float.h>" );
     tt := opts.tagIt(t);
-
-    _tt := opts.preProcess(tt);
-    rt := opts.search(_tt);
 
     c := opts.fftxGen(tt);
     ##  opts.prettyPrint(c);
@@ -92,6 +78,7 @@ if ( IsBound(createJIT) and createJIT ) then
     cachedir := cachedir::"/cache_jit_files/";
     if ( codefor = "HIP" ) then PrintTo ( cachedir::jitname, PrintHIPJIT ( c, opts ) ); fi;
     if ( codefor = "CUDA" ) then PrintTo ( cachedir::jitname, PrintJIT2 ( c, opts ) ); fi;
+    if ( codefor = "SYCL" ) then PrintTo ( cachedir::jitname, PrintOpenCLJIT ( c, opts ) ); fi;
     if ( codefor = "CPU" ) then PrintTo ( cachedir::jitname, opts.prettyPrint ( c ) ); fi;
 fi;
 

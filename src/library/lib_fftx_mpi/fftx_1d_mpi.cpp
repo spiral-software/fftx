@@ -13,8 +13,6 @@
 #include "fftx_mpi_default.hpp"
 #include "fftx_1d_mpi_default.hpp"
 
-#define FORCE_VENDOR_LIB 0
-
 using namespace std;
 
 inline size_t ceil_div(size_t a, size_t b) {

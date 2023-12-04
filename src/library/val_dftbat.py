@@ -23,14 +23,14 @@ def setup_input_array ( array_shape ):
 
 
 def run_python_version ( src, fftlen, rdstr, wrstr, fwd ):
-    "Create the output array by calling python"
+    "Create the output array by calling NumPy"
 
     ##  adjust axis based on read stride type
     ax = -1 if rdstr == 0 else 0
 
     if fwd:
         dst = np.fft.fft ( src, axis=ax )
-        dst = dst / fftlen                      ## Normal NumPy result
+        dst = dst / fftlen                      ## Normalize NumPy result
     else:
         dst = np.fft.ifft ( src, axis=ax )      ## NumPy inverse is already normalized
  
@@ -51,14 +51,15 @@ def run_python_version ( src, fftlen, rdstr, wrstr, fwd ):
     return dst;
 
 
-def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode ):
-    "Run a transform specified by segment names and fwd flag of size dims"
+def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, warn ):
+    "Run a transform from the requested library as specified in the dims array"
 
     ##  First, ensure the library we need exists...
     uselib = libfwd + platform + libext if fwd else libinv + platform + libext
     _sharedLibPath = os.path.join ( os.path.realpath ( libdir ), uselib )
     if not os.path.exists ( _sharedLibPath ):
-        print ( f'library file: {uselib} does not exist - continue', flush = True )
+        if warn:
+            print ( f'library file: {uselib} does not exist - continue', flush = True )
         return
 
     fftlen = dims[0]
@@ -141,10 +142,12 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
 def main():
     parser = argparse.ArgumentParser ( description = 'Validate FFTX built libraries against NumPy computed versions of the transforms' )
     ##  Positional argument: libdir
-    parser.add_argument ( 'libdir', type=str, help='directory of the library' )
-    ##  Optional arguments
+    parser.add_argument ( 'libdir', type=str, help='directory containing the library' )
+    ##  Optional argument: -e or --emit
+    parser.add_argument ( '-e', '--emit', action='store_true', help='emit warnings when True, default is False' )
+    ##  mutually exclusive optional arguments
     group = parser.add_mutually_exclusive_group()
-    group.add_argument ( '-s', '--size', type=str, help='size of the transform (e.g., 16x80x1x0)' )
+    group.add_argument ( '-s', '--size', type=str, help='size specification of the transform (e.g., 1024x32x1x0)' )
     group.add_argument ( '-f', '--file', type=str, help='file containing sizes to loop over' )
     args = parser.parse_args()
 
@@ -163,11 +166,11 @@ def main():
     if args.size:
         dims = [int(d) for d in args.size.split('x')]
         print ( f'Size = {dims[0]} (length) x {dims[1]} (batches) x {dims[2]} (read stride type) x {dims[3]} (write stride type)', flush = True )
-        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU' )
-        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU' )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU', args.emit )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU', args.emit )
 
-        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU' )
-        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU' )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU', args.emit )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU', args.emit )
 
         sys.exit ()
 
@@ -203,11 +206,11 @@ def main():
             dims.append ( 0 if m.group(3) == 'APar' else 1 )
             dims.append ( 0 if m.group(4) == 'APar' else 1 )
             print ( f'Size = {dims[0]} (length) x {dims[1]} (batches) x {dims[2]} (read stride type) x {dims[3]} (write stride type)', flush = True )
-            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU' )
-            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU' )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU', args.emit )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU', args.emit )
 
-            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU' )
-            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU' )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU', args.emit )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU', args.emit )
 
 if __name__ == '__main__':
     main()
