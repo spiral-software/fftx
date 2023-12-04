@@ -145,6 +145,8 @@ namespace fftx
     box_t() = default;
     box_t(const point_t<DIM>&& a, const point_t<DIM>&& b)
       : lo(a), hi(b) { ; }
+    box_t(const point_t<DIM>& a, const point_t<DIM>& b)
+      : lo(a), hi(b) { ; }
     point_t<DIM> lo, hi;
     std::size_t size() const;
     bool operator==(const box_t<DIM>& rhs) const {return lo==rhs.lo && hi == rhs.hi;}
