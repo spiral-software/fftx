@@ -18,38 +18,38 @@ jobs:
 
     steps:
     - name: Checkout spiral-software
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-software
         ref: develop
         path: spiral
         
     - name: Checkout repo spiral-package-fftx
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-fftx
         path: spiral/namespaces/packages/fftx
         
     - name: Checkout repo spiral-package-simt
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-simt
         path: spiral/namespaces/packages/simt
         
     - name: Checkout repo spiral-package-jit
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-jit
         path: spiral/namespaces/packages/jit
         
     - name: Checkout repo spiral-package-mpi
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-mpi
         path: spiral/namespaces/packages/mpi
 
     - name: install dependencies
-      ##  uses: actions/checkout@v2
+      ##  uses: actions/checkout@v4
       run: |
         set -x
         echo "working dir = ${{ github.workspace }}"
@@ -83,7 +83,7 @@ jobs:
     - name: Clone repository
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: fftx
 
@@ -92,6 +92,8 @@ jobs:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        set -x
+        cd $SPIRAL_HOME/../fftx
         echo "Convert FFTX README.md to RST file in docs folder"
         docker run --rm -v $SPIRAL_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst README.md
 

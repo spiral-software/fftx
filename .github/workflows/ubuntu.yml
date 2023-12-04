@@ -8,24 +8,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout spiral-software
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-software
         ref: develop
         path: spiral
     - name: Checkout repo spiral-package-fftx
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         ref: develop
         path: spiral/namespaces/packages/fftx
     - name: Checkout repo spiral-package-simt
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-simt
         ref: develop
         path: spiral/namespaces/packages/simt
     - name: Checkout repo spiral-package-mpi
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-mpi
         ref: develop
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout FFTX
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/fftx
         ref: develop
