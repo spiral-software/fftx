@@ -14,6 +14,8 @@ Welcome to FFTX Project's documentation!
 
    introduction.rst
    install.rst
+   README.rst
+   distributed.rst
    apis.rst
    extending.rst
    faq.rst
