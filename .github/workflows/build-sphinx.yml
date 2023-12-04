@@ -1,14 +1,16 @@
 name: build-sphinx-to-gh-pages
 
 env:
-  GITHUB_ACTOR: spiral-software
-  GITHUB_REPOSITORY: spiral-software/fftx
+  GITHUB_ACTOR: broderickpt
+  GITHUB_REPOSITORY: broderickpt/fftx
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 ##  For now only re-gen docs when push to "main" branch
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
 
 jobs:
   build_sphinx_job:
@@ -84,6 +86,15 @@ jobs:
       uses: actions/checkout@v2
       with:
         path: fftx
+
+    - name: Generate RST from markdown
+      env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: echo "Convert FFTX README.md to RST file in docs folder"
+      - uses: docker://pandoc/core:2.9
+        with:
+          args: "-f gfm -t rst -o docs/README.rst README.md"
 
     - name: build the docs
       env:
