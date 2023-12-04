@@ -88,7 +88,10 @@ jobs:
         make -j 2 install
 
     - name: Set up Docker
-      uses: docker/setup-docker@v2
+      run: |
+        sudo apt-get update
+        sudo apt-get install docker.io
+        sudo service docker start
 
     - name: Create Docker container
       id: create_container
