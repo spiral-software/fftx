@@ -91,13 +91,14 @@ jobs:
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        set -x
-        cd $SPIRAL_HOME/../fftx
-        ls -l README.md
-        echo "Convert FFTX README.md to RST file in docs folder"
-        ##  docker run --rm -v $SPIRAL_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst /github/workspace/README.md
-        docker run --rm -v $SPIRAL_HOME:/github/workspace -w /github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst README.md
+      ##  run: |
+      ##    set -x
+      ##    cd $SPIRAL_HOME/../fftx
+      ##    echo "Convert FFTX README.md to RST file in docs folder"
+      uses: docker://pandoc/core:2.9
+      with:
+        args: "-f gfm -t rst -o docs/README.rst README.md"
+      ##  docker run --rm -v $SPIRAL_HOME:/github/workspace -w /github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst README.md
 
     - name: build the docs
       env:
