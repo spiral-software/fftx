@@ -90,14 +90,14 @@ if [ $build_type = "CPU" ]; then
     if [ "$DFTBAT_LIB" = true ]; then
 	##  Build DFT batch for CPU
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true &
-	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false &
+	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
     fi
     if [ "$PRDFTBAT_LIB" = true ]; then
 	##  Build PRDFT batch for CPU
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
-	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
+	$pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+	$pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
@@ -105,17 +105,17 @@ if [ $build_type = "CPU" ]; then
     ##  Build the remaining libraries for the specified target
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type true &
-	$pyexe gen_files.py fftx_mddft $CPU_SIZES_FILE $build_type false &
+	$pyexe gen_files.py -t fftx_mddft -s $CPU_SIZES_FILE -p $build_type &
+	$pyexe gen_files.py -t fftx_mddft -s $CPU_SIZES_FILE -p $build_type -i &
     fi
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type true &
-	$pyexe gen_files.py fftx_mdprdft $CPU_SIZES_FILE $build_type false &
+	$pyexe gen_files.py -t fftx_mdprdft -s $CPU_SIZES_FILE -p $build_type &
+	$pyexe gen_files.py -t fftx_mdprdft -s $CPU_SIZES_FILE -p $build_type -i &
     fi
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_rconv $CPU_SIZES_FILE $build_type true &
+	$pyexe gen_files.py -t fftx_rconv -s $CPU_SIZES_FILE -p $build_type &
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
@@ -130,31 +130,31 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
 
     if [ "$DFTBAT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type true &
-	$pyexe gen_dftbat.py fftx_dftbat $DFTBAT_SIZES_FILE $build_type false &
+	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
     fi
-    if [ "$PRDFTBAT_LIB" = true ]; then
-	waitspiral=true
-	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type true &
-	$pyexe gen_dftbat.py fftx_prdftbat $DFTBAT_SIZES_FILE $build_type false &
-    fi
+    # if [ "$PRDFTBAT_LIB" = true ]; then
+    #     waitspiral=true
+    #     $pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+    #     $pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
+    # fi
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mddft $GPU_SIZES_FILE $build_type true &
-	$pyexe gen_files.py fftx_mddft $GPU_SIZES_FILE $build_type false &
+	$pyexe gen_files.py -t fftx_mddft -s $GPU_SIZES_FILE -p $build_type &
+	$pyexe gen_files.py -t fftx_mddft -s $GPU_SIZES_FILE -p $build_type -i &
     fi
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mdprdft $GPU_SIZES_FILE $build_type true &
-	$pyexe gen_files.py fftx_mdprdft $GPU_SIZES_FILE $build_type false &
+	$pyexe gen_files.py -t fftx_mdprdft -s $GPU_SIZES_FILE -p $build_type &
+	$pyexe gen_files.py -t fftx_mdprdft -s $GPU_SIZES_FILE -p $build_type -i &
     fi
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_rconv $GPU_SIZES_FILE $build_type true &
+	$pyexe gen_files.py -t fftx_rconv -s $GPU_SIZES_FILE -p $build_type &
     fi
     if [ "$PSATD_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_psatd $PSATD_SIZES_FILE $build_type true &
+	$pyexe gen_files.py -t fftx_psatd -s $PSATD_SIZES_FILE -p $build_type &
     fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
@@ -168,31 +168,31 @@ if [[ $build_type = "SYCL" ]]; then
 
     if [ "$DFTBAT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_dftbat empty-sizes.txt $build_type true &
-	$pyexe gen_dftbat.py fftx_dftbat empty-sizes.txt $build_type false &
+	$pyexe gen_dftbat.py -t fftx_dftbat -s empty-sizes.txt -p $build_type &
+	$pyexe gen_dftbat.py -t fftx_dftbat -s empty-sizes.txt -p $build_type -i &
     fi
     if [ "$PRDFTBAT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_dftbat.py fftx_prdftbat empty-sizes.txt $build_type true &
-	$pyexe gen_dftbat.py fftx_prdftbat empty-sizes.txt $build_type false &
+	$pyexe gen_dftbat.py -t fftx_prdftbat -s empty-sizes.txt -p $build_type &
+	$pyexe gen_dftbat.py -t fftx_prdftbat -s empty-sizes.txt -p $build_type -i &
     fi
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mddft empty-sizes.txt $build_type true &
-	$pyexe gen_files.py fftx_mddft empty-sizes.txt $build_type false &
+	$pyexe gen_files.py -t fftx_mddft -s empty-sizes.txt -p $build_type &
+	$pyexe gen_files.py -t fftx_mddft -s empty-sizes.txt -p $build_type -i &
     fi
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_mdprdft empty-sizes.txt $build_type true &
-	$pyexe gen_files.py fftx_mdprdft empty-sizes.txt $build_type false &
+	$pyexe gen_files.py -t fftx_mdprdft -s empty-sizes.txt -p $build_type &
+	$pyexe gen_files.py -t fftx_mdprdft -s empty-sizes.txt -p $build_type -i &
     fi
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
-	$pyexe gen_files.py fftx_rconv empty-sizes.txt $build_type true &
+	$pyexe gen_files.py -t fftx_rconv -s empty-sizes.txt -p $build_type &
     fi
     # if [ "$PSATD_LIB" = true ]; then
     # 	waitspiral=true
-    # 	$pyexe gen_files.py fftx_psatd $PSATD_SIZES_FILE $build_type true &
+    # 	$pyexe gen_files.py -t fftx_psatd -s $PSATD_SIZES_FILE -p $build_type &
     # fi
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete

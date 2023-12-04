@@ -67,6 +67,12 @@
 #define DEBUGOUT 0
 #endif
 
+#if defined ( PRINTSCRIPT )
+#define PRINTSCRIPT 1
+#else
+#define PRINTSCRIPT 0
+#endif
+
 class Executor;
 class FFTXProblem;
 
@@ -78,9 +84,9 @@ inline std::string exec(const char* cmd) {
         throw std::runtime_error("popen() failed!");
     }
     while (fgets(buffer.data(), (int) buffer.size(), pipe.get()) != nullptr) {
-        // std::cout << buffer.data() << std::endl;
         result += buffer.data();
     }
+
     return result;
 }
 
@@ -315,7 +321,7 @@ inline std::string FFTXProblem::semantics2() {
     if(pipe(p) < 0)
 #define WRSIZECAST
 #endif
-        std::cout << "pipe failed\n";
+    std::cout << "pipe failed\n";
     std::stringstream out; 
     std::streambuf *coutbuf = std::cout.rdbuf(out.rdbuf()); //save old buf
     getImportAndConf();
@@ -328,12 +334,18 @@ inline std::string FFTXProblem::semantics2() {
     int save_stdin = redirect_input(p[0]);
     std::string result = exec(tmp.c_str());
     restore_input(save_stdin);
-
     #if defined(_WIN32) || defined (_WIN64)
         // Crashes on windows if close p[0], so no-op
     #else
         close(p[0]);
     #endif
+    if(PRINTSCRIPT) std::cout << script << std::endl;
+    if(result.find("spiral> JIT BEGIN") == std::string::npos) {
+      //  if(DEBUGOUT) std::cout << script << std::endl;
+      std::cout << script << std::endl;
+      std::cout << "\nSPIRAL Code Generation has encountered an error.\nPlease raise an issue with the development team, enclosing a copy of the above script.\nProgram Terminating..." << std::endl;
+      exit(-1);
+    } 
     while(result.back() != '}') {
         result.pop_back();
     }
