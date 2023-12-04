@@ -48,6 +48,13 @@ jobs:
         repository: spiral-software/spiral-package-mpi
         path: spiral/namespaces/packages/mpi
 
+    - name: Checkout FFTX repository
+      ##  env:
+      ##    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/checkout@v4
+      with:
+        path: fftx
+
     - name: install dependencies
       ##  uses: actions/checkout@v4
       run: |
@@ -80,16 +87,9 @@ jobs:
         cmake .. 
         make -j 2 install
 
-    - name: Clone repository
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      uses: actions/checkout@v4
-      with:
-        path: fftx
-
     - name: Generate RST from markdown
       env:
-        SPIRAL_HOME: ${{ github.workspace }}/spiral
+        FFTX_HOME: ${{ github.workspace }}/fftx
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       ##  run: |
       ##    set -x
@@ -97,7 +97,7 @@ jobs:
       ##    echo "Convert FFTX README.md to RST file in docs folder"
       uses: docker://pandoc/core:2.9
       with:
-        args: "-f gfm -t rst -o docs/README.rst README.md"
+        args: "-f gfm -t rst -o $FFTX_HOME/docs/README.rst $FFTX_HOME/README.md"
       ##  docker run --rm -v $SPIRAL_HOME:/github/workspace -w /github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst README.md
 
     - name: build the docs
