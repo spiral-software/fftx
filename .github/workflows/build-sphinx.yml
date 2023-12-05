@@ -85,15 +85,22 @@ jobs:
         cmake .. 
         make -j 2 install
 
+    ##  - name: Generate RST from markdown
+    ##    env:
+    ##      FFTX_HOME: ${{ github.workspace }}/fftx
+    ##    run: |
+    ##      echo $FFTX_HOME
+    ##      cd $FFTX_HOME
+    ##      ls -l README.md docs
+    ##      docker run pandoc/core:2.9 -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/README.md
+    ##      ls -l docs/README.rst
+    ##    shell: bash
     - name: Generate RST from markdown
       env:
         FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
         echo $FFTX_HOME
-        cd $FFTX_HOME
-        ls -l README.md docs
-        docker run pandoc/core:2.9 -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/README.md
-        ls -l docs/README.rst
+        docker run --rm -v $FFTX_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst /github/workspace/README.md
       shell: bash
 
     ##  - name: Create Docker container
