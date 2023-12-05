@@ -89,7 +89,7 @@ jobs:
 
     - name: Set up Docker
       run: |
-        sudo apt-get update
+        ##  sudo apt-get update
         sudo apt-get install docker.io
         sudo service docker start
 
