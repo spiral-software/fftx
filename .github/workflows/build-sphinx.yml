@@ -49,8 +49,6 @@ jobs:
         path: spiral/namespaces/packages/mpi
 
     - name: Checkout FFTX repository
-      ##  env:
-      ##    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       uses: actions/checkout@v4
       with:
         path: fftx
@@ -87,30 +85,35 @@ jobs:
         cmake .. 
         make -j 2 install
 
-    ##  - name: Set up Docker
-    ##    run: |
-    ##      sudo apt-get update
-    ##      sudo apt-get install docker.io
-    ##      sudo service docker start
-
-    - name: Create Docker container
-      id: create_container
-      run: |
-        CONTAINER_ID=$(docker run -d -v /github/workspace:/github/workspace ubuntu:latest tail -f /dev/null)
-        echo "CONTAINER_ID=$CONTAINER_ID" >> $GITHUB_ENV
-      shell: bash
-
     - name: Generate RST from markdown
-      run: docker exec ${{ env.CONTAINER_ID }} pandoc -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/fftx/README.md
+      env:
+        FFTX_HOME: ${{ github.workspace }}/fftx
+      run: |
+        echo $FFTX_HOME
+        cd $FFTX_HOME
+      uses: docker://pandoc/core:2.9
+      with:
+        args: "-f gfm -t rst -o $FFTX_HOME/docs/README.rst $FFTX_HOME/README.md"
       shell: bash
 
-    - name: Show directory contents
-      run: ls -la /github/workspace/fftx/docs
-      shell: bash
+    ##  - name: Create Docker container
+    ##    id: create_container
+    ##    run: |
+    ##      CONTAINER_ID=$(docker run -d -v /github/workspace:/github/workspace ubuntu:latest tail -f /dev/null)
+    ##      echo "CONTAINER_ID=$CONTAINER_ID" >> $GITHUB_ENV
+    ##    shell: bash
 
-    - name: Cleanup
-      run: docker stop ${{ env.CONTAINER_ID }} && docker rm ${{ env.CONTAINER_ID }}
-      shell: bash
+    ##  - name: Generate RST from markdown
+    ##    run: docker exec ${{ env.CONTAINER_ID }} pandoc -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/fftx/README.md
+    ##    shell: bash
+
+    ##  - name: Show directory contents
+    ##    run: ls -la /github/workspace/fftx/docs
+    ##    shell: bash
+
+    ##  - name: Cleanup
+    ##    run: docker stop ${{ env.CONTAINER_ID }} && docker rm ${{ env.CONTAINER_ID }}
+    ##    shell: bash
 
     - name: build the docs
       env:
