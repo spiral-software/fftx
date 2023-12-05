@@ -91,9 +91,9 @@ jobs:
       run: |
         echo $FFTX_HOME
         cd $FFTX_HOME
-      uses: docker://pandoc/core:2.9
-      with:
-        args: "-f gfm -t rst -o $FFTX_HOME/docs/README.rst $FFTX_HOME/README.md"
+        ls -l README.md docs
+        docker run pandoc/core:2.9 -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/README.md
+        ls -l docs/README.rst
       shell: bash
 
     ##  - name: Create Docker container
