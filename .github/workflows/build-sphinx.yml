@@ -87,11 +87,11 @@ jobs:
         cmake .. 
         make -j 2 install
 
-    - name: Set up Docker
-      run: |
-        ##  sudo apt-get update
-        sudo apt-get install docker.io
-        sudo service docker start
+    ##  - name: Set up Docker
+    ##    run: |
+    ##      sudo apt-get update
+    ##      sudo apt-get install docker.io
+    ##      sudo service docker start
 
     - name: Create Docker container
       id: create_container
