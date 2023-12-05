@@ -85,16 +85,6 @@ jobs:
         cmake .. 
         make -j 2 install
 
-    ##  - name: Generate RST from markdown
-    ##    env:
-    ##      FFTX_HOME: ${{ github.workspace }}/fftx
-    ##    run: |
-    ##      echo $FFTX_HOME
-    ##      cd $FFTX_HOME
-    ##      ls -l README.md docs
-    ##      docker run pandoc/core:2.9 -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/README.md
-    ##      ls -l docs/README.rst
-    ##    shell: bash
     - name: Generate RST from markdown
       env:
         FFTX_HOME: ${{ github.workspace }}/fftx
@@ -102,25 +92,6 @@ jobs:
         echo $FFTX_HOME
         docker run --rm -v $FFTX_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst /github/workspace/README.md
       shell: bash
-
-    ##  - name: Create Docker container
-    ##    id: create_container
-    ##    run: |
-    ##      CONTAINER_ID=$(docker run -d -v /github/workspace:/github/workspace ubuntu:latest tail -f /dev/null)
-    ##      echo "CONTAINER_ID=$CONTAINER_ID" >> $GITHUB_ENV
-    ##    shell: bash
-
-    ##  - name: Generate RST from markdown
-    ##    run: docker exec ${{ env.CONTAINER_ID }} pandoc -f gfm -t rst -o /github/workspace/fftx/docs/README.rst /github/workspace/fftx/README.md
-    ##    shell: bash
-
-    ##  - name: Show directory contents
-    ##    run: ls -la /github/workspace/fftx/docs
-    ##    shell: bash
-
-    ##  - name: Cleanup
-    ##    run: docker stop ${{ env.CONTAINER_ID }} && docker rm ${{ env.CONTAINER_ID }}
-    ##    shell: bash
 
     - name: build the docs
       env:
