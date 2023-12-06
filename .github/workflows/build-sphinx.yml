@@ -24,42 +24,12 @@ jobs:
         ref: develop
         path: spiral
         
-    - name: Checkout repo spiral-package-fftx
-      uses: actions/checkout@v4
-      with:
-        repository: spiral-software/spiral-package-fftx
-        path: spiral/namespaces/packages/fftx
-        
-    - name: Checkout repo spiral-package-simt
-      uses: actions/checkout@v4
-      with:
-        repository: spiral-software/spiral-package-simt
-        path: spiral/namespaces/packages/simt
-        
-    - name: Checkout repo spiral-package-jit
-      uses: actions/checkout@v4
-      with:
-        repository: spiral-software/spiral-package-jit
-        path: spiral/namespaces/packages/jit
-        
-    - name: Checkout repo spiral-package-mpi
-      uses: actions/checkout@v4
-      with:
-        repository: spiral-software/spiral-package-mpi
-        path: spiral/namespaces/packages/mpi
-
-    - name: Checkout FFTX repository
-      uses: actions/checkout@v4
-      with:
-        path: fftx
-
     - name: install dependencies
       ##  uses: actions/checkout@v4
       run: |
         set -x
         echo "working dir = ${{ github.workspace }}"
         ls -l spiral
-        ls -l spiral/namespaces/packages
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get -qqq update
         sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
@@ -71,6 +41,8 @@ jobs:
         pip install sphinx_rtd_theme 
         pip install breathe
         sudo apt-get install -y doxygen
+        sudo apt-get install -y graphviz
+        sudo apt-get install -y pandoc
         sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
         sudo chmod a+x /usr/local/bin/cmake-easyinstall
         export CEI_SUDO="sudo"
@@ -85,27 +57,37 @@ jobs:
         cmake .. 
         make -j 2 install
 
-    - name: Generate RST from markdown
+    - name: Clone repository
       env:
-        FFTX_HOME: ${{ github.workspace }}/fftx
-      run: |
-        echo $FFTX_HOME
-        docker run --rm -v $FFTX_HOME:/github/workspace pandoc/core:2.9 -f gfm -t rst -o /github/workspace/docs/README.rst /github/workspace/README.md
-      shell: bash
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/checkout@v2
+      with:
+        path: fftx
 
     - name: build the docs
       env:
-        SPIRAL_HOME: ${{ github.workspace }}/spiral
+        FFTX_HOME: ${{ github.workspace }}/fftx
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -x
+        which dot
+        which pandoc
+        which doxygen
         PATH=$PATH:/home/runner/.local/bin
         echo $PATH
-        cd $SPIRAL_HOME/../fftx
-        ls -l docs
+        cd $FFTX_HOME
+        pandoc --from=markdown --to=rst --output=docs/README.rst README.md
         mkdir build && cd build
         cmake -DFFTX_MAKE_DOCS=True ..
         make Sphinx
+        find . -iname namespacefftx.xml
+        ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
+        ls docs
+        ls docs/doxygen/xml
+        cat docs/doxygen/xml/index.xml
+        mv docs/doxygen/html docs/sphinx/html
+        # mv /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/html/ /home/runner/work/fftx/fftx/fftx/build/docs/sphinx/html
+        ls docs/sphinx
         "../docs/buildsite.sh"
       shell: bash
 
