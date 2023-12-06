@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
+## Copyright (c) 2018-2023, Carnegie Mellon University
 ## All rights reserved.
 ##
 ## See LICENSE file for full information
@@ -11,8 +11,10 @@ set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, Min
 
 ##  Find all the public headers
 ##  get_target_property ( FFTX_PROJECT_PUBLIC_HEADER_DIR FFTX_PROJECT INTERFACE_INCLUDE_DIRECTORIES )
-set ( FFTX_PROJECT_PUBLIC_HEADER_DIR ${FFTX_INCLUDE} )
-    
+##  set ( FFTX_PROJECT_PUBLIC_HEADER_DIR ${FFTX_INCLUDE} )
+##  Use the <proj>/src/include directory (instead of <proj>/include) in case files not installed
+set ( FFTX_PROJECT_PUBLIC_HEADER_DIR ${FFTX_PROJECT_SOURCE_DIR}/src/include )
+
 file ( GLOB_RECURSE FFTX_PROJECT_PUBLIC_HEADERS 
        ${FFTX_PROJECT_PUBLIC_HEADER_DIR}/*.hpp
        ${FFTX_PROJECT_PUBLIC_HEADER_DIR}/*.H
@@ -21,9 +23,8 @@ file ( GLOB_RECURSE FFTX_PROJECT_PUBLIC_HEADERS
 message ( STATUS "Found public header files: ${FFTX_PROJECT_PUBLIC_HEADERS}" )
 
 ##  Setup locations for Doxygen
-set ( DOXYGEN_INPUT_DIR ${FFTX_PROJECT_SOURCE_DIR}/src/include )	##  ${FFTX_PROJECT_SOURCE_DIR}/examples )
+set ( DOXYGEN_INPUT_DIR ${FFTX_PROJECT_PUBLIC_HEADER_DIR} )		##  ${FFTX_PROJECT_SOURCE_DIR}/examples )
 set ( DOXYGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/doxygen )
-## set ( DOXYGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/sphinx )
 set ( DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml )
 set ( DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in )
 set ( DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile )
