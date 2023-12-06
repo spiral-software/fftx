@@ -165,7 +165,7 @@ def main():
     if args.file:
         sizesfile = args.file.rstrip()
     else:
-        sizesfile = 'dftbatch-sizes.txt'
+        sizesfile = 'cube-sizes-gpu.txt'
 
     ##  Process the sizes file, extracting the dimentions and running the transform.  The
     ##  sizes file contains records of the form:

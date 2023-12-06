@@ -27,6 +27,7 @@ SpiralGen, Inc.
    :caption: Contents:
 
    introduction.rst
+   install.rst
    README.rst
    apis.rst
    python.rst
