@@ -11,8 +11,10 @@ set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, Min
 
 ##  Find all the public headers
 ##  get_target_property ( FFTX_PROJECT_PUBLIC_HEADER_DIR FFTX_PROJECT INTERFACE_INCLUDE_DIRECTORIES )
-set ( FFTX_PROJECT_PUBLIC_HEADER_DIR ${FFTX_INCLUDE} )
-    
+##  set ( FFTX_PROJECT_PUBLIC_HEADER_DIR ${FFTX_INCLUDE} )
+##  Use the <proj>/src/include directory (instead of <proj>/include) in case files not installed
+set ( FFTX_PROJECT_PUBLIC_HEADER_DIR ${FFTX_PROJECT_SOURCE_DIR}/src/include )
+
 file ( GLOB_RECURSE FFTX_PROJECT_PUBLIC_HEADERS 
        ${FFTX_PROJECT_PUBLIC_HEADER_DIR}/*.hpp
        ${FFTX_PROJECT_PUBLIC_HEADER_DIR}/*.H
