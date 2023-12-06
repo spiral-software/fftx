@@ -66,6 +66,7 @@ jobs:
 
     - name: build the docs
       env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
         FFTX_HOME: ${{ github.workspace }}/fftx
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
