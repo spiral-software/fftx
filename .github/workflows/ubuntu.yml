@@ -3,82 +3,93 @@ name: Ubuntu build
 on: [push, pull_request]
 
 jobs:
-  build_gcc:
-    name: Check sprial-package-fftx on Linux
+  build_fftx:
+    name: Build SPIRAL and FFTX on Linux
     runs-on: ubuntu-latest
     steps:
     - name: Checkout spiral-software
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-software
-        ref: develop
+        ##  ref: develop
         path: spiral
     - name: Checkout repo spiral-package-fftx
       uses: actions/checkout@v4
       with:
-        ref: develop
+        repository: spiral-software/spiral-package-fftx
+        ##  ref: develop
         path: spiral/namespaces/packages/fftx
     - name: Checkout repo spiral-package-simt
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-simt
-        ref: develop
+        ##  ref: develop
         path: spiral/namespaces/packages/simt
     - name: Checkout repo spiral-package-mpi
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-mpi
-        ref: develop
+        ##  ref: develop
         path: spiral/namespaces/packages/mpi
-    - name: install dependencies
+    - name: Checkout repo spiral-package-jit
+      uses: actions/checkout@v4
+      with:
+        repository: spiral-software/spiral-package-jit
+        ##  ref: develop
+        path: spiral/namespaces/packages/jit
+    - name: Install dependencies
       run: |
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get -qqq update
         sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
-        sudo apt-get install python3.8
+        sudo apt-get install -y python3
         sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
         sudo chmod a+x /usr/local/bin/cmake-easyinstall
         export CEI_SUDO="sudo"
-    - name: build SPIRAL
+    - name: Build SPIRAL
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
       run: |
         cd spiral
         mkdir build && cd build
-        cmake -D_codegen=CPU .. 
+        cmake .. 
         make -j 2 install
+        cd ..
 
-  build_fftx:
-    name: Build FFTX on Linux
-    runs-on: ubuntu-latest
-    steps:
     - name: Checkout FFTX
       uses: actions/checkout@v4
       with:
         repository: spiral-software/fftx
-        ref: develop
+        ##  ref: develop
+        ref: ${{ github.ref }}
         path: fftx
-    - name: build FFTX
+    - name: Configure FFTX
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
         FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
-        cd ${{ github.workspace }}/fftx/examples/library
-        "./build-lib-code.sh"
-        cd ${{ github.workspace }}/fftx
+        cd $FFTX_HOME
+        ./config-fftx-libs.sh CPU
+        cat src/library/build-lib-code-failures.txt
+        echo "##### Source files built:"
+        cat src/library/lib_fftx_*/SourceList.cmake
+    - name: Build FFTX
+      env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
+        FFTX_HOME: ${{ github.workspace }}/fftx
+      run: |
+        cd $FFTX_HOME
         mkdir build && cd build
-        # -DCMAKE_INSTALL_PREFIX=fftx 
-        cmake -D_codegen=CPU ..
+        cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CPU ..
         make -j 2 install
+        cd ..
 
+    - name: Run FFTX library examples
+      env:
+        SPIRAL_HOME: ${{ github.workspace }}/spiral
+        FFTX_HOME: ${{ github.workspace }}/fftx
+      run: |
+        cd $FFTX_HOME
+        ./bin/testverify_lib
+        ./bin/testrconv_lib
 
-    # - name: install dependencies
-    #   run: |
-    #     export DEBIAN_FRONTEND=noninteractive
-    #     sudo apt-get -qqq update
-    #     sudo apt-get install -y build-essential ca-certificates cmake pkg-config wget
-    #     sudo apt-get install python3.8
-    #     sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
-    #     sudo chmod a+x /usr/local/bin/cmake-easyinstall
-    #     export CEI_SUDO="sudo"
-      # shell: bash
