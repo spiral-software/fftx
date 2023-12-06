@@ -1,14 +1,16 @@
 name: build-sphinx-to-gh-pages
 
 env:
-  GITHUB_ACTOR: spiral-software
-  GITHUB_REPOSITORY: spiral-software/fftx
+  GITHUB_ACTOR: broderickpt
+  GITHUB_REPOSITORY: broderickpt/fftx
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 ##  For now only re-gen docs when push to "main" branch
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
 
 jobs:
   build_sphinx_job:
@@ -16,14 +18,13 @@ jobs:
 
     steps:
     - name: Checkout spiral-software
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-software
-        ref: develop
         path: spiral
         
     - name: install dependencies
-      ##  uses: actions/checkout@v2
+      ##  uses: actions/checkout@v4
       run: |
         set -x
         echo "working dir = ${{ github.workspace }}"
@@ -58,33 +59,34 @@ jobs:
     - name: Clone repository
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: fftx
 
     - name: build the docs
       env:
         SPIRAL_HOME: ${{ github.workspace }}/spiral
+        FFTX_HOME: ${{ github.workspace }}/fftx
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -x
-        echo $PATH
-        which dot
-        which pandoc
-        which doxygen
+        ##  echo $PATH
+        ##  which dot
+        ##  which pandoc
+        ##  which doxygen
         PATH=$PATH:/home/runner/.local/bin
-        cd $SPIRAL_HOME/../fftx
-        pandoc --from=markdown --to=rst --output=docs/README.rst README.md
+        cd $FFTX_HOME
+        pandoc --from=gfm --to=rst --output=docs/README.rst README.md
         mkdir build && cd build
         cmake -DFFTX_MAKE_DOCS=True ..
         make Sphinx
-        find . -iname namespacefftx.xml
-        ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
-        ls docs
-        ls docs/doxygen/xml
-        cat docs/doxygen/xml/index.xml
-        mv docs/doxygen/html docs/sphinx/html
-        # mv /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/html/ /home/runner/work/fftx/fftx/fftx/build/docs/sphinx/html
-        ls docs/sphinx
+        ##  find . -iname namespacefftx.xml
+        ##  ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
+        ##  ls docs
+        ##  ls docs/doxygen/xml
+        ##  cat docs/doxygen/xml/index.xml
+        ##  mv docs/doxygen/html docs/sphinx/html
+        ##  # mv /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/html/ /home/runner/work/fftx/fftx/fftx/build/docs/sphinx/html
+        ##  ls docs/sphinx
         "../docs/buildsite.sh"
       shell: bash
