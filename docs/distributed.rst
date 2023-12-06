@@ -1,5 +1,5 @@
 FFTX Distributed 3D FFT Library
-========================
+===============================
 
 FFTX provides a distributed interface for describing and computing 3D FFTs in a distributed setting using MPI.  This guide documents instructions for setting up, and computing with the distributed interface. Furthermore, it also documents the assumptions behind the different versions of distributed FFTs.
 
