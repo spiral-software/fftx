@@ -1,11 +1,11 @@
 name: build-sphinx-to-gh-pages
 
 env:
-  GITHUB_ACTOR: broderickpt
-  GITHUB_REPOSITORY: broderickpt/fftx
+  GITHUB_ACTOR: spiral-software
+  GITHUB_REPOSITORY: spiral-software/fftx
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-##  For now only re-gen docs when push to "main" branch
+##  Temporarily re-gen docs when push to "main" or "develop" branches
 on:
   push:
     branches:
@@ -56,11 +56,12 @@ jobs:
         cmake .. 
         make -j 2 install
 
-    - name: Clone repository
+    - name: Checkout the FFTX repository
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       uses: actions/checkout@v4
       with:
+        ref: ${{ github.ref }}
         path: fftx
 
     - name: build the docs
