@@ -31,7 +31,7 @@ fftx::point_t
 
 .. doxygenstruct:: fftx::point_t
    :members:
-   :allow-dot-graphs:
+..   :allow-dot-graphs:
 
 .. _fftx_box_t:
 
@@ -40,7 +40,7 @@ fftx::box_t
 
 .. doxygenstruct:: fftx::box_t
    :members:
-   :allow-dot-graphs:
+..   :allow-dot-graphs:
 
 .. _fftx_array_t:
 
@@ -49,7 +49,7 @@ fftx::array_t
 
 .. doxygenstruct:: fftx::array_t
    :members:
-   :allow-dot-graphs:
+..   :allow-dot-graphs:
 
 .. _fftx_global_ptr:
 
@@ -58,7 +58,7 @@ fftx::global_ptr
 
 .. doxygenclass:: fftx::global_ptr
    :members:
-   :allow-dot-graphs:
+..   :allow-dot-graphs:
 
 .. _FFTXProblem:
 
@@ -67,7 +67,7 @@ FFTXProblem
 
 .. doxygenclass:: FFTXProblem
    :members:
-   :allow-dot-graphs:
+..   :allow-dot-graphs:
 
 .. AVOID .. doxygengroup:: docTitleCmdGroup
 .. AVOID    :project: FFTX
