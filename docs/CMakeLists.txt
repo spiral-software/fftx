@@ -23,7 +23,7 @@ file ( GLOB_RECURSE FFTX_PROJECT_PUBLIC_HEADERS
 message ( STATUS "Found public header files: ${FFTX_PROJECT_PUBLIC_HEADERS}" )
 
 ##  Setup locations for Doxygen
-set ( DOXYGEN_INPUT_DIR ${FFTX_PROJECT_PUBLIC_HEADER_DIR} )		##  ${FFTX_PROJECT_SOURCE_DIR}/examples )
+set ( DOXYGEN_INPUT_DIR ${FFTX_PROJECT_PUBLIC_HEADER_DIR} )
 set ( DOXYGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/doxygen )
 set ( DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml )
 set ( DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in )
@@ -43,12 +43,22 @@ add_custom_command ( OUTPUT ${DOXYGEN_INDEX_FILE}
         	COMMENT "Generating FFTX docs"
 		VERBATIM )
 
+##  Add a command to generate README.rst; converts main FFTX README.md (Github markdown to rst)
+include ( FindUnixCommands )
+add_custom_command ( OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/README.rst
+                     DEPENDS ${FFTX_PROJECT_SOURCE_DIR}/README.md
+                     COMMAND pandoc --from=gfm --to=rst --output=${CMAKE_CURRENT_SOURCE_DIR}/README.rst ${FFTX_PROJECT_SOURCE_DIR}/README.md
+                     COMMENT "Generate FFTX Readme in RST format" )
+
 ##  Named target so we can run the job easily
 add_custom_target ( Doxygen ALL DEPENDS ${DOXYGEN_INDEX_FILE} )
 
 set ( SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR} )
 set ( SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx )
 set ( SPHINX_INDEX_FILE ${SPHINX_BUILD}/index.html )
+
+set ( DOC_RST_FILES apis.rst bibliography.rst contribute.rst distributed.rst extending.rst
+                    faq.rst gethelp.rst index.rst install.rst introduction.rst team.rst )
 
 ##  Regenerate Sphinx when:
 ##    - Doxygen has rerun 
@@ -63,8 +73,8 @@ add_custom_command ( OUTPUT ${SPHINX_INDEX_FILE}
 		${SPHINX_SOURCE} ${SPHINX_BUILD}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	DEPENDS 
-		# Other docs files you want to track should go here (or in some variable)
-		${CMAKE_CURRENT_SOURCE_DIR}/index.rst
+		${DOC_RST_FILES}                ##  RST doc files (listed above)
+		${CMAKE_CURRENT_SOURCE_DIR}/README.rst
 		${DOXYGEN_INDEX_FILE}
 	MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
 	COMMENT "Generating documentation with Sphinx")
