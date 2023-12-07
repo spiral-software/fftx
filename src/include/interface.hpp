@@ -28,6 +28,7 @@
 #endif
 
 #include <sys/types.h> // rest for open/close
+#include <sys/stat.h> // for filesystem checking
 #include <fcntl.h>
 #include <stdexcept>
 #include <string>
@@ -182,6 +183,18 @@ inline std::string getFromCache(std::string name, std::vector<int> sizes) {
 }
 
 inline void printToCache(std::string spiral_out, std::string name, std::vector<int> sizes) {
+    struct stat sb;
+    if(stat(getFFTX().c_str(), &sb) != 0) {
+      std::cout << "cache_jit_files folder not found, potentially incorrect/incomplete build\nCreating cache folder cache_jit_files" << std::endl;
+      #if defined (_WIN32) || defined (_WIN64)
+        int check = _mkdir(getFFTX().c_str());
+      #else
+        int check = mkdir(getFFTX().c_str(), 0777);
+      #endif
+      if(check != 0) {
+        std::cout << "cache_jit_files folder unable to be created programmatically" << std::endl;
+      }
+    }
     std::ofstream cached_file;
     std::string file_name;
     file_name.append(getFFTX()+"cache_"+name+"_"+std::to_string(sizes.at(0)));
