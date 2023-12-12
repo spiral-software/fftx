@@ -30,18 +30,18 @@
 
 #define CUDA_SAFE_CALL(call) CH_CUDA_SAFE_CALL(call)
 
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
-
-/*static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
+static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
 {
     for ( int imm = 0; imm < sizes.at(0)*sizes.at(1); imm++ ) {
         host_X[imm] = std::complex<double>(((double) rand()) / (double) (RAND_MAX/2), 0);
     }
     return;
-}*/
-
+}
+#else
 static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
 {
     for ( int imm = 0; imm < sizes.at(0)*sizes.at(1); imm++ ) {
@@ -49,7 +49,7 @@ static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> si
     }
     return;
 }
-
+#endif
 // Check that the buffer are identical (within roundoff)
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
@@ -274,6 +274,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     
     #if defined(FFTX_SYCL)		
 	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
 		sycl::host_accessor h_acc(buf_tempX);
 		std::cout << h_acc[0] << std::endl;
 	}
@@ -342,6 +343,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     	
 	#if defined (FFTX_SYCL)
 	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
 		sycl::host_accessor h_acc(buf_Y);
 		std::cout << h_acc[0] << std::endl;
 	}
