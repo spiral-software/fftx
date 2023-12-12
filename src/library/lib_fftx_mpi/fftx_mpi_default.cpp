@@ -22,12 +22,16 @@ fftx_plan fftx_plan_distributed_default(int r, int c, int M, int N, int K, int b
 
   init_2d_comms(plan, r, c,  M,  N, K);   //embedding uses the input sizes
 
-  DEVICE_MALLOC(&(plan->Q3), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC(&(plan->Q4), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
+  uint64_t m = M;
+  uint64_t n = N;
+  uint64_t k = K;
 
-  int batch_sizeZ = M/r * N/c;
-  int batch_sizeX = N/c * K/r;
-  int batch_sizeY = K/r * M/c;
+  DEVICE_MALLOC(&(plan->Q3), m*n*k*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q4), m*n*k*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
+
+  int batch_sizeZ = m/r * n/c;
+  int batch_sizeX = n/c * k/r;
+  int batch_sizeY = k/r * m/c;
 
   int inK = K * (is_embedded ? 2 : 1);
   int inM = M * (is_embedded ? 2 : 1);
@@ -95,7 +99,13 @@ fftx_plan fftx_plan_distributed_default(int r, int c, int M, int N, int K, int b
 }
 
 void fftx_execute_default(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
+  // int rank = -1;
+  // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // double start, stop, max_time;
+  // if (rank == 0) { printf("%f,", -1.0); }
+
   if (direction == DEVICE_FFT_FORWARD) {
+    // start = MPI_Wtime();
     if (plan->is_complex) {
       for (int i = 0; i != plan->b; ++i) {
         DEVICE_FFT_EXECZ2Z(plan->stg1, ((DEVICE_FFT_DOUBLECOMPLEX  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
@@ -105,18 +115,29 @@ void fftx_execute_default(fftx_plan plan, double* out_buffer, double*in_buffer, 
         DEVICE_FFT_EXECD2Z(plan->stg1, ((DEVICE_FFT_DOUBLEREAL  *) in_buffer + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i));
       }
     }
+    // stop = MPI_Wtime();
+    // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+    // if (rank == 0) { printf("%f,", max_time); }
 
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_1, plan->is_embed);
 
+    // start = MPI_Wtime();
     for (int i = 0; i != plan->b; ++i) {
       DEVICE_FFT_EXECZ2Z(plan->stg2, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3 + i), direction);
     }
+    // stop = MPI_Wtime();
+    // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+    // if (rank == 0) { printf("%f,", max_time); }
 
     fftx_mpi_rcperm(plan, plan->Q4, plan->Q3, FFTX_MPI_EMBED_2, plan->is_embed);
 
+    // start = MPI_Wtime();
     for (int i = 0; i != plan->b; ++i) {
       DEVICE_FFT_EXECZ2Z(plan->stg3, ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4 + i), ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer + i), direction);
     }
+    // stop = MPI_Wtime();
+    // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+    // if (rank == 0) { printf("%f,", max_time); }
 
   } else if (direction == DEVICE_FFT_INVERSE) {
     for (int i = 0; i != plan->b; ++i) {

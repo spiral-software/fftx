@@ -56,17 +56,6 @@ if 1 = 1 then
                TFCall ( TRC ( TTensorI ( DFT ( fftlen, sign ), nbatch, _wr, _rd ) ),
                         rec(fname := name, params := [] ) )
               );
-    # if fwd then
-    #     t := let ( name := name,
-    #                TFCall ( TRC ( TTensorI ( DFT ( fftlen, sign ), nbatch, _wr, _rd ) ),
-    #                         rec(fname := name, params := [] ) )
-    #              );
-    # else
-    #     t := let ( name := name,
-    #                TFCall ( TRC ( TTensorI ( Scale (1/fftlen, DFT ( fftlen, sign )), nbatch, _wr, _rd ) ),
-    #                         rec(fname := name, params := [] ) )
-    #              );
-    # fi;
 
     opts := conf.getOpts(t);
     if not IsBound ( libdir ) then
@@ -75,11 +64,7 @@ if 1 = 1 then
 
     ##  We need the Spiral functions wrapped in 'extern C' for adding to a library
     opts.wrapCFuncs := true;
-    Add ( opts.includes, "<float.h>" );
     tt := opts.tagIt(t);
-
-    _tt := opts.preProcess(tt);
-    rt := opts.search(_tt);
 
     c := opts.fftxGen(tt);
     ##  opts.prettyPrint(c);

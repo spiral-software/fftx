@@ -47,37 +47,6 @@ std::uniform_real_distribution<double> unifRealDist;
 // generator = std::mt19937(rd());
 // unifRealDist = std::uniform_real_distribution<double>(-0.5, 0.5);
 
-template<int DIM>
-size_t pointProduct(const fftx::point_t<DIM>& a_pt)
-{
-  size_t prod = 1;
-  for (int d = 0; d < DIM; d++)
-    {
-      prod *= a_pt[d];
-    }
-  return prod;
-}
-
-template<int DIM>
-fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size)
-{
-  fftx::box_t<DIM> bx;
-  bx.lo = fftx::point_t<DIM>::Unit();
-  bx.hi = a_size;
-  return bx;
-}
-
-template<int DIM>
-fftx::point_t<DIM> truncatedComplexDimensions(fftx::point_t<DIM>& a_size)
-{
-  fftx::point_t<DIM> truncSize = a_size;
-#if FFTX_COMPLEX_TRUNC_LAST
-  truncSize[DIM-1] = a_size[DIM-1]/2 + 1;
-#else
-  truncSize[0] = a_size[0]/2 + 1;
-#endif
-  return truncSize;
-}
 
 // mddft:  complex on full domain to complex on full domain
 // imddft:  complex on full domain to complex on full domain
@@ -383,7 +352,7 @@ public:
         DEVICE_MALLOC(&inputDevicePtr, input_bytes);
         DEVICE_MALLOC(&outputDevicePtr, output_bytes);
 
-        auto sym_size = pointProduct(m_fullExtents);
+        auto sym_size = m_fullExtents.product();
         auto sym_bytes = sym_size * sizeof(double);
         double* symDevicePtr;
         DEVICE_MALLOC(&symDevicePtr, sym_bytes);
@@ -453,8 +422,8 @@ public:
             double *dX, *dY, *dsym;
             dX = (double *) inputHostPtr;
             dY = (double *) outputHostPtr;
-            dsym = new double[pointProduct(m_fullExtents)];
-            // dsym = new std::complex<double>[pointProduct(m_fullExtents)];
+            dsym = new double[m_fullExtents.product()];
+            // dsym = new std::complex<double>[m_fullExtents.product()];
             std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
             m_transformProblemPtr->setArgs(args);
             m_transformProblemPtr->transform();
@@ -876,7 +845,7 @@ protected:
     setConstant(all1in, scalarVal<T_IN>(1.));
 
     fftx::array_t<DIM, T_OUT> magImpulse(m_outDomain);
-    size_t npts = pointProduct(m_tfm.size());
+    auto npts = m_tfm.size().product();
     T_OUT mag = scalarVal<T_OUT>(npts * 1.);
     setUnitImpulse(magImpulse, m_outDomain.lo, mag);
 
@@ -898,7 +867,7 @@ protected:
     setConstant(all1in, scalarVal<T_IN>(1.));
 
     fftx::array_t<DIM, T_OUT> magImpulse(m_outDomain);
-    size_t npts = pointProduct(m_tfm.size());
+    auto npts = m_tfm.size().product();
     T_OUT mag = scalarVal<T_OUT>(npts * 1.);
     setUnitImpulse(magImpulse, m_outDomain.lo, mag);
 

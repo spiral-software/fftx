@@ -8,20 +8,22 @@ Contributing to FFTX
 This guide provides instructions on how to collaborate to add a new feature or enhancement
 or provide a bug fix to FFTX.
 
-The basic model is to fork the public repository for FFTX, add your changes, build test(s)
-showing the bug or feature added and also showing how your additions work to remedy that
-item, then create a pull request (PR) to the FFTX team to review and incorporate your changes.
+The basic model is:
+- fork the public FFTX repository;
+- add your changes to your fork;
+- build test(s) showing the bug or feature added and also showing how your additions work to remedy that item; then
+- create a pull request (PR) to the FFTX team to review and incorporate your changes.
 
 FFTX Repository
 ---------------
 
-The FFTX software repository is `available on GitHub <https://github.com/spiral-software/fftx>`__
+The FFTX software repository is `available on GitHub <https://github.com/spiral-software/fftx>`__.
 
 Fork the Repository
 -------------------
 
 1.  On GitHub navigate to the `FFTX repository. <https://github.com/spiral-software/fftx.git>`__
-2.  In the top-right corner of the page click the **Fork** button.  This will create a
+2.  In the top-right corner of the page, click the **Fork** button.  This will create a
     copy of the repository for your use, called: *github.com/<your_username>/fftx.git*,
     where **<your_username>** is your GitHub username.
 3.  Clone the new repository to your machine so you can develop, e.g., use **git** as
@@ -56,7 +58,7 @@ Now, you can keep your fork synced with the upstream repository, using **git**:
 Develop / Make Changes
 ----------------------
 
-When making changes or adding bug fixes please limit each set of changes to **one**
+When making changes or adding bug fixes, please limit each set of changes to **one**
 feature or **one** bug fix.  Doing so will greatly ease the task of reviewing and
 incorporating your changes into the main product.  You *must* include with your changes
 test(s) that demonstrate the correct functioning of the feature or bug fix (in the case of
@@ -70,8 +72,8 @@ pure as you develop.  Before submitting your changes to the FFTX team you should
 that cannot pass the existing test suite **will be rejected**.
 
 When your changes are complete, add changed or new files and commit the changes in the
-normal manner.  When you are ready to push <your_branch> for the first time you need to
-let **git** know about the upstream branch, use this command: ``git push --set-upstream
+normal manner.  When you are ready to push <your_branch> for the first time, you need to
+let **git** know about the upstream branch, using this command: ``git push --set-upstream
 origin <your_branch>``
 
 
