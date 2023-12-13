@@ -1,7 +1,7 @@
 
 // read seq, write seq
 static std::string batch1dprdft_script_0x0 = "transform := let(\n\
-         TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\
+         TFCall(TTensorI(PRDFT(N, sign), B, write, read),\n\
             rec(fname := name, params := [])));";
 
 // read seq, write strided
@@ -12,13 +12,8 @@ static std::string batch1dprdft_script_0x1 = "transform := let(\n\
 
 //read strided, write seq
 static std::string batch1dprdft_script_1x0 = "transform := let(\n\
-         TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\
-            rec(fname := name, params := [])));";
-
-//read strided, write strided
-static std::string batch1dprdft_script_1x1 = "transform := let(\n\
-    TFCall(Prm(fTensor(L(PRDFT1(N, sign).dims()[1]/2 * B, PRDFT1(N, sign).dims()[1]/2), fId(2))) *\n\
-    TTensorI(PRDFT1(N, sign), B, APar, read),\n\
+    TFCall(TTensorI(PRDFT1(N, sign), B, APar, read) * \n\
+        Prm(fTensor(L(PRDFT1(N, sign).dims()[2]/2 * B, B), fId(2))), \n\
     rec(fname := name, params := [])));";
 
 class BATCH1DPRDFTProblem: public FFTXProblem {
@@ -51,6 +46,6 @@ public:
         else if(sizes.at(2) == 1 && sizes.at(3) == 0)
             std::cout << batch1dprdft_script_1x0 << std::endl;
         else 
-            std::cout << batch1dprdft_script_1x1 << std::endl;
+            exit(-1);
     }
 };
