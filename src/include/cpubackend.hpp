@@ -138,11 +138,11 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
 
     #if defined (_WIN32) || defined (_WIN64)
         void (*fn1) ()= (void (*)()) GetProcAddress ( (HMODULE) shared_lib, init.c_str() );
-        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *)) GetProcAddress ( (HMODULE) shared_lib, transform.c_str() );
+        void (*fn2)(double *, double *, ...) = (void (*)(double *, double *, ...)) GetProcAddress ( (HMODULE) shared_lib, transform.c_str() );
         void (*fn3) ()= (void (*)()) GetProcAddress ( (HMODULE) shared_lib, destroy.c_str() );
     #else
         void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
-        void (*fn2) (double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
+        void (*fn2)(double *, double *, ...) = (void (*)(double *, double *, ...))dlsym(shared_lib, transform.c_str());
         void (*fn3) ()= (void (*)())dlsym(shared_lib, destroy.c_str());
     #endif
 
@@ -153,6 +153,9 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         std::cout << init << "function didnt run" << std::endl;
     }
     if(fn2) {
+      if(args.size() < 3)
+        fn2((double*)args.at(0),(double*)args.at(1));
+      else
         fn2((double*)args.at(0),(double*)args.at(1), (double*)args.at(2));
     }else {
         std::cout << transform << "function didnt run" << std::endl;
