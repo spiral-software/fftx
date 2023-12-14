@@ -147,7 +147,6 @@ int main(int argc, char* argv[])
         default:
             printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
         }
-        std::cout << "Finished an iteration" << std::endl;
         argv++, argc--;
     }
     if(read == 0)
