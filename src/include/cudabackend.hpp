@@ -43,7 +43,11 @@ inline std::string getCUDARuntime() {
             std::cout << "[ERROR] No such variable found! Please set CUDA_HOME to point to top level cuda directory" << std::endl;
             exit(-1);
         }
+    #if defined (_WIN32) || defined (_WIN64)
+    tmp += "./lib/x64/cudadevrt.lib";
+    #else
     tmp += "/lib64/libcudadevrt.a";
+
 
     return tmp;
 }
