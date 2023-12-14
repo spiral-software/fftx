@@ -17,6 +17,8 @@
 #include "device_macros.h"
 #endif
 
+#define DEBUGOUT 1
+
 #define CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
@@ -105,24 +107,39 @@ int main(int argc, char* argv[])
     int write = 1;
     char *prog = argv[0];
     int baz = 0;
+    std::cout << argv[1] << std::endl;
 
     while ( argc > 1 && argv[1][0] == '-' ) {
+      std::cout << argv[1][1] << std::endl;
         switch ( argv[1][1] ) {
         case 'i':
-            argv++, argc--;
-            iterations = atoi ( argv[1] );
+            if(strlen(argv[1]) > 2) {
+              baz = 2;
+            } else {
+              baz = 0;
+              argv++, argc--;
+            }
+            iterations = atoi (& argv[1][baz] );
             break;
         case 's':
-            baz = 0;
-            argv++, argc--;
-            N = atoi ( argv[1] );
+            if(strlen(argv[1]) > 2) {
+              baz = 2;
+            } else {
+              baz = 0;
+              argv++, argc--;
+            }
+            N = atoi (& argv[1][baz] );
             while ( argv[1][baz] != 'x' ) baz++;
             baz++ ;
             B = atoi (& argv[1][baz]);
             break;
         case 'r':
-            baz = 0;
-            argv++, argc--;
+            if(strlen(argv[1]) > 2) {
+              baz = 2;
+            } else {
+              baz = 0;
+              argv++, argc--;
+            }
             read = atoi ( argv[1] );
             while ( argv[1][baz] != 'x' ) baz++;
             baz++ ;
@@ -134,8 +151,11 @@ int main(int argc, char* argv[])
         default:
             printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
         }
+        std::cout << "Finished an iteration" << std::endl;
         argv++, argc--;
     }
+    // std::cout << N << " " << B << std::endl;
+    // exit(0);
     if(read == 0)
         reads = "Sequential";
     else
