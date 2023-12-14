@@ -105,10 +105,8 @@ int main(int argc, char* argv[])
     int write = 1;
     char *prog = argv[0];
     int baz = 0;
-    std::cout << argv[1] << std::endl;
 
     while ( argc > 1 && argv[1][0] == '-' ) {
-      std::cout << argv[1][1] << std::endl;
         switch ( argv[1][1] ) {
         case 'i':
             if(strlen(argv[1]) > 2) {
@@ -152,8 +150,6 @@ int main(int argc, char* argv[])
         std::cout << "Finished an iteration" << std::endl;
         argv++, argc--;
     }
-    // std::cout << N << " " << B << std::endl;
-    // exit(0);
     if(read == 0)
         reads = "Sequential";
     else
