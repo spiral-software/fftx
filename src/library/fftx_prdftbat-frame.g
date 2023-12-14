@@ -54,43 +54,42 @@ if 1 = 1 then
     _wr := APar; if wrstride = "AVec" then _wr := AVec; fi;
     _rd := APar; if rdstride = "AVec" then _rd := AVec; fi;
 
-    ##  we have 6 cases (ignoring AVec/AVec combos for now) all possibly different:
-    ##  Forward and Inverse; APar/APar, AVec/APar, and APar/AVec
+    ##  we have 8 cases (fwd/inverse and APar/AVec combos) all possibly different:
     if fwd then
         if rdstride = "APar" and wrstride = "APar" then
-            t := let ( TFCall ( TTensorI ( PRDFT ( fftlen, sign ), nbatch, _wr, _rd ),
+            t := let ( TFCall ( TTensorI ( PRDFT ( fftlen, sign ), nbatch, APar, _rd ),
                                 rec ( fname := name, params := [] ) ) );
         elif rdstride = "APar" and wrstride = "AVec" then
             t := let ( TFCall ( Prm ( fTensor ( L ( PRDFT1 ( fftlen, sign ).dims()[1]/2 * nbatch,
                                                     PRDFT1 ( fftlen, sign ).dims()[1]/2 ),
                                                 fId (2) ) ) *
                                 TTensorI ( PRDFT1 ( fftlen, sign ), nbatch, APar, _rd ),
-                               rec ( fname := name, params := [] ) ) );
-        elif rdstride = "AVec" and wrstride = "APar" then
-            t := let ( TFCall ( TTensorI ( PRDFT1 ( fftlen, sign ), nbatch, APar, _rd ) *
-                                Prm ( fTensor ( L ( PRDFT1 ( fftlen, sign ).dims()[2]/2 * nbatch, nbatch ), fId (2) ) ),
                                 rec ( fname := name, params := [] ) ) );
-        else
-            ##  AVec/AVec - not implemented
-            PrintLine ( "Avec/Avec case not implemented" );
+        elif rdstride = "AVec" and wrstride = "APar" then
+            t := let ( TFCall ( TTensorI ( PRDFT ( fftlen, sign ), nbatch, APar, _rd ),
+                                rec ( fname := name, params := [] ) ) );
+        else            ##  rdstride = "AVec" and wrstride = "AVec"
+            t := let ( TFCall ( Prm ( fTensor ( L ( PRDFT1 ( fftlen, sign).dims()[1]/2 * nbatch,
+                                                    PRDFT1 ( fftlen, sign).dims()[1]/2),
+                                                fId (2) ) ) *
+                                TTensorI ( PRDFT1 ( fftlen, sign ), nbatch, APar, _rd ),
+                                rec ( fname := name, params := [] ) ) );
         fi;
     else
         if rdstride = "APar" and wrstride = "APar" then
-            t := let ( TFCall ( TRC ( TTensorI ( PRDFT ( fftlen, sign), nbatch, _wr, _rd ) ),
+            t := let ( TFCall ( TTensorI ( IPRDFT ( fftlen, sign ), nbatch, _wr, _rd ),
                                 rec ( fname := name, params := [] ) ) );
         elif rdstride = "APar" and wrstride = "AVec" then
-            t := let ( TFCall ( Prm ( fTensor ( L ( IPRDFT1 ( fftlen, sign ).dims()[1]/2 * nbatch,
-                                                    IPRDFT1 ( fftlen, sign ).dims()[1]/2 ),
-                                                fId (2) ) ) *
-                                TTensorI ( IPRDFT1 ( fftlen, sign ), nbatch, APar, _rd ),
-                                rec ( fname := name, params := [] ) ) );        
+            t := let ( TFCall ( TTensorI ( IPRDFT ( fftlen, sign ), nbatch, _wr, _rd ),
+                                rec ( fname := name, params := [] ) ) );
         elif rdstride = "AVec" and wrstride = "APar" then
-            t := let ( TFCall ( TTensorI ( IPRDFT ( fftlen, sign ), nbatch, APar, APar ) *
+            t := let ( TFCall ( TTensorI ( IPRDFT ( fftlen, sign ), nbatch, _wr, APar ) *
                                 Prm ( fTensor ( L ( IPRDFT1 ( fftlen, sign ).dims()[2]/2 * nbatch, nbatch ), fId (2) ) ),
                                 rec ( fname := name, params := [] ) ) );
-        else
-            ##  AVec/AVec - not implemented
-            PrintLine ( "Avec/Avec case not implemented" );
+        else            ##  rdstride = "AVec" and wrstride = "AVec"
+            t := let ( TFCall ( TTensorI ( IPRDFT ( fftlen, sign ), nbatch, _wr, APar ) *
+                                Prm ( fTensor ( L ( IPRDFT1 ( fftlen, sign ).dims()[2]/2 * nbatch, nbatch ), fId (2) ) ),
+                                rec ( fname := name, params := [] ) ) );
         fi;
     fi;
 
