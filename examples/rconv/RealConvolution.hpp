@@ -40,31 +40,6 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
 }
 
 template<int DIM>
-fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size,
-                                const fftx::point_t<DIM>& a_offset = fftx::point_t<DIM>::Zero())
-{
-  fftx::box_t<DIM> bx;
-  for (int d = 0; d < DIM; d++)
-    {
-      bx.lo[d] = a_offset[d] + 1;
-      bx.hi[d] = a_offset[d] + a_size[d];
-    }
-  return bx;
-}
-
-template<int DIM>
-fftx::point_t<DIM> truncatedComplexDimensions(fftx::point_t<DIM>& a_size)
-{
-  fftx::point_t<DIM> truncSize = a_size;
-#if FFTX_COMPLEX_TRUNC_LAST
-  truncSize[DIM-1] = a_size[DIM-1]/2 + 1;
-#else
-  truncSize[0] = a_size[0]/2 + 1;
-#endif
-  return truncSize;
-}
-
-template<int DIM>
 class RealConvolution
 {
 public:
