@@ -26,7 +26,7 @@ manage_add_subdir ( verify        TRUE      TRUE )
 
 ##  MPI examples depend on MPI being installed & accessable
 ##  Looked for MPI at top level CMake
-if ( ${MPI_FOUND} )
+if ( ${MPI_FOUND} AND NOT ${_codegen} STREQUAL "SYCL")
     ##  MPI installation found
     manage_add_subdir ( 3DDFT_mpi     FALSE     TRUE )
 else ()
