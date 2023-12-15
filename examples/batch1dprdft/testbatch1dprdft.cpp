@@ -182,9 +182,9 @@ int main(int argc, char* argv[])
     std::vector<int> sizes{N,B, read,write};
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
-    std::vector<std::complex<double>> outDevfft1(N);
+    std::vector<std::complex<double>> outDevfft1(N*B);
     std::vector<double> inputHost(N*B);
-    std::vector<std::complex<double>> outputHost(N);
+    std::vector<std::complex<double>> outputHost(N*B);
     std::vector<double> outDevfft2(N*B);
     std::vector<double> outputHost2(N*B);
 
