@@ -17,6 +17,8 @@
 #include "device_macros.h"
 #endif
 
+#define DEBUGOUT 1
+
 #define CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
@@ -136,7 +138,7 @@ int main(int argc, char* argv[])
               baz = 0;
               argv++, argc--;
             }
-            read = atoi ( argv[1] );
+            read = atoi (& argv[1][baz] );
             while ( argv[1][baz] != 'x' ) baz++;
             baz++ ;
             write = atoi ( & argv[1][baz] );
