@@ -47,7 +47,7 @@ inline std::string getCUDARuntime() {
     tmp += "./lib/x64/cudadevrt.lib";
     #else
     tmp += "/lib64/libcudadevrt.a";
-
+    #endif
 
     return tmp;
 }
