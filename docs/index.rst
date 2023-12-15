@@ -34,9 +34,6 @@ SpiralGen, Inc.
    distributed.rst
    external.rst
    collaborations.rst
-   extending.rst
-   faq.rst
-   gethelp.rst
    contribute.rst
    team.rst
    bibliography.rst
