@@ -17,8 +17,6 @@
 #include "device_macros.h"
 #endif
 
-#define DEBUGOUT 1
-
 #define CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
