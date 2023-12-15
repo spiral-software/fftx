@@ -277,7 +277,6 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
 	#endif
 
 	#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-     #if defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.data(), tempX,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
         //  Run the roc fft plan on the same input data
@@ -335,10 +334,9 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     #endif
 
 	#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-     #if defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost2.data(), dY,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-
+    
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
             DEVICE_EVENT_RECORD ( custart );
