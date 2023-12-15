@@ -117,8 +117,8 @@ static void checkOutputBuffers_inv ( DEVICE_FFT_DOUBLEREAL *spiral_Y, DEVICE_FFT
 int main(int argc, char* argv[])
 {
     int iterations = 2;
-    int N = 32; // default cube dimensions
-    int B = 2;
+    int N = 64; // default cube dimensions
+    int B = 4;
     int read = 0;
     std::string reads = "Sequential";
     std::string writes = "Strided";

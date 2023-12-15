@@ -249,7 +249,6 @@ inline void getImportAndConf() {
 inline void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
-    std::cout << "GASMAN(\"collect\");\n";
     #if defined FFTX_HIP
         std::cout << "PrintHIPJIT(c,opts);" << std::endl;
     #elif defined FFTX_CUDA 
