@@ -259,12 +259,8 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     {
         // setup random data for input buffer (Use different randomized data each iteration)
         buildInputBuffer(hostinp, sizes);
-    #if defined(FFTX_HIP)
+    #if defined(FFTX_HIP) || defined(FFTX_CUDA)
         DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(std::complex<double>),
-                        MEM_COPY_HOST_TO_DEVICE);
-    #endif
-    #if defined (FFTX_CUDA) 
-         DEVICE_MEM_COPY((void*)dX, inputHost.data(),  inputHost.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
         if ( DEBUGOUT ) std::cout << "copied X" << std::endl;
@@ -284,11 +280,6 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
      #if defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.data(), tempX,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-     #endif
-     #if defined(FFTX_CUDA)
-        DEVICE_MEM_COPY ( outputHost.data(), (void*)tempX,
-                          outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-     #endif
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
             DEVICE_EVENT_RECORD ( custart );
@@ -305,14 +296,8 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
             DEVICE_EVENT_SYNCHRONIZE ( custop );
             DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
 
-        #if defined FFTX_HIP
             DEVICE_MEM_COPY ( outDevfft1.data(), tempX,
                               outDevfft1.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-        #endif
-        #if defined FFTX_CUDA
-            DEVICE_MEM_COPY ( outDevfft1.data(), (void*)tempX,
-                              outDevfft1.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );    
-        #endif
 
             printf ( "DFT = %d Batch = %d Read = %s Write = %s \tBatch 1D FFT (Forward)\t", N, B, reads.c_str(), writes.c_str());
             checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.data(),
@@ -353,11 +338,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
      #if defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost2.data(), dY,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-     #endif
-     #if defined(FFTX_CUDA)
-        DEVICE_MEM_COPY ( outputHost.data(), (void*)dY,
-                          outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-     #endif
+
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
             DEVICE_EVENT_RECORD ( custart );
@@ -374,16 +355,9 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
             DEVICE_EVENT_SYNCHRONIZE ( custop );
             DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
 
-        #if defined FFTX_HIP
             DEVICE_MEM_COPY ( outDevfft2.data(), dY,
                               outDevfft2.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-        #endif
-        #if defined FFTX_CUDA
-            DEVICE_MEM_COPY ( outDevfft2.data(), (void*)dY,
-                              outDevfft2.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );    
-        #endif
 
-            
             printf ( "DFT = %d Batch = %d Read = %s Write = %s  \tBatch 1D FFT (Inverse)\t", N, B, reads.c_str(), writes.c_str());
             checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost2.data(),
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft2.data(),

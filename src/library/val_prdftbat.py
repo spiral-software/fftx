@@ -35,14 +35,6 @@ def setup_input_array ( array_shape, fwd ):
         # Setup source (input) data for the inverse transform
         src = np.random.random(array_shape) + 1j * np.random.random(array_shape)
 
-    if src.size <= 64:
-        src = np.zeros (array_shape)
-        if fwd:
-            src[0, 0, 0] = 1.0
-        else:
-            src[0, 0, 0] = 1.0 + 0j
-        print ( f'Input array for transforms = {src}', flush = True )
-
     return src
 
 
@@ -59,17 +51,12 @@ def run_python_version ( src, fftlen, rdstr, wrstr, fwd ):
     else:
         dst = np.fft.irfft ( src, axis=ax )      ## NumPy inverse is already normalized
 
-    if dst.size <= 64:
-        dir = 'forward' if fwd else 'inverse'
-        print ( f'Shape of python result = {dst.shape}', flush = True )
-        print ( f'Python result for {dir} transform = {dst}', flush = True )
-
     if rdstr != wrstr:
         ##  read & write stride types are different (i.e., read seq/write stride or read stride/write seq)
         if wrstr:
             ##  read sequential, write strided
-            ##  new shape is inverse of src
-            revdims = src.shape[::-1]
+            ##  new shape is inverse of dst
+            revdims = dst.shape[::-1]
             tmp = dst.reshape(np.asarray(revdims[1:]).prod(), revdims[0]).transpose()
             dst = tmp.reshape(revdims)
         else:
@@ -77,9 +64,6 @@ def run_python_version ( src, fftlen, rdstr, wrstr, fwd ):
             samedims = dst.shape
             tmp = dst.reshape(samedims[0], np.asarray(samedims[1:]).prod()).transpose()
             dst = tmp.reshape(samedims[::-1])
-        if dst.size <= 64:
-            print ( f'Result reshaped - rdstr != wrstr, as: {dst}', flush = True )
-            print ( f'Shape of python result = {dst.shape}', flush = True )
 
     return dst;
 
@@ -98,14 +82,11 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, 
     fftlen = dims[0]
     ##  If fwd transform: real -> complex, otherwise complex -> real (adjust fftlen)
     fftlen_adj = fftlen if fwd else (fftlen // 2) + 1
-    ##  If fwd transform: real -> complex, otherwise complex -> real (adjust nbat)
     nbat   = dims[1]
-    ##  nbat_adj = nbat if fwd else (nbat // 2) + 1
     rdstr  = dims[2]
     wrstr  = dims[3]
 
     ##  Array shape depends on the read stride type
-    ##  array_shape = ( nbat, 1, fftlen_adj ) if rdstr == 0 else ( fftlen_adj, nbat, 1 )
     array_shape = ( nbat, 1, fftlen_adj ) if rdstr == 0 else ( fftlen_adj, nbat, 1 )
     _src = setup_input_array ( array_shape, fwd )
 
@@ -138,13 +119,11 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, 
         return
 
     ##  For output array when fwd transform: real -> complex, otherwise complex -> real (adjust fftlen)
-    ##  Array shape depends on the read stride type
-    fftlen_adj = (fftlen // 2) + 1 if fwd else fftlen
-    array_shape = ( nbat, 1, fftlen_adj ) if rdstr == 0 else ( fftlen_adj, nbat, 1 )
-    ##  For output array when fwd transform: real -> complex, otherwise complex -> real (adjust fftlen)
-    ##  nbat_adj = (nbat // 2) + 1 if fwd else nbat
-    ##  array_shape = ( nbat_adj, 1, fftlen ) if rdstr == 0 else ( fftlen, nbat_adj, 1 )
     dtype = complex if fwd else np.double
+    fftlen_adj = (fftlen // 2) + 1 if fwd else fftlen
+
+    ##  Array shape depends on the read stride type
+    array_shape = ( nbat, 1, fftlen_adj ) if rdstr == 0 else ( fftlen_adj, nbat, 1 )
     
     ##  If the strides for read & write are different then reverse the dimensions for the output array.
     if rdstr != wrstr:
@@ -153,7 +132,7 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, 
         _dst_spiral = np.zeros ( revdims, dtype )
     else:
         _dst_spiral = np.zeros ( array_shape, dtype )
-    print ( f'Set shape of spiral output array = {_dst_spiral.shape}', flush = True )
+    ##  print ( f'Set shape of spiral output array = {_dst_spiral.shape}', flush = True )
 
     ##  Call the library function
     func = pywrap + 'run' + _under + 'wrapper'
@@ -163,7 +142,6 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, 
                        _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
                        _src.ctypes.data_as ( ctypes.c_void_p ) )
         ##  Normalize Spiral result
-        ##  import pdb; pdb.set_trace()
         _dst_spiral = _dst_spiral / fftlen      ##  np.size ( _dst_spiral )
 
     except Exception as e:
@@ -177,9 +155,6 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, 
     _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
 
     dir = 'forward' if fwd else 'inverse'
-    if _dst_spiral.size <= 64:
-        print ( f'Spiral result for {dir} transform = {_dst_spiral}', flush = True )
-
     ##  Get the python answer using the same input
     _dst_python = run_python_version ( _src, fftlen, rdstr, wrstr, fwd )
 
