@@ -136,6 +136,12 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
     else if(name == "idftbat" || name == "ib1dft") {
         return fftx_idftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
     }
+    else if(name == "prdftbat" || name == "b1prdft") {
+        return fftx_dftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
+    }
+    else if(name == "iprdftbat" || name == "ib1prdft") {
+        return fftx_idftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
+    }
     else {
         if(DEBUGOUT)
             std::cout << "non-supported fixed library transform" << std::endl; 
