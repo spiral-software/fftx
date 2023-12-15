@@ -312,10 +312,10 @@ template<int DIM, typename T>
 double absMaxDiffArray(fftx::array_t<DIM, T>& a_arr1,
                        fftx::array_t<DIM, T>& a_arr2)
 {
-  auto dom = a_arr1.m_domain;
-  assert(dom == a_arr2.m_domain);
+  assert(a_arr1.m_domain == a_arr2.m_domain);
   auto arr1Ptr = a_arr1.m_data.local();
   auto arr2Ptr = a_arr2.m_data.local();
+  auto dom = a_arr1.m_domain;
   size_t npts = dom.size();
   double absDiffMax = 0.;
   for (size_t ind = 0; ind < npts; ind++)
@@ -343,8 +343,7 @@ void rotate(fftx::array_t<DIM, T>& a_arrOut,
             int a_dim,
             int a_shift)
 {
-  auto dom = a_arrIn.m_domain;
-  assert(a_arrOut.m_domain == dom);
+  assert(a_arrIn.m_domain == a_arrOut.m_domain);
   fftx::point_t<DIM> shift;
   for (int d = 0; d < DIM; d++)
     {
@@ -352,6 +351,7 @@ void rotate(fftx::array_t<DIM, T>& a_arrOut,
     }
   shift[a_dim] = a_shift;
   auto inPtr = a_arrIn.m_data.local();
+  auto dom = a_arrIn.m_domain;
   /*
   forall([inPtr, shift, dom](T(&v),
                              const fftx::point_t<DIM>& p)
@@ -386,9 +386,9 @@ template<int DIM, typename T>
 void laplacian2periodic(fftx::array_t<DIM, T>& a_laplacian,
                         const fftx::array_t<DIM, T>& a_arr)
 {
-  auto dom = a_arr.m_domain;
-  assert(a_laplacian.m_domain == a_arr);
+  assert(a_laplacian.m_domain == a_arr.m_domain);
   auto inPtr = a_arr.m_data.local();
+  auto dom = a_arr.m_domain;
   /*
   forall([inPtr, dom](T(&laplacianElem),
                       const T(&inElem),
