@@ -62,7 +62,7 @@ fi
 DFTBAT_LIB=true
 
 ##  Build the batch 1D packed real DFT (real to complex, complex to real) library
-PRDFTBAT_LIB=false
+PRDFTBAT_LIB=true
 
 ##  Build the 3D DFT (complex to complex) library
 MDDFT_LIB=true
