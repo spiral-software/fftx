@@ -17,6 +17,8 @@
 #include "device_macros.h"
 #endif
 
+#define DEBUGOUT 1
+
 #define CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
@@ -278,8 +280,9 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     #if defined(FFTX_HIP) || defined(FFTX_CUDA)
         DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(double),
                         MEM_COPY_HOST_TO_DEVICE);
-    #endif
         if ( DEBUGOUT ) std::cout << "copied X" << std::endl;
+    #endif
+        
         
         b1prdft.transform();
         batch1dprdft_gpu[itn] = b1prdft.getTime();
