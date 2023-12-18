@@ -121,8 +121,8 @@ int main(int argc, char* argv[])
     int B = 4;
     int read = 0;
     std::string reads = "Sequential";
-    std::string writes = "Strided";
-    int write = 1;
+    std::string writes = "Sequential";
+    int write = 0;
     char *prog = argv[0];
     int baz = 0;
 
@@ -198,8 +198,8 @@ int main(int argc, char* argv[])
     DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void**)&tempX, outputHost.size()  * sizeof(std::complex<double>));
 #else
-    dX = (double *) inputHost.data();
-    dY = (double *) outputHost2.data();
+    dX = (std::complex<double> *) inputHost.data();
+    dY = (std::complex<double> *) outputHost2.data();
     tempX = new std::complex<double>[outputHost.size()];
     dsym = new std::complex<double>[outputHost.size()];
 #endif
@@ -278,8 +278,9 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     #if defined(FFTX_HIP) || defined(FFTX_CUDA)
         DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(double),
                         MEM_COPY_HOST_TO_DEVICE);
-    #endif
         if ( DEBUGOUT ) std::cout << "copied X" << std::endl;
+    #endif
+        
         
         b1prdft.transform();
         batch1dprdft_gpu[itn] = b1prdft.getTime();
@@ -322,6 +323,7 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     //std::string devfft  = "rocfft";
 #endif
 
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
 DEVICE_FFT_HANDLE plan2;
 DEVICE_FFT_TYPE xfmtype2 = DEVICE_FFT_Z2D ;
 if(read == 0 && write == 0) {
@@ -350,7 +352,7 @@ if(read == 0 && write == 0) {
                                     &xr,   B,  1,  // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     }
-
+#endif
     IBATCH1DPRDFTProblem ib1prdft(args2, sizes, "ib1prdft");
 
     for (int itn = 0; itn < iterations; itn++)
@@ -387,33 +389,33 @@ if(read == 0 && write == 0) {
     }
 
 
-// #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-//     printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
-//              descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );        //  , devfft.c_str() );
-//     for (int itn = 0; itn < iterations; itn++) {
-//         printf ( "%d\t%.7e\t%.7e\n", itn, batch1ddft_gpu[itn], devmilliseconds[itn] );
-//     }
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );        //  , devfft.c_str() );
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\t%.7e\n", itn, batch1ddft_gpu[itn], devmilliseconds[itn] );
+    }
 
-//     printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
-//              descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );
-//     for (int itn = 0; itn < iterations; itn++) {
-//         printf ( "%d\t%.7e\t%.7e\n", itn, ibatch1ddft_gpu[itn], invdevmilliseconds[itn] );
-//     }
-// #else
-//      printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d\n",
-//              descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
-//     for (int itn = 0; itn < iterations; itn++) {
-//         printf ( "%d\t%.7e\n", itn, batch1ddft_gpu[itn]);
-//     }
+    printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\t%.7e\n", itn, ibatch1ddft_gpu[itn], invdevmilliseconds[itn] );
+    }
+#else
+     printf ( "Times in milliseconds for %s on Real Batch 1D FFT (forward) for %d trials of size %d and batch %d\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\n", itn, batch1dprdft_gpu[itn]);
+    }
 
-//     printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d\n",
-//              descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
-//     for (int itn = 0; itn < iterations; itn++) {
-//         printf ( "%d\t%.7e\n", itn, ibatch1ddft_gpu[itn]);
-//     }
-// #endif
+    printf ( "Times in milliseconds for %s on Real Batch 1D FFT (inverse) for %d trials of size %d and batch %d\n",
+             descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
+    for (int itn = 0; itn < iterations; itn++) {
+        printf ( "%d\t%.7e\n", itn, ibatch1dprdft_gpu[itn]);
+    }
+#endif
 
-//     printf("%s: All done, exiting\n", prog);
+    printf("%s: All done, exiting\n", prog);
   
     return 0;
 }
