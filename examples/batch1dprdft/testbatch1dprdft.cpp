@@ -121,8 +121,8 @@ int main(int argc, char* argv[])
     int B = 4;
     int read = 0;
     std::string reads = "Sequential";
-    std::string writes = "Strided";
-    int write = 1;
+    std::string writes = "Sequential";
+    int write = 0;
     char *prog = argv[0];
     int baz = 0;
 
