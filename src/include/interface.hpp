@@ -51,6 +51,8 @@
 #include "fftx_rconv_gpu_public.h"
 #include "fftx_dftbat_gpu_public.h"
 #include "fftx_idftbat_gpu_public.h"
+#include "fftx_prdftbat_gpu_public.h"
+#include "fftx_iprdftbat_gpu_public.h"
 #else
 #include "fftx_mddft_cpu_public.h"
 #include "fftx_imddft_cpu_public.h"
@@ -59,6 +61,8 @@
 #include "fftx_rconv_cpu_public.h"
 #include "fftx_dftbat_cpu_public.h"
 #include "fftx_idftbat_cpu_public.h"
+#include "fftx_prdftbat_cpu_public.h"
+#include "fftx_iprdftbat_cpu_public.h"
 #endif
 #pragma once
 
@@ -139,10 +143,10 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
         return fftx_idftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
     }
     else if(name == "prdftbat" || name == "b1prdft") {
-        return fftx_dftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
+        return fftx_prdftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
     }
     else if(name == "iprdftbat" || name == "ib1prdft") {
-        return fftx_idftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
+        return fftx_iprdftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
     }
     else {
         if(DEBUGOUT)
@@ -253,7 +257,6 @@ inline void getImportAndConf() {
 inline void printJITBackend(std::string name, std::vector<int> sizes) {
     std::string tmp = getFFTX();
     std::cout << "if 1 = 1 then opts:=conf.getOpts(transform);\ntt:= opts.tagIt(transform);\nif(IsBound(fftx_includes)) then opts.includes:=fftx_includes;fi;\nc:=opts.fftxGen(tt);\n fi;\n";
-    std::cout << "GASMAN(\"collect\");\n";
     #if defined FFTX_HIP
         std::cout << "PrintHIPJIT(c,opts);" << std::endl;
     #elif defined FFTX_CUDA 
@@ -451,7 +454,7 @@ inline std::string FFTXProblem::semantics2() {
 
 
 inline void FFTXProblem::transform(){
-
+    
     transformTuple_t *tupl = getLibTransform(name, sizes);
     if(tupl != nullptr) { //check if fixed library has transform
         if ( DEBUGOUT) std::cout << "found size in fixed library\n";
@@ -465,12 +468,14 @@ inline void FFTXProblem::transform(){
             auto start = std::chrono::high_resolution_clock::now();
         #endif
             #if defined FFTX_CUDA
-            if(name != "dftbat" && name != "b1dft" && name != "idftbat" && name != "ib1dft")
+            if(name != "dftbat" && name != "b1dft" && name != "idftbat" && name != "ib1dft" && name != "prdftbat" && name != "iprdftbat"
+            && name != "b1prdft" && name != "ib1prdft")
                 ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), (*(double**)args.at(2)) );
             else
                 ( * tupl->runfp ) ( *((double**)args.at(0)), *((double**)args.at(1)), *((double**)args.at(1)) );    
             #else
-            if(name != "dftbat" && name != "b1dft" && name != "idftbat" && name != "ib1dft")
+            if(name != "dftbat" && name != "b1dft" && name != "idftbat" && name != "ib1dft" && name != "prdftbat" && name != "iprdftbat"
+            && name != "b1prdft" && name != "ib1prdft")
                 ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(2) );
             else
                 ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(1) );

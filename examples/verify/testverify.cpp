@@ -153,12 +153,22 @@ int main(int argc, char* argv[])
   while ( argc > 1 && argv[1][0] == '-' ) {
       switch ( argv[1][1] ) {
       case 'i':
-          argv++, argc--;
-          rounds = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          rounds = atoi ( & argv[1][baz] );
           break;
       case 's':
-          argv++, argc--;
-          mm = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          mm = atoi ( & argv[1][baz] );
           while ( argv[1][baz] != 'x' ) baz++;
           baz++ ;
           nn = atoi ( & argv[1][baz] );
@@ -167,8 +177,13 @@ int main(int argc, char* argv[])
           kk = atoi ( & argv[1][baz] );
           break;
       case 'v':
-          argv++, argc--;
-          verbosity = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
           printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );

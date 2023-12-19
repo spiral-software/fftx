@@ -87,12 +87,22 @@ int main(int argc, char* argv[])
     while ( argc > 1 && argv[1][0] == '-' ) {
         switch ( argv[1][1] ) {
         case 'i':
-            argv++, argc--;
-            iterations = atoi ( argv[1] );
+            if(strlen(argv[1]) > 2) {
+              baz = 2;
+            } else {
+              baz = 0;
+              argv++, argc--;
+            }
+            iterations = atoi (& argv[1][baz] );
             break;
         case 's':
-            argv++, argc--;
-            mm = atoi ( argv[1] );
+            if(strlen(argv[1]) > 2) {
+              baz = 2;
+            } else {
+              baz = 0;
+              argv++, argc--;
+            }
+            mm = atoi (& argv[1][baz] );
             while ( argv[1][baz] != 'x' ) baz++;
             baz++ ;
             nn = atoi ( & argv[1][baz] );
