@@ -82,6 +82,33 @@ else
     PSATD_SIZES_FILE="cube-psatd.txt"
 fi
 
+##  We will run concurrent processes to build the libraries ... will use up to number of cpus
+##  as reported by `nproc` (sysctl -n hw.ncpu on mac).  Don't start more parralel jobs than this;
+##  When the max jobs is reached just wait for them to finish and continue.
+##  NOTE: nproc is used on Windows as it should be available with Mingw or cygwin.
+
+if [ "$(uname)" == "Linux" ]; then
+    max_jobs=$(nproc)
+    echo "Linux: max_jobs set to: $max_jobs"
+elif [ "$(uname)" == "Darwin" ]; then
+    max_jobs=$(sysctl -n hw.ncpu)
+    echo "MAC: max_jobs set to: $max_jobs"
+else            ## Assume windows with mingw or cygwin or similar
+    max_jobs=$(nproc)
+    echo "Other OS (windows?): max_jobs set to: $max_jobs"
+fi
+
+curr_jobs=0
+
+##  Function to check and wait if the number of running jobs is at the max
+check_and_wait() {
+    if [ $curr_jobs -ge $max_jobs ]; then
+        echo "Running $curr_jobs concurrent jobs; >= $max_jobs; **wait**" 
+        wait            ##  Wait for all current jobs to finish
+        curr_jobs=0
+    fi
+}
+
 if [ $build_type = "CPU" ]; then
     ##  Generate code for CPU
     echo "Generate CPU code ..."
@@ -91,32 +118,46 @@ if [ $build_type = "CPU" ]; then
 	##  Build DFT batch for CPU
 	waitspiral=true
 	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+    
     if [ "$PRDFTBAT_LIB" = true ]; then
 	##  Build PRDFT batch for CPU
 	waitspiral=true
 	$pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
-    if [ "$waitspiral" = true ]; then
-	wait		##  wait for the child processes to complete
-    fi
-    ##  Build the remaining libraries for the specified target
+    check_and_wait
+
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_mddft -s $CPU_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_files.py -t fftx_mddft -s $CPU_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_mdprdft -s $CPU_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_files.py -t fftx_mdprdft -s $CPU_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_rconv -s $CPU_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
     fi
+
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
     fi
@@ -131,31 +172,52 @@ if [[ $build_type = "CUDA" || $build_type = "HIP" ]]; then
     if [ "$DFTBAT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_dftbat.py -t fftx_dftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
-    # if [ "$PRDFTBAT_LIB" = true ]; then
-    #     waitspiral=true
-    #     $pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type &
-    #     $pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
-    # fi
+    check_and_wait
+
+    if [ "$PRDFTBAT_LIB" = true ]; then
+        waitspiral=true
+        $pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
+        $pyexe gen_dftbat.py -t fftx_prdftbat -s $DFTBAT_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
+    fi
+    check_and_wait
+
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_mddft -s $GPU_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_files.py -t fftx_mddft -s $GPU_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_mdprdft -s $GPU_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_files.py -t fftx_mdprdft -s $GPU_SIZES_FILE -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_rconv -s $GPU_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$PSATD_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_psatd -s $PSATD_SIZES_FILE -p $build_type &
+        ((curr_jobs++))
     fi
+
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
     fi    
@@ -169,31 +231,52 @@ if [[ $build_type = "SYCL" ]]; then
     if [ "$DFTBAT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_dftbat.py -t fftx_dftbat -s empty-sizes.txt -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_dftbat.py -t fftx_dftbat -s empty-sizes.txt -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$PRDFTBAT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_dftbat.py -t fftx_prdftbat -s empty-sizes.txt -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_dftbat.py -t fftx_prdftbat -s empty-sizes.txt -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$MDDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_mddft -s empty-sizes.txt -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_files.py -t fftx_mddft -s empty-sizes.txt -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$MDPRDFT_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_mdprdft -s empty-sizes.txt -p $build_type &
+        ((curr_jobs++))
 	$pyexe gen_files.py -t fftx_mdprdft -s empty-sizes.txt -p $build_type -i &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     if [ "$RCONV_LIB" = true ]; then
 	waitspiral=true
 	$pyexe gen_files.py -t fftx_rconv -s empty-sizes.txt -p $build_type &
+        ((curr_jobs++))
     fi
+    check_and_wait
+
     # if [ "$PSATD_LIB" = true ]; then
     # 	waitspiral=true
     # 	$pyexe gen_files.py -t fftx_psatd -s $PSATD_SIZES_FILE -p $build_type &
+    #   ((curr_jobs++))
     # fi
+
     if [ "$waitspiral" = true ]; then
 	wait		##  wait for the child processes to complete
     fi    

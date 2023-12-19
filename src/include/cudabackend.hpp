@@ -255,9 +255,9 @@ inline void Executor::getVars() {
 }
 
 inline void Executor::compileProg() {
-    const char *opts[] = {"--device-debug", "--relocatable-device-code=true","--gpu-architecture=compute_70"};
+    const char *opts[] = {"--relocatable-device-code=true","--gpu-architecture=compute_70"};
     compileResult = nvrtcCompileProgram(prog, 
-    3, 
+    2, 
     opts); 
     if ( DEBUGOUT ) std::cout << "compiled program\n";
 }
