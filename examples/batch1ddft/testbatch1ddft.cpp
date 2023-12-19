@@ -10,6 +10,8 @@
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
 #include "hipbackend.hpp"
+#elif defined FFTX_SYCL
+#include "syclbackend.hpp"
 #else  
 #include "cpubackend.hpp"
 #endif
@@ -28,10 +30,10 @@
 
 #define CUDA_SAFE_CALL(call) CH_CUDA_SAFE_CALL(call)
 
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
-
 static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
 {
     for ( int imm = 0; imm < sizes.at(0)*sizes.at(1); imm++ ) {
@@ -39,8 +41,15 @@ static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> si
     }
     return;
 }
-
-
+#else
+static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
+{
+    for ( int imm = 0; imm < sizes.at(0)*sizes.at(1); imm++ ) {
+        host_X[imm] = 1;
+    }
+    return;
+}
+#endif
 // Check that the buffer are identical (within roundoff)
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
@@ -141,7 +150,7 @@ int main(int argc, char* argv[])
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
     std::vector<std::complex<double>> outDevfft1(N*B*2);
-    std::vector<double> inputHost(N*B*2);
+    std::vector<std::complex<double>> inputHost(N*B*2);
     std::vector<std::complex<double>> outputHost(N*B*2);
     std::vector<std::complex<double>> outDevfft2(N*B*2);
     std::vector<std::complex<double>> outputHost2(N*B*2);
@@ -155,6 +164,11 @@ int main(int argc, char* argv[])
     DEVICE_MALLOC((void **)&dY, outputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void**)&tempX, outputHost.size()  * sizeof(std::complex<double>));
+#elif defined(FFTX_SYCL)
+    sycl::buffer<std::complex<double>> buf_Y(outputHost2.data(), outputHost2.size());
+    sycl::buffer<std::complex<double>> buf_X(inputHost.data(), inputHost.size());
+    sycl::buffer<std::complex<double>> buf_sym(inputHost.data(), inputHost.size());
+    sycl::buffer<std::complex<double>> buf_tempX(outputHost.data(), outputHost.size());
 #else
     dX = (std::complex<double> *) inputHost.data();
     dY = (std::complex<double> *) outputHost.data();
@@ -172,6 +186,10 @@ int main(int argc, char* argv[])
     std::vector<void*> args{tempX,dX};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
     std::string devfft  = "rocfft";
+#elif defined FFTX_SYCL
+    std::vector<void*> args{(void*)&(buf_tempX),(void*)&(buf_X)};
+    std::string descrip = "Intel GPU";                //  "CPU and GPU";
+    std::string devfft  = "mklfft";
 #else
     std::vector<void*> args{(void*)tempX,(void*)dX};
     std::string descrip = "CPU";                //  "CPU";
@@ -240,8 +258,16 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
         
         b1dft.transform();
         batch1ddft_gpu[itn] = b1dft.getTime();
-        //gatherOutput(outputHost, args);
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    
+    #if defined(FFTX_SYCL)		
+	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		sycl::host_accessor h_acc(buf_tempX);
+		std::cout << h_acc[0] << std::endl;
+	}
+	#endif
+
+	#if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.data(), tempX,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
         //  Run the roc fft plan on the same input data
@@ -275,6 +301,8 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     std::vector<void*> args2{&dY,&tempX};
 #elif defined FFTX_HIP
     std::vector<void*> args2{dY,tempX};
+#elif defined FFTX_SYCL
+	std::vector<void*> args2{(void*)&(buf_Y), (void*)&(buf_tempX)};
 #else
     std::vector<void*> args2{(void*)dY,(void*)tempX};
     //std::string devfft  = "rocfft";
@@ -287,11 +315,19 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     {
         ib1dft.transform();
         ibatch1ddft_gpu[itn] = ib1dft.getTime();
-        //gatherOutput(outputHost, args);
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    	
+	#if defined (FFTX_SYCL)
+	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		sycl::host_accessor h_acc(buf_Y);
+		std::cout << h_acc[0] << std::endl;
+	}
+    #endif
+
+	#if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost2.data(), dY,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-
+    
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
             DEVICE_EVENT_RECORD ( custart );

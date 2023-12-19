@@ -9,18 +9,19 @@
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
 #include "hipbackend.hpp"
+#elif defined FFTX_SYCL
+#include "syclbackend.hpp"
 #else  
 #include "cpubackend.hpp"
 #endif
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined (FFTX_SYCL)
 #include "device_macros.h"
 #endif
 
-
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
-
 static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
 {
     for ( int imm = 0; imm < sizes.at(0); imm++ ) {
@@ -34,8 +35,21 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
     }
     return;
 }
-
-
+#else
+static void buildInputBuffer( double *host_X, std::vector<int> sizes)
+{
+    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
+        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
+            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
+                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+                host_X[offset + 0] = 1;
+                host_X[offset + 1] = 1;
+            }
+        }
+    }
+    return;
+}
+#endif
 // Check that the buffer are identical (within roundoff)
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
@@ -137,6 +151,10 @@ int main(int argc, char* argv[])
     if ( DEBUGOUT ) std::cout << "allocated Y\n";
 
     DEVICE_MALLOC((void **)&dsym,  outputHost.m_domain.size() * sizeof(std::complex<double>));
+#elif defined(FFTX_SYCL)
+    sycl::buffer<std::complex<double>> buf_Y(outputHost.m_data.local(), outputHost.m_domain.size());
+    sycl::buffer<std::complex<double>> buf_X(inputHost.m_data.local(), inputHost.m_domain.size());
+    sycl::buffer<std::complex<double>> buf_sym(inputHost.m_data.local(), inputHost.m_domain.size());
 #else
     dX = (double *) inputHost.m_data.local();
     dY = (double *) outputHost.m_data.local();
@@ -157,6 +175,10 @@ int main(int argc, char* argv[])
     std::vector<void*> args{dY,dX,dsym};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
     std::string devfft  = "rocfft";
+#elif defined FFTX_SYCL
+    std::vector<void*> args{(void*)&(buf_Y),(void*)&(buf_X),(void*)&(buf_sym)};
+    std::string descrip = "Intel GPU";                //  "CPU and GPU";
+    std::string devfft  = "mklfft";
 #else
     std::vector<void*> args{(void*)dY,(void*)dX,(void*)dsym};
     std::string descrip = "CPU";                //  "CPU";
@@ -205,6 +227,14 @@ int main(int argc, char* argv[])
     #endif
         mddft_gpu[itn] = mdp.getTime();
 
+	#if defined (FFTX_SYCL)
+	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		sycl::host_accessor h_acc(buf_Y);
+		std::cout << h_acc[0] << std::endl;
+	}
+  #endif
+
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
@@ -252,6 +282,14 @@ int main(int argc, char* argv[])
                           outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
     #endif
         imddft_gpu[itn] = imdp.getTime();
+	
+	#if defined (FFTX_SYCL)
+	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		sycl::host_accessor h_acc(buf_Y);
+		std::cout << h_acc[0] << std::endl;
+	}
+    #endif
 
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         //  Run the device fft plan on the same input data

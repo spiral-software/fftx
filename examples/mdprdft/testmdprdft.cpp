@@ -10,13 +10,16 @@
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
 #include "hipbackend.hpp"
+#elif defined FFTX_SYCL
+#include "syclbackend.hpp"
 #else  
 #include "cpubackend.hpp"
 #endif
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined (FFTX_SYCL)
 #include "device_macros.h"
 #endif
 
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
@@ -49,7 +52,35 @@ static void buildInputBuffer_complex ( double *host_X, std::vector<int> sizes )
     }
     return;
 }
+#else
+static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
+{
+    srand(time(NULL));
+    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
+        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
+            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
+                int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
+                host_X[offset] = 1;
+            }
+        }
+    }
+    return;
+}
 
+static void buildInputBuffer_complex( double *host_X, std::vector<int> sizes)
+{
+    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
+        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
+            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
+                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+                host_X[offset + 0] = 1;
+                host_X[offset + 1] = 1;
+            }
+        }
+    }
+    return;
+}
+#endif
 
 // Check that the buffer are identical (within roundoff)
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
@@ -169,6 +200,11 @@ int main(int argc, char* argv[])
     DEVICE_MALLOC(&dsym,  outputHost.m_domain.size() * sizeof(double));
 
     DEVICE_MALLOC(&tempX, mm * nn * K_adj * sizeof(std::complex<double>));
+#elif defined(FFTX_SYCL)
+    sycl::buffer<double> buf_Y(outputHost2.m_data.local(), outputHost2.m_domain.size());
+    sycl::buffer<double> buf_X(inputHost.m_data.local(), inputHost.m_domain.size());
+    sycl::buffer<double> buf_sym(inputHost.m_data.local(), inputHost.m_domain.size());
+    sycl::buffer<std::complex<double>> buf_tempX(outputHost.m_data.local(), outputHost.m_domain.size());
 #else
     dX = (double *) inputHost.m_data.local();
     dY = (double *) outputHost2.m_data.local();
@@ -187,6 +223,10 @@ int main(int argc, char* argv[])
     std::vector<void*> args{tempX,dX,dsym};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
     std::string devfft  = "rocfft";
+#elif defined FFTX_SYCL
+    std::vector<void*> args{(void*)&(buf_tempX),(void*)&(buf_X),(void*)&(buf_sym)};
+    std::string descrip = "Intel GPU";                //  "CPU and GPU";
+    std::string devfft  = "mklfft";
 #else
     std::vector<void*> args{(void*)tempX,(void*)dX,(void*)dsym};
     std::string descrip = "CPU";                //  "CPU";
@@ -229,6 +269,13 @@ int main(int argc, char* argv[])
         mdp.transform();
         mddft_gpu[itn] = mdp.getTime();
 
+    #if defined(FFTX_SYCL)		
+	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		sycl::host_accessor h_acc(buf_tempX);
+		std::cout << h_acc[0] << std::endl;
+	}
+	#endif
 
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.m_data.local(), tempX,
@@ -263,6 +310,8 @@ int main(int argc, char* argv[])
     std::vector<void*> args1{&dY,&tempX,&dsym};
 #elif defined FFTX_HIP
     std::vector<void*> args1{dY,tempX,dsym};
+#elif defined FFTX_SYCL
+    std::vector<void*> args1{(void*)&(buf_Y),(void*)&(buf_tempX),(void*)&(buf_sym)};	
 #else
     std::vector<void*> args1{(void*)dY,(void*)tempX,(void*)dsym};
 #endif
@@ -295,7 +344,15 @@ int main(int argc, char* argv[])
         imdp.transform();
         imddft_gpu[itn] = imdp.getTime();
 
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+	#if defined (FFTX_SYCL)
+	{
+    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		sycl::host_accessor h_acc(buf_Y);
+		std::cout << h_acc[0] << std::endl;
+	}
+    #endif
+    
+	#if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost2.m_data.local(), dY,
                           outputHost2.m_domain.size() * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
     //  Run the device fft plan on the same input data
