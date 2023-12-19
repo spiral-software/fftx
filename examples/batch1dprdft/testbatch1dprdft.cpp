@@ -188,8 +188,8 @@ int main(int argc, char* argv[])
   sycl::buffer<std::complex<double>> buf_sym(outputHost.data(), outputHost.size());
   sycl::buffer<std::complex<double>> buf_tempX(outputHost.data(), outputHost.size());
 #else
-    dX = (std::complex<double> *) inputHost.data();
-    dY = (std::complex<double> *) outputHost2.data();
+    dX = (double *) inputHost.data();
+    dY = (double *) outputHost2.data();
     tempX = new std::complex<double>[outputHost.size()];
     dsym = new std::complex<double>[outputHost.size()];
 #endif
