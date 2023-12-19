@@ -427,7 +427,7 @@ inline std::string FFTXProblem::semantics2() {
         close(p[0]);
     #endif
     if(PRINTSCRIPT) std::cout << script << std::endl;
-    #if defined(FFTX_HIP) || defined(FFTX_CUDA)
+    #if defined(FFTX_HIP) || defined(FFTX_CUDA) || defined(FFTX_SYCL)
     if(result.find("spiral> JIT BEGIN") == std::string::npos) {
       //  if(DEBUGOUT) std::cout << script << std::endl;
       std::cout << script << std::endl;
