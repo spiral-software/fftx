@@ -70,28 +70,6 @@ static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_
     return;
 }
 
-static void checkOutputBuffers_inv ( DEVICE_FFT_DOUBLEREAL *spiral_Y, DEVICE_FFT_DOUBLEREAL *devfft_Y, long arrsz )
-{
-    bool correct = true;
-    double maxdelta = 0.0;
-
-    for ( int indx = 0; indx < arrsz; indx++ ) {
-        DEVICE_FFT_DOUBLEREAL s = spiral_Y[indx];
-        DEVICE_FFT_DOUBLEREAL c = devfft_Y[indx];
-
-        double deltar = abs ( s - c );
-        bool   elem_correct = ( deltar < 1e-7 );
-        maxdelta = maxdelta < deltar ? deltar : maxdelta ;
-        correct &= elem_correct;
-    }
-    
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
-
-    return;
-}
-
-
 #endif
 
 int main(int argc, char* argv[])

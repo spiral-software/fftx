@@ -41,24 +41,6 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
     return;
 }
 
-
-static void buildInputBuffer_complex ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
-                host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-                host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-                // host_X[offset + 0] = 1;
-                // host_X[offset + 1] = 1;
-            }
-        }
-    }
-    return;
-}
-
 // Check that the buffer are identical (within roundoff)
 // spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
@@ -393,13 +375,13 @@ if(read == 0 && write == 0) {
     printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
              descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );        //  , devfft.c_str() );
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, batch1ddft_gpu[itn], devmilliseconds[itn] );
+        printf ( "%d\t%.7e\t%.7e\n", itn, batch1dprdft_gpu[itn], devmilliseconds[itn] );
     }
 
     printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
              descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, ibatch1ddft_gpu[itn], invdevmilliseconds[itn] );
+        printf ( "%d\t%.7e\t%.7e\n", itn, ibatch1dprdft_gpu[itn], invdevmilliseconds[itn] );
     }
 #else
      printf ( "Times in milliseconds for %s on Real Batch 1D FFT (forward) for %d trials of size %d and batch %d\n",
