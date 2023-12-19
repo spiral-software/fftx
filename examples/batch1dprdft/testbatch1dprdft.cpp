@@ -10,6 +10,8 @@
 #include "cudabackend.hpp"
 #elif defined FFTX_HIP
 #include "hipbackend.hpp"
+#elif defined FFTX_SYCL
+#include "syclbackend.hpp"
 #else  
 #include "cpubackend.hpp"
 #endif
@@ -170,7 +172,8 @@ int main(int argc, char* argv[])
     std::vector<double> outDevfft2(N*B);
     std::vector<double> outputHost2(N*B);
 
-    std::complex<double> *dX, *dY, *dsym, *tempX;
+     double *dX, *dY;
+     std::complex<double> *dsym, *tempX;
 
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
@@ -179,6 +182,11 @@ int main(int argc, char* argv[])
     DEVICE_MALLOC((void **)&dY, outputHost2.size() * sizeof(double));
     DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void**)&tempX, outputHost.size()  * sizeof(std::complex<double>));
+#elif defined FFTX_SYCL
+  sycl::buffer<double> buf_Y(outputHost2.data(), outputHost2.size());
+  sycl::buffer<double> buf_X(inputHost.data(), inputHost.size());
+  sycl::buffer<std::complex<double>> buf_sym(outputHost.data(), outputHost.size());
+  sycl::buffer<std::complex<double>> buf_tempX(outputHost.data(), outputHost.size());
 #else
     dX = (std::complex<double> *) inputHost.data();
     dY = (std::complex<double> *) outputHost2.data();
@@ -196,6 +204,10 @@ int main(int argc, char* argv[])
     std::vector<void*> args{tempX,dX};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
     std::string devfft  = "rocfft";
+#elif defined FFTX_SYCL
+    std::vector<void*> args{(void*)&(buf_tempX),(void*)&(buf_X)};
+    std::string descrip = "Intel GPU";                //  "CPU and GPU";
+    std::string devfft  = "mklfft";
 #else
     std::vector<void*> args{(void*)tempX,(void*)dX};
     std::string descrip = "CPU";                //  "CPU";
@@ -266,7 +278,15 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
         
         b1prdft.transform();
         batch1dprdft_gpu[itn] = b1prdft.getTime();
-        //gatherOutput(outputHost, args);
+    
+    #if defined(FFTX_SYCL)		
+	  {
+      std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		  sycl::host_accessor h_acc(buf_tempX);
+		  std::cout << h_acc[0] << std::endl;
+	  }
+	  #endif
+    
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost.data(), tempX,
                           outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
@@ -300,6 +320,8 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     std::vector<void*> args2{&dY,&tempX};
 #elif defined FFTX_HIP
     std::vector<void*> args2{dY,tempX};
+#elif defined FFTX_SYCL
+	std::vector<void*> args2{(void*)&(buf_Y), (void*)&(buf_tempX)};
 #else
     std::vector<void*> args2{(void*)dY,(void*)tempX};
     //std::string devfft  = "rocfft";
@@ -341,6 +363,15 @@ if(read == 0 && write == 0) {
     {
         ib1prdft.transform();
         ibatch1dprdft_gpu[itn] = ib1prdft.getTime();
+    
+    #if defined (FFTX_SYCL)
+	  {
+      std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
+		  sycl::host_accessor h_acc(buf_Y);
+		  std::cout << h_acc[0] << std::endl;
+	  }
+    #endif
+
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MEM_COPY ( outputHost2.data(), dY,
                           outputHost2.size() * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
