@@ -86,3 +86,54 @@ Legend:  N == fftlen;  B == nbatch;  write == _wr;  read == _rd;
         fi;
     fi;
 
+---------------------------------------------------------------------------------------------------
+
+Updates from new versions of batch1dprdftObj.hpp & ibatch1dprdftObj.hpp
+
+
+// read seq, write seq
+static std::string batch1dprdft_script_0x0 = "transform := let(\n\
+         TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\
+            rec(fname := name, params := [])));";
+
+// read seq, write strided
+static std::string batch1dprdft_script_0x1 = "transform := let(\n\
+    TFCall(Prm(fTensor(L(PRDFT1(N, sign).dims()[1]/2 * B, PRDFT1(N, sign).dims()[1]/2), fId(2))) *\n\
+    TTensorI(PRDFT1(N, sign), B, APar, read),\n\
+    rec(fname := name, params := [])));";
+
+//read strided, write seq
+static std::string batch1dprdft_script_1x0 = "transform := let(\n\
+         TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\
+            rec(fname := name, params := [])));";
+
+//read strided, write strided
+static std::string batch1dprdft_script_1x1 = "transform := let(\n\
+    TFCall(Prm(fTensor(L(PRDFT1(N, sign).dims()[1]/2 * B, PRDFT1(N, sign).dims()[1]/2), fId(2))) *\n\
+    TTensorI(PRDFT1(N, sign), B, APar, read),\n\
+    rec(fname := name, params := [])));";
+
+----------------------------------------
+
+
+//read seq, write seq
+static std::string ibatch1dprdft_script_0x0 = "transform := let(\n\
+         TFCall(TTensorI(IPRDFT(N, 1), B, write, read),\n\
+            rec(fname := name, params := [])));";
+
+//read seq, write strided
+static std::string ibatch1dprdft_script_0x1 = "transform := let(\n\
+         TFCall(TTensorI(IPRDFT(N, 1), B, write, read),\n\
+            rec(fname := name, params := [])));";
+
+//read strided, write seq
+static std::string ibatch1dprdft_script_1x0 = "transform := let(\n\
+    TFCall(TTensorI(IPRDFT(N, 1), B, write, APar) * \n\
+        Prm(fTensor(L(IPRDFT1(N, 1).dims()[2]/2 * B, B), fId(2))), \n\
+    rec(fname := name, params := [])));";
+
+//read strided, write strided
+static std::string ibatch1dprdft_script_1x1 = "transform := let(\n\
+    TFCall(TTensorI(IPRDFT(N, 1), B, write, APar) * \n\
+        Prm(fTensor(L(IPRDFT1(N, 1).dims()[2]/2 * B, B), fId(2))), \n\
+    rec(fname := name, params := [])));";
