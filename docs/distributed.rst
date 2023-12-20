@@ -1,5 +1,5 @@
 FFTX Distributed 3D FFT Library
-========================
+===============================
 
 FFTX provides a distributed interface for describing and computing 3D FFTs in a distributed setting using MPI.  This guide documents instructions for setting up, and computing with the distributed interface. Furthermore, it also documents the assumptions behind the different versions of distributed FFTs.
 
@@ -55,6 +55,7 @@ The ``forward`` parameter indicates if a foward (``1``) or inverse (``0``) FFT i
 
 The ``complex`` parameter, when set to ``1`` indicates that the FFT is a complex 3DFFT. However, when the parameter is set to ``0``, the 3DFFT is either a real-to-complex FFT (if the ``forward`` parameter is set to ``1``), or a complex-to-real FFT (otherwise). 
 
+Additional details for running the example can be found in the `example directory <../examples/3DDFT_mpi/README.md>`_.
 
 Types of FFTs
 -------------

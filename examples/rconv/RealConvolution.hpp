@@ -40,31 +40,6 @@ void unifRealArray(fftx::array_t<DIM, double>& a_arr)
 }
 
 template<int DIM>
-fftx::box_t<DIM> domainFromSize(const fftx::point_t<DIM>& a_size,
-                                const fftx::point_t<DIM>& a_offset = fftx::point_t<DIM>::Zero())
-{
-  fftx::box_t<DIM> bx;
-  for (int d = 0; d < DIM; d++)
-    {
-      bx.lo[d] = a_offset[d] + 1;
-      bx.hi[d] = a_offset[d] + a_size[d];
-    }
-  return bx;
-}
-
-template<int DIM>
-fftx::point_t<DIM> truncatedComplexDimensions(fftx::point_t<DIM>& a_size)
-{
-  fftx::point_t<DIM> truncSize = a_size;
-#if FFTX_COMPLEX_TRUNC_LAST
-  truncSize[DIM-1] = a_size[DIM-1]/2 + 1;
-#else
-  truncSize[0] = a_size[0]/2 + 1;
-#endif
-  return truncSize;
-}
-
-template<int DIM>
 class RealConvolution
 {
 public:
@@ -120,7 +95,7 @@ public:
       }
     else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB)
       {
-#if defined(FFTX_CUDA) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         // on GPU
         auto input_size = m_domain.size();
         auto output_size = m_domain.size();
@@ -134,11 +109,13 @@ public:
         hipDeviceptr_t inputPtr;
         hipDeviceptr_t outputPtr;
         hipDeviceptr_t symbolPtr;
-#else
+#elif defined FFTX_CUDA
         CUdeviceptr inputPtr;
         CUdeviceptr outputPtr;
         CUdeviceptr symbolPtr;
-#endif      
+#endif
+
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
         DEVICE_MALLOC((void **)&inputPtr, input_bytes);
         DEVICE_MALLOC((void **)&outputPtr, output_bytes);
         DEVICE_MALLOC((void **)&symbolPtr, symbol_bytes);
@@ -147,6 +124,11 @@ public:
                         MEM_COPY_HOST_TO_DEVICE);
         DEVICE_MEM_COPY((void*)symbolPtr, a_symbol.m_data.local(), symbol_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
+#else
+		sycl::buffer<double> buf_inputPtr(a_input.m_data.local(), input_size);
+		sycl::buffer<double> buf_outputPtr(a_output.m_data.local(), output_size);
+		sycl::buffer<double> buf_symbolPtr(a_symbol.m_data.local(), symbol_size);
+#endif
 
 #if defined FFTX_HIP
         fftx::array_t<DIM, hipDeviceptr_t> inputDevice(fftx::global_ptr<hipDeviceptr_t>
@@ -157,6 +139,15 @@ public:
                                                 (&symbolPtr, 0, 1), m_fdomain);
 
         std::vector<void*> args{outputPtr, inputPtr, symbolPtr};
+#elif defined FFTX_SYCL
+		/*fftx::array_t<DIM, sycl::buffer<double>> inputDevice(fftx::global_ptr<sycl::buffer<double>>
+                                               (&buf_inputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, sycl::buffer<double>> outputDevice(fftx::global_ptr<sycl::buffer<double>>
+                                                (&buf_outputPtr, 0, 1), m_domain);
+        fftx::array_t<DIM, sycl::buffer<double>> symbolDevice(fftx::global_ptr<sycl::buffer<double>>
+                                                (&buf_symbolPtr, 0, 1), m_fdomain);
+*/
+        std::vector<void*> args{(void*)&(buf_outputPtr), (void*)&(buf_inputPtr), (void*)&(buf_symbolPtr)};
 #else
         fftx::array_t<DIM, CUdeviceptr> inputDevice(fftx::global_ptr<CUdeviceptr>
                                                (&inputPtr, 0, 1), m_domain);
@@ -179,11 +170,13 @@ public:
         //   {
         //     m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
         //   }
-        DEVICE_MEM_COPY(a_output.m_data.local(), (void*)outputPtr, output_bytes,
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
+		DEVICE_MEM_COPY(a_output.m_data.local(), (void*)outputPtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
 
         DEVICE_FREE((void*)inputPtr);
         DEVICE_FREE((void*)outputPtr);
+#endif
 #else
         std::vector<void*> args{(void*)a_output.m_data.local(),
                                 (void*)a_input.m_data.local(),

@@ -43,7 +43,11 @@ inline std::string getCUDARuntime() {
             std::cout << "[ERROR] No such variable found! Please set CUDA_HOME to point to top level cuda directory" << std::endl;
             exit(-1);
         }
+    #if defined (_WIN32) || defined (_WIN64)
+    tmp += "./lib/x64/cudadevrt.lib";
+    #else
     tmp += "/lib64/libcudadevrt.a";
+    #endif
 
     return tmp;
 }
@@ -251,9 +255,9 @@ inline void Executor::getVars() {
 }
 
 inline void Executor::compileProg() {
-    const char *opts[] = {"--device-debug", "--relocatable-device-code=true","--gpu-architecture=compute_70"};
+    const char *opts[] = {"--relocatable-device-code=true","--gpu-architecture=compute_70"};
     compileResult = nvrtcCompileProgram(prog, 
-    3, 
+    2, 
     opts); 
     if ( DEBUGOUT ) std::cout << "compiled program\n";
 }
@@ -364,6 +368,12 @@ inline void Executor::destoryProg() {
 inline float Executor::initAndLaunch(std::vector<void*>& args) {
     if ( DEBUGOUT ) std::cout << "the kernel name is " << kernel_name << std::endl;
     DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
+
+    if ( DEBUGOUT ) std::cout << "configuring device execution environment " << std::endl;
+    DEVICE_SAFE_CALL(cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 1073741824));
+    DEVICE_SAFE_CALL(cuFuncSetCacheConfig(kernel, CU_FUNC_CACHE_PREFER_L1));
+     
+
     if ( DEBUGOUT ) std::cout << "launched kernel\n";
     CUevent start, stop;
     DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));

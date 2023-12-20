@@ -1,7 +1,7 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
-#if defined(FFTX_CUDA) || defined(FFTX_HIP)
+#if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
 #include "fftx_mddft_gpu_public.h"
 #include "fftx_imddft_gpu_public.h"
 #include "fftx_mdprdft_gpu_public.h"
@@ -32,15 +32,26 @@ int main(int argc, char* argv[])
   char *prog = argv[0];
   int verbosity = 0;
   int rounds = 2;
+  int baz = 0;
   while ( argc > 1 && argv[1][0] == '-' ) {
       switch ( argv[1][1] ) {
       case 'i':
-          argv++, argc--;
-          rounds = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          rounds = atoi ( & argv[1][baz] );
           break;
       case 'v':
-          argv++, argc--;
-          verbosity = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
           printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );

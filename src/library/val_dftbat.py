@@ -1,8 +1,8 @@
 #! python
 
 ##  Validate FFTX built libraries against numpy computed versions of the transforms
-##  Exercise all the sizes in the library (read dftbatch-sizes) and call both forward and
-##  inverse transforms.  Optionally, specify a single cube size to validate.
+##  Exercise all the sizes in the library (read dftbatch-sizes.txt) and call both
+##  forward and inverse transforms.  Optionally, specify a single size to validate.
 
 import ctypes
 import sys
@@ -22,20 +22,21 @@ def setup_input_array ( array_shape ):
     return src;
 
 
-def run_python_version ( src, styp, fwd ):
-    "Create the output array by calling python"
+def run_python_version ( src, fftlen, rdstr, wrstr, fwd ):
+    "Create the output array by calling NumPy"
 
-    ##  Stride type 1 and 3 read sequentially (2 & 4 read strided)
-    ax = -1 if styp in (1, 3) else 0
+    ##  adjust axis based on read stride type
+    ax = -1 if rdstr == 0 else 0
 
     if fwd:
         dst = np.fft.fft ( src, axis=ax )
+        dst = dst / fftlen                      ## Normalize NumPy result
     else:
-        dst = np.fft.ifft ( src, axis=ax )
+        dst = np.fft.ifft ( src, axis=ax )      ## NumPy inverse is already normalized
  
-    if styp in (2, 3):
-        ##  read & write strides are different (i.e., read seq/write stride or read stride/write seq)
-        if styp == 3:
+    if rdstr != wrstr:
+        ##  read & write stride types are different (i.e., read seq/write stride or read stride/write seq)
+        if wrstr:
             ##  read sequential, write strided
             ##  new shape is inverse of src
             revdims = src.shape[::-1]
@@ -50,22 +51,24 @@ def run_python_version ( src, styp, fwd ):
     return dst;
 
 
-def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode ):
-    "Run a transform specified by segment names and fwd flag of size dims"
+def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, warn ):
+    "Run a transform from the requested library as specified in the dims array"
 
     ##  First, ensure the library we need exists...
     uselib = libfwd + platform + libext if fwd else libinv + platform + libext
     _sharedLibPath = os.path.join ( os.path.realpath ( libdir ), uselib )
     if not os.path.exists ( _sharedLibPath ):
-        print ( f'library file: {uselib} does not exist - continue', flush = True )
+        if warn:
+            print ( f'library file: {uselib} does not exist - continue', flush = True )
         return
 
-    nbat = dims[0]
-    dz   = dims[1]
-    styp = dims[2]
+    fftlen = dims[0]
+    nbat   = dims[1]
+    rdstr  = dims[2]
+    wrstr  = dims[3]
 
-    ##  Stride type 1 and 3 read sequentially (2 & 4 read strided)
-    array_shape = ( nbat, 1, dz ) if styp in (1, 3) else ( dz, nbat, 1 )
+    ##  Array shape depends on the read stride type
+    array_shape = ( nbat, 1, fftlen ) if rdstr == 0 else ( fftlen, nbat, 1 )
     _src = setup_input_array ( array_shape )
 
     ##  Setup function name and specify size to find in library
@@ -76,10 +79,11 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
 
     pywrap = froot + platform + _under + 'python' + _under
 
-    _xfmsz    = np.zeros(3).astype(ctypes.c_int)
-    _xfmsz[0] = nbat
-    _xfmsz[1] = dz
-    _xfmsz[2] = styp
+    _xfmsz    = np.zeros(4).astype(ctypes.c_int)
+    _xfmsz[0] = fftlen
+    _xfmsz[1] = nbat
+    _xfmsz[2] = rdstr
+    _xfmsz[3] = wrstr
 
     ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
     ##  the library (these setup/teardown GPU resources when using GPU libraries).
@@ -96,7 +100,7 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
         return
 
     ##  If the strides for read & write are different then reverse the dimensions for the output array.
-    if styp in (2, 3):
+    if rdstr != wrstr:
         ##  reverse dims
         revdims = _src.shape[::-1]
         _dst_spiral = np.zeros ( revdims, _src.dtype )
@@ -110,6 +114,9 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
         _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ),
                        _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
                        _src.ctypes.data_as ( ctypes.c_void_p ) )
+        ##  Normalize Spiral result
+        _dst_spiral = _dst_spiral / fftlen      ##  np.size ( _dst_spiral )
+
     except Exception as e:
         print ( 'Error occurred during library function call:', type(e).__name__ )
         print ( 'Exception details:', str(e) )
@@ -121,7 +128,7 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
     _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
 
     ##  Get the python answer using the same input
-    _dst_python = run_python_version ( _src, styp, fwd )
+    _dst_python = run_python_version ( _src, fftlen, rdstr, wrstr, fwd )
 
     ##  Check difference
     _diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
@@ -135,10 +142,12 @@ def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode )
 def main():
     parser = argparse.ArgumentParser ( description = 'Validate FFTX built libraries against NumPy computed versions of the transforms' )
     ##  Positional argument: libdir
-    parser.add_argument ( 'libdir', type=str, help='directory of the library' )
-    ##  Optional arguments
+    parser.add_argument ( 'libdir', type=str, help='directory containing the library' )
+    ##  Optional argument: -e or --emit
+    parser.add_argument ( '-e', '--emit', action='store_true', help='emit warnings when True, default is False' )
+    ##  mutually exclusive optional arguments
     group = parser.add_mutually_exclusive_group()
-    group.add_argument ( '-s', '--size', type=str, help='size of the transform (e.g., 16x80x2)' )
+    group.add_argument ( '-s', '--size', type=str, help='size specification of the transform (e.g., 1024x32x1x0)' )
     group.add_argument ( '-f', '--file', type=str, help='file containing sizes to loop over' )
     args = parser.parse_args()
 
@@ -156,12 +165,12 @@ def main():
 
     if args.size:
         dims = [int(d) for d in args.size.split('x')]
-        print ( f'Size = {dims[0]} (batches) x {dims[1]} (length) x {dims[2]} (stride type)', flush = True )
-        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU' )
-        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU' )
+        print ( f'Size = {dims[0]} (length) x {dims[1]} (batches) x {dims[2]} (read stride type) x {dims[3]} (write stride type)', flush = True )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU', args.emit )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU', args.emit )
 
-        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU' )
-        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU' )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU', args.emit )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU', args.emit )
 
         sys.exit ()
 
@@ -172,14 +181,12 @@ def main():
 
     ##  Process the sizes file, extracting the dimentions and running the transform.  The
     ##  sizes file contains records of the form:
-    ##      nbatch := 16; szns := 60; stridetype := 1;
-    ##  where nbatch is the batch size, szns is the DFT length, and stridetype inidcates if
-    ##  input, output, or both are read/written sequentially or strided.  Stride type can take
-    ##  value 1 - 4, with the following meaning:
-    ##      1:      Read sequantial, write sequential
-    ##      2:      Read strided, write sequential
-    ##      3:      Read sequantial, write strided
-    ##      4:      Read strided, write strided
+    ##      fftlen := 1024;  nbatch := 4;  rdstride := "AVec";  wrstride := "APar";
+    ##  where:
+    ##      fftlen is the FFT length
+    ##      nbatch is the batch size
+    ##      rdstride is the read [input] stride type (APar | AVec, maps to 0 | 1)
+    ##      wrstride is the write [output] stride type (APar | AVec, maps to 0 | 1)
 
     with open ( sizesfile, 'r' ) as file:
         for line in file:
@@ -188,18 +195,22 @@ def main():
                 continue
 
             line = re.sub ( ' ', '', line )                 ## suppress white space
-            m = re.match ( r'nbatch:=(\d+);szns:=(\d+);stridetype:=(\d+);', line)
+            line = re.sub ( '"', '', line )                 ## strip double quotes (spiral requires them)
+            pattern = r'fftlen:=(\d+);nbatch:=(\d+);rdstride:=(\w+);wrstride:=(\w+);'
+            m = re.match ( pattern, line)
             if not m:
                 print ( f'Invalid line format: {line}', flush = True )
                 continue
 
-            dims = [int(m.group(i)) for i in range(1, 4)]
-            print ( f'Size = {dims[0]} (batches) x {dims[1]} (length) x {dims[2]} (stride type)', flush = True )
-            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU' )
-            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU' )
+            dims = [int(m.group(i)) for i in range(1, 3)]
+            dims.append ( 0 if m.group(3) == 'APar' else 1 )
+            dims.append ( 0 if m.group(4) == 'APar' else 1 )
+            print ( f'Size = {dims[0]} (length) x {dims[1]} (batches) x {dims[2]} (read stride type) x {dims[3]} (write stride type)', flush = True )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU', args.emit )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU', args.emit )
 
-            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU' )
-            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU' )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU', args.emit )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU', args.emit )
 
 if __name__ == '__main__':
     main()

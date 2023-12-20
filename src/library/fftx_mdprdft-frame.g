@@ -1,5 +1,5 @@
 
-##  Copyright (c) 2018-2021, Carnegie Mellon University
+##  Copyright (c) 2018-2023, Carnegie Mellon University
 ##  See LICENSE for details
 
 # 1d and multidimensional complex DFTs
@@ -10,7 +10,6 @@
 
 Load(fftx);
 ImportAll(fftx);
-ImportAll(simt);
 
 ##  If the variable createJIT is defined and set true then load the jit module
 if ( IsBound(createJIT) and createJIT ) then
@@ -22,6 +21,8 @@ if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
 elif codefor = "HIP" then
     conf := FFTXGlobals.defaultHIPConf();
+elif codefor = "SYCL" then
+    conf := FFTXGlobals.defaultOpenCLConf();
 elif codefor = "CPU" then
     conf := LocalConfig.fftx.defaultConf();
 fi;
@@ -84,9 +85,9 @@ if 1 = 1 then
         cachedir := GetEnv("FFTX_HOME");
 	if (cachedir = "") then cachedir := "../.."; fi;
         cachedir := cachedir::"/cache_jit_files/";
-        GASMAN ( "collect" );
         if ( codefor = "HIP" ) then PrintTo ( cachedir::jitname, PrintHIPJIT ( c, opts ) ); fi;
         if ( codefor = "CUDA" ) then PrintTo ( cachedir::jitname, PrintJIT2 ( c, opts ) ); fi;
+        if ( codefor = "SYCL" ) then PrintTo ( cachedir::jitname, PrintOpenCLJIT ( c, opts ) ); fi;
         if ( codefor = "CPU" ) then PrintTo ( cachedir::jitname, opts.prettyPrint ( c ) ); fi;
     fi;
 fi;

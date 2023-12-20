@@ -21,7 +21,11 @@ void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
   // pass in the dft size. if embedded, double dims when necessary.
   plan->r = rr;
   plan->c = cc;
-  size_t max_size = M*N*K*(plan->is_embed ? 8 : 1)/(plan->r * plan->c) * plan->b;
+  uint64_t m = M;
+  uint64_t n = N;
+  uint64_t k = K;
+
+  size_t max_size = m*n*k*(plan->is_embed ? 8 : 1)/(plan->r * plan->c) * plan->b;
 
 #if CUDA_AWARE_MPI
   DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(complex<double>));
@@ -62,28 +66,31 @@ void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
 }
 
 void destroy_2d_comms(fftx_plan plan) {
-  if (plan){
+  if (plan) {
     MPI_Comm_free(&(plan->row_comm));
     MPI_Comm_free(&(plan->col_comm));
 
 #if CUDA_AWARE_MPI
-  DEVICE_FREE(plan->send_buffer);
-  DEVICE_FREE(plan->recv_buffer);
+    DEVICE_FREE(plan->send_buffer);
+    DEVICE_FREE(plan->recv_buffer);
 #else
-  free(plan->send_buffer);
-  free(plan->recv_buffer);
+    free(plan->send_buffer);
+    free(plan->recv_buffer);
 #endif
   }
 }
 
 fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
-
   fftx_plan plan;
+#if FORCE_VENDOR_LIB
+  {
+#else
    if(is_complex || (!is_complex && batch == 1)) {
     plan = fftx_plan_distributed_spiral(r, c, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {
     std::cout << "configuration not supported, using vendor backend" << std::endl;
+#endif
     plan = fftx_plan_distributed_default(r, c, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }
@@ -91,18 +98,27 @@ fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bo
 }
 
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer, int direction) {
-  if(plan->use_fftx == true)
+#if FORCE_VENDOR_LIB
+  {
+#else
+  if(plan->use_fftx) {
     fftx_execute_spiral(plan, out_buffer, in_buffer, direction);
-  else
+  } else {
+#endif
     fftx_execute_default(plan, out_buffer, in_buffer, direction);
-
+  }
 }
 
 void fftx_plan_destroy(fftx_plan plan) {
-  if(plan->use_fftx == true)
+#if FORCE_VENDOR_LIB
+  {
+#else
+  if(plan->use_fftx) {
     fftx_plan_destroy_spiral(plan);
-  else
+  } else {
+#endif
     fftx_plan_destroy_default(plan);
+  }
 }
 
 // perm: [a, b, c] -> [a, 2c, b]
@@ -235,6 +251,11 @@ void unpack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, in
 }
 
 void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded) {
+  // int rank = -1;
+  // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // double start, stop, max_time;
+  // if (rank == 0) { printf("%f,", -2.0); }
+
   complex<double> *X = (complex<double> *) _X;
   complex<double> *Y = (complex<double> *) _Y;
 
@@ -250,6 +271,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         // [xl, yl, zl, zr] -> [xl, yl, zl, xr]
         // [xl, (yl, zl), xr] -> [xl, xr, (yl, zl)]
 #if CUDA_AWARE_MPI
+        // start = MPI_Wtime();
         DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
         MPI_Alltoall(
           // X, sendSize*plan->b,
@@ -259,9 +281,23 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->row_comm // TODO: Make sure this is the correct communicator
         ); // assume N dim is initially distributed along col comm.
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+        // start = MPI_Wtime();
         pack_embed(plan, Y, plan->recv_buffer, plan->b * plan->shape[0], plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1), plan->shape[1], is_embedded);
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+        // start = MPI_Wtime();
 #else
+        // start = MPI_Wtime();
         DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_HOST);
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+
+        // start = MPI_Wtime();
         MPI_Alltoall(
           plan->send_buffer, sendSize*plan->b,
           MPI_DOUBLE_COMPLEX,
@@ -269,7 +305,15 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->row_comm // TODO: Make sure this is the correct communicator
         ); // assume N dim is initially distributed along col comm.
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+
+        // start = MPI_Wtime();
         pack_embed(plan, Y,                 X, plan->b * plan->shape[0], plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1), plan->shape[1], is_embedded);
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
 #endif
       } // end FFTX_MPI_EMBED_1
       break;
@@ -284,17 +328,36 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         // [yl, zl, xl, xr] -> [yl, zl, xl, yr]
         // [yl, (zl, xl), yr] -> [yl, yr, (zl, xl)]
 #if CUDA_AWARE_MPI
+        // start = MPI_Wtime();
+        // TODO: this copy shouldn't be necessary, but provides incorrect results without it.
+        // should be able to just use X as input to MPI.
+        // it could be a synchronization issue?
         DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
         MPI_Alltoall(
-	  plan->send_buffer, sendSize*plan->b,
+	        plan->send_buffer, sendSize*plan->b,
+	        // X, sendSize*plan->b,
           MPI_DOUBLE_COMPLEX,
           plan->recv_buffer, recvSize*plan->b,
           MPI_DOUBLE_COMPLEX,
           plan->col_comm // TODO: make sure this is the right communicator to support non-square grid
         );
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+
+        // start = MPI_Wtime();
         pack_embed(plan, Y, plan->recv_buffer, plan->b * plan->shape[2], plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[0] * (is_embedded ? 2 : 1), plan->shape[3], is_embedded);
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
 #else
+        // start = MPI_Wtime();
         DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_HOST);
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+
+        // start = MPI_Wtime();
         MPI_Alltoall(
 	        plan->send_buffer, sendSize*plan->b,
           MPI_DOUBLE_COMPLEX,
@@ -302,7 +365,15 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->col_comm // TODO: make sure this is the right communicator to support non-square grid
         );
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
+
+        // start = MPI_Wtime();
         pack_embed(plan, Y, X, plan->b * plan->shape[2], plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[0] * (is_embedded ? 2 : 1), plan->shape[3], is_embedded);
+        // stop = MPI_Wtime();
+        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // if (rank == 0) { printf("%f,", max_time); }
 #endif
       } // end FFTX_MPI_EMBED_2
       break;
