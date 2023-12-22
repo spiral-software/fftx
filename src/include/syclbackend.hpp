@@ -408,8 +408,8 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
                 }).wait();
 	}
     auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-	GPUtime = duration.count();
+    std::chrono::duration<float, std::milli> duration = stop - start;
+    GPUtime = duration.count();
     return getKernelTime();
 }
 
