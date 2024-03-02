@@ -16,6 +16,86 @@ inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
 
+//inline void update_max(double& maxval, double newval)
+//{
+//  double absnew = abs(newval);
+//  if (absnew > maxval)
+//    maxval = absnew;
+//}
+                       
+// When running with p ranks, length of LAST dimension must be divisible by p.
+
+// In the C2R (!is_complex && !is_forward) case only,
+// the input must be Hermitian-symmetric
+// in order for the output to be real.
+
+// Possible real parts of a Hermitian-symmetric vector of length len.
+
+double testfun1real(size_t k, size_t len)
+{
+  double x;
+  if (k == 0)
+    x = 1.5;
+  else if (2*k == len)
+    x = 2.2;
+  else if (2*k < len)
+    x = sin(k * 1.);
+  else if (2*k > len)
+    x = sin((len - k) * 1.);
+
+  return x;
+}
+
+double testfun2real(size_t k, size_t len)
+{
+  double x;
+  if (k == 0)
+    x = -0.9;
+  else if (2*k == len)
+    x = 1.3;
+  else if (2*k < len)
+    x = cos(k * 1.);
+  else if (2*k > len)
+    x = cos((len - k) * 1.);
+
+  return x;
+}
+
+double testfun3real(size_t k, size_t len)
+{
+  double x;
+  if (k == 0)
+    x = 1.1;
+  else if (2*k == len)
+    x = -0.7;
+  else if (2*k < len)
+    x = exp(-abs(k * 1.));
+  else if (2*k > len)
+    x = exp(-abs((len - k) * 1.));
+
+  return x;
+}
+
+// Possible imaginary parts of a Hermitian-symmetric vector of length len.
+
+// If we could, we'd take a product of 3 complex functions,
+// each one having Hermitian symmetry and varying in a different dimension.
+// But that is cumbersome if we're not using a complex-number type;
+// so the imaginary part varies in one dimension only.
+
+double testfunimag(size_t k, size_t len)
+{
+  double y;
+  if ((k == 0) || (2*k == len))
+    y = 0.0;
+  else if (2*k < len)
+    y = log((1 + k)*1.);
+  else if (2*k > len)
+    y = -log((1 + len - k)*1.);
+
+  return y;
+}
+
 int main(int argc, char* argv[]) {
 
   MPI_Init(&argc, &argv);
@@ -163,6 +243,9 @@ int main(int argc, char* argv[]) {
     DEVICE_MALLOC(&dev_out,      out_size);
 
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
+    // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
+    //        C2R, N*e-1, p*Mi0-1, Ki-1);
+    // double valmax = 0.;
     for (size_t j = 0; j < N*e; j++) {
       for (size_t i0 = 0; i0 < Mi0; i0++) {
         size_t i = rank * Mi0 + i0;
@@ -173,13 +256,24 @@ int main(int argc, char* argv[]) {
                 // simple check for inverse is all elements are equal to the first element.
                 host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (j == 0 && i == 0 && l == 0 && c == 0) ? 1.0 * M*e * N*e * K*e * (b + 1) : 0.0;
               } else {
-                host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
+                if (C2R)
+                  {
+                    host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (c == 0) ?
+                      testfun1real(j, N*e) * testfun2real(i, M*e) * testfun3real(l, K*e) :
+                      testfunimag(j, N*e);
+                    // update_max(valmax, host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c]);
+                  }
+                else
+                  {
+                    host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
+                  }
               }
             }
           }
         }
       }
     }
+    // printf("maximum input value %.5e\n", valmax);
     DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
@@ -606,6 +700,8 @@ int main(int argc, char* argv[]) {
           }
         }
       } else { // inverse
+        // double diffmax = 0.;
+        // double valmax = 0.;
         for (size_t k = 0; k < K*e; k++) {
           for (size_t j = 0; j < N*e; j++) {
             for (size_t i = 0; i < M*e; i++) {
@@ -619,6 +715,8 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
                   size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
+                  // update_max(valmax, href_out[ref_idx]);
+                  // update_max(diffmax, href_out[ref_idx] - htest_out[tst_idx]);
                   if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                     correct = false;
                   }
@@ -627,6 +725,8 @@ int main(int argc, char* argv[]) {
             }
           }
         }
+        // printf("maximum difference %.4e and value %.4e relative %.4e\n",
+        //        diffmax, valmax, diffmax/valmax);
       }
       if (PRETTY_PRINT) {
         cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
