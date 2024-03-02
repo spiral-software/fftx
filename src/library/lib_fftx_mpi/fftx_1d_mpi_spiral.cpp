@@ -34,12 +34,14 @@ BATCH1DDFTProblem bdstg2_1d;
 BATCH1DDFTProblem bdstg3_1d;
 IBATCH1DDFTProblem ibdstg1_1d;
 IBATCH1DDFTProblem ibdstg2_1d;
+IBATCH1DDFTProblem ibdstg3_1d; // NEW
 
 BATCH2DDFTProblem b2dstg1_1d;
 BATCH2DDFTProblem b2dstg2_1d;
 BATCH2DDFTProblem b2dstg3_1d;
 IBATCH2DDFTProblem ib2dstg1_1d;
 IBATCH2DDFTProblem ib2dstg2_1d;
+IBATCH2DDFTProblem ib2dstg3_1d; // NEW
 
 BATCH1DPRDFTProblem bprdstg1_1d;
 IBATCH1DPRDFTProblem ibprdstg1_1d;
@@ -136,6 +138,7 @@ void fftx_execute_1d_spiral(
       std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
       std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
       std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg3 = {inK, batch_sizeZ, 0, 0}; // NEW
       std::vector<int> size_istg2 = {inN, batch_sizeY_inv, 1, 0};  
       std::vector<int> size_istg1 = {inM, batch_sizeX_inv, 1, 0}; 
       bdstg1_1d.setSizes(size_stg1);
@@ -143,15 +146,18 @@ void fftx_execute_1d_spiral(
       bdstg3_1d.setSizes(size_stg3);
       ibdstg1_1d.setSizes(size_istg1);
       ibdstg2_1d.setSizes(size_istg2);
+      ibdstg3_1d.setSizes(size_istg3); // NEW
       bdstg1_1d.setName("b1dft");
       bdstg2_1d.setName("b1dft");
       bdstg3_1d.setName("b1dft");
       ibdstg1_1d.setName("ib1dft");
       ibdstg2_1d.setName("ib1dft");
+      ibdstg3_1d.setName("ib1dft"); // NEW
     } else {
       std::vector<int> size_stg1 = {inM, plan->b, batch_sizeX, 0, 1};  
       std::vector<int> size_stg2 = {inN, plan->b, batch_sizeY, 0, 1};  
       std::vector<int> size_stg3 = {inK, plan->b, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg3 = {inK, plan->b, batch_sizeZ, 0, 0}; // NEW
       std::vector<int> size_istg2 = {inN, plan->b, batch_sizeY_inv, 1, 0};  
       std::vector<int> size_istg1 = {inM, plan->b, batch_sizeX_inv, 1, 0};  
       b2dstg1_1d.setSizes(size_stg1);
@@ -159,27 +165,32 @@ void fftx_execute_1d_spiral(
       b2dstg3_1d.setSizes(size_stg3);
       ib2dstg1_1d.setSizes(size_istg1);
       ib2dstg2_1d.setSizes(size_istg2);
+      ib2dstg3_1d.setSizes(size_istg3); // NEW
       b2dstg1_1d.setName("b2dft");
       b2dstg2_1d.setName("b2dft");
       b2dstg3_1d.setName("b2dft");
       ib2dstg1_1d.setName("ib2dft");
       ib2dstg2_1d.setName("ib2dft");
+      ib2dstg3_1d.setName("ib2dft"); // NEW
     }
   } else {
     if(plan->b == 1) {
       std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
       std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
       std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg3 = {inK, batch_sizeZ, 0, 0}; // NEW
       std::vector<int> size_istg2 = {inN, batch_sizeY_inv, 1, 0};  
       std::vector<int> size_istg1 = {inM, batch_sizeX_inv, 1, 0}; 
       bprdstg1_1d.setSizes(size_stg1);
       bdstg2_1d.setSizes(size_stg2);
       bdstg3_1d.setSizes(size_stg3);
+      ibdstg3_1d.setSizes(size_istg3); // NEW
       ibprdstg1_1d.setSizes(size_istg1);
       ibdstg2_1d.setSizes(size_istg2);
       bprdstg1_1d.setName("b1prdft");
       bdstg2_1d.setName("b1dft");
       bdstg3_1d.setName("b1dft");
+      ibdstg3_1d.setName("b1dft"); // NEW
       ibprdstg1_1d.setName("ib1prdft");
       ibdstg2_1d.setName("ib1dft");
     }
@@ -349,16 +360,16 @@ void fftx_execute_1d_spiral(
       #else 
       std::vector<void*> args{stg3i_output, stg3i_input};
       #endif
-      bdstg3_1d.setArgs(args);
-      bdstg3_1d.transform();
+      ibdstg3_1d.setArgs(args); // NEW i
+      ibdstg3_1d.transform(); // NEW i
     } else {
       #if defined FFTX_CUDA
       std::vector<void*> args{&stg3i_output, &stg3i_input};
       #else 
       std::vector<void*> args{stg3i_output, stg3i_input};
       #endif
-      b2dstg3_1d.setArgs(args);
-      b2dstg3_1d.transform();
+      ib2dstg3_1d.setArgs(args); // NEW i
+      ib2dstg3_1d.transform(); // NEW i
     }
     // no permutation necessary, use previous output as input.
     DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
