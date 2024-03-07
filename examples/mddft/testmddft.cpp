@@ -29,7 +29,7 @@
 inline void update_max_abs(double& valmax, double val)
 {
   double absval = abs(val);
-  if (valmax > absval)
+  if (absval > valmax)
     {
       valmax = absval;
     }
@@ -74,12 +74,6 @@ static void checkOutputBuffers (
 #endif
 				size_t arrsz )
 {
-  // BEGIN DEBUG
-  {
-    std::cout << "checkOutputBuffers FFTX " << spiral_Y[0]
-	      << " and device " << devfft_Y[0] << std::endl;
-  }
-  // END DEBUG
   bool correct = true;
   double maxdelta = 0.0;
   for ( int indx = 0; indx < arrsz; indx++ )
