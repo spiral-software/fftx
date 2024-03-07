@@ -106,7 +106,7 @@ endif ()
 
 if ( ${_codegen} STREQUAL "SYCL" )
     ##  Setup what we need to build for SYCL
-    list ( APPEND LIBS_FOR_SYCL OpenCL )
+    list ( APPEND LIBS_FOR_SYCL OpenCL mkl_core mkl_cdft_core mkl_sequential mkl_rt mkl_intel_lp64 mkl_sycl )
     list ( APPEND ADDL_COMPILE_FLAGS -fsycl -DFFTX_SYCL )
 endif ()
 
