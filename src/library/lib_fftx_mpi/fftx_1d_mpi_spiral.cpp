@@ -190,7 +190,7 @@ void fftx_execute_1d_spiral(
       bprdstg1_1d.setName("b1prdft");
       bdstg2_1d.setName("b1dft");
       bdstg3_1d.setName("b1dft");
-      ibdstg3_1d.setName("b1dft"); // NEW
+      ibdstg3_1d.setName("ib1dft"); // NEW
       ibprdstg1_1d.setName("ib1prdft");
       ibdstg2_1d.setName("ib1dft");
     }
