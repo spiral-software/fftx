@@ -9,6 +9,7 @@
 using namespace std;
 
 #define DEBUG 0
+#define DEBUG_OUTPUT 0
 #define PRETTY_PRINT 1
 #define TOLERANCE 1e-8
 
@@ -16,83 +17,87 @@ inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
 }
 
-//inline void update_max(double& maxval, double newval)
-//{
-//  double absnew = abs(newval);
-//  if (absnew > maxval)
-//    maxval = absnew;
-//}
-                       
 // When running with p ranks, length of LAST dimension must be divisible by p.
+
+using cx = std::complex<double>;
 
 // In the C2R (!is_complex && !is_forward) case only,
 // the input must be Hermitian-symmetric
 // in order for the output to be real.
 
-// Possible real parts of a Hermitian-symmetric vector of length len.
+// A Hermitian-symmetric vector of length n, with k in range 0:n-1,
+// must be of the form testfun(k, n), where:
 
-double testfun1real(size_t k, size_t len)
+// cx testfun(size_t k, size_t n)
+// {
+//   if (k == 0)
+//     return cx(AN ARBITRARY REAL NUMBER, 0.0);
+//   else if (2*k == n)
+//     return cx(ANOTHER ARBITRARY REAL NUMBER, 0.0);
+//   else if (2*k < n)
+//     return cx(AN ARBITRARY FUNCTION OF k, ANOTHER ARBITRARY FUNCTION OF k);
+//   else if (2*k > n)
+//     return conj(testfun(n - k, n)); // RECURSIVE CALL TO THE FUNCTION
+//   else
+//     return cx(0., 0.);
+// }
+
+// We will take a product of these functions, one for each of the 3 dimensions.
+// That will give us a function with 3D Hermitian symmetry.
+
+cx testfun0hermitian(size_t k, size_t n)
 {
-  double x;
   if (k == 0)
-    x = 1.5;
-  else if (2*k == len)
-    x = 2.2;
-  else if (2*k < len)
-    x = sin(k * 1.);
-  else if (2*k > len)
-    x = sin((len - k) * 1.);
-
-  return x;
+    return cx(1.5, 0.0);
+  else if (2*k == n)
+    return cx(2.2, 0.0);
+  else if (2*k < n)
+    return cx(sin(k * 1.), log((1 + k)*1.));
+  else if (2*k > n)
+    return conj(testfun0hermitian(n - k, n));
+  else
+    return cx(0., 0.);
 }
 
-double testfun2real(size_t k, size_t len)
+cx testfun1hermitian(size_t k, size_t n)
 {
-  double x;
   if (k == 0)
-    x = -0.9;
-  else if (2*k == len)
-    x = 1.3;
-  else if (2*k < len)
-    x = cos(k * 1.);
-  else if (2*k > len)
-    x = cos((len - k) * 1.);
-
-  return x;
+    return cx(-0.9, 0.0);
+  else if (2*k == n)
+    return cx(1.3, 0.0);
+  else if (2*k < n)
+    return cx(cos(k * 1.), tan(1. + (k*1.)/(n*2.)));
+  else if (2*k > n)
+    return conj(testfun1hermitian(n - k, n));
+  else
+    return cx(0., 0.);
 }
 
-double testfun3real(size_t k, size_t len)
+cx testfun2hermitian(size_t k, size_t n)
 {
-  double x;
   if (k == 0)
-    x = 1.1;
-  else if (2*k == len)
-    x = -0.7;
-  else if (2*k < len)
-    x = exp(-abs(k * 1.));
-  else if (2*k > len)
-    x = exp(-abs((len - k) * 1.));
-
-  return x;
+    return cx(1.1, 0.0);
+  else if (2*k == n)
+    return cx(-0.7, 0.0);
+  else if (2*k < n)
+    return cx(exp(-abs(k * 1.)), atan(1. + (k*1.)/(n*1.)));
+  else if (2*k > n)
+    return conj(testfun2hermitian(n - k, n));
+  else
+    return cx(0., 0.);
 }
 
-// Possible imaginary parts of a Hermitian-symmetric vector of length len.
-
-// If we could, we'd take a product of 3 complex functions,
-// each one having Hermitian symmetry and varying in a different dimension.
-// But that is cumbersome if we're not using a complex-number type;
-// so the imaginary part varies in one dimension only.
-
-double testfunimag(size_t k, size_t len)
+cx testfunhermitian(size_t k0, size_t k1, size_t k2,
+                    size_t n0, size_t n1, size_t n2)
 {
-  double y;
-  if ((k == 0) || (2*k == len))
-    y = 0.0;
-  else if (2*k < len)
-    y = log((1 + k)*1.);
-  else if (2*k > len)
-    y = -log((1 + len - k)*1.);
+  return testfun0hermitian(k0, n0) * testfun1hermitian(k1, n1) * testfun2hermitian(k2, n2);
+}
+  
 
+double inputRealSymmetric(int i, int j, int l, int K, int N, int M)
+{
+  double center = ((K + 1)*1.)/2.;
+  double y = sin(i*1. - center) * ((j*j)*3. + 5. * cos(l*1.));
   return y;
 }
 
@@ -212,6 +217,24 @@ int main(int argc, char* argv[]) {
       }
     }
 
+    // BEGIN DEBUG_OUTPUT
+    if (DEBUG_OUTPUT && R2C)
+      {
+        for (size_t l0 = 0; l0 < Ki0; l0++) {
+          size_t l = rank * Ki0 + l0;
+          for (size_t j = 0; j < N; j++) {
+            for (size_t i = 0; i < M*e; i++) {
+              for (size_t b = 0; b < batch; b++) { // CI == 1
+                double v = inputRealSymmetric(i+1, j+1, l+1, M, N, K);
+                printf("in_array %3d %3d %3d%18.8f\n", i+1, j+1, l+1, v);
+                // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
+                host_in[((l0*N + j) * M*e + i)*batch + b] = v;
+              }
+            }
+          }
+        }
+      }
+    // END DEBUG_OUTPUT
     DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
   } else { // is inverse
     /* Assumes inverse embedded keeps full doubled-embedded space.
@@ -245,7 +268,12 @@ int main(int argc, char* argv[]) {
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
     // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
     //        C2R, N*e-1, p*Mi0-1, Ki-1);
-    // double valmax = 0.;
+    // BEGIN DEBUG_OUTPUT
+    if (DEBUG_OUTPUT && C2R)
+      {
+        printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
+      }
+    // END DEBUG_OUTPUT
     for (size_t j = 0; j < N*e; j++) {
       for (size_t i0 = 0; i0 < Mi0; i0++) {
         size_t i = rank * Mi0 + i0;
@@ -257,23 +285,30 @@ int main(int argc, char* argv[]) {
                 host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (j == 0 && i == 0 && l == 0 && c == 0) ? 1.0 * M*e * N*e * K*e * (b + 1) : 0.0;
               } else {
                 if (C2R)
-                  {
+                  { // CI == 2; c == 0 for real part, 1 for imaginary part.
                     host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (c == 0) ?
-                      testfun1real(j, N*e) * testfun2real(i, M*e) * testfun3real(l, K*e) :
-                      testfunimag(j, N*e);
-                    // update_max(valmax, host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c]);
+                      real(testfunhermitian(j, i, l,  N*e, M*e, K*e)) :
+                      imag(testfunhermitian(j, i, l,  N*e, M*e, K*e));
                   }
                 else
                   {
-                    host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
+                host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
                   }
               }
             }
+            // BEGIN DEBUG_OUTPUT
+            if (DEBUG_OUTPUT && C2R)
+              { // CI == 2; c == 0 for real part, 1 for imaginary part.
+                double rval = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI];
+                double ival = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + 1];
+                printf("IMDPRDFT input array%4d%4d%4d%18.8f%18.8f\n",
+                       j, i, l, rval, ival);
+              }
+            // END DEBUG_OUTPUT
           }
         }
       }
     }
-    // printf("maximum input value %.5e\n", valmax);
     DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
@@ -690,6 +725,13 @@ int main(int argc, char* argv[]) {
                       size_t ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
 
                       if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
+                        // BEGIN DEBUG_OUTPUT
+                        if (DEBUG_OUTPUT)
+                          {
+                            printf("batch=%d %d %d %d part=%d ref=%12.4e test=%12.4e\n",
+                                   b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
+                          }
+                        // END DEBUG_OUTPUT
                         correct = false;
                       }
                     }
@@ -700,8 +742,6 @@ int main(int argc, char* argv[]) {
           }
         }
       } else { // inverse
-        // double diffmax = 0.;
-        // double valmax = 0.;
         for (size_t k = 0; k < K*e; k++) {
           for (size_t j = 0; j < N*e; j++) {
             for (size_t i = 0; i < M*e; i++) {
@@ -715,8 +755,13 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
                   size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
-                  // update_max(valmax, href_out[ref_idx]);
-                  // update_max(diffmax, href_out[ref_idx] - htest_out[tst_idx]);
+                  // BEGIN DEBUG_OUTPUT
+                  if (DEBUG_OUTPUT)
+                    {
+                      printf("DR out_array%4d%4d%4d%18.8f%18.8f\n",
+                             i, j, k, htest_out[tst_idx], href_out[ref_idx]);
+                    }
+                  // END DEBUG_OUTPUT
                   if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                     correct = false;
                   }
@@ -725,8 +770,6 @@ int main(int argc, char* argv[]) {
             }
           }
         }
-        // printf("maximum difference %.4e and value %.4e relative %.4e\n",
-        //        diffmax, valmax, diffmax/valmax);
       }
       if (PRETTY_PRINT) {
         cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
