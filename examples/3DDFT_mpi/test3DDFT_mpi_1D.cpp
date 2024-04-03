@@ -205,6 +205,19 @@ int main(int argc, char* argv[]) {
       for (size_t j = 0; j < N; j++) {
         for (size_t i = 0; i < M*e; i++) {
           for (size_t b = 0; b < batch; b++) {
+            if (DEBUG_OUTPUT && R2C)
+              { // CI == 1
+                // Note that we set host_in to zero if l >= K.
+                double v =
+                  ((K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))) ?
+                  0.0 :
+                  inputRealSymmetric(i+1, j+1, l+1, M, N, K);
+                printf("DR in_array %3d %3d %3d%18.8f\n", i+1, j+1, l+1, v);
+                // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
+                host_in[((l0*N + j) * M*e + i)*batch + b] = v;
+              }
+            else
+              {
             for (size_t c = 0; c < CI; c++) {
               host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + c] = (
                 (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
@@ -212,29 +225,12 @@ int main(int argc, char* argv[]) {
                 0.0 :
                 2.0 * rand() / RAND_MAX - 1.0;
             }
+              }
           }
         }
       }
     }
 
-    // BEGIN DEBUG_OUTPUT
-    if (DEBUG_OUTPUT && R2C)
-      {
-        for (size_t l0 = 0; l0 < Ki0; l0++) {
-          size_t l = rank * Ki0 + l0;
-          for (size_t j = 0; j < N; j++) {
-            for (size_t i = 0; i < M*e; i++) {
-              for (size_t b = 0; b < batch; b++) { // CI == 1
-                double v = inputRealSymmetric(i+1, j+1, l+1, M, N, K);
-                printf("in_array %3d %3d %3d%18.8f\n", i+1, j+1, l+1, v);
-                // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
-                host_in[((l0*N + j) * M*e + i)*batch + b] = v;
-              }
-            }
-          }
-        }
-      }
-    // END DEBUG_OUTPUT
     DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
   } else { // is inverse
     /* Assumes inverse embedded keeps full doubled-embedded space.
@@ -269,9 +265,13 @@ int main(int argc, char* argv[]) {
     // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
     //        C2R, N*e-1, p*Mi0-1, Ki-1);
     // BEGIN DEBUG_OUTPUT
-    if (DEBUG_OUTPUT && C2R)
+    if (C2R)
       {
-        printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
+        // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
+        int imin = rank * Mi0;
+        int imax = rank * Mi0 + Mi0-1;
+        printf("C2R rank %d : input (%d:%d, %d:%d, %d:%d)\n",
+               rank,  0, Ki-1,  imin, imax,  0, N*e-1);
       }
     // END DEBUG_OUTPUT
     for (size_t j = 0; j < N*e; j++) {
