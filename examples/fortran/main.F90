@@ -1,5 +1,5 @@
 PROGRAM FFTX_CONVOLUTION
-  use mpi_utils_mod, only : i_am_mpi_master, init_mpi, finalize_mpi, MPIMaxReal, MPI_Wtime
+  use mpi_utils_mod, only : i_am_mpi_master, init_mpi, finalize_mpi, MPIMaxReal
   use problem_dimensions_mod, only : initProblemDimensions
   use data_functions_mod
   use transform_tests_mod

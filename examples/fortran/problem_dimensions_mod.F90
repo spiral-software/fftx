@@ -56,10 +56,11 @@ contains
 
   ! Need to call initProblemDimensions with dims_global already set.
   subroutine initProblemDimensions(dims)
-    use mpi_utils_mod, only : i_am_mpi_master, &
+    use mpi_utils_mod, only : &
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-         mpi_size, mpi_rank, split_dim, split_out_dim, partition_length, partition_offset, MPIbarrier
+         mpi_size, mpi_rank, split_dim, split_out_dim, partition_length, partition_offset, MPIbarrier &
 #endif
+         i_am_mpi_master
     implicit none
     integer, dimension(3), intent(in) :: dims
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
