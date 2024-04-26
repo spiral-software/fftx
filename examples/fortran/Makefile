@@ -98,8 +98,7 @@ main: test.o
 			convolution_mod.F90 \
 			main.F90 \
 			$(LDFLAGS) test.o \
-			$(CUDA_LINK) \
-			$(HIP_LINK) \
+			$(CC_LINK) \
 			$(FFTX_LINK) $(FFTX_LIBRARIES) \
 			-o  main-$(METHOD)
 
