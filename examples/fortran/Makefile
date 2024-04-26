@@ -1,16 +1,3 @@
-## METHOD: the type of compilation. Valid options are: opt and dbg. opt is default
-ifndef METHOD
-  METHOD=opt
-endif
-##
-## EXAMPLE: make METHOD=dbg
-
-## OPTIONS:
-## OPT: the level of optimization: 1, 2, or 3, default 2. Only useful for METHOD=opt
-ifndef OPT
-  OPT=2
-endif
-
 #
 # FFTX
 #
@@ -76,17 +63,8 @@ FC = mpif90
 
 RM = rm -f
 
-# define debug flags
-ifeq ($(METHOD),dbg)
-  DEBUGFLAGS = -D__DEBUG__ -gdwarf-2 -fbounds-check -pedantic-errors -ggdb -O -Wall  -g -fbacktrace -ffpe-trap=invalid,zero,overflow -fcheck=all
-  OPT=0
-endif
-
-##
-## TARGETS
-## make: build with the provided options, see above
- # Find all source files in all directories and subdorectories and resolve program dependencies
- # actually compile
+# Find all source files in all directories and subdorectories and resolve program dependencies.
+# Actually compile.
 main: test.o
 		$(FC) \
 			math_constants_mod.F90 \
@@ -100,7 +78,7 @@ main: test.o
 			$(LDFLAGS) test.o \
 			$(CC_LINK) \
 			$(FFTX_LINK) $(FFTX_LIBRARIES) \
-			-o  main-$(METHOD)
+			-o  main
 
   # delete modules
 		@$(RM) *.mod
