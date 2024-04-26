@@ -34,7 +34,8 @@ endif
 ## make CUDA: needs CUDATOOLKIT_HOME
 #
 CUDA: CC=nvcc
-CUDA: CCFLAGS=-x cu -DFFTX_CUDA
+CUDA: CCFLAGS=-x cu 
+CUDA: PRESETS=-DFFTX_CUDA
 # To get helper_cuda.h
 CUDA: CC_INCLUDE=-I$(CUDATOOLKIT_HOME)/../../examples/OpenMP/SDK/include
 CUDA: CC_LINK=-L$(CUDATOOLKIT_HOME)/lib64 -lcudart
@@ -49,7 +50,7 @@ CUDA: main
 ## make HIP: needs ROCM_PATH and CRAY_MPICH_PREFIX
 #
 HIP: CC=hipcc
-HIP: CCFLAGS=-DFFTX_HIP
+HIP: PRESETS=-DFFTX_HIP
 # To get mpi.h
 HIP: CC_INCLUDE=-I$(CRAY_MPICH_PREFIX)/include
 HIP: CC_LINK=-L$(ROCM_PATH)/lib -lamdhip64 -lhipfft -lrocfft -lstdc++
@@ -88,7 +89,7 @@ endif
  # Find all source files in all directories and subdorectories and resolve program dependencies
  # actually compile
 main: test.o
-		$(FC) \
+		$(FC) $(PRESETS) \
 			math_constants_mod.F90 \
 			mpi_utils_mod.F90 \
 			problem_dimensions_mod.F90 \
@@ -108,7 +109,7 @@ main: test.o
 		@$(RM) *.pyc
 
 test.o: test.cpp
-	$(CC) $(CCFLAGS) $(CC_INCLUDE) $(FFTX_INCLUDE) test.cpp \
+	$(CC) $(CCFLAGS) $(PRESETS) $(CC_INCLUDE) $(FFTX_INCLUDE) test.cpp \
 	-c -o test.o
 
 ## make clean: remove executables and other files
