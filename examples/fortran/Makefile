@@ -92,9 +92,7 @@ test.o: test.cpp
 
 ## make clean: remove executables and other files
 clean:
-		@rm -f main-opt
-		@rm -f main-dbg
-		@rm -rf main-dbg.*
+		@rm -f main
 		@rm -rf *.mod
 		@rm -rf *.smod
 		@rm -rf *.pyc
