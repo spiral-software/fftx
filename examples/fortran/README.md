@@ -9,7 +9,7 @@ Example:
 export FFTX_HOME=~/fftx_develop
 ```
 
-This package has been tested on CPUs in serial on Linus,
+This package has been tested on CPUs in serial on Linux,
 as well as on GPUs on two different supercomputers:
 CUDA on Perlmutter at NERSC, and HIP on Frontier at OLCF.
 If building on one of these supercomputers, you will need to
@@ -18,18 +18,28 @@ to load the appropriate modules.
 
 ### To build:
 
-Once FFTX_HOME is set and modules are loaded, if necessary, then:
+Once FFTX_HOME is set and modules are loaded, if necessary, then
+you can just do
 ```
 make
 ```
-The executable will be in `main-opt`.
+which will build for CUDA if on a CUDA platform, on HIP if on a HIP platform,
+or otherwise on a CPU platform.
+
+You can also pick your backend, with:
+```
+make CUDA
+make HIP
+make CPU
+```
+In any case, the executable will be in `main`.
 
 ### To run in serial:
 
 The command arguments are the dimensions.
 For example, to run convolution tests in serial on 32x40x48, do:
 ```
-./main-opt 32 40 48
+./main 32 40 48
 ```
 
 So far, serial transforms work that are complex-to-complex forward
@@ -43,14 +53,11 @@ the original input back.
 
 ### To run in parallel:
 
-Distributed complex-to-complex transforms also work
-on HIP and CUDA platforms (not CPU).
-Distributed real-to-complex and complex-to-real transforms
-are still under development.
+Distributed transforms also work on HIP and CUDA platforms.
 
 To run convolution tests with 4 MPI ranks on 32x40x48, do one of:
 ```
-mpirun -np 4 ./main-opt 32 40 48
+mpirun -np 4 ./main 32 40 48
 
-srun -n 4 ./main-opt 32 40 48
+srun -n 4 ./main 32 40 48
 ```
