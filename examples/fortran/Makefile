@@ -6,8 +6,15 @@ FFTX_MPI_INCLUDE_DIR=$(FFTX_HOME)/src/library/lib_fftx_mpi
 FFTX_INCLUDE=-I$(FFTX_INCLUDE_DIR) -I$(FFTX_MPI_INCLUDE_DIR)
 
 FFTX_LIB_DIR=$(FFTX_HOME)/lib
-FFTX_LINK=-Wl,-rpath=$(FFTX_LIB_DIR) -L$(FFTX_LIB_DIR)
 # The FFTX libraries (for either GPU or CPU) go after $(FFTX_LINK).
+# Apple needs a space after rpath, while other platforms need an equal sign.
+ifeq ($(VENDOR),apple)
+  FFTX_LINK=-Wl,-rpath $(FFTX_LIB_DIR) -L$(FFTX_LIB_DIR)
+else
+  # This flag gets rid of annoying "DSO missing from command line" error.
+  LDFLAGS=-Wl,--copy-dt-needed-entries
+  FFTX_LINK=-Wl,-rpath=$(FFTX_LIB_DIR) -L$(FFTX_LIB_DIR)
+endif
 
 ifdef CUDATOOLKIT_HOME
   default: CUDA
@@ -26,8 +33,6 @@ CUDA: PRESETS=-DFFTX_CUDA
 # To get helper_cuda.h
 CUDA: CC_INCLUDE=-I$(CUDATOOLKIT_HOME)/../../examples/OpenMP/SDK/include
 CUDA: CC_LINK=-L$(CUDATOOLKIT_HOME)/lib64 -lcudart
-# Get rid of annoying "DSO missing from command line" error.
-CUDA: LDFLAGS=-Wl,--copy-dt-needed-entries
 # Need to link to ALL the libraries, even though we don't call them all.
 CUDA: FFTX_LIBRARIES=-lfftx_mpi -lfftx_mddft_gpu -lfftx_imddft_gpu -lfftx_mdprdft_gpu -lfftx_imdprdft_gpu -lfftx_dftbat_gpu -lfftx_idftbat_gpu -lfftx_prdftbat_gpu -lfftx_iprdftbat_gpu -lfftx_rconv_gpu
 # Targets to build.
@@ -50,8 +55,7 @@ HIP: main
 ## make CPU: default
 #
 CPU: CC=mpicxx
-# Get rid of annoying "DSO missing from command line" error.
-CPU: LDFLAGS=-Wl,--copy-dt-needed-entries
+CPU: CCFLAGS=-std=c++11
 # Need to link to ALL the libraries, even though we don't call them all.
 CPU: FFTX_LIBRARIES=-lfftx_mddft_cpu -lfftx_imddft_cpu -lfftx_mdprdft_cpu -lfftx_imdprdft_cpu -lfftx_dftbat_cpu -lfftx_idftbat_cpu -lfftx_prdftbat_cpu -lfftx_iprdftbat_cpu -lfftx_rconv_cpu
 # Targets to build.
@@ -93,6 +97,7 @@ test.o: test.cpp
 ## make clean: remove executables and other files
 clean:
 		@rm -f main
+		@rm -f test.o
 		@rm -rf *.mod
 		@rm -rf *.smod
 		@rm -rf *.pyc
