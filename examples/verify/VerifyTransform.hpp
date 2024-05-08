@@ -283,7 +283,7 @@ public:
     m_sign = a_sign;
     m_inDomain = inDomainFromSize(m_name, m_fullExtents);
     m_outDomain = outDomainFromSize(m_name, m_fullExtents);
-    std::cout << "input on " << m_inDomain << ", output on " << m_outDomain << std::endl;
+
     m_deviceTfm3dPtr = new deviceTransform3d<T_IN, T_OUT>(a_deviceTfm3dType,
                                                           m_inDomain,
                                                           m_outDomain);
@@ -335,31 +335,36 @@ public:
              m_tp == FFTX_PROBLEM ||
              m_tp == DEVICE_LIB)
       {
-#if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        // on GPU
-        auto input_size = m_inDomain.size();
-        auto output_size = m_outDomain.size();
-
-        auto input_bytes = input_size * sizeof(T_IN);
-        auto output_bytes = output_size * sizeof(T_OUT);
-
         T_IN* inputHostPtr = a_inArray.m_data.local();
         T_OUT* outputHostPtr = a_outArray.m_data.local();
 
-        T_IN* inputDevicePtr;
-        T_OUT* outputDevicePtr;
+        auto sym_pts = m_fullExtents.product();
+#if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+        // on GPU
+        auto input_pts = m_inDomain.size();
+        auto output_pts = m_outDomain.size();
 
-        DEVICE_MALLOC(&inputDevicePtr, input_bytes);
-        DEVICE_MALLOC(&outputDevicePtr, output_bytes);
+        // T_IN* inputDevicePtr;
+        // T_OUT* outputDevicePtr;
+        // double* symDevicePtr;
 
-        auto sym_size = m_fullExtents.product();
-        auto sym_bytes = sym_size * sizeof(double);
-        double* symDevicePtr;
-        DEVICE_MALLOC(&symDevicePtr, sym_bytes);
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
+        auto sym_bytes = sym_pts * sizeof(double);
+        auto input_bytes = input_pts * sizeof(T_IN);
+        auto output_bytes = output_pts * sizeof(T_OUT);
+
+	// 1. Copy input from host to device.
+	DEVICE_PTR inputDevicePtr;
+	DEVICE_PTR outputDevicePtr;
+	DEVICE_PTR symDevicePtr;
+
+        DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
+        DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
+        DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
         
         DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
-
+	// 2. Perform the transform.
         if (m_tp == DEVICE_LIB)
           {
             DEVICE_FFT_CHECK(m_deviceTfm3dPtr->exec(inputDevicePtr,
@@ -368,12 +373,18 @@ public:
           }
         else
           {
-            fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
-                                                 (inputDevicePtr, 0, 1),
-                                                 m_inDomain);
-            fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
-                                                   (outputDevicePtr, 0, 1),
-                                                   m_outDomain);
+	    //            fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
+	    //                                                 (inputDevicePtr, 0, 1),
+	    //                                                 m_inDomain);
+	    //            fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
+	    //                                                   (outputDevicePtr, 0, 1),
+	    //                                                   m_outDomain);
+	    fftx::array_t<DIM, DEVICE_PTR>
+	      inputDevice(fftx::global_ptr<DEVICE_PTR>(&inputDevicePtr, 0, 1),
+			  m_inDomain);
+	    fftx::array_t<DIM, DEVICE_PTR>
+	      outputDevice(fftx::global_ptr<DEVICE_PTR>(&outputDevicePtr, 0, 1),
+			   m_outDomain);
             if (m_tp == FFTX_HANDLE)
               {          
                 (*m_functionPtr)(inputDevice, outputDevice);
@@ -390,21 +401,59 @@ public:
                 dX = inputDevicePtr;
                 dY = outputDevicePtr;
                 dsym = symDevicePtr;
-#if defined FFTX_CUDA
-                std::vector<void*> args{&dY, &dX, &dsym};
-#elif defined FFTX_HIP
-                std::vector<void*> args{dY, dX, dsym};
+		// Size and type of m_transformProblemPtr are already set.
+#if defined(FFTX_CUDA)
+                // std::vector<void*> args{&dY, &dX, &dsym};
+		std::vector<void*> args{&outputDevicePtr, &inputDevicePtr, &symDevicePtr};
+#elif defined(FFTX_HIP)
+                // std::vector<void*> args{dY, dX, dsym};
+		std::vector<void*> args{outputDevicePtr, inputDevicePtr, symDevicePtr};
 #endif
                 m_transformProblemPtr->setArgs(args);
                 m_transformProblemPtr->transform();
               }
           }
+	// 3. Copy output from device to host.
         DEVICE_MEM_COPY(outputHostPtr, outputDevicePtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
 
+	// 4. Clean up.
         DEVICE_FREE(inputDevicePtr);
         DEVICE_FREE(outputDevicePtr);
         DEVICE_FREE(symDevicePtr);
+#elif defined(FFTX_SYCL)
+        if (m_tp == FFTX_HANDLE)
+          {          
+            (*m_functionPtr)(a_inArray, a_outArray);
+          }
+        else if (m_tp == FFTX_LIB)
+          {
+            m_transformerPtr->transform2(a_inArray, a_outArray);
+          }
+        else if (m_tp == FFTX_PROBLEM)
+	  {
+	    // 1. Set up buffers.
+
+	    // Doesn't allocate enough space for complex if you do it this way:
+	    // sycl::buffer<T_IN> buf_inputPtr(inputHostPtr, input_pts);
+	    // sycl::buffer<T_OUT> buf_outputPtr(outputHostPtr, output_pts);
+	    auto input_doubles = input_pts * sizeof(T_IN)/sizeof(double);
+	    auto output_doubles = output_pts * sizeof(T_OUT)/sizeof(double);
+	    sycl::buffer<double> inputBuffer((double *) inputHostPtr, input_doubles);
+	    sycl::buffer<double> outputBuffer((double *) outputHostPtr, output_doubles);
+	    double* symHostPtr = new double[sym_pts];
+	    sycl::buffer<double> symBuffer(symHostPtr, sym_pts);
+	    std::vector<void*> args{(void*)&(outputBuffer), (void*)&(inputBuffer), (void*)&(symBuffer)};
+
+	    // 2. Perform the transform.
+	    // Size and type of m_transformProblemPtr are already set.	
+	    m_transformProblemPtr->setArgs(args);
+	    m_transformProblemPtr->transform();
+
+	    // 3. Clean up.
+	    delete[] symHostPtr;
+	  }
+#endif
 #else
         // on CPU
         if (m_tp == FFTX_HANDLE)
@@ -417,13 +466,12 @@ public:
           }
         else if (m_tp == FFTX_PROBLEM)
           {
-            T_IN* inputHostPtr = a_inArray.m_data.local();
-            T_OUT* outputHostPtr = a_outArray.m_data.local();
             double *dX, *dY, *dsym;
             dX = (double *) inputHostPtr;
             dY = (double *) outputHostPtr;
-            dsym = new double[m_fullExtents.product()];
+            dsym = new double[sym_pts];
             // dsym = new std::complex<double>[m_fullExtents.product()];
+	    // Size and type of m_transformProblemPtr are already set.
             std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
             m_transformProblemPtr->setArgs(args);
             m_transformProblemPtr->transform();
