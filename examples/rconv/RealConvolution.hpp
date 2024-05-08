@@ -97,67 +97,55 @@ public:
       {
 #if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         // on GPU
-        auto input_size = m_domain.size();
-        auto output_size = m_domain.size();
-        auto symbol_size = m_fdomain.size();
+        double* inputHostPtr = a_input.m_data.local();
+        double* outputHostPtr = a_output.m_data.local();
+	double* symbolHostPtr = a_symbol.m_data.local();
+	
+        auto input_pts = m_domain.size();
+        auto output_pts = m_domain.size();
+        auto symbol_pts = m_fdomain.size();
 
-        auto input_bytes = input_size * sizeof(double);
-        auto output_bytes = output_size * sizeof(double);
-        auto symbol_bytes = symbol_size * sizeof(double);
-
-#if defined FFTX_HIP 
-        hipDeviceptr_t inputPtr;
-        hipDeviceptr_t outputPtr;
-        hipDeviceptr_t symbolPtr;
-#elif defined FFTX_CUDA
-        CUdeviceptr inputPtr;
-        CUdeviceptr outputPtr;
-        CUdeviceptr symbolPtr;
-#endif
+        auto input_bytes = input_pts * sizeof(double);
+        auto output_bytes = output_pts * sizeof(double);
+        auto symbol_bytes = symbol_pts * sizeof(double);
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MALLOC((void **)&inputPtr, input_bytes);
-        DEVICE_MALLOC((void **)&outputPtr, output_bytes);
-        DEVICE_MALLOC((void **)&symbolPtr, symbol_bytes);
+        DEVICE_PTR inputDevicePtr;
+        DEVICE_PTR outputDevicePtr;
+        DEVICE_PTR symbolDevicePtr;
 
-        DEVICE_MEM_COPY((void*)inputPtr, a_input.m_data.local(), input_bytes,
+        DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
+        DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
+        DEVICE_MALLOC((void **)&symbolDevicePtr, symbol_bytes);
+
+        DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
-        DEVICE_MEM_COPY((void*)symbolPtr, a_symbol.m_data.local(), symbol_bytes,
+        DEVICE_MEM_COPY((void*)symbolDevicePtr, symbolHostPtr, symbol_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
-#else
-		sycl::buffer<double> buf_inputPtr(a_input.m_data.local(), input_size);
-		sycl::buffer<double> buf_outputPtr(a_output.m_data.local(), output_size);
-		sycl::buffer<double> buf_symbolPtr(a_symbol.m_data.local(), symbol_size);
+	
+        fftx::array_t<DIM, DEVICE_PTR> inputDevice(fftx::global_ptr<DEVICE_PTR>
+						   (&inputDevicePtr, 0, 1), m_domain);
+        fftx::array_t<DIM, DEVICE_PTR> outputDevice(fftx::global_ptr<DEVICE_PTR>
+						    (&outputDevicePtr, 0, 1), m_domain);
+        fftx::array_t<DIM, DEVICE_PTR> symbolDevice(fftx::global_ptr<DEVICE_PTR>
+						    (&symbolDevicePtr, 0, 1), m_fdomain);
+
+#if defined(FFTX_CUDA)
+        std::vector<void*> args{&outputDevicePtr, &inputDevicePtr, &symbolDevicePtr};
+#elif defined(FFTX_HIP)
+        std::vector<void*> args{outputDevicePtr, inputDevicePtr, symbolDevicePtr};
 #endif
 
-#if defined FFTX_HIP
-        fftx::array_t<DIM, hipDeviceptr_t> inputDevice(fftx::global_ptr<hipDeviceptr_t>
-                                               (&inputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, hipDeviceptr_t> outputDevice(fftx::global_ptr<hipDeviceptr_t>
-                                                (&outputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, hipDeviceptr_t> symbolDevice(fftx::global_ptr<hipDeviceptr_t>
-                                                (&symbolPtr, 0, 1), m_fdomain);
+#elif defined(FFTX_SYCL)
+	sycl::buffer<double> inputBuffer(inputHostPtr, input_pts);
+	sycl::buffer<double> outputBuffer(outputHostPtr, output_pts);
+	sycl::buffer<double> symbolBuffer(symbolHostPtr, symbol_pts);
+        std::vector<void*> args{(void*)&(outputBuffer), (void*)&(inputBuffer), (void*)&(symbolBuffer)};
+#endif
 
-        std::vector<void*> args{outputPtr, inputPtr, symbolPtr};
-#elif defined FFTX_SYCL
-		/*fftx::array_t<DIM, sycl::buffer<double>> inputDevice(fftx::global_ptr<sycl::buffer<double>>
-                                               (&buf_inputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, sycl::buffer<double>> outputDevice(fftx::global_ptr<sycl::buffer<double>>
-                                                (&buf_outputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, sycl::buffer<double>> symbolDevice(fftx::global_ptr<sycl::buffer<double>>
-                                                (&buf_symbolPtr, 0, 1), m_fdomain);
-*/
-        std::vector<void*> args{(void*)&(buf_outputPtr), (void*)&(buf_inputPtr), (void*)&(buf_symbolPtr)};
-#else
-        fftx::array_t<DIM, CUdeviceptr> inputDevice(fftx::global_ptr<CUdeviceptr>
-                                               (&inputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, CUdeviceptr> outputDevice(fftx::global_ptr<CUdeviceptr>
-                                                (&outputPtr, 0, 1), m_domain);
-        fftx::array_t<DIM, CUdeviceptr> symbolDevice(fftx::global_ptr<CUdeviceptr>
-                                                (&symbolPtr, 0, 1), m_fdomain);
-
-        std::vector<void*> args{&outputPtr, &inputPtr, &symbolPtr};
-#endif      
+#else // neither CUDA nor HIP nor SYCL
+        std::vector<void*> args{(void*)outputHostPtr, (void*)inputHostPtr, (void*)symbolHostPtr };
+#endif
         m_rp.setArgs(args);
         m_rp.setSizes(m_sizes);
         m_rp.transform();
@@ -171,19 +159,10 @@ public:
         //     m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
         //   }
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-		DEVICE_MEM_COPY(a_output.m_data.local(), (void*)outputPtr, output_bytes,
+	DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
-
-        DEVICE_FREE((void*)inputPtr);
-        DEVICE_FREE((void*)outputPtr);
-#endif
-#else
-        std::vector<void*> args{(void*)a_output.m_data.local(),
-                                (void*)a_input.m_data.local(),
-                                (void*)a_symbol.m_data.local()};
-        m_rp.setArgs(args);
-        m_rp.setSizes(m_sizes);
-        m_rp.transform();
+        DEVICE_FREE((void*)inputDevicePtr);
+        DEVICE_FREE((void*)outputDevicePtr);
 #endif
       }
   }
@@ -384,8 +363,8 @@ protected:
     */
     // Substitute for forall.
     auto inputPtr = input.m_data.local();
-    auto input_size = m_domain.size();
-    for (size_t ind = 0; ind < input_size; ind++)
+    auto input_pts = m_domain.size();
+    for (size_t ind = 0; ind < input_pts; ind++)
       {
         fftx::point_t<DIM> p = pointFromPositionBox(ind, m_domain);
         double dist2 = 0.;
@@ -430,8 +409,8 @@ protected:
     */
     // Substitute for forall.
     auto symbolPtr = symbol.m_data.local();
-    auto symbol_size = m_fdomain.size();
-    for (size_t ind = 0; ind < symbol_size; ind++)
+    auto symbol_pts = m_fdomain.size();
+    for (size_t ind = 0; ind < symbol_pts; ind++)
       {
         fftx::point_t<DIM> p = pointFromPositionBox(ind, m_fdomain);
         if (p == cornerLo)
@@ -446,7 +425,7 @@ protected:
                 double sin1 = sin((p[d]-cornerLo[d])*M_PI/(extents[d]*1.));
                 sin2sum += sin1 * sin1;
               }
-            symbolPtr[ind] = -1. / ((4*input_size) * sin2sum);
+            symbolPtr[ind] = -1. / ((4*input_pts) * sin2sum);
           }
       }
 
