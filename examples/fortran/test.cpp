@@ -23,17 +23,24 @@
 double *dist_dev_out = NULL, *dist_dev_in = NULL, *dist_dev_sym = NULL;
 
 // Allocate space on device, for type T, if pointer is NULL.
-#define DEVICE_MALLOC_TYPE_IFNULL(ptr, T, n) ( { if (ptr == NULL) DEVICE_MALLOC_TYPE(ptr, T, n); })
+#define DEVICE_MALLOC_TYPE_IFNULL(ptr, T, npts) ( { if (ptr == NULL) DEVICE_MALLOC_TYPE(ptr, T, npts); })
 
 // Allocate space on device, for type T.
-#define DEVICE_MALLOC_TYPE(ptr, T, n) ( { DEVICE_MALLOC(&ptr, n * sizeof(T)); } )
+#define DEVICE_MALLOC_TYPE(ptr, T, npts) ( { DEVICE_MALLOC(&ptr, npts * sizeof(T)); } )
 
 // Allocate space on device, for type T.
-#define HOST_MALLOC_TYPE(ptr, T, n) ( { ptr = (T*) malloc(n * sizeof(T)); } )
+#define HOST_MALLOC_TYPE(ptr, T, npts) ( { ptr = (T*) malloc(npts * sizeof(T)); } )
+
+// Set SYCL buffer, for type T.
+#define SYCL_BUFFER_TYPE(buf, ptr, T, npts) sycl::buffer<double> buf((double *) ptr, npts * sizeof(T)/sizeof(double))
 
 #define CUDA_HOLDER_ARGS(holder) {&(holder.dev_out), &(holder.dev_in), &(holder.dev_sym)}
 
 #define HIP_HOLDER_ARGS(holder) {holder.dev_out, holder.dev_in, holder.dev_sym}
+
+// #define SYCL_HOLDER_ARGS(holder) {(void*)&(holder.dev_out), (void*)&(holder.dev_in), (void*)&(holder.dev_sym)}
+
+#define SYCL_HOLDER_SET_ARGS(holder, outBuf, inBuf, symBuf) { std::vector<void*> args{(void*)&(outBuf), (void*)&(inBuf), (void*)&(symBuf)}; holder.problem->setArgs(args); }
 
 #define HOST_HOLDER_ARGS(holder) {(void*)(holder.dev_out), (void*)(holder.dev_in), (void*)(holder.dev_sym)}
 
@@ -90,11 +97,15 @@ extern "C"
   {
     //    printf("fftx_plan_mddft M=%d, N=%d, K=%d, size=%d\n", 
       //           M, N, K, M*N*K);
+    std::vector<int> sizes{M, N, K};
+#ifdef FFTX_SYCL
+    std::vector<void*> args; // fill in at execute time
+#else
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_in,  std::complex<double>, M * N * K);
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_out, std::complex<double>, M * N * K);
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_sym, std::complex<double>, M * N * K);
-    std::vector<int> sizes{M, N, K};
     std::vector<void*> args(HOST_OR_DEVICE_HOLDER_ARGS(holder));
+#endif
     holder.problem = new MDDFTProblem(args, sizes, "mddft");
   }
     
@@ -106,18 +117,30 @@ extern "C"
   {
     std::vector<int>& sizes = holder.problem->sizes;
     size_t npts = sizes[0] * sizes[1] * sizes[2];
+#ifdef FFTX_SYCL
+    SYCL_BUFFER_TYPE(inputBuffer, in_buffer, std::complex<double>, npts);
+    SYCL_BUFFER_TYPE(outputBuffer, out_buffer, std::complex<double>, npts);
+    double* sym_buffer = new double[npts];
+    SYCL_BUFFER_TYPE(symbolBuffer, sym_buffer, double, npts);
+    SYCL_HOLDER_SET_ARGS(holder, outputBuffer, inputBuffer, symbolBuffer);
+    holder.problem->transform();
+    delete[] sym_buffer;
+#else
     size_t in_bytes  = sizeof(std::complex<double>) * npts;
     size_t out_bytes = sizeof(std::complex<double>) * npts;
     HOST_OR_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     holder.problem->transform();
     HOST_OR_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+#endif
   }
 
   void fftx_plan_destroy_mddft_shim(mddft_holder& holder)
   {
+#ifndef FFTX_SYCL
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_in);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_out);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_sym);
+#endif
     delete holder.problem;
   }
 }
@@ -136,11 +159,15 @@ extern "C"
   {
     //    printf("fftx_plan_imddft M=%d, N=%d, K=%d, size=%d\n", 
       //           M, N, K, M*N*K);
+    std::vector<int> sizes{M, N, K};
+#ifdef FFTX_SYCL
+    std::vector<void*> args; // fill in at execute time
+#else
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_in,  std::complex<double>, M * N * K);
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_out, std::complex<double>, M * N * K);
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_sym, std::complex<double>, M * N * K);
-    std::vector<int> sizes{M, N, K};
     std::vector<void*> args(HOST_OR_DEVICE_HOLDER_ARGS(holder));
+#endif
     holder.problem = new IMDDFTProblem(args, sizes, "imddft");
   }
   
@@ -152,18 +179,30 @@ extern "C"
   {
     std::vector<int>& sizes = holder.problem->sizes;
     size_t npts = sizes[0] * sizes[1] * sizes[2];
+#ifdef FFTX_SYCL
+    SYCL_BUFFER_TYPE(inputBuffer, in_buffer, std::complex<double>, npts);
+    SYCL_BUFFER_TYPE(outputBuffer, out_buffer, std::complex<double>, npts);
+    double* sym_buffer = new double[npts];
+    SYCL_BUFFER_TYPE(symbolBuffer, sym_buffer, double, npts);
+    SYCL_HOLDER_SET_ARGS(holder, outputBuffer, inputBuffer, symbolBuffer);
+    holder.problem->transform();
+    delete[] sym_buffer;
+#else
     size_t in_bytes  = sizeof(std::complex<double>) * npts;
     size_t out_bytes = sizeof(std::complex<double>) * npts;
     HOST_OR_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     holder.problem->transform();
     HOST_OR_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+#endif
   }
 
   void fftx_plan_destroy_imddft_shim(imddft_holder& holder)
   {
+#ifndef FFTX_SYCL
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_in);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_out);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_sym);
+#endif
     delete holder.problem;
   }
 }
@@ -197,13 +236,17 @@ extern "C"
     //    printf("fftx_plan_mdprdft M=%d, N=%d, K=%d, K_adj=%d\n", 
     //           M, N, K, K_adj);
     // input, real, full dimensions
+    std::vector<int> sizes{M, N, K};
+#ifdef FFTX_SYCL
+    std::vector<void*> args; // fill in at execute time
+#else
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_in, double, holder.npts);
     // output, complex, one dimension truncated
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_out, std::complex<double>, holder.nptsTrunc);
     // symbol, real, one dimension truncated
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_sym, double, holder.nptsTrunc);
-    std::vector<int> sizes{M, N, K};
     std::vector<void*> args(HOST_OR_DEVICE_HOLDER_ARGS(holder));
+#endif
     holder.problem = new MDPRDFTProblem(args, sizes, "mdprdft");
   }
 
@@ -218,18 +261,30 @@ extern "C"
     //    fftx::point_t<3> sizesFtrunc = truncatedComplexDimensions(sizesF);
     //    int npts = sizesF.product();
     //    int nptsTrunc = sizesFtrunc.product();
+#ifdef FFTX_SYCL
+    SYCL_BUFFER_TYPE(inputBuffer, in_buffer, double, holder.npts);
+    SYCL_BUFFER_TYPE(outputBuffer, out_buffer, std::complex<double>, holder.nptsTrunc);
+    double* sym_buffer = new double[holder.npts];
+    SYCL_BUFFER_TYPE(symbolBuffer, sym_buffer, double, holder.npts);
+    SYCL_HOLDER_SET_ARGS(holder, outputBuffer, inputBuffer, symbolBuffer);
+    holder.problem->transform();
+    delete[] sym_buffer;
+#else
     size_t in_bytes  = sizeof(double) * holder.npts;
     size_t out_bytes = sizeof(std::complex<double>) * holder.nptsTrunc;
     HOST_OR_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     holder.problem->transform();
     HOST_OR_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+#endif
   }
   
   void fftx_plan_destroy_mdprdft_shim(mdprdft_holder& holder)
   {
+#ifndef FFTX_SYCL
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_in);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_out);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_sym);
+#endif
     delete holder.problem;
   }
 }
@@ -259,20 +314,24 @@ extern "C"
     // int npts = sizesF.product();
     // int nptsTrunc = sizesFtrunc.product();
     // input, complex, one dimension truncated
+    std::vector<int> sizes{M, N, K};
+#ifdef FFTX_SYCL
+    std::vector<void*> args; // fill in at execute time
+#else
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_in, std::complex<double>, holder.nptsTrunc);
     // output, real, full dimensions
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_out, double, holder.npts);
     // symbol, real, one dimension truncated
     HOST_OR_DEVICE_MALLOC_TYPE(holder.dev_sym, double, holder.nptsTrunc);
-    std::vector<int> sizes{M, N, K};
     std::vector<void*> args(HOST_OR_DEVICE_HOLDER_ARGS(holder));
+#endif
     holder.problem = new IMDPRDFTProblem(args, sizes, "imdprdft");
   }
 
   void fftx_execute_imdprdft_shim(
                                   imdprdft_holder& holder,
-                                  std::complex<double>* out_buffer,
-                                  double* in_buffer
+				  double* out_buffer,
+                                  std::complex<double>* in_buffer
                                   )
   {
     //    std::vector<int>& sizes = holder.problem->sizes;
@@ -282,6 +341,15 @@ extern "C"
     //    int nptsTrunc = sizesFtrunc.product();
     // int K_adj = (sizes[2]/2) + 1;
     // for input, complex, one dimension truncated
+#ifdef FFTX_SYCL
+    SYCL_BUFFER_TYPE(inputBuffer, in_buffer, std::complex<double>, holder.nptsTrunc);
+    SYCL_BUFFER_TYPE(outputBuffer, out_buffer, double, holder.npts);
+    double* sym_buffer = new double[holder.npts];
+    SYCL_BUFFER_TYPE(symbolBuffer, sym_buffer, double, holder.npts);
+    SYCL_HOLDER_SET_ARGS(holder, outputBuffer, inputBuffer, symbolBuffer);
+    holder.problem->transform();
+    delete[] sym_buffer;
+#else
     size_t in_bytes  = sizeof(std::complex<double>) * holder.nptsTrunc;
     // sizes[0] * sizes[1] * K_adj;
     // for output, real, full dimensions
@@ -289,13 +357,16 @@ extern "C"
     HOST_OR_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     holder.problem->transform();
     HOST_OR_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+#endif
   }
   
   void fftx_plan_destroy_imdprdft_shim(imdprdft_holder& holder)
   {
+#ifndef FFTX_SYCL
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_in);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_out);
     HOST_OR_DEVICE_FREE_NONNULL(holder.dev_sym);
+#endif
     delete holder.problem;
   }
 }

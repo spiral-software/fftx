@@ -61,7 +61,7 @@ HIP: main
 #
 ## make SYCL: needs AURORA_PE_ONEAPI_ROOT
 #
-SYCL: CC=mpicc
+SYCL: CC=icpx
 SYCL: CCFLAGS=-std=c++17 -fsycl
 SYCL: PRESETS=-DFFTX_SYCL
 SYCL: CC_LINK=-L$(AURORA_PE_ONEAPI_ROOT) -lOpenCL -lmkl_core -lmkl_cdft_core -lmkl_sequential -lmkl_rt -lmkl_intel_lp64 -lmkl_sycl

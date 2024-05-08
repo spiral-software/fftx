@@ -9,9 +9,10 @@ Example:
 export FFTX_HOME=~/fftx_develop
 ```
 
-This package has been tested on CPUs in serial on Linux,
-as well as on GPUs on two different supercomputers:
-CUDA on Perlmutter at NERSC, and HIP on Frontier at OLCF.
+This package has been tested on CPUs in serial on Linux and macOS
+as well as on GPUs on three different supercomputers:
+CUDA on Perlmutter at NERSC, HIP on Frontier at OLCF,
+and SYCL on Sunspot at ALCF.
 If building on one of these supercomputers, you will need to
 follow the instructions at `$FFTX_HOME/supercomputer-README.md`
 to load the appropriate modules.
@@ -23,13 +24,14 @@ you can just do
 ```
 make
 ```
-which will build for CUDA if on a CUDA platform, on HIP if on a HIP platform,
-or otherwise on a CPU platform.
+which will build for CUDA, HIP, or SYCL, if running on one of those
+platforms, or otherwise on a CPU platform.
 
 You can also pick your backend, with:
 ```
 make CUDA
 make HIP
+make SYCL
 make CPU
 ```
 In any case, the executable will be in `main`.
@@ -53,7 +55,7 @@ the original input back.
 
 ### To run in parallel:
 
-Distributed transforms also work on HIP and CUDA platforms.
+Distributed transforms work on HIP and CUDA platforms only.
 
 To run convolution tests with 4 MPI ranks on 32x40x48, do one of:
 ```
