@@ -367,8 +367,8 @@ public:
 	// 2. Perform the transform.
         if (m_tp == DEVICE_LIB)
           {
-            DEVICE_FFT_CHECK(m_deviceTfm3dPtr->exec((void*)inputDevicePtr,
-                                                    (void*)outputDevicePtr),
+            DEVICE_FFT_CHECK(m_deviceTfm3dPtr->exec((T_IN*)inputDevicePtr,
+                                                    (T_OUT*)outputDevicePtr),
                              "device FFT exec launch");
           }
         else
