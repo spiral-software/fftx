@@ -362,7 +362,7 @@ public:
         DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
         DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
         
-        DEVICE_MEM_COPY(inputDevicePtr, inputHostPtr, input_bytes,
+        DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
 	// 2. Perform the transform.
         if (m_tp == DEVICE_LIB)
@@ -408,7 +408,7 @@ public:
               }
           }
 	// 3. Copy output from device to host.
-        DEVICE_MEM_COPY(outputHostPtr, outputDevicePtr, output_bytes,
+        DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
                         MEM_COPY_DEVICE_TO_HOST);
 
 	// 4. Clean up.
