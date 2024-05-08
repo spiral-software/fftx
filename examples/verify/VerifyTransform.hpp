@@ -412,9 +412,9 @@ public:
                         MEM_COPY_DEVICE_TO_HOST);
 
 	// 4. Clean up.
-        DEVICE_FREE(inputDevicePtr);
-        DEVICE_FREE(outputDevicePtr);
-        DEVICE_FREE(symDevicePtr);
+        DEVICE_FREE((void*)inputDevicePtr);
+        DEVICE_FREE((void*)outputDevicePtr);
+        DEVICE_FREE((void*)symDevicePtr);
 #elif defined(FFTX_SYCL)
         if (m_tp == FFTX_HANDLE)
           {          
