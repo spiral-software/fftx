@@ -373,18 +373,12 @@ public:
           }
         else
           {
-	    //            fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
-	    //                                                 (inputDevicePtr, 0, 1),
-	    //                                                 m_inDomain);
-	    //            fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
-	    //                                                   (outputDevicePtr, 0, 1),
-	    //                                                   m_outDomain);
-	    fftx::array_t<DIM, DEVICE_PTR>
-	      inputDevice(fftx::global_ptr<DEVICE_PTR>(&inputDevicePtr, 0, 1),
-			  m_inDomain);
-	    fftx::array_t<DIM, DEVICE_PTR>
-	      outputDevice(fftx::global_ptr<DEVICE_PTR>(&outputDevicePtr, 0, 1),
-			   m_outDomain);
+            fftx::array_t<DIM, T_IN> inputDevice(fftx::global_ptr<T_IN>
+                                                 ((T_IN*)inputDevicePtr, 0, 1),
+                                                 m_inDomain);
+            fftx::array_t<DIM, T_OUT> outputDevice(fftx::global_ptr<T_OUT>
+                                                   ((T_OUT*)outputDevicePtr, 0, 1),
+                                                   m_outDomain);
             if (m_tp == FFTX_HANDLE)
               {          
                 (*m_functionPtr)(inputDevice, outputDevice);
