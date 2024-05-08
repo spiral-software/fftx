@@ -95,12 +95,11 @@ public:
       }
     else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB)
       {
-#if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
-        // on GPU
         double* inputHostPtr = a_input.m_data.local();
         double* outputHostPtr = a_output.m_data.local();
 	double* symbolHostPtr = a_symbol.m_data.local();
-	
+#if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+        // on GPU
         auto input_pts = m_domain.size();
         auto output_pts = m_domain.size();
         auto symbol_pts = m_fdomain.size();
