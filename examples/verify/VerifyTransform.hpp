@@ -395,12 +395,6 @@ public:
               }
             else if (m_tp == FFTX_PROBLEM)
               {
-                T_IN* dX;
-                T_OUT* dY;
-                double* dsym;
-                dX = inputDevicePtr;
-                dY = outputDevicePtr;
-                dsym = symDevicePtr;
 		// Size and type of m_transformProblemPtr are already set.
 #if defined(FFTX_CUDA)
                 // std::vector<void*> args{&dY, &dX, &dsym};
