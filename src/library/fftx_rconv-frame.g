@@ -37,28 +37,19 @@ if 1 = 1 then
     
     PrintLine("fftx_rconv-frame: name = ", name, ", cube = ", szcube, ", jitname = ", jitname, ";\t\t##PICKME##");
 
-    ## This assumes FFTX_COMPLEX_TRUNC_LAST==0
-    ##szhalfcube := [Int(szcube[1]/2)+1]::Drop(szcube,1);
-    ##  szhalfcube := [szcube[1]/2+1]::Drop(szcube,1);
-    ## This assumes FFTX_COMPLEX_TRUNC_LAST==1
-    szhalfcube := DropLast(szcube,1)::[Int(Last(szcube)/2)+1];
-    ##  szhalfcube := DropLast(szcube,1)::[Last(szcube)/2+1];
-    var_1:= var("var_1", BoxND(szhalfcube, TReal));
-    var_2:= var("var_2", BoxND(szhalfcube, TReal));
-    var_3:= var("var_3", BoxND(szcube, TReal));
-    var_4:= var("var_4", BoxND(szcube, TReal));
-    var_5:= var("var_5", BoxND(szhalfcube, TReal));
-    var_3:= X;
-    var_4:= Y;
-    symvar := var("sym", TPtr(TReal));
-    t := TFCall(TDecl(TDAG([
-        TDAGNode(MDPRDFT(szcube,-1), var_1,var_3),
-        TDAGNode(Diag(diagTensor(FDataOfs(symvar,Product(szhalfcube),0),fConst(TReal, 2, 1))), var_2,var_1),
-        TDAGNode(IMDPRDFT(szcube,1), var_4,var_2),
-                  ]),
-            [var_1,var_2]
-            ),
-        rec(fname:=name, params:= [symvar])
+    dx := szcube[1];
+    dy := szcube[2];
+    dz := szcube[3];
+    dzadj := Int(dz / 2) + 1;
+    t := let ( symvar := var ( "sym", TPtr(TReal) ),
+               TFCall (
+                   Compose ( [
+                       IMDPRDFT ( [dx, dy, dz], 1),
+                       RCDiag ( FDataOfs ( symvar, dx * dy * dzadj * 2, 0 ) ),
+                       MDPRDFT ( [dx, dy, dz], -1 )
+                   ]),
+                   rec ( fname := name, params := [symvar] )
+               )
     );
     
     opts := conf.getOpts(t);
