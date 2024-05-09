@@ -24,7 +24,6 @@
 // #include <oneapi/mkl/vm.hpp>
 #endif
 
-#if defined(FFTX_HIP) || defined(FFTX_CUDA) || defined(FFTX_SYCL)
 //  Build a random input buffer for Spiral and vendor FFT
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
@@ -34,37 +33,39 @@ static void setInput ( double *host_X, std::vector<int> sizes )
         for ( int inn = 0; inn < sizes.at(1); inn++ ) {
             for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
                 int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+#if defined(FFTX_HIP) || defined(FFTX_CUDA) || defined(FFTX_SYCL)
                 host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
                 host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-            }
-        }
-    }
-    return;
-}
-#else
-static void setInput( double *host_X, std::vector<int> sizes)
-{
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
-                host_X[offset + 0] = 1;
-                host_X[offset + 1] = 1;
-            }
-        }
-    }
-    return;
-}
+#else // CPU
+                host_X[offset + 0] = 1.;
+                host_X[offset + 1] = 1.;
 #endif
+            }
+        }
+    }
+    return;
+}
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#define DOUBLECOMPLEX DEVICE_FFT_DOUBLECOMPLEX
+#define REALPART(z) z.x
+#define IMAGPART(z) z.y
+#elif defined (FFTX_SYCL)
+#define DOUBLECOMPLEX DEVICE_FFT_DOUBLECOMPLEX
+#define REALPART(z) z.real()
+#define IMAGPART(z) z.imag()
+#endif
+
 // Check that the buffer are identical (within roundoff)
 // outputFFTXPtr is the output buffer from the Spiral-generated transform
 // (result on GPU copied to host array outputFFTXPtr);
 // outputVendorPtr is the output buffer from the vendor transform
 // (result on GPU copied to host array outputVendorPtr).
 // arrsz is the size of each array
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-static void checkOutputs ( DEVICE_FFT_DOUBLECOMPLEX *outputFFTXPtr,
-			   DEVICE_FFT_DOUBLECOMPLEX *outputVendorPtr,
+static void checkOutputs ( DOUBLECOMPLEX *outputFFTXPtr,
+			   DOUBLECOMPLEX *outputVendorPtr,
 			   long arrsz )
 {
     bool correct = true;
@@ -72,40 +73,20 @@ static void checkOutputs ( DEVICE_FFT_DOUBLECOMPLEX *outputFFTXPtr,
 
     for ( int ind = 0; ind < arrsz; ind++ )
       {
-        DEVICE_FFT_DOUBLECOMPLEX s = outputFFTXPtr[ind];
-        DEVICE_FFT_DOUBLECOMPLEX c = outputVendorPtr[ind];
+        double sreal = REALPART(outputFFTXPtr[ind]);
+        double simag = IMAGPART(outputFFTXPtr[ind]);
+        double creal = REALPART(outputVendorPtr[ind]);
+        double cimag = IMAGPART(outputVendorPtr[ind]);
 
-	DEVICE_FFT_DOUBLECOMPLEX diff = s - c;
-        bool elem_correct = ( (abs(diff.x) < 1e-7) && (abs(diff.y) < 1e-7) );
-	updateMaxAbs(maxdelta, diff.x);
-	updateMaxAbs(maxdelta, diff.y);
+        double diffreal = sreal - creal;
+        double diffimag = simag - cimag;
+        
+        bool elem_correct =
+          ( (abs(diffreal) < 1.e-7) && (abs(diffimag) < 1.e-7) );
+	updateMaxAbs(maxdelta, diffreal);
+	updateMaxAbs(maxdelta, diffimag);
         correct &= elem_correct;
       }
-    
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
-
-    return;
-}
-#elif defined (FFTX_SYCL)
-static void checkOutputs ( std::complex<double> *outputFFTXPtr,
-			   std::complex<double> *outputVendorPtr,
-			   long arrsz )
-{
-    bool correct = true;
-    double maxdelta = 0.0;
-
-    for ( int ind = 0; ind < arrsz; ind++ )
-      {
-        std::complex<double> s = outputFFTXPtr[ind];
-        std::complex<double> c = outputVendorPtr[ind];
-
-        std::complex<double> diff = s - c;
-        bool elem_correct = ( (abs(diff.real()) < 1e-7) && (abs(diff.imag()) < 1e-7) );
-	updateMaxAbs(maxdelta, diff.real());
-	updateMaxAbs(maxdelta, diff.imag());
-        correct &= elem_correct;
-    }
     
     printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
     fflush ( stdout );
