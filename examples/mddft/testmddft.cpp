@@ -53,7 +53,7 @@ static void setInput ( double *host_X, std::vector<int> sizes )
 #define REALPART(z) z.x
 #define IMAGPART(z) z.y
 #elif defined (FFTX_SYCL)
-#define DOUBLECOMPLEX DEVICE_FFT_DOUBLECOMPLEX
+#define DOUBLECOMPLEX std::complex<double>
 #define REALPART(z) z.real()
 #define IMAGPART(z) z.imag()
 #endif
