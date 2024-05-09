@@ -498,7 +498,7 @@ int main(int argc, char* argv[])
     printf ( "Trial#    Spiral\n");
     for (int itn = 0; itn < iterations; itn++)
       {
-        printf ( "%4d%17.7e%17.7e\n", itn+1, mddft_gpu[itn] );
+        printf ( "%4d%17.7e\n", itn+1, mddft_gpu[itn] );
       }
 
     printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d\n",
@@ -506,7 +506,7 @@ int main(int argc, char* argv[])
     printf ( "Trial#    Spiral\n");
     for (int itn = 0; itn < iterations; itn++)
       {
-	printf ( "%4d%17.7e%17.7e\n", itn+1, imddft_gpu[itn] );
+	printf ( "%4d%17.7e\n", itn+1, imddft_gpu[itn] );
       }
 #endif
 
