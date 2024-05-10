@@ -215,8 +215,8 @@ int main(int argc, char* argv[])
     float *mddft_gpu = new float[iterations];
     float *imddft_gpu = new float[iterations];
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
-    float *devmilliseconds = new float[iterations];
-    float *invdevmilliseconds = new float[iterations];
+    float *mddft_vendor_millisec = new float[iterations];
+    float *imddft_vendor_millisec = new float[iterations];
     bool check_output = true; // compare results of Spiral-RTC with vendor FFT
 #endif
     
@@ -289,22 +289,20 @@ int main(int argc, char* argv[])
 	// setInput ( hostinp, sizes );
 	setInput ( (double*) inputHostPtr, sizes );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-	DEVICE_MEM_COPY(inputTfmPtr, inputHostPtr, bytes, MEM_COPY_HOST_TO_DEVICE);
+	DEVICE_MEM_COPY(inputTfmPtr, inputHostPtr,
+                        bytes, MEM_COPY_HOST_TO_DEVICE);
 #endif
 	if ( DEBUGOUT ) std::cout << "copied input from host to device\n";
 
 	// Run transform: input inputTfmPtr, output outputTfmPtr.
 	mdp.transform();
+	mddft_gpu[itn] = mdp.getTime();
 	// gatherOutput(outputFFTXHostArray, args);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-	DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr, bytes, MEM_COPY_DEVICE_TO_HOST );
-#endif
-	mddft_gpu[itn] = mdp.getTime();
-
-        //  Run the vendor FFT plan on the same input data.
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+	DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr,
+                          bytes, MEM_COPY_DEVICE_TO_HOST );
         if ( check_output )
-	  {
+	  { //  Run the vendor FFT plan on the same input data.
 	    DEVICE_EVENT_RECORD ( custart );
             res = DEVICE_FFT_EXECZ2Z ( plan,
                                        (DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
@@ -318,9 +316,10 @@ int main(int argc, char* argv[])
 	      }
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
+            DEVICE_EVENT_ELAPSED_TIME ( &mddft_vendor_millisec[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outputVendorHostPtr, outputTfmPtr, bytes, MEM_COPY_DEVICE_TO_HOST );
+            DEVICE_MEM_COPY ( outputVendorHostPtr, outputTfmPtr,
+                              bytes, MEM_COPY_DEVICE_TO_HOST );
             printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
             checkOutputs ( (DEVICE_FFT_DOUBLECOMPLEX *) outputFFTXHostPtr,
 			   (DEVICE_FFT_DOUBLECOMPLEX *) outputVendorHostPtr,
@@ -341,12 +340,13 @@ int main(int argc, char* argv[])
 	  }
 	
 	auto start_time = std::chrono::high_resolution_clock::now();
+        //  Run the vendor FFT plan on the same input data.
 	// Perform forward transform on complex array
 	oneapi::mkl::dft::compute_forward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
 	auto end_time = std::chrono::high_resolution_clock::now();
 
 	std::chrono::duration<float, std::milli> duration = end_time - start_time;
-	devmilliseconds[itn] = duration.count();
+	mddft_vendor_millisec[itn] = duration.count();
       
 	for (int ind = 0; ind < npts; ind++)
 	  {
@@ -363,9 +363,7 @@ int main(int argc, char* argv[])
 #endif
       }
 
-    std::cout << "DEBUG defining imdp" << std::endl;
-    
-    // setup the inverse transform (we'll reuse the device fft plan already created)
+    // setup the inverse transform (we'll reuse the vendor FFT plan already created)
     IMDDFTProblem imdp(args, sizes, "imddft");
 
     for (int itn = 0; itn < iterations; itn++)
@@ -375,22 +373,20 @@ int main(int argc, char* argv[])
 
 	setInput ( (double*) inputHostPtr, sizes );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY(inputTfmPtr, inputHostPtr, bytes, MEM_COPY_HOST_TO_DEVICE);
+        DEVICE_MEM_COPY(inputTfmPtr, inputHostPtr,
+                        bytes, MEM_COPY_HOST_TO_DEVICE);
 #endif
         if ( DEBUGOUT ) std::cout << "copied input from host to device\n";
         
 	// Run transform: input inputTfmPtr, output outputTfmPtr.
         imdp.transform();
+        imddft_gpu[itn] = imdp.getTime();
         //gatherOutput(outputFFTXHostArray, args);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr, bytes, MEM_COPY_DEVICE_TO_HOST );
-#endif
-        imddft_gpu[itn] = imdp.getTime();
-	
-        // Run the vendor FFT plan on the same input data.
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+        DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr,
+                          bytes, MEM_COPY_DEVICE_TO_HOST );
         if ( check_output )
-	  {
+	  { // Run the vendor FFT plan on the same input data.
             DEVICE_EVENT_RECORD ( custart );
             res = DEVICE_FFT_EXECZ2Z ( plan,
                                        (DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
@@ -404,9 +400,10 @@ int main(int argc, char* argv[])
 	      }
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
+            DEVICE_EVENT_ELAPSED_TIME ( &imddft_vendor_millisec[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outputVendorHostPtr, outputTfmPtr, bytes, MEM_COPY_DEVICE_TO_HOST );
+            DEVICE_MEM_COPY ( outputVendorHostPtr, outputTfmPtr,
+                              bytes, MEM_COPY_DEVICE_TO_HOST );
             printf ( "cube = [ %d, %d, %d ]\tMDDFT (Inverse)\t", mm, nn, kk );
             checkOutputs ( (DEVICE_FFT_DOUBLECOMPLEX *) outputFFTXHostPtr,
 			   (DEVICE_FFT_DOUBLECOMPLEX *) outputVendorHostPtr,
@@ -427,12 +424,13 @@ int main(int argc, char* argv[])
 	  }
 	
 	auto start_time = std::chrono::high_resolution_clock::now();
-	// Perform forward transform on complex array
+        // Run the vendor FFT plan on the same input data.
+	// Perform backward transform on complex array
 	oneapi::mkl::dft::compute_backward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
 	auto end_time = std::chrono::high_resolution_clock::now();
 
 	std::chrono::duration<float, std::milli> duration = end_time - start_time;
-	invdevmilliseconds[itn] = duration.count();
+	imddft_vendor_millisec[itn] = duration.count();
 
 	for (int ind = 0; ind < npts; ind++)
 	  {
@@ -444,7 +442,7 @@ int main(int argc, char* argv[])
 	  {
 	    checkOutputs ( (std::complex<double>*) outputFFTXHostPtr,
 			   (std::complex<double>*) outputVendorHostPtr,
-			   npts );
+			   (long) npts );
 	  }
 #endif
     }
@@ -463,7 +461,7 @@ int main(int argc, char* argv[])
     printf ( "Trial#    Spiral           %s\n", vendorfft.c_str() );
     for (int itn = 0; itn < iterations; itn++)
       {
-        printf ( "%4d%17.7e%17.7e\n", itn+1, mddft_gpu[itn], devmilliseconds[itn] );
+        printf ( "%4d%17.7e%17.7e\n", itn+1, mddft_gpu[itn], mddft_vendor_millisec[itn] );
       }
 
     printf ( "Times in milliseconds for %s on MDDFT (inverse) for %d trials of size %d %d %d:\n",
@@ -471,7 +469,7 @@ int main(int argc, char* argv[])
     printf ( "Trial#    Spiral           %s\n", vendorfft.c_str() );
     for (int itn = 0; itn < iterations; itn++)
       {
-        printf ( "%4d%17.7e%17.7e\n", itn+1, imddft_gpu[itn], invdevmilliseconds[itn] );
+        printf ( "%4d%17.7e%17.7e\n", itn+1, imddft_gpu[itn], imddft_vendor_millisec[itn] );
       }
 #else
     printf ( "Times in milliseconds for %s on MDDFT (forward) for %d trials of size %d %d %d\n",
@@ -496,8 +494,8 @@ int main(int argc, char* argv[])
     delete[] mddft_gpu;
     delete[] imddft_gpu;
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
-    delete[] devmilliseconds;
-    delete[] invdevmilliseconds;
+    delete[] mddft_vendor_millisec;
+    delete[] imddft_vendor_millisec;
 #endif
     printf("%s: All done, exiting\n", prog);
   
