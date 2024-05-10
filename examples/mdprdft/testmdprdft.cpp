@@ -254,19 +254,19 @@ int main(int argc, char* argv[])
 #if defined FFTX_CUDA
     std::vector<void*> argsR2C{&tempTfmPtr,&inputTfmPtr,&symbolTfmPtr};
     std::string descrip = "NVIDIA GPU";                //  "CPU and GPU";
-    std::string devfft  = "cufft";
+    std::string vendorfft  = "cufft";
 #elif defined FFTX_HIP
     std::vector<void*> argsR2C{tempTfmPtr,inputTfmPtr,symbolTfmPtr};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
-    std::string devfft  = "rocfft";
+    std::string vendorfft  = "rocfft";
 #elif defined FFTX_SYCL
     std::vector<void*> argsR2C{(void*)&(tempBufTmpPtr), (void*)&(inputBufTmpPtr), (void*)&(symbolBufTmpPtr)};
     std::string descrip = "Intel GPU";                //  "CPU and GPU";
-    std::string devfft  = "mklfft";
+    std::string vendorfft  = "mklfft";
 #else
     std::vector<void*> argsR2C{(void*)tempTfmPtr, (void*)inputTfmPtr, (void*)symbolTfmPtr};
     std::string descrip = "CPU";                //  "CPU";
-    // std::string devfft = "fftw";
+    // std::string vendorfft = "fftw";
 #endif
 
     float *mdprdft_gpu = new float[iterations];
