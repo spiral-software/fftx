@@ -25,20 +25,20 @@
 #endif
 
 //  Build a random input buffer for Spiral and vendor FFT
-//  host_X is the host buffer to setup -- it'll be copied to the device later
+//  inputPtr is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
-static void setInput ( double *host_X, std::vector<int> sizes )
+static void setInput ( double *inputPtr, std::vector<int> sizes )
 {
     for ( int imm = 0; imm < sizes.at(0); imm++ ) {
         for ( int inn = 0; inn < sizes.at(1); inn++ ) {
             for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
                 int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
 #if defined(FFTX_HIP) || defined(FFTX_CUDA) || defined(FFTX_SYCL)
-                host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-                host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+                inputPtr[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
+                inputPtr[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
 #else // CPU
-                host_X[offset + 0] = 1.;
-                host_X[offset + 1] = 1.;
+                inputPtr[offset + 0] = 1.;
+                inputPtr[offset + 1] = 1.;
 #endif
             }
         }
@@ -156,11 +156,6 @@ int main(int argc, char* argv[])
     auto outputVendorHostPtr = outputVendorHostArray.m_data.local();
 
 #if defined FFTX_CUDA
-    CUdevice cuDevice;
-    CUcontext context;
-    cuInit(0);
-    cuDeviceGet(&cuDevice, 0);
-    cuCtxCreate(&context, 0, cuDevice);
     //  CUdeviceptr  inputTfmPtr, outputTfmPtr, symbolTfmPtr;
     std::complex<double> *inputTfmPtr, *outputTfmPtr, *symbolTfmPtr;
 #elif defined FFTX_HIP
@@ -298,11 +293,17 @@ int main(int argc, char* argv[])
 	mdp.transform();
 	mddft_gpu[itn] = mdp.getTime();
 	// gatherOutput(outputFFTXHostArray, args);
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-	DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr,
-                          bytes, MEM_COPY_DEVICE_TO_HOST );
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         if ( check_output )
-	  { //  Run the vendor FFT plan on the same input data.
+	  { //  Run the vendor FFT plan on the same input data.	
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+	    // Copy output of FFTX transform from device to host
+	    // in order to check it against cuFFT or rocFFT.
+	    DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr,
+			      bytes, MEM_COPY_DEVICE_TO_HOST );
+
+	    // Run cuFFT or rocFFT.
 	    DEVICE_EVENT_RECORD ( custart );
             res = DEVICE_FFT_EXECZ2Z ( plan,
                                        (DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
@@ -320,45 +321,44 @@ int main(int argc, char* argv[])
 
             DEVICE_MEM_COPY ( outputVendorHostPtr, outputTfmPtr,
                               bytes, MEM_COPY_DEVICE_TO_HOST );
-            printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
-            checkOutputs ( (DEVICE_FFT_DOUBLECOMPLEX *) outputFFTXHostPtr,
-			   (DEVICE_FFT_DOUBLECOMPLEX *) outputVendorHostPtr,
-			   (long) npts );
-	  }
 #elif defined (FFTX_SYCL)
-	// If this is absent then iterations after the first aren't correct.
-	sycl::host_accessor inputHostAcc(inputTfmPtr);
+	    // Copy output of FFTX transform from device to host
+	    // in order to check it against MKL FFT.
 
-	// outputHostAcc is double* because outputTfmPtr is sycl::buffer<double>.
-	sycl::host_accessor outputHostAcc(outputTfmPtr);
-	for (int ind = 0; ind < npts; ind++)
-	  {
-	    inputVendorPtr[ind] = inputHostPtr[ind];
-	    // outputFFTXHostPtr[ind] = outputHostAcc[ind];
-	    outputFFTXHostPtr[ind] =
-	      std::complex(outputHostAcc[2*ind], outputHostAcc[2*ind+1]);
-	  }
+	    // If this is absent then iterations after the first aren't correct.
+	    sycl::host_accessor inputHostAcc(inputTfmPtr);
+
+	    // outputHostAcc is double* because outputTfmPtr is sycl::buffer<double>.
+	    sycl::host_accessor outputHostAcc(outputTfmPtr);
+	    for (int ind = 0; ind < npts; ind++)
+	      {
+		// outputFFTXHostPtr[ind] = outputHostAcc[ind];
+		outputFFTXHostPtr[ind] =
+		  std::complex(outputHostAcc[2*ind], outputHostAcc[2*ind+1]);
+	      }
 	
-	auto start_time = std::chrono::high_resolution_clock::now();
-        //  Run the vendor FFT plan on the same input data.
-	// Perform forward transform on complex array
-	oneapi::mkl::dft::compute_forward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
-	auto end_time = std::chrono::high_resolution_clock::now();
+	    // Run MKL FFT plan on the same input data.
+	    for (int ind = 0; ind < npts; ind++)
+	      { // These are both complex.
+		inputVendorPtr[ind] = inputHostPtr[ind];
+	      }
+	    auto start_time = std::chrono::high_resolution_clock::now();
+	    // Perform forward transform on complex array
+	    oneapi::mkl::dft::compute_forward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
+	    auto end_time = std::chrono::high_resolution_clock::now();
 
-	std::chrono::duration<float, std::milli> duration = end_time - start_time;
-	mddft_vendor_millisec[itn] = duration.count();
+	    std::chrono::duration<float, std::milli> duration = end_time - start_time;
+	    mddft_vendor_millisec[itn] = duration.count();
       
-	for (int ind = 0; ind < npts; ind++)
-	  {
-	    outputVendorHostPtr[ind] = outputVendorPtr[ind];
-	  }
-      
-	printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
-	if (check_output)
-	  {
-	    checkOutputs ( (std::complex<double>*) outputFFTXHostPtr,
-			   (std::complex<double>*) outputVendorHostPtr,
-			   npts );
+	    for (int ind = 0; ind < npts; ind++)
+	      { // These are both complex.
+		outputVendorHostPtr[ind] = outputVendorPtr[ind];
+	      }
+#endif
+	    printf ( "cube = [ %d, %d, %d ]\tMDDFT (Forward)\t", mm, nn, kk );
+	    checkOutputs ( (DOUBLECOMPLEX*) outputFFTXHostPtr,
+			   (DOUBLECOMPLEX*) outputVendorHostPtr,
+			   (long) npts );
 	  }
 #endif
       }
@@ -382,12 +382,18 @@ int main(int argc, char* argv[])
         imdp.transform();
         imddft_gpu[itn] = imdp.getTime();
         //gatherOutput(outputFFTXHostArray, args);
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr,
-                          bytes, MEM_COPY_DEVICE_TO_HOST );
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)	
         if ( check_output )
 	  { // Run the vendor FFT plan on the same input data.
-            DEVICE_EVENT_RECORD ( custart );
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+	    // Copy output of FFTX transform from device to host
+	    // in order to check it against cuFFT or rocFFT.
+	    DEVICE_MEM_COPY ( outputFFTXHostPtr, outputTfmPtr,
+			      bytes, MEM_COPY_DEVICE_TO_HOST );
+
+	    // Run cuFFT or rocFFT.	    
+	    DEVICE_EVENT_RECORD ( custart );
             res = DEVICE_FFT_EXECZ2Z ( plan,
                                        (DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
                                        (DEVICE_FFT_DOUBLECOMPLEX *) outputTfmPtr,
@@ -398,59 +404,57 @@ int main(int argc, char* argv[])
                 check_output = false;
                 //  break;
 	      }
+
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
             DEVICE_EVENT_ELAPSED_TIME ( &imddft_vendor_millisec[itn], custart, custop );
 
             DEVICE_MEM_COPY ( outputVendorHostPtr, outputTfmPtr,
                               bytes, MEM_COPY_DEVICE_TO_HOST );
-            printf ( "cube = [ %d, %d, %d ]\tMDDFT (Inverse)\t", mm, nn, kk );
-            checkOutputs ( (DEVICE_FFT_DOUBLECOMPLEX *) outputFFTXHostPtr,
-			   (DEVICE_FFT_DOUBLECOMPLEX *) outputVendorHostPtr,
-			   (long) npts );
-        }
 #elif defined (FFTX_SYCL)
-	// If this is absent then iterations after the first aren't correct.
-	sycl::host_accessor inputHostAcc(inputTfmPtr);
+	    // Copy output of FFTX transform from device to host
+	    // in order to check it against MKL FFT.
 
-	// outputHostAcc is double* because outputTfmPtr is sycl::buffer<double>.
-	sycl::host_accessor outputHostAcc(outputTfmPtr);
-	for (int ind = 0; ind < npts; ind++)
-	  {
-	    inputVendorPtr[ind] = inputHostPtr[ind];
-	    // outputFFTXHostPtr[ind] = outputHostAcc[ind];
-	    outputFFTXHostPtr[ind] =
-	      std::complex(outputHostAcc[2*ind], outputHostAcc[2*ind+1]);
-	  }
-	
-	auto start_time = std::chrono::high_resolution_clock::now();
-        // Run the vendor FFT plan on the same input data.
-	// Perform backward transform on complex array
-	oneapi::mkl::dft::compute_backward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
-	auto end_time = std::chrono::high_resolution_clock::now();
+	    // If this is absent then iterations after the first aren't correct.
+	    sycl::host_accessor inputHostAcc(inputTfmPtr);
 
-	std::chrono::duration<float, std::milli> duration = end_time - start_time;
-	imddft_vendor_millisec[itn] = duration.count();
+	    // outputHostAcc is double* because outputTfmPtr is sycl::buffer<double>.
+	    sycl::host_accessor outputHostAcc(outputTfmPtr);
+	    for (int ind = 0; ind < npts; ind++)
+	      {
+		// outputFFTXHostPtr[ind] = outputHostAcc[ind];
+		outputFFTXHostPtr[ind] =
+		  std::complex(outputHostAcc[2*ind], outputHostAcc[2*ind+1]);
+	      }
 
-	for (int ind = 0; ind < npts; ind++)
-	  {
-	    outputVendorHostPtr[ind] = outputVendorPtr[ind];
-	  }
-      
-	printf ( "cube = [ %d, %d, %d ]\tMDDFT (Inverse)\t", mm, nn, kk );
-	if (check_output)
-	  {
-	    checkOutputs ( (std::complex<double>*) outputFFTXHostPtr,
-			   (std::complex<double>*) outputVendorHostPtr,
+	    // Run MKL FFT plan on the same input data.
+	    for (int ind = 0; ind < npts; ind++)
+	      { // These are both complex.
+		inputVendorPtr[ind] = inputHostPtr[ind];
+	      }
+	    auto start_time = std::chrono::high_resolution_clock::now();
+	    // Perform backward transform on complex array
+	    oneapi::mkl::dft::compute_backward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
+	    auto end_time = std::chrono::high_resolution_clock::now();
+
+	    std::chrono::duration<float, std::milli> duration = end_time - start_time;
+	    imddft_vendor_millisec[itn] = duration.count();
+
+	    for (int ind = 0; ind < npts; ind++)
+	      { // These are both complex.
+		outputVendorHostPtr[ind] = outputVendorPtr[ind];
+	      }
+#endif
+	    printf ( "cube = [ %d, %d, %d ]\tIMDDFT (Inverse)\t", mm, nn, kk );
+	    checkOutputs ( (DOUBLECOMPLEX*) outputFFTXHostPtr,
+			   (DOUBLECOMPLEX*) outputVendorHostPtr,
 			   (long) npts );
 	  }
 #endif
-    }
+      }
 
 #if defined(FFTX_SYCL)
     // Clean up.
-    // sycl::free(inbuf, sycl_context);
-    // sycl::free(outbuf, sycl_context);
     sycl::free(inputVendorPtr, sycl_context);
     sycl::free(outputVendorPtr, sycl_context);
 #endif
@@ -489,8 +493,6 @@ int main(int argc, char* argv[])
       }
 #endif
 
-    // delete[] mddft_cpu;
-    // delete[] imddft_cpu;
     delete[] mddft_gpu;
     delete[] imddft_gpu;
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
