@@ -91,5 +91,5 @@ jobs:
       run: |
         cd $FFTX_HOME
         ./bin/testverify_lib
-        ./bin/testrconv_lib
+        ./bin/testrconv_lib -v 3
 
