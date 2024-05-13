@@ -21,6 +21,7 @@ void rconvDimension(std::vector<int> sizes,
                     int a_rounds,
                     int a_verbosity)
 {
+  std::cout << "DEBUG starting rconvDimension" << std::endl;
   std::cout << "***** test " << DIM << "D real convolution on "
             << a_domain << std::endl;
 
