@@ -69,6 +69,8 @@ jobs:
         FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
         cd $FFTX_HOME
+        git branch
+        ls -l examples/rconv/
         ./config-fftx-libs.sh CPU
         cat src/library/build-lib-code-failures.txt
         echo "##### Source files built:"
@@ -93,7 +95,7 @@ jobs:
         echo "github.ref = ${{github.ref}}"
         echo "github.ref_name = ${{github.ref_name}}"
         echo "github.workspace = ${{github.workspace}}"
-        ls -ltr examples/rconv/
+        ls -l examples/rconv/
         git branch
         ./bin/testverify_lib
         ./bin/testrconv_lib -v 3
