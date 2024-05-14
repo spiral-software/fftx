@@ -59,7 +59,8 @@ jobs:
     - name: Checkout FFTX
       uses: actions/checkout@v4
       with:
-        repository: petermcLBL/fftx
+        ## repository: spiral-software/fftx
+        repository: ${{ github.repository }}
         ##  ref: develop
         ref: ${{ github.ref_name }}
         path: fftx
@@ -69,8 +70,6 @@ jobs:
         FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
         cd $FFTX_HOME
-        git branch
-        ls -l examples/rconv/
         ./config-fftx-libs.sh CPU
         cat src/library/build-lib-code-failures.txt
         echo "##### Source files built:"
@@ -92,10 +91,5 @@ jobs:
         FFTX_HOME: ${{ github.workspace }}/fftx
       run: |
         cd $FFTX_HOME
-        echo "github.ref = ${{github.ref}}"
-        echo "github.ref_name = ${{github.ref_name}}"
-        echo "github.workspace = ${{github.workspace}}"
-        ls -l examples/rconv/
-        git branch
         ./bin/testverify_lib
-        ./bin/testrconv_lib -v 3
+        ./bin/testrconv_lib
