@@ -61,7 +61,7 @@ jobs:
       with:
         repository: spiral-software/fftx
         ##  ref: develop
-        ref: ${{ github.ref }}
+        ref: ${{ github.ref_name }}
         path: fftx
     - name: Configure FFTX
       env:
@@ -94,6 +94,6 @@ jobs:
         echo "github.ref_name = ${{github.ref_name}}"
         echo "github.workspace = ${{github.workspace}}"
         ls -ltr examples/rconv/
-        grep DEBUG examples/rconv/*pp
+        git branch
         ./bin/testverify_lib
         ./bin/testrconv_lib -v 3
