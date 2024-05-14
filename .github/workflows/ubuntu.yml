@@ -93,5 +93,7 @@ jobs:
         echo "github.ref = ${{github.ref}}"
         echo "github.ref_name = ${{github.ref_name}}"
         echo "github.workspace = ${{github.workspace}}"
+        ls -ltr examples/rconv/
+        grep DEBUG examples/rconv/*pp
         ./bin/testverify_lib
         ./bin/testrconv_lib -v 3
