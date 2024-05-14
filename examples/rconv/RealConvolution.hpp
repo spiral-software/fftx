@@ -200,7 +200,6 @@ public:
         return;
       }
 
-    std::cout << "DEBUG in TestRealConvolution" << std::endl;
     m_tfm = a_tfm;
     m_rounds = a_rounds;
     m_verbosity = a_verbosity;

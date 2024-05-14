@@ -21,16 +21,12 @@ void rconvDimension(std::vector<int> sizes,
                     int a_rounds,
                     int a_verbosity)
 {
-  std::cout << "DEBUG starting rconvDimension" << std::endl;
   std::cout << "***** test " << DIM << "D real convolution on "
             << a_domain << std::endl;
 
   // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
-  std::cout << "DEBUG get RConvProblem" << std::endl;
   RCONVProblem rp("rconv");
-  std::cout << "DEBUG define RealConvolution" << std::endl;
   RealConvolution<DIM> fun(rp, sizes, a_domain, a_fdomain);
-  std::cout << "DEBUG TestRealConvolution" << std::endl;
   TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
 }
 
@@ -49,9 +45,7 @@ void rconvSize(fftx::point_t<3> a_size,
   
   // fftx::rconv<3> tfm(a_size); // does initialization
   // rconvDimension(tfm, a_rounds, a_verbosity);
-  std::cout << "DEBUG rconvSize get sizes" << std::endl;
   std::vector<int> sizes{a_size[0], a_size[1], a_size[2]};
-  std::cout << "DEBUG call rconvDimension" << std::endl;
   rconvDimension(sizes, fulldomain, halfdomain, a_rounds, a_verbosity);
 }
   
@@ -114,12 +108,10 @@ int main(int argc, char* argv[])
 
   // rconvSize(fftx::point_t<3>({{  48,  48,  48 }}), rounds, verbosity);
 
-  std::cout << "DEBUG getting query sizes" << std::endl;
   fftx::point_t<3> *ents = fftx_rconv_QuerySizes ();
 
   for ( int ind = 0; ents[ind][0] != 0; ind++ )
     {
-      std::cout << "DEBUG round " << ind << std::endl;
       rconvSize(ents[ind], rounds, verbosity);
     }
   
