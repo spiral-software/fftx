@@ -301,6 +301,7 @@ int main(int argc, char* argv[])
 	// dev = sycl::device(sycl::cpu_selector_v);
       }
     sycl::context ctx = sycl::context(dev);
+    /*
     cl_device_id ocl_dev =
       sycl::get_native<cl::sycl::backend::opencl, sycl::device>(dev);
     cl_context   ocl_ctx =
@@ -309,6 +310,9 @@ int main(int argc, char* argv[])
     cl_command_queue ocl_queue =
       clCreateCommandQueueWithProperties(ocl_ctx, ocl_dev,0,&err);
     sycl::queue Q = sycl::make_queue<sycl::backend::opencl>(ocl_queue,ctx);
+    */
+    sycl::property_list props{sycl::property::queue::enable_profiling()};
+    sycl::queue Q = sycl::queue(ctx, dev, props);
 
     // Initialize SYCL queue
     //	  sycl::queue Q(sycl::default_selector{});
@@ -403,12 +407,19 @@ int main(int argc, char* argv[])
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    //  Run the vendor FFT plan on the same input data.
 	    // Perform forward transform on real array
-	    oneapi::mkl::dft::compute_forward(transform_plan_3d, sharedRealPtr, sharedComplexPtr).wait();
+	    // oneapi::mkl::dft::compute_forward(transform_plan_3d, sharedRealPtr, sharedComplexPtr).wait();
+            sycl::event e = oneapi::mkl::dft::compute_forward(transform_plan_3d,
+                                                              sharedRealPtr,
+                                                              sharedComplexPtr);
+            Q.wait();
 	    auto end_time = std::chrono::high_resolution_clock::now();
+            uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+            uint64_t e_end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
+            uint64_t profile_nanosec = e_end - e_start;
+	    // std::chrono::duration<float, std::milli> duration = end_time - start_time;
+	    // mdprdft_vendor_millisec[itn] = duration.count();
+            mdprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-	    std::chrono::duration<float, std::milli> duration = end_time - start_time;
-	    mdprdft_vendor_millisec[itn] = duration.count();
-      
 	    // Rearrange the complex MKL output
 	    // from sharedComplexPtr on {mm, nn, kk}
 	    // to outputComplexVendorHostPtr on {mm, nn, K_adj}.
@@ -524,11 +535,18 @@ int main(int argc, char* argv[])
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    // Run the vendor FFT plan on the same input data.
 	    // Perform backward transform on complex array
-	    oneapi::mkl::dft::compute_backward(transform_plan_3d, sharedComplexPtr, sharedRealPtr).wait();
+	    // oneapi::mkl::dft::compute_backward(transform_plan_3d, sharedComplexPtr, sharedRealPtr).wait();
+            sycl::event e = oneapi::mkl::dft::compute_backward(transform_plan_3d,
+                                                               sharedComplexPtr,
+                                                               sharedRealPtr);
+            Q.wait();
 	    auto end_time = std::chrono::high_resolution_clock::now();
-
-	    std::chrono::duration<float, std::milli> duration = end_time - start_time;
-	    imdprdft_vendor_millisec[itn] = duration.count();
+            uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+            uint64_t e_end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
+            uint64_t profile_nanosec = e_end - e_start;
+	    // std::chrono::duration<float, std::milli> duration = end_time - start_time;
+	    // imdprdft_vendor_millisec[itn] = duration.count();
+            imdprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
 	    for (int ind = 0; ind < npts; ind++)
 	      {
@@ -543,12 +561,19 @@ int main(int argc, char* argv[])
 #endif
       }
 
-#if defined(FFTX_SYCL)
     // Clean up.
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    DEVICE_FREE(inputTfmPtr);
+    DEVICE_FREE(outputTfmPtr);
+    DEVICE_FREE(symbolTfmPtr);
+    DEVICE_FREE(tempTfmPtr);
+#elif defined(FFTX_SYCL)
     sycl::free(sharedRealPtr, sycl_context);
     sycl::free(sharedComplexPtr, sycl_context);
+#else
+    delete[] symbolTfmPtr;
+    delete[] tempTfmPtr;
 #endif
-    
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
     printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d:\n",
@@ -566,6 +591,9 @@ int main(int argc, char* argv[])
       {
         printf ( "%4d%17.7e%17.7e\n", itn+1, imdprdft_gpu[itn], imdprdft_vendor_millisec[itn] );
       }
+
+    delete[] mdprdft_vendor_millisec;
+    delete[] imdprdft_vendor_millisec;
 #else
     printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d\n",
 	     descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
@@ -583,19 +611,13 @@ int main(int argc, char* argv[])
 	printf ( "%4d%17.7e\n", itn+1, imdprdft_gpu[itn] );
       }
 #endif
-
-    // for(int i = 0; i < outputComplexVendorHostArray.m_domain.size(); i++) {
-    //     std::cout << outputComplexFFTXHostPtr[i] << " " << outputComplexVendorHostPtr[i] << std::endl;
-    // }
-
     delete[] mdprdft_gpu;
     delete[] imdprdft_gpu;
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
-    delete[] mdprdft_vendor_millisec;
-    delete[] imdprdft_vendor_millisec;
-#endif
+
     printf("%s: All done, exiting\n", prog);
   
+    fflush ( stdout );
+
     return 0;
 
 }
