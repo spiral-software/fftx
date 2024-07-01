@@ -17,16 +17,14 @@ project ( mddft ${_lang_add} ${_lang_base} )
 set ( _stem fftx )
 set ( _prefixes  )
 set ( BUILD_PROGS test${PROJECT_NAME} )
- 
-##  testjithip is specific to HIP code [for now], only build when target is HIP
-if ( ${_codegen} STREQUAL "HIP" )
-    list ( APPEND BUILD_PROGS testjithip )
-endif ()
 
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
 
-LIST (APPEND ADDL_COMPILE_FLAGS -g -fpermissive )
+if ( NOT WIN32 )
+    LIST (APPEND ADDL_COMPILE_FLAGS -g )
+    LIST (APPEND ADDL_COMPILE_FLAGS -fpermissive )
+endif ()
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 

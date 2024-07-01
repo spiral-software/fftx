@@ -6,6 +6,7 @@
 ##  szcube := [ x, y, z ]
 ##
 
+szcube := [  32,  32,  32 ];
 szcube := [  48,  48,  48 ];
 szcube := [  64,  64,  64 ];
 szcube := [  80 , 80,  80 ];

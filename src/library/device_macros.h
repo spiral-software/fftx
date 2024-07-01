@@ -5,7 +5,7 @@
 #include <hip/hiprtc.h>
 #include <hip/hip_runtime.h>
 #include <hipfft.h>
-#include "rocfft.h"
+#include <rocfft/rocfft.h>
 
 #define DEVICE_SUCCESS hipSuccess
 #define DEVICE_EVENT_T hipEvent_t
@@ -31,6 +31,7 @@
 #define DEVICE_FFT_CREATE hipfftCreate
 #define DEVICE_FFT_MAKE_PLAN_3D hipfftMakePlan3d
 #define DEVICE_FFT_PLAN3D hipfftPlan3d
+#define DEVICE_FFT_PLAN2D hipfftPlan2d
 #define DEVICE_FFT_PLAN_MANY hipfftPlanMany
 #define DEVICE_FFT_EXECZ2Z hipfftExecZ2Z
 #define DEVICE_FFT_EXECD2Z hipfftExecD2Z
@@ -99,6 +100,7 @@
 #define DEVICE_FFT_CREATE cufftCreate
 #define DEVICE_FFT_MAKE_PLAN_3D cufftMakePlan3d
 #define DEVICE_FFT_PLAN3D cufftPlan3d
+#define DEVICE_FFT_PLAN2D cufftPlan2d
 #define DEVICE_FFT_PLAN_MANY cufftPlanMany
 #define DEVICE_FFT_EXECZ2Z cufftExecZ2Z
 #define DEVICE_FFT_EXECD2Z cufftExecD2Z

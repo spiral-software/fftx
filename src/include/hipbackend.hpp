@@ -39,16 +39,12 @@ class Executor {
         };
         hiprtcProgram prog;
         hiprtcResult compileResult;
-        // std::vector<fftx::array_t<3,std::complex<double>>> in;
-        // std::vector<fftx::array_t<3,std::complex<double>>> out;
         std::vector<void*> kernelargs;
         std::vector<std::tuple<std::string, int, std::string>> device_names;
-        // std::string kernel_name;
         std::vector<std::string> kernel_names;
         std::vector<int> kernel_params;
         std::string kernel_preamble;
         std::string kernels;
-        //std::vector<std::string> kernels;
         std::vector<std::tuple<std::string, int, std::string>> in_params;
         std::vector<void*> params; 
         std::vector<void *> data;
@@ -63,7 +59,7 @@ class Executor {
         hipFunction_t kernel;
         size_t cubinSize;
         void *cubin;
-        float GPUtime;
+        float GPUtime = 0;
     public:
         string_code hashit(std::string const& inString);
         void parseDataStructure(std::string input);
@@ -81,7 +77,7 @@ class Executor {
         void returnData(std::vector<fftx::array_t<3,std::complex<double>>> &out1);
 };
 
-Executor::string_code Executor::hashit(std::string const& inString) {
+inline Executor::string_code Executor::hashit(std::string const& inString) {
     if(inString == "int") return zero;
     if(inString == "float") return one;
     if(inString == "double") return two;
@@ -92,7 +88,7 @@ Executor::string_code Executor::hashit(std::string const& inString) {
     return mone;
 }
 
-void Executor::parseDataStructure(std::string input) {
+inline void Executor::parseDataStructure(std::string input) {
     std::istringstream stream(input);
     char delim = ' ';
     std::string line;
@@ -204,7 +200,7 @@ void Executor::parseDataStructure(std::string input) {
 
 }
 
-void Executor::createProg() {
+inline void Executor::createProg() {
     DEVICE_RTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     "test.cu", // name
@@ -214,7 +210,7 @@ void Executor::createProg() {
     if ( DEBUGOUT ) std::cout << "created program\n";
 }
 
-void Executor::getVarsAndKernels() {
+inline void Executor::getVarsAndKernels() {
     std::vector<std::string> new_names;
     for(int i = 0; i < device_names.size(); i++) {
         new_names.push_back(std::get<0>(device_names[i]));
@@ -225,7 +221,7 @@ void Executor::getVarsAndKernels() {
     if ( DEBUGOUT ) std::cout << "added kernels and variables\n";
 }
 
-void Executor::compileProg() {
+inline void Executor::compileProg() {
     hipDeviceProp_t props;
     int device = 0;
     hipGetDeviceProperties(&props, device);
@@ -243,7 +239,7 @@ void Executor::compileProg() {
     if ( DEBUGOUT ) std::cout << "compiled program\n";
 }
 
-void Executor::getLogsAndPTX() {
+inline void Executor::getLogsAndPTX() {
     DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
     //std::cout << "this is the log size" << logSize << "\n";
     log = new char[logSize];
@@ -261,23 +257,11 @@ void Executor::getLogsAndPTX() {
     //std::cout << "this is the program size" << ptxSize << "\n";
     ptx = new char[ptxSize];
     DEVICE_RTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
-    // DEVICE_SAFE_CALL(cuInit(0));
-    // DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
-    // DEVICE_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
-    // DEVICE_RTC_SAFE_CALL(hiprtcLinkCreate(0, 0, 0, &linkState));
-    // // DEVICE_SAFE_CALL(hiprtcLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getHIPRuntime(), 
-    // // 0, 0, 0));
-    // DEVICE_RTC_SAFE_CALL(hiprtcLinkAddData(linkState, HIPRTC_JIT_INPUT_LLVM_BITCODE,
-    // (void *)ptx, ptxSize, "dft_jit.ptx",
-    // 0, 0, 0));
-    // DEVICE_RTC_SAFE_CALL(hiprtcLinkComplete(linkState, &cubin, &cubinSize));
-    //DEVICE_SAFE_CALL(hipModuleLoadData(&module, cubin));
-    //std::cout << "before moodule\n";
     DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
     if ( DEBUGOUT ) std::cout << "created module\n";
 }
 
-void Executor::initializeVars() {
+inline void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
         if ( DEBUGOUT ) std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
@@ -348,46 +332,50 @@ void Executor::initializeVars() {
     }
 }
 
-void Executor::destoryProg() {
+inline void Executor::destoryProg() {
     //DEVICE_RTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
     DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
 }
 
 
-float Executor::initAndLaunch(std::vector<void*>& args) {
+inline float Executor::initAndLaunch(std::vector<void*>& args) {
+    hipEvent_t start, stop;
     auto size = args.size() * sizeof(hipDeviceptr_t);
     void * config[] = {HIP_LAUNCH_PARAM_BUFFER_POINTER, args.data(),
                           HIP_LAUNCH_PARAM_BUFFER_SIZE, &size,
                           HIP_LAUNCH_PARAM_END};
-    hipEvent_t start, stop;
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventRecord(start,0));
+    
     for(int i = 0; i < kernel_names.size(); i++) {
     const char* name;
     DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
     DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
+
     // // // Execute parent kernel.
     if ( DEBUGOUT ) std::cout << "launched kernel\n";
     if ( DEBUGOUT )
         std::cout << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
             "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
             "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
+    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
+    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
+    DEVICE_SAFE_CALL(hipEventRecord(start,0));
     DEVICE_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
                           kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
                           kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
                           0, nullptr, nullptr, // shared mem and stream
                           (void**)&config));
-    hipDeviceSynchronize();
-    }
     DEVICE_SAFE_CALL(hipEventRecord(stop,0));
     DEVICE_SAFE_CALL(hipEventSynchronize(stop));
-    DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
+    float localtime;
+    DEVICE_SAFE_CALL(hipEventElapsedTime(&localtime, start, stop)); 
+    GPUtime += localtime;
+    // DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
+    }
     return getKernelTime();
 }
 
-void Executor::execute(std::string input) {
+inline void Executor::execute(std::string input) {
     if ( DEBUGOUT ) std::cout << "begin parsing\n";
     
     parseDataStructure(input);
@@ -406,10 +394,10 @@ void Executor::execute(std::string input) {
     compileProg();
     getLogsAndPTX();
     initializeVars();
-    //destoryProg(); cant call it early like in cuda
+    // destoryProg(); //cant call it early like in cuda
 }
 
-void Executor::execute(char *file_name, std::vector<void*>& args)
+inline void Executor::execute(char *file_name, std::vector<void*>& args)
 {
     if ( DEBUGOUT) std::cout << "begin executing code\n";
 
@@ -436,7 +424,7 @@ void Executor::execute(char *file_name, std::vector<void*>& args)
     initAndLaunch(args);
 }
 
-float Executor::getKernelTime() {
+inline float Executor::getKernelTime() {
     return GPUtime;
 }
 

@@ -1,6 +1,6 @@
 #! python
 
-##  Copyright (c) 2018-2022, Carnegie Mellon University
+##  Copyright (c) 2018-2023, Carnegie Mellon University
 ##  See LICENSE for details
 
 ##  This script reads a file of cube sizes (command line arg), that contains several cube size
@@ -13,14 +13,14 @@
 ##  Compiling the library is handled by CMake.
 ##
 ##  Usage:
-##    python gen_files.py transform sizes_file target [direction] [nogen]
+##    python gen_files.py -t transform -s sizes_file -p platform [-i] [-m master_sizes]
 ##  where:
 ##    transform is the base transform to use for the library (e.g., fftx_mddft)
-##    sizes_file is the file specifying the sizes to build for transform/target
-##    target specifies the target, e.g., cpu | cuda | hip
-##    direction specifies the direction -- forward or inverse, specified as true | false
-##    nogen when present tells python to skip the Spiral code generation -- initially for
-##          debugging, but also may be used to update header and CMake files when the code exists
+##    sizes_file is the file specifying the sizes to build for transform/platform
+##    platform specifies the platform, e.g., cpu | cuda | hip
+##    -i specifies the inverse direction -- forward is the default when not specified
+##    master_sizes when present tells python to perform a second pass, skipping the Spiral code
+##          generation -- used to regenerate the API and CMake files when the code exists
 
 ##  gen_files will build a separate library for each transform by option (e.g., separate
 ##  libraries are built for forward and inverse transforms; for CPU and GPU code (NOTE: We
@@ -34,341 +34,283 @@ import subprocess
 import os, stat
 import re
 import shutil
+import argparse
+from script import Script
+from codebuilder import CodeBuilder
 
-################  Definitions pulled from SnowWhite __init__.py  ############
+################  Definitions pulled from SpiralPy / constants.py  ############
 
-SW_METADATA_START   = '!!START_METADATA!!'
-SW_METADATA_END     = '!!END_METADATA!!'
-SW_STR_DOUBLE       = 'Double'
-SW_STR_FORWARD      = 'Forward'
-SW_STR_INVERSE      = 'Inverse'
-SW_KEY_DESTROY          = 'Destroy'
-SW_KEY_DIMENSIONS       = 'Dimensions'
-SW_KEY_DIRECTION        = 'Direction'
-SW_KEY_EXEC             = 'Exec'
-SW_KEY_INIT             = 'Init'
-SW_KEY_NAMES            = 'Names'
-SW_KEY_PLATFORM         = 'Platform'
-SW_KEY_PRECISION        = 'Precision'
-SW_KEY_TRANSFORMS       = 'Transforms'
-SW_KEY_TRANSFORMTYPE    = 'TransformType'
-SW_KEY_TRANSFORMTYPES   = 'TransformTypes'
 
-SW_TRANSFORM_MDRCONV    = 'MDRCONV'
+SP_METADATA_START   = '!!START_METADATA!!'
+SP_METADATA_END     = '!!END_METADATA!!'
+SP_STR_DOUBLE       = 'Double'
+SP_STR_SINGLE       = 'Single'
+SP_STR_FORWARD      = 'Forward'
+SP_STR_INVERSE      = 'Inverse'
+SP_STR_C            = 'C'
+SP_STR_FORTRAN      = 'Fortran'
+
+SP_TRANSFORM_BATDFT     = 'BATDFT'
+SP_TRANSFORM_BATMDDFT   = 'BATMDDFT'
+SP_TRANSFORM_DFT        = 'DFT'
+SP_TRANSFORM_MDDFT      = 'MDDFT'
+SP_TRANSFORM_MDRCONV    = 'MDRCONV'
+SP_TRANSFORM_MDRFSCONV  = 'MDRFSCONV'
+SP_TRANSFORM_MDPRDFT    = 'MDPRDFT'
+SP_TRANSFORM_UNKNOWN    = 'UNKNOWN'
+
+SP_KEY_BATCHSIZE        = 'BatchSize'
+SP_KEY_DESTROY          = 'Destroy'
+SP_KEY_DIMENSIONS       = 'Dimensions'
+SP_KEY_DIRECTION        = 'Direction'
+SP_KEY_EXEC             = 'Exec'
+SP_KEY_FILENAME         = 'Filename'
+SP_KEY_FUNCTIONS        = 'Functions'
+SP_KEY_INIT             = 'Init'
+SP_KEY_METADATA         = 'Metadata'
+SP_KEY_NAMES            = 'Names'
+SP_KEY_ORDER            = 'Order'
+SP_KEY_PLATFORM         = 'Platform'
+SP_KEY_PRECISION        = 'Precision'
+SP_KEY_READSTRIDE       = 'ReadStride'
+SP_KEY_SPIRALBUILDINFO  = 'SpiralBuildInfo'
+SP_KEY_TRANSFORMS       = 'Transforms'
+SP_KEY_TRANSFORMTYPE    = 'TransformType'
+SP_KEY_TRANSFORMTYPES   = 'TransformTypes'
 
 ###################################
 
-##  Process the command line args...
-if len ( sys.argv ) < 4:
-    ##  Must specify transform sizes_file target
-    print ( sys.argv[0] + ': Missing args, usage:', flush = True )
-    print ( sys.argv[0] + ': transform sizes_file target [direction] [nogen]', flush = True)
-    sys.exit (-1)
-    
-_file_stem = sys.argv[1]
-if not re.match ( '_$', _file_stem ):                ## append an underscore if one is not present
-    _file_stem = _file_stem + '_'
 
-_xform_name = _file_stem
-_xform_pref = ''
-_xform_sw_type = ''
-
-if re.match ( '^.*_.*_', _file_stem ):
-    _dims = re.split ( '_', _file_stem )
-    _xform_pref = _dims[0]
-    _xform_name = _dims[1]
-    _xform_root = _dims[1]
-    _xform_pref = _xform_pref + '_'
-    if _xform_name == 'rconv':
-        _xform_sw_type = SW_TRANSFORM_MDRCONV
-    else:
-        _xform_sw_type = _xform_name.upper()
-
-_orig_file_stem = _file_stem
-
-_sizesfil = sys.argv[2]
-
-##  Code to build -- CPU, Hip or CUDA (default) governs file suffix etc.
-_code_type = 'CUDA'
-_file_suffix = '.cu'
-
-##  Code type [target] specified
-_code_type = sys.argv[3]
-if re.match ( 'cuda', _code_type, re.IGNORECASE ):
-    ##  CUDA selected
-    _code_type = 'CUDA'
-    _file_suffix = '.cu'
-
-if re.match ( 'hip', _code_type, re.IGNORECASE ):
-    ##  HIP selected
-    _code_type = 'HIP'
-    _file_suffix = '.cpp'
-
-if re.match ( 'cpu', _code_type, re.IGNORECASE ):
-    ##  CPU code gen selected
-    _code_type = 'CPU'
-    _file_suffix = '.cpp'
-
-##  If the transform can be forward or inverse accept an argument to specify
-_fwd = 'true'             ## default to true or forward
-
-if len ( sys.argv ) >= 5:
-    ##  Forward/Inverse parameter specified -- anything except false ==> true
-    if re.match ( 'false', sys.argv[4], re.IGNORECASE ):
-        _fwd = 'false'
-        _file_stem =  _xform_pref + 'i' + _xform_name + '_'
-        _xform_root = 'i' + _xform_root
-        ##  print ( 'File stem = ' + _file_stem )
-
-##  Create the library sources directory (if it doesn't exist)
-
-if _code_type == 'CPU':
-    _decor = 'cpu_'
-    _decor_notrail = 'cpu'
-else:
-    _decor = 'gpu_'
-    _decor_notrail = 'gpu'
-
-_srcs_dir  = 'lib_' + _file_stem + _decor + 'srcs'
-isdir = os.path.isdir ( _srcs_dir )
-if not isdir:
-    os.mkdir ( _srcs_dir )
-
-_cmake_srcs = open ( _srcs_dir + '/SourceList.cmake', 'w' )
-_cmake_srcs.write ( 'set ( _source_files ${_source_files} \n' )
-
-##  Build a header file for the library with the declarations and tables to
-##  manage the entry points in the library
-
-
-def start_header_file ( type, codefor, xfm ):
-    "Sets up the common stuff for header files"
+def start_header_file ( type, script ):
+    """ Sets up the common stuff for header files:
+        Add the function prototype definitions for the library
+    """
         
-    _str = '#ifndef ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n'
-    _str = _str + '#define ' + _file_stem + type + codefor + 'HEADER_INCLUDED\n\n'
-    _str = _str + '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
-    _str = _str + '//  See LICENSE for details\n\n'
+    str = CodeBuilder ( f'#ifndef {script.file_stem}{type}{script.decor_platform}HEADER_INCLUDED' + '\n' )
+    str.append ( f'#define {script.file_stem}{type}{script.decor_platform}HEADER_INCLUDED' + '\n\n' )
+    str.append ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
+    str.append ( '//  See LICENSE for details\n\n' )
 
-    _str = _str + '#include "fftx3.hpp"\n\n'
+    str.append ( '#include "fftx3.hpp"\n\n' )
 
-    _str = _str + '#ifndef INITTRANSFORMFUNC\n'
-    _str = _str + '#define INITTRANSFORMFUNC\n'
-    _str = _str + 'typedef void ( * initTransformFunc ) ( void );\n'
-    _str = _str + '#endif\n\n'
+    str.append ( '#ifndef INITTRANSFORMFUNC\n' )
+    str.append ( '#define INITTRANSFORMFUNC\n' )
+    str.append ( 'typedef void ( * initTransformFunc ) ( void );\n' )
+    str.append ( '#endif\n\n' )
 
-    _str = _str + '#ifndef DESTROYTRANSFORMFUNC\n'
-    _str = _str + '#define DESTROYTRANSFORMFUNC\n'
-    _str = _str + 'typedef void ( * destroyTransformFunc ) ( void );\n'
-    _str = _str + '#endif\n\n'
+    str.append ( '#ifndef DESTROYTRANSFORMFUNC\n' )
+    str.append ( '#define DESTROYTRANSFORMFUNC\n' )
+    str.append ( 'typedef void ( * destroyTransformFunc ) ( void );\n' )
+    str.append ( '#endif\n\n' )
 
-    _str = _str + '#ifndef RUNTRANSFORMFUNC\n'
-    _str = _str + '#define RUNTRANSFORMFUNC\n'
+    str.append ( '#ifndef RUNTRANSFORMFUNC\n' )
+    str.append ( '#define RUNTRANSFORMFUNC\n' )
 
-    _str = _str + 'typedef void ( * runTransformFunc ) '
-    if xfm == 'psatd':
-        _str = _str + '( double **output, double **input, double **sym );\n'
+    str.append ( 'typedef void ( * runTransformFunc ) ' )
+    if script.xform_name == 'psatd':
+        str.append ( '( double **output, double **input, double **sym );\n' )
     else:
-        _str = _str + '( double *output, double *input, double *sym );\n'
-    _str = _str + '#endif\n\n'
+        str.append ( '( double *output, double *input, double *sym );\n' )
+    str.append ( '#endif\n\n' )
 
-    _str = _str + '#ifndef TRANSFORMTUPLE_T\n'
-    _str = _str + '#define TRANSFORMTUPLE_T\n'
-    _str = _str + 'typedef struct transformTuple {\n'
-    _str = _str + '    initTransformFunc    initfp;\n'
-    _str = _str + '    destroyTransformFunc destroyfp;\n'
-    _str = _str + '    runTransformFunc     runfp;\n'
-    _str = _str + '} transformTuple_t;\n'
-    _str = _str + '#endif\n\n'
+    str.append ( '#ifndef TRANSFORMTUPLE_T\n' )
+    str.append ( '#define TRANSFORMTUPLE_T\n' )
+    str.append ( 'typedef struct transformTuple {\n' )
+    str.append ( '    initTransformFunc    initfp;\n' )
+    str.append ( '    destroyTransformFunc destroyfp;\n' )
+    str.append ( '    runTransformFunc     runfp;\n' )
+    str.append ( '} transformTuple_t;\n' )
+    str.append ( '#endif\n\n' )
 
-    return _str;
+    return str.get();
 
 
-def body_public_header ( codefor, xfm ):
+def body_public_header ( script ):
     "Add the body details for the public header file"
 
-    _str =        '//  Query the list of sizes available from the library; returns a pointer to an\n'
-    _str = _str + '//  array of sizes, each element is a struct of type fftx::point_t<3> specifying the X,\n'
-    _str = _str + '//  Y, and Z dimensions\n\n'
+    str = CodeBuilder ( '//  Query the list of sizes available from the library; returns a pointer to an\n' )
+    str.append ( '//  array of sizes, each element is a struct of type fftx::point_t<3> specifying the X,\n' )
+    str.append ( '//  Y, and Z dimensions\n\n' )
 
-    _str = _str + 'fftx::point_t<3> * ' + _file_stem + codefor + 'QuerySizes ();\n'
-    _str = _str + '#define ' + _file_stem + 'QuerySizes ' + _file_stem + codefor + 'QuerySizes\n\n'
+    str.append ( f'fftx::point_t<3> * {script.file_stem}{script.decor_platform}QuerySizes ();' + '\n' )
+    str.append ( f'#define {script.file_stem}QuerySizes {script.file_stem}{script.decor_platform}QuerySizes' + '\n\n' )
 
-    _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the,\n'
-    _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-    _str = _str + '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n'
-    _str = _str + '//  (returned) data and the input data.\n\n'
+    str.append ( f'//  Run an {script.file_stem} transform once: run the init functions, run the,' + '\n' )
+    str.append ( '//  transform and finally tear down by calling the destroy function.\n' )
+    str.append ( '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n' )
+    str.append ( '//  (returned) data and the input data.\n\n' )
 
 
-    _str = _str + 'void ' + _file_stem + codefor + 'Run '
-    if xfm == 'psatd':
-        _str = _str + '( fftx::point_t<3> req, double ** output, double ** input, double ** sym );\n'
+    str.append ( f'void {script.file_stem}{script.decor_platform}Run ' )
+    if script.xform_name == 'psatd':
+        str.append ( '( fftx::point_t<3> req, double ** output, double ** input, double ** sym );\n' )
     else:
-        _str = _str + '( fftx::point_t<3> req, double * output, double * input, double * sym );\n'
+        str.append ( '( fftx::point_t<3> req, double * output, double * input, double * sym );\n' )
 
-    _str = _str + '#define ' + _file_stem + 'Run ' + _file_stem + codefor + 'Run\n\n'
+    str.append ( f'#define {script.file_stem}Run {script.file_stem}{script.decor_platform}Run' + '\n\n' )
 
-    _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
-    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this\n'
-    _str = _str + '//  information the user may call the init function to setup for the transform,\n'
-    _str = _str + '//  then run the transform repeatedly, and finally tear down (using destroy function).\n\n'
+    str.append ( '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n' )
+    str.append ( f'//  functions for a specific size {script.file_stem} transform.  Using this' + '\n' )
+    str.append ( '//  information the user may call the init function to setup for the transform,\n' )
+    str.append ( '//  then run the transform repeatedly, and finally tear down (using destroy function).\n\n' )
 
-    _str = _str + 'transformTuple_t * ' + _file_stem + codefor + 'Tuple ( fftx::point_t<3> req );\n'
-    _str = _str + '#define ' + _file_stem + 'Tuple ' + _file_stem + codefor + 'Tuple\n\n'
+    str.append ( f'transformTuple_t * {script.file_stem}{script.decor_platform}Tuple ( fftx::point_t<3> req );' + '\n' )
+    str.append ( f'#define {script.file_stem}Tuple {script.file_stem}{script.decor_platform}Tuple' + '\n\n' )
 
-    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
-    _str = _str + '//  without having to load the library).\n'
-    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+    str.append ( '//  The metadata table is compiled into the library (and thus readable by scanning\n' )
+    str.append ( '//  the file, without having to load the library).\n' )
+    str.append ( '//  Add a simple function to get the metadata (for debug purposes).\n\n' )
 
-    _str = _str + 'char * ' + _file_stem + codefor + 'GetMetaData ();\n\n'
+    str.append ( f'char * {script.file_stem}{script.decor_platform}GetMetaData ();' + '\n\n' )
 
-    if xfm != 'psatd':
-        _str = _str + '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n'
-        _str = _str + 'extern "C" {\n\n'
-        _str = _str + 'int  ' + _file_stem + codefor + 'python_init_wrapper ( int * req );\n'
+    if script.xform_name != 'psatd':
+        str.append ( '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n' )
+        str.append ( 'extern "C" {\n\n' )
+        str.append ( f'int  {script.file_stem}{script.decor_platform}python_init_wrapper ( int * req );' + '\n' )
 
-        _str = _str + 'void ' + _file_stem + codefor + 'python_run_wrapper '
-        _str = _str + '( int * req, double * output, double * input, double * sym );\n'
+        str.append ( f'void {script.file_stem}{script.decor_platform}python_run_wrapper ' )
+        str.append ( '( int * req, double * output, double * input, double * sym );\n' )
 
-        _str = _str + 'void ' + _file_stem + codefor + 'python_destroy_wrapper ( int * req );\n\n}\n\n'
+        str.append ( f'void {script.file_stem}{script.decor_platform}python_destroy_wrapper ( int * req );' + '\n\n}\n\n' )
 
-    _str = _str + '#endif\n\n'
+    str.append ( '#endif\n\n' )
 
-    return _str;
+    return str.get();
 
 
-def library_api ( mkvers, decor, type, xfm ):
-    "Sets up the API file(s) for the library: one generic file and up to two arch specific versions"
-    if type == '':
-        codefor = ''
+def library_api ( script ):
+    """Sets up the API file for the library, includes the following:
+           included required header files and defines the functions:
+           {script.file_stem}{script.decor_platform}{QuerySizes | Tuple | Run}
+    """
+
+    str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
+    str.append ( '//  See LICENSE for details\n\n' )
+
+    str.append ( '#include <stdio.h>\n' )
+    str.append ( '#include <stdlib.h>\n' )
+    str.append ( '#include <string.h>\n' )
+    str.append ( f'#include "{script.file_stem}{script.decor_platform}decls.h"' + '\n' )
+    str.append ( f'#include "{script.file_stem}{script.decor_platform}public.h"' + '\n\n' )
+
+    if script.args.platform == 'CUDA':
+        str.append ( '#include <helper_cuda.h>\n\n' )
+    elif script.args.platform == 'HIP':
+        str.append ( '#include <hip/hip_runtime.h>\n\n' )
+        str.append ( '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
+        str.append ( 'if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  ' )
+        str.append ( 'exit(-1); } }\n\n' )
+    elif script.args.platform == 'SYCL':
+        str.append ( '#include <CL/sycl.hpp>\n\n' )
+
+    str.append ( '//  Query the list of sizes available from the library; returns a pointer to an\n' )
+    str.append ( '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying the X,\n' )
+    str.append ( '//  Y, and Z dimensions of a transform in the library.  <N> is the number of sizes defined;\n' )
+    str.append ( '//  the last entry in the returned list has all dimensions equal 0.\n\n' )
+
+    str.append ( f'fftx::point_t<3> * {script.file_stem}{script.decor_platform}QuerySizes ()' + '\n{\n' )
+    str.append ( '    fftx::point_t<3> *wp = (fftx::point_t<3> *) ' )
+    str.append ( f' malloc ( sizeof ( AllSizes3_{script.args.platform} ) );' + '\n' )
+    str.append ( '    if ( wp != NULL)\n' )
+    str.append ( f'        memcpy ( (void *) wp, (const void *) AllSizes3_{script.args.platform}, ' )
+    str.append ( f'sizeof ( AllSizes3_{script.args.platform} ) )' + ';\n\n' )
+    str.append ( '    return wp;\n' )
+    str.append ( '}\n\n' )
+
+    str.append ( '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n' )
+    str.append ( f'//  functions for a specific size {script.file_stem} transform.  Using this\n' )
+    str.append ( '//  information the user may call the init function to setup for the transform,\n' )
+    str.append ( '//  then run the transform repeatedly, and finally tear down (using the destroy\n' )
+    str.append ( '//  function).  Returns NULL if requested size is not found\n\n' )
+
+    str.append ( f'transformTuple_t * {script.file_stem}{script.decor_platform}Tuple ( fftx::point_t<3> req )' )
+    str.append ( '\n{\n' )
+    str.append ( '    int indx;\n' )
+    str.append ( f'    int numentries = sizeof ( AllSizes3_{script.args.platform} ) /' )
+    str.append ( ' sizeof ( fftx::point_t<3> ) - 1;    // last entry is { 0, 0, 0 }\n' )
+    str.append ( '    transformTuple_t *wp = NULL;\n\n' )
+
+    str.append ( '    for ( indx = 0; indx < numentries; indx++ ) {\n' )
+    str.append ( f'        if ( req[0] == AllSizes3_{script.args.platform}[indx][0] &&' + '\n' )
+    str.append ( f'             req[1] == AllSizes3_{script.args.platform}[indx][1] &&' + '\n' )
+    str.append ( f'             req[2] == AllSizes3_{script.args.platform}[indx][2] )' + ' {\n' )
+    str.append ( '            // found a match\n' )
+    str.append ( '            wp = (transformTuple_t *) malloc ( sizeof ( transformTuple_t ) );\n' )
+    str.append ( '            if ( wp != NULL) {\n' )
+    str.append ( f'                *wp = {script.file_stem}{script.args.platform}_Tuples[indx];' + '\n' )
+    str.append ( '            }\n' )
+    str.append ( '            break;\n' )
+    str.append ( '        }\n' )
+    str.append ( '    }\n\n' )
+
+    str.append ( '    return wp;\n' )
+    str.append ( '}\n\n' )
+
+    str.append ( f'//  Run an {script.file_stem} transform once: run the init functions, run the' + '\n' )
+    str.append ( '//  transform and finally tear down by calling the destroy function.\n' )
+    str.append ( '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n' )
+    str.append ( '//  (returned) data and the input data.\n\n' )
+
+    str.append ( f'void {script.file_stem}{script.decor_platform}Run ' )
+    if script.xform_name == 'psatd':
+        str.append ( '( fftx::point_t<3> req, double ** output, double ** input, double ** sym )\n' )
     else:
-        codefor = type + '_'
+        str.append ( '( fftx::point_t<3> req, double * output, double * input, double * sym )\n' )
 
-    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
-    _str = _str + '//  See LICENSE for details\n\n'
+    str.append ( '{\n' )
+    str.append ( f'    transformTuple_t *wp = {script.file_stem}{script.decor_platform}Tuple ( req );' + '\n' )
+    str.append ( '    if ( wp == NULL )\n' )
+    str.append ( '        //  Requested size not found -- just return\n' )
+    str.append ( '        return;\n\n' )
 
-    _str = _str + '#include <stdio.h>\n'
-    _str = _str + '#include <stdlib.h>\n'
-    _str = _str + '#include <string.h>\n'
-    _str = _str + '#include "' + _file_stem + decor + 'decls.h"\n'
-    _str = _str + '#include "' + _file_stem + decor + 'public.h"\n\n'
+    str.append ( '    //  Call the init function\n' )
+    str.append ( '    ( * wp->initfp )();\n' )
+    str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
 
-    # if mkvers:
-    if type == 'CUDA':
-        _str = _str + '#include <helper_cuda.h>\n\n'
-    elif type == 'HIP':
-        _str = _str + '#include <hip/hip_runtime.h>\n\n'
-        _str = _str + '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  exit(-1); } }\n\n'
+    str.append ( '    ( * wp->runfp ) ( output, input, sym );\n' )
+    str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
 
-    _str = _str + '//  Query the list of sizes available from the library; returns a pointer to an\n'
-    _str = _str + '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying the X,\n'
-    _str = _str + '//  Y, and Z dimensions of a transform in the library.  <N> is the number of sizes defined;\n'
-    _str = _str + '//  the last entry in the returned list has all dimensions equal 0.\n\n'
+    str.append ( '    //  Tear down / cleanup\n' )
+    str.append ( '    ( * wp->destroyfp ) ();\n' )
+    str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
 
-    _str = _str + 'fftx::point_t<3> * ' + _file_stem + decor + 'QuerySizes ()\n{\n'
-    _str = _str + '    fftx::point_t<3> *wp = (fftx::point_t<3> *) malloc ( sizeof ( AllSizes3_' + type + ' ) );\n'
-    _str = _str + '    if ( wp != NULL)\n'
-    _str = _str + '        memcpy ( (void *) wp, (const void *) AllSizes3_' + type + ', sizeof ( AllSizes3_' + type + ' ) );\n\n'
-    _str = _str + '    return wp;\n'
-    _str = _str + '}\n\n'
+    str.append ( '    return;\n' )
+    str.append ( '}\n\n' )
 
-    _str = _str + '//  Get a transform tuple -- a set of pointers to the init, destroy, and run\n'
-    _str = _str + '//  functions for a specific size ' + _file_stem + ' transform.  Using this\n'
-    _str = _str + '//  information the user may call the init function to setup for the transform,\n'
-    _str = _str + '//  then run the transform repeatedly, and finally tear down (using the destroy\n'
-    _str = _str + '//  function).  Returns NULL if requested size is not found\n\n'
-
-    _str = _str + 'transformTuple_t * ' + _file_stem + decor + 'Tuple ( fftx::point_t<3> req )\n'
-    _str = _str + '{\n'
-    _str = _str + '    int indx;\n'
-    _str = _str + '    int numentries = sizeof ( AllSizes3_' + type + ' ) / sizeof ( fftx::point_t<3> ) - 1;    // last entry is { 0, 0, 0 }\n'
-    _str = _str + '    transformTuple_t *wp = NULL;\n\n'
-
-    _str = _str + '    for ( indx = 0; indx < numentries; indx++ ) {\n'
-    _str = _str + '        if ( req[0] == AllSizes3_' + type + '[indx][0] &&\n'
-    _str = _str + '             req[1] == AllSizes3_' + type + '[indx][1] &&\n'
-    _str = _str + '             req[2] == AllSizes3_' + type + '[indx][2] ) {\n'
-    _str = _str + '            // found a match\n'
-    _str = _str + '            wp = (transformTuple_t *) malloc ( sizeof ( transformTuple_t ) );\n'
-    _str = _str + '            if ( wp != NULL) {\n'
-    _str = _str + '                *wp = ' + _file_stem + codefor + 'Tuples[indx];\n'
-    _str = _str + '            }\n'
-    _str = _str + '            break;\n'
-    _str = _str + '        }\n'
-    _str = _str + '    }\n\n'
-
-    _str = _str + '    return wp;\n'
-    _str = _str + '}\n\n'
-
-    _str = _str + '//  Run an ' + _file_stem + ' transform once: run the init functions, run the\n'
-    _str = _str + '//  transform and finally tear down by calling the destroy function.\n'
-    _str = _str + '//  Accepts fftx::point_t<3> specifying size, and pointers to the output\n'
-    _str = _str + '//  (returned) data and the input data.\n\n'
-
-    _str = _str + 'void ' + _file_stem + decor + 'Run '
-    if xfm == 'psatd':
-        _str = _str + '( fftx::point_t<3> req, double ** output, double ** input, double ** sym )\n'
-    else:
-        _str = _str + '( fftx::point_t<3> req, double * output, double * input, double * sym )\n'
-
-    _str = _str + '{\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( req );\n'
-    _str = _str + '    if ( wp == NULL )\n'
-    _str = _str + '        //  Requested size not found -- just return\n'
-    _str = _str + '        return;\n\n'
-
-    _str = _str + '    //  Call the init function\n'
-    _str = _str + '    ( * wp->initfp )();\n'
-    _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
-
-    _str = _str + '    ( * wp->runfp ) ( output, input, sym );\n'
-    _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
-
-    _str = _str + '    //  Tear down / cleanup\n'
-    _str = _str + '    ( * wp->destroyfp ) ();\n'
-    _str = _str + '    //  checkCudaErrors ( cudaGetLastError () );\n\n'
-
-    _str = _str + '    return;\n'
-    _str = _str + '}\n\n'
-
-    return _str;
+    return str.get();
 
 
-def python_cuda_api ( mkvers, decor, type, xfm ):
-    "Sets up the python wrapper API to allow Python to call C++ CUDA or HIP code. \
-     For CPU code no data management or marshalling is required"
+def python_cuda_api ( script ):
+    """Sets up the python wrapper API to allow Python to call C++ CUDA or HIP code.
+       For CPU code no data management or marshalling is required
+    """
 
-    if xfm == 'psatd':
+    if script.xform_name == 'psatd':
         return '';                  ## no easy way to test psatd with simple python interface
 
-    if type == '':
-        codefor = ''
-    else:
-        codefor = type + '_'
+    str = CodeBuilder ( '//  Host-to-Device C/CUDA/HIP wrapper functions to permit Python to call the kernels.' )
+    str.append ( '\n\nextern "C" {\n\n' )
 
-    _str =        '//  Host-to-Device C/CUDA/HIP wrapper functions to permit Python to call the kernels.\n\n'
-    _str = _str + 'extern "C" {\n\n'
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
+        str.append ( 'static double *dev_in, *dev_out, *dev_sym;\n\n' )
 
-    # if mkvers:
-    if type == 'CUDA' or type == 'HIP':
-        _str = _str + 'static double *dev_in, *dev_out, *dev_sym;\n\n'
+    str.append ( f'int {script.file_stem}{script.decor_platform}python_init_wrapper ( int * req )' )
+    str.append ( '\n{\n    //  Get the tuple for the requested size\n' )
+    str.append ( '    fftx::point_t<3> rsz;\n' )
+    str.append ( '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n' )
+    str.append ( f'    transformTuple_t *wp = {script.file_stem}{script.decor_platform}Tuple ( rsz );' )
+    str.append ( '\n    if ( wp == NULL )\n' )
+    str.append ( '        //  Requested size not found -- return false\n' )
+    str.append ( '        return 0;\n\n' )
 
-    _str = _str + 'int  ' + _file_stem + decor + 'python_init_wrapper ( int * req )\n{\n'
-    _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<3> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
-    _str = _str + '    if ( wp == NULL )\n'
-    _str = _str + '        //  Requested size not found -- return false\n'
-    _str = _str + '        return 0;\n\n'
-
-    if type == 'CUDA':
+    if script.args.platform == 'CUDA':
         _mmalloc = 'cudaMalloc'
         _errchk  = 'checkCudaErrors ( cudaGetLastError () );'
         _mmemcpy = 'cudaMemcpy'
         _cph2dev = 'cudaMemcpyHostToDevice'
         _cpdev2h = 'cudaMemcpyDeviceToHost'
         _memfree = 'cudaFree'
-    elif type == 'HIP':
+    elif script.args.platform == 'HIP' or script.args.platform == 'SYCL':
         _mmalloc = 'hipMalloc'
         _errchk  = 'checkLastHipError ( "Error: " );'
         _mmemcpy = 'hipMemcpy'
@@ -376,367 +318,497 @@ def python_cuda_api ( mkvers, decor, type, xfm ):
         _cpdev2h = 'hipMemcpyDeviceToHost'
         _memfree = 'hipFree'
 
-    if type == 'CUDA' or type == 'HIP':
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
         ##  Amount of data space to malloc depends on transform:
         ##     MDDFT/IMDDFT:   x * y * z * 2 doubles (for C2C, both input & output)
         ##     MDPRDFT:        x * y * z     doubles (for R2C, input)
         ##                     x * y * ((z/2) + 1) * 2 doubles (for R2C, output)
         ##     IMDPRDFT:       x * y * ((z/2) + 1) * 2 doubles (for C2R, input)
         ##                     x * y * z     doubles (for C2R, output)
-        if xfm == 'mddft' or xfm == 'imddft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
-        elif xfm == 'mdprdft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-        elif xfm == 'imdprdft' or xfm == 'rconv':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
-        elif xfm == 'psatd':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+        if script.xform_name == 'mddft':
+            str.append ( '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n' )
+            str.append ( '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n' )
+        elif script.xform_name == 'mdprdft':
+            if script.args.inverse:
+                str.append ( '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
+                str.append ( '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n' )
+            else:
+                str.append ( '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n' )
+                str.append ( '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
+        elif script.xform_name == 'rconv':
+            str.append ( '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
+            str.append ( '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n' )
+        elif script.xform_name == 'psatd':
+            str.append ( '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n' )
+            str.append ( '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
             
-        _str = _str + '    if ( ndoubin  == 0 )\n        return 0;\n\n'
-        _str = _str + '    ' + _mmalloc + ' ( &dev_in,  sizeof(double) * ndoubin  );\n'
-        _str = _str + '    ' + _mmalloc + ' ( &dev_out, sizeof(double) * ndoubout );\n'
-        _str = _str + '    ' + _mmalloc + ' ( &dev_sym, sizeof(double) * 1000 );\n'
-        _str = _str + '    ' + _errchk +  '\n\n'
+        str.append ( '    if ( ndoubin  == 0 )\n        return 0;\n\n' )
+        str.append ( '    ' + _mmalloc + ' ( &dev_in,  sizeof(double) * ndoubin  );\n' )
+        str.append ( '    ' + _mmalloc + ' ( &dev_out, sizeof(double) * ndoubout );\n' )
+        str.append ( '    ' + _mmalloc + ' ( &dev_sym, sizeof(double) * 1000 );\n' )
+        str.append ( '    ' + _errchk +  '\n\n' )
 
-    _str = _str + '    //  Call the init function\n'
-    _str = _str + '    ( * wp->initfp )();\n'
-    if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    ' + _errchk +  '\n\n'
+    str.append ( '    //  Call the init function\n' )
+    str.append ( '    ( * wp->initfp )();\n' )
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
+        str.append ( '    ' + _errchk +  '\n\n' )
 
-    _str = _str + '    return 1;\n}\n\n'
+    str.append ( '    return 1;\n}\n\n' )
 
-    _str = _str + 'void ' + _file_stem + decor + 'python_run_wrapper '
-    if xfm == 'psatd':
-        _str = _str + '( int * req, double ** output, double ** input, double ** sym )\n{\n'
+    str.append ( f'void {script.file_stem}{script.decor_platform}python_run_wrapper ' )
+    if script.xform_name == 'psatd':
+        str.append ( '( int * req, double ** output, double ** input, double ** sym )\n{\n' )
     else:
-        _str = _str + '( int * req, double * output, double * input, double * sym )\n{\n'
+        str.append ( '( int * req, double * output, double * input, double * sym )\n{\n' )
 
-    _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<3> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
-    _str = _str + '    if ( wp == NULL )\n'
-    _str = _str + '        //  Requested size not found -- just return\n'
-    _str = _str + '        return;\n\n'
+    str.append ( '    //  Get the tuple for the requested size\n' )
+    str.append ( '    fftx::point_t<3> rsz;\n' )
+    str.append ( '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n' )
+    str.append ( f'    transformTuple_t *wp = {script.file_stem}{script.decor_platform}Tuple ( rsz );' )
+    str.append ( '\n    if ( wp == NULL )\n' )
+    str.append ( '        //  Requested size not found -- just return\n' )
+    str.append ( '        return;\n\n' )
 
-    if type == 'CUDA' or type == 'HIP':
-        if xfm == 'mddft' or xfm == 'imddft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n'
-        elif xfm == 'mdprdft':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-        elif xfm == 'imdprdft' or xfm == 'rconv':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n'
-        elif xfm == 'psatd':
-            _str = _str + '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n'
-            _str = _str + '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n'
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
+        if script.xform_name == 'mddft':
+            str.append ( '    int ndoubin  = (int)(req[0] * req[1] * req[2] * 2);\n' )
+            str.append ( '    int ndoubout = (int)(req[0] * req[1] * req[2] * 2);\n' )
+        elif script.xform_name == 'mdprdft':
+            if script.args.inverse:
+                str.append ( '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
+                str.append ( '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n' )
+            else:
+                str.append ( '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n' )
+                str.append ( '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
+        elif script.xform_name == 'rconv':
+            str.append ( '    int ndoubin  = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
+            str.append ( '    int ndoubout = (int)(req[0] * req[1] * req[2] );\n' )
+        elif script.xform_name == 'psatd':
+            str.append ( '    int ndoubin  = (int)(req[0] * req[1] * req[2] );\n' )
+            str.append ( '    int ndoubout = (int)(req[0] * req[1] * ((int)(req[2]/2) + 1) * 2);\n' )
 
-        _str = _str + '    if ( ndoubin  == 0 )\n        return;\n\n'
-        _str = _str + '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n'
+        str.append ( '    if ( ndoubin  == 0 )\n        return;\n\n' )
+        str.append ( '    ' + _mmemcpy + ' ( dev_in, input, sizeof(double) * ndoubin, ' + _cph2dev + ' );\n\n' )
 
-    _str = _str + '    //  Call the run function\n'
-    if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n'
-        _str = _str + '    ' + _errchk  + '\n\n'
-        _str = _str + '    ' + _mmemcpy + ' ( output, dev_out, sizeof(double) * ndoubout, ' + _cpdev2h + ' );\n'
+    str.append ( '    //  Call the run function\n' )
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
+        str.append ( '    ( * wp->runfp )( dev_out, dev_in, dev_sym );\n' )
+        str.append ( '    ' + _errchk  + '\n\n' )
+        str.append ( '    ' + _mmemcpy + ' ( output, dev_out, sizeof(double) * ndoubout, ' + _cpdev2h + ' );\n' )
     else:
-        _str = _str + '    ( * wp->runfp )( output, input, sym );\n'
+        str.append ( '    ( * wp->runfp )( output, input, sym );\n' )
         
-    _str = _str + '    return;\n}\n\n'
+    str.append ( '    return;\n}\n\n' )
 
-    _str = _str + 'void ' + _file_stem + decor + 'python_destroy_wrapper ( int * req )\n{\n'
-    _str = _str + '    //  Get the tuple for the requested size\n'
-    _str = _str + '    fftx::point_t<3> rsz;\n'
-    _str = _str + '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n'
-    _str = _str + '    transformTuple_t *wp = ' + _file_stem + decor + 'Tuple ( rsz );\n'
-    _str = _str + '    if ( wp == NULL )\n'
-    _str = _str + '        //  Requested size not found -- just return\n'
-    _str = _str + '        return;\n\n'
+    str.append ( f'void {script.file_stem}{script.decor_platform}python_destroy_wrapper ( int * req )' )
+    str.append ( '\n{\n    //  Get the tuple for the requested size\n' )
+    str.append ( '    fftx::point_t<3> rsz;\n' )
+    str.append ( '    rsz[0] = req[0];  rsz[1] = req[1];  rsz[2] = req[2];\n' )
+    str.append ( f'    transformTuple_t *wp = {script.file_stem}{script.decor_platform}Tuple ( rsz );' )
+    str.append ( '\n    if ( wp == NULL )\n' )
+    str.append ( '        //  Requested size not found -- just return\n' )
+    str.append ( '        return;\n\n' )
 
-    if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    ' + _memfree + ' ( dev_out );\n'
-        _str = _str + '    ' + _memfree + ' ( dev_sym );\n'
-        _str = _str + '    ' + _memfree + ' ( dev_in  );\n\n'
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
+        str.append ( '    ' + _memfree + ' ( dev_out );\n' )
+        str.append ( '    ' + _memfree + ' ( dev_sym );\n' )
+        str.append ( '    ' + _memfree + ' ( dev_in  );\n\n' )
 
-    _str = _str + '    //  Tear down / cleanup\n'
-    _str = _str + '    ( * wp->destroyfp ) ();\n'
-    if type == 'CUDA' or type == 'HIP':
-        _str = _str + '    ' + _errchk + '\n\n'
+    str.append ( '    //  Tear down / cleanup\n' )
+    str.append ( '    ( * wp->destroyfp ) ();\n' )
+    if script.args.platform == 'CUDA' or script.args.platform == 'HIP' or script.args.platform == 'SYCL':
+        str.append ( '    ' + _errchk + '\n\n' )
 
-    _str = _str + '    return;\n}\n\n}\n'
+    str.append ( '    return;\n}\n\n}\n' )
         
-    return _str;
+    return str.get();
 
 
-def create_metadata ( decor ):
+def create_metadata ( script, metadata ):
     "Create a compileable module to be added to the library that contains the metadata for the library"
 
-    _str =        '//  Copyright (c) 2018-2022, Carnegie Mellon University\n'
-    _str = _str + '//  See LICENSE for details\n\n'
+    str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
+    str.append ( '//  See LICENSE for details\n\n' )
 
-    _str = _str + '#include <stdio.h>\n'
-    _str = _str + '#include <stdlib.h>\n'
-    _str = _str + '#include <string.h>\n\n'
+    str.append ( '#include <stdio.h>\n' )
+    str.append ( '#include <stdlib.h>\n' )
+    str.append ( '#include <string.h>\n\n' )
 
-    ##  remove last 3 chars of _metadata (they are an unwanted ',\\n')
-    _str = _str + _metadata
-    _str = _str[:-3]
-    _str = _str + '    ]\\\n}\\\n' + SW_METADATA_END + '";\n\n'
+    ##  remove last 3 chars of metadata (they are an unwanted ',\\n')
+    str.append ( metadata )
+    str.erase_last ( 3 )
+    str.append ( '    ]\\\n}\\\n' + SP_METADATA_END + '";\n\n' )
 
-    _str = _str + '//  The metadata table is compiled into the library (and thus readable by scanning file,\n'
-    _str = _str + '//  without having to load the library).\n'
-    _str = _str + '//  Add a simple function to get the metadata (for debug purposes).\n\n'
+    str.append ( '//  The metadata table is compiled into the library (and thus readable by scanning file,\n' )
+    str.append ( '//  without having to load the library).\n' )
+    str.append ( '//  Add a simple function to get the metadata (for debug purposes).\n\n' )
 
-    _str = _str + 'char * ' + _file_stem + decor + 'GetMetaData ()\n{\n'
-    _str = _str + '    char * wp = (char *) malloc ( strlen ( ' + _file_stem + 'MetaData ) + 1 );\n'
-    _str = _str + '    if ( wp != NULL )\n'
-    _str = _str + '        strcpy ( wp, ' + _file_stem + 'MetaData );\n\n'
-    _str = _str + '    return wp;\n'
-    _str = _str + '}\n\n'
+    str.append ( f'char * {script.file_stem}{script.decor_platform}GetMetaData ()' + '\n{\n' )
+    str.append ( f'    char * wp = (char *) malloc ( strlen ( {script.file_stem}MetaData ) + 1 );' + '\n' )
+    str.append ( '    if ( wp != NULL )\n' )
+    str.append ( f'        strcpy ( wp, {script.file_stem}MetaData );' + '\n\n' )
+    str.append ( '    return wp;\n' )
+    str.append ( '}\n\n' )
 
-    return _str;
-
-
-def cmake_library ( decor, type ):
-    _str =        '##\n## Copyright (c) 2018-2022, Carnegie Mellon University\n'
-    _str = _str + '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n'
-
-    _str = _str + 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n'
-
-    _modfs = re.sub ( '_$', '', decor )                 ## remove trailing underscore
-    _str = _str + 'set ( _lib_root ' + _file_stem + _modfs + ' )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root} )\n'
-    _str = _str + 'set ( _lib_name ${_lib_root} PARENT_SCOPE )\n\n'
-
-    if type == 'CUDA':
-        _str = _str + 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n'
-
-    _str = _str + 'include ( SourceList.cmake )\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'include ( SourceList' + type + '.cmake )\n'
-
-    # _str = _str + 'list    ( APPEND _source_files ${_lib_root}_CPU_libentry.cpp' + ' )\n'
-    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_libentry' + _file_suffix + ' )\n'
-    _str = _str + 'list    ( APPEND _source_files ${_lib_root}_metadata' + _file_suffix + ' )\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'list    ( APPEND _source_files ${_lib_root}_' + type + '_libentry' + _file_suffix + ' )\n\n'
-    ##  _str = _str + 'message ( STATUS "Source file: ${_source_files}" )\n\n'
-
-    _str = _str + 'set ( _incl_files ${_lib_root}_public.h )\n\n'
-    # if type == 'CUDA' or type == 'HIP':
-    #     _str = _str + 'list    ( APPEND _incl_files ${_lib_root}_' + type + '_public.h )\n\n'
-
-    _str = _str + 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n'
-    if type == 'CUDA':
-        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${CUDA_COMPILE_FLAGS} ${GPU_COMPILE_DEFNS} )\n'
-        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n'
-        _str = _str + 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n'
-    elif type == 'HIP':
-        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n'
-    elif type == 'CPU':
-        _str = _str + 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n\n'
-        
-    _str = _str + 'if ( WIN32 )\n'
-    _str = _str + '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n'
-    _str = _str + 'endif ()\n\n'
-
-    _str = _str + 'install ( TARGETS\n'
-    _str = _str + '          ${_lib_name}\n'
-    _str = _str + '          DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )\n\n'
-
-    _str = _str + 'install ( FILES ${_incl_files}\n'
-    _str = _str + '          DESTINATION ${CMAKE_INSTALL_PREFIX}/include )\n\n'
-
-    return _str;
+    return str.get();
 
 
-_extern_decls  = ''
-_all_cubes     = 'static fftx::point_t<3> AllSizes3_' + _code_type + '[] = {\n'
-_tuple_funcs   = 'static transformTuple_t ' + _file_stem + _code_type + '_Tuples[] = {\n'
-
-SW_TRANSFORM_MDRCONV    = 'MDRCONV'
-
-_metadata      = 'static char ' + _file_stem + 'MetaData[] = \"' + SW_METADATA_START + '\\\n{\\\n'
-_metadata     += '    \\"' + SW_KEY_TRANSFORMTYPES + '\\": [ \\"' + _xform_sw_type + '\\" ],\\\n'
-_metadata     += '    \\"' + SW_KEY_TRANSFORMS + '\\": [ \\\n'
-
-
-with open ( _sizesfil, 'r' ) as fil:
-    currpid = os.getpid()
-    myscrf  = 'myscript_' + str ( currpid ) + '.g'
-    testsf  = 'testscript_' + str ( currpid ) + '.g'
-
-    for line in fil.readlines():
-        ##  print ( 'Line read = ' + line )
-        if re.match ( '[ \t]*#', line ):                ## ignore comment lines
-            continue
-
-        if re.match ( '[ \t]*$', line ):                ## skip lines consisting of whitespace
-            continue
-
-        testscript = open ( testsf, 'w' )
-        testscript.write ( line )
-        testscript.write ( 'libdir := "' + _srcs_dir + '"; \n' )
-        testscript.write ( 'file_suffix := "' + _file_suffix + '"; \n' )
-        testscript.write ( 'fwd := ' + _fwd + '; \n' )
-        testscript.write ( 'codefor := "' + _code_type + '"; \n' )
-        testscript.write ( 'createJIT := true;\n' )
-        testscript.close()
-
-        line = re.sub ( '.*\[', '', line )               ## drop "szcube := ["
-        line = re.sub ( '\].*', '', line )               ## drop "];"
-        line = re.sub ( ' *', '', line )                 ## compress out white space
-        line = line.rstrip()                             ## remove training newline
-        dims = re.split ( ',', line )
-        _dimx = dims[0]
-        _dimy = dims[1]
-        _dimz = dims[2]
-
-        if re.match ( 'rconv', _xform_root ) and _code_type == 'CPU' and int ( _dimx ) > 260:
-            continue
-
-        ##  Assume gap file is named {_orig_file_stem}-frame.g
-        ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
-        _frame_file = re.sub ( '_$', '', _orig_file_stem ) + '-frame' + '.g'
-        _spiralhome = os.environ.get('SPIRAL_HOME')
-        _catfils = _spiralhome + '/gap/bin/catfiles.py'
-        cmdstr = sys.executable + ' ' + _catfils + ' ' + myscrf + ' ' + testsf + ' ' + _frame_file
-        result = subprocess.run ( cmdstr, shell=True, check=True )
-        res = result.returncode
-
-        ##  Generate the code by running SPIRAL
-        if sys.platform == 'win32':
-            cmdstr = _spiralhome + '/bin/spiral.bat < ' + myscrf
-        else:
-            cmdstr = _spiralhome + '/bin/spiral < ' + myscrf
-
-        _func_stem = _file_stem + _dimx + 'x' + _dimy + 'x' + _dimz + '_' + _code_type
-        _file_name = _func_stem + _file_suffix
-        src_file_path = _srcs_dir + '/' + _file_name
-        failure_written = False
-        if len ( sys.argv ) < 6:
-            ##  No optional argument, generate the code
-            try:
-                result = subprocess.run ( cmdstr, shell=True, check=True )
-                res = result.returncode
-            except:
-                ##  Spiral exited with an error (non-zero return code).  Log the failure.
-                ##  Failed to generate file -- note it in build-lib-code-failures.txt
-                print ( 'Spiral code generation failed, error logged to build-lib-code-failures.txt', flush = True )
-                bldf = open ( 'build-lib-code-failures.txt', 'a' )
-                bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
-                bldf.close  ()
-                failure_written = True
-                if os.path.exists ( src_file_path ):
-                    os.remove ( src_file_path )
-
-        else:
-            ##  Just print a message and skip copde gen (test python process/logic)
-            print ( 'run spiral to create source file: ' + _file_name, flush = True )
-
-        ##  Add the file name to the list of sources, update declarations etc. if file exists
-        if os.path.exists ( src_file_path ):
-            _cmake_srcs.write ( '    ' + _file_name + '\n' )
-
-            ##  Add the extern declarations and track func name for header file
-            _extern_decls = _extern_decls + 'extern "C" { extern void init_' + _func_stem + '();  }\n'
-            _extern_decls = _extern_decls + 'extern "C" { extern void destroy_' + _func_stem + '();  }\n'
-
-            _extern_decls = _extern_decls + 'extern "C" { extern void ' + _func_stem
-            if _xform_root == 'psatd':
-                _extern_decls = _extern_decls + '( double **output, double **input, double **sym );  }\n\n'
-            else:
-                _extern_decls = _extern_decls + '( double *output, double *input, double *sym );  }\n\n'
-
-            _all_cubes = _all_cubes + '    { ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' },\n'
-            _tuple_funcs = _tuple_funcs + '    { init_' + _func_stem + ', destroy_' + _func_stem + ', '
-            _tuple_funcs = _tuple_funcs + _func_stem + ' },\n'
-            _metadata += '        {    \\"' + SW_KEY_DIMENSIONS + '\\": [ ' + _dimx + ', ' + _dimy + ', ' + _dimz + ' ],\\\n'
-            _metadata += '             \\"' + SW_KEY_DIRECTION + '\\": \\"'
-            if _fwd == 'true':
-                _metadata += SW_STR_FORWARD
-            else:
-                _metadata += SW_STR_INVERSE
-            _metadata += '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_NAMES + '\\": {\\\n'
-            _metadata += '                 \\"' + SW_KEY_DESTROY + '\\": \\"destroy_' + _func_stem + '\\",\\\n'
-            _metadata += '                 \\"' + SW_KEY_EXEC + '\\": \\"' + _func_stem + '\\",\\\n'
-            _metadata += '                 \\"' + SW_KEY_INIT + '\\": \\"init_' + _func_stem + '\\" },\\\n'
-            _metadata += '             \\"' + SW_KEY_PLATFORM + '\\": \\"' + _code_type + '\\",\\\n'
-            ##  For now all libs generated are double precision -- maybe look at this in future
-            _metadata += '             \\"' + SW_KEY_PRECISION + '\\": \\"' + SW_STR_DOUBLE + '\\",\\\n'
-            _metadata += '             \\"' + SW_KEY_TRANSFORMTYPE + '\\": \\"' + _xform_sw_type + '\\"\\\n'
-            _metadata += '        },\\\n'
-
-        else:
-            ##  File was not successfully created
-            if not failure_written:
-                ##  Failed to generate file -- note it in build-lib-code-failures.txt
-                bldf = open ( 'build-lib-code-failures.txt', 'a' )
-                bldf.write  ( 'Failed to generate:   ' + src_file_path + '\n' )
-                bldf.close  ()
-
-    ##  All cube sizes processed: close list of sources, create header file
-    _cmake_srcs.write ( ')\n' )
-    _cmake_srcs.close()
-
-    ##  Create the declarations header file.  Decls files have either 'cpu' or 'gpu' (when
-    ##  target is CUDA | HIP | SYCL) in the name.  Write the file body, the extern
-    ##  declarations, the tuple functions table, and the list of sizes to the file in turn.
+def cmake_library ( script ):
+    """Build the CMakeLists.txt file for the generated library"""
     
-    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'decls.h'
-    _header_fil = open ( _hfil, 'w' )
-    _filebody = start_header_file ( 'LIB_', _decor, _xform_root )
-    _header_fil.write ( _filebody )
-    _header_fil.write ( _extern_decls )
-    _header_fil.write ( _tuple_funcs + '    { NULL, NULL, NULL }\n};\n\n' )
-    _header_fil.write ( _all_cubes + '    { 0, 0, 0 }\n};\n\n' )
-    _header_fil.write ( '#endif\n\n' )
-    _header_fil.close ()
+    str = CodeBuilder ( '##\n## Copyright (c) 2018-2023, Carnegie Mellon University\n' )
+    str.append ( '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n' )
 
-    ##  Create the public header file
+    str.append ( 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n' )
+
+    moddecor = re.sub ( '_$', '', script.decor_platform )                 ## remove trailing underscore
+    str.append ( f'set ( _lib_root {script.file_stem}{moddecor} )' )
+    str.append ( '\nset ( _lib_name ${_lib_root} )\n' )
+    str.append ( 'set ( _lib_name ${_lib_root} PARENT_SCOPE )\n\n' )
+
+    if script.args.platform == 'CUDA':
+        str.append ( 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n' )
+
+    str.append ( 'include ( SourceList.cmake )\n' )
+    str.append ( 'list    ( APPEND _source_files ${_lib_root}_libentry' + script.file_suffix + ' )\n' )
+    str.append ( 'list    ( APPEND _source_files ${_lib_root}_metadata' + script.file_suffix + ' )\n' )
+    str.append ( 'set ( _incl_files ${_lib_root}_public.h )\n\n' )
+
+    str.append ( 'add_library                ( ${_lib_name} SHARED ${_source_files} )\n' )
+    if script.args.platform == 'CUDA':
+        str.append ( 'target_compile_options     ( ${_lib_name} PRIVATE ${CUDA_COMPILE_FLAGS} ${GPU_COMPILE_DEFNS} )\n' )
+        str.append ( 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n' )
+        str.append ( 'set_property        ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )\n\n' )
+    elif script.args.platform == 'HIP':
+        str.append ( 'target_compile_options     ( ${_lib_name} PRIVATE ${HIP_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n' )
+    elif script.args.platform == 'SYCL':
+        str.append ( 'target_compile_options     ( ${_lib_name} PRIVATE ${SYCL_COMPILE_FLAGS} ${ADDL_COMPILE_FLAGS} )\n\n' )
+    elif script.args.platform == 'CPU':
+        str.append ( 'target_compile_options     ( ${_lib_name} PRIVATE ${ADDL_COMPILE_FLAGS} )\n\n' )
+
+    str.append ( 'if ( WIN32 )\n' )
+    str.append ( '    set_property    ( TARGET ${_lib_name} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON )\n' )
+    str.append ( 'endif ()\n\n' )
+
+    str.append ( 'install ( TARGETS\n' )
+    str.append ( '          ${_lib_name}\n' )
+    str.append ( '          DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )\n\n' )
+
+    str.append ( 'install ( FILES ${_incl_files}\n' )
+    str.append ( '          DESTINATION ${CMAKE_INSTALL_PREFIX}/include )\n\n' )
+
+    return str.get();
+
+
+def parse_platform ( value ):
+    "Return the specified platform, use case-insensitive comparisons"
     
-    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'public.h'
-    _header_fil = open ( _hfil, 'w' )
-    _filebody = start_header_file ( 'PUBLIC_',  _decor, _xform_root )
-    _filebody = _filebody + body_public_header ( _decor, _xform_root )
-    _header_fil.write ( _filebody )
-    _header_fil.close ()
+    if re.match ( 'hip', value, re.IGNORECASE ):
+        return 'HIP'
+    if re.match ( 'cpu', value, re.IGNORECASE ):
+        return 'CPU'
+    if re.match ( 'cuda', value, re.IGNORECASE ):
+        return 'CUDA'
+    if re.match ( 'sycl', value, re.IGNORECASE ):
+        return 'SYCL'
+    return 'HIP'
 
-    ##  Create the _code_type library API file.  This is the public API for the target (or
-    ##  set or targets, e.g., gpu)
+def get_spiralpy_xform ( name ):
+    "Get the SpiralPy transform type corresponding to the working transform"
 
-    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'libentry' + _file_suffix
-    _api_file = open ( _hfil, 'w' )
-    _filebody = library_api ( True, _decor, _code_type, _xform_root )
-    _filebody = _filebody + python_cuda_api ( True, _decor, _code_type, _xform_root )
-    _api_file.write ( _filebody )
-    _api_file.close ()
+    if name == 'rconv':
+        sp_type = SP_TRANSFORM_MDRCONV
+    else:
+        sp_type = name.upper()
 
-    ##  Create the metadata file.
+    return sp_type
 
-    _hfil = _srcs_dir + '/' + _file_stem + _decor + 'metadata' + _file_suffix
-    _api_file = open ( _hfil, 'w' )
-    _filebody = create_metadata ( _decor )
-    _api_file.write ( _filebody )
-    _api_file.close ()
+def parse_args ():
+    "Parse and validate the command line arguments"
 
-    ##  Create the CMakeLists.txt file
-    _hfil = _srcs_dir + '/CMakeLists.txt'
-    _cmake_file = open ( _hfil, 'w' )
-    _filebody = cmake_library ( _decor, _code_type )
-    _cmake_file.write ( _filebody )
-    _cmake_file.close ()
+    parser = argparse.ArgumentParser (
+        description = 'Build FFTX library code with Spiral and transform specifications',
+        usage = '%(prog)s -t TRANSFORM -s SIZES_FILE -p {CPU,CUDA,HIP,SYCL} [-i] [-m SIZES_MASTER]'
+    )
+    ##  Required arguments: <transform> <sizes-file> <platform>
+    reqd_group = parser.add_argument_group ( 'required arguments' )
+    reqd_group.add_argument ( '-t', '--transform', type=str, required=True,
+                              help='transform to use use for building the library' )
+    reqd_group.add_argument ( '-s', '--sizes_file', type=str, required=True,
+                              help='filename containing the sizes to build' )
+    reqd_group.add_argument ( '-p', '--platform',  type=parse_platform, nargs='?', default='HIP',
+                              choices=['CPU', 'CUDA', 'HIP', 'SYCL'], required=True,
+                              help='Platform: one of {CUDA | HIP | SYCL | CPU}' )
+    
+    ##  Optional arguments: <direction> <sizes-master>
+    parser.add_argument ( '-i', '--inverse', action='store_true',
+                          help='False [default], run forward transform; when specified run Inverse transform' )
+    parser.add_argument ( '-m', '--sizes_master', type=str,
+                          help='Master sizes filename; Regenerate headers & API files [uses existing code files] for the library' )
+    args = parser.parse_args()
+    return args
 
-    if os.path.exists ( myscrf ):
-        os.remove ( myscrf )
-    if os.path.exists ( testsf ):
-        os.remove ( testsf )
+def setup_script_options ( args ):
+    "Setup the options for the script generation process"
+    
+    ##  Add a dictionary to hold platform to file extension mapping
+    plat_to_file_suffix = {
+        'CPU':  '.cpp',
+        'CUDA': '.cu',
+        'HIP':  '.cpp',
+        'SYCL': '.cpp'
+    }
 
-sys.exit (0)
+    ##  Instantiate 'script', and add the parameters needed for generating source code
+    script = Script ( args )
+    script.file_suffix = plat_to_file_suffix.get ( args.platform, '.cpp' )            ## default to '.cpp'
+    script.regen = True if args.sizes_master is not None else False
+    
+    ##  Print the options selected
+    ##  print ( f'Generate files for:\nTransform:\t{args.transform}\nSizes file:\t{args.sizes_file}\nPlatform:\t{args.platform}' )
+    ##  dirt = 'Inverse' if args.inverse else 'Forward'
+    ##  print ( f'File suffix:\t{script.file_suffix}\nDirection:\t{dirt}\nRegen library:\t{script.regen}', flush = True )
+    ##  if script.regen:
+    ##      print ( f'Master sizes:\t{args.sizes_master}', flush = True )
+
+    if args.transform.startswith ( 'fftx_' ):
+        script.xform_name = args.transform.split('_')[1]
+        script.sp_type = get_spiralpy_xform ( script.xform_name )
+        script.file_stem = args.transform + '_'
+        script.orig_file_stem = script.file_stem
+        script.decor_platform = 'cpu_' if args.platform == 'CPU' else 'gpu_'
+        if args.inverse:
+            script.file_stem = 'fftx_i' + script.xform_name + '_'
+    else:
+        ##  transform name not recognized, print message & quit
+        print ( f'Transform name {args.transform} is not valid, must start with \'fftx_\'...exiting' )
+        sys.exit(-1)
+
+    ##  Create the library sources directory (if it doesn't exist)
+    script.srcs_dir  = 'lib_' + script.file_stem + script.decor_platform + 'srcs'
+    isdir = os.path.isdir ( script.srcs_dir )
+    if not isdir:
+        os.mkdir ( script.srcs_dir )
+
+    return script
+
+def build_code_files ( script ):
+    "Process the sizes file and build the source code (run Spiral), then buils API files"
+
+    cmake_srcs = open ( os.path.join ( script.srcs_dir, 'SourceList.cmake' ), 'w' )
+    cmake_srcs.write ( 'set ( _source_files ${_source_files} \n' )
+
+    ##  Setup basic strings with the code fragments (added to as each transform spec processed)
+
+    extern_decls = CodeBuilder ( '' )           ##  Initially empty
+    all_cubes    = CodeBuilder ( f'static fftx::point_t<3> AllSizes3_{script.args.platform}[] = ' + '{\n' )
+    tuple_funcs  = CodeBuilder ( f'static transformTuple_t {script.file_stem}{script.args.platform}_Tuples[] = ' + '{\n' )
+
+    metadata     = CodeBuilder ( f'static char {script.file_stem}MetaData[] = ' + '\"' )
+    metadata.append ( SP_METADATA_START + '\\\n{\\\n' )
+    metadata.append ( '  \\"' + SP_KEY_TRANSFORMTYPES + '\\": [ \\"' + script.sp_type + '\\" ],\\\n' )
+    metadata.append ( '  \\"' + SP_KEY_TRANSFORMS + '\\": [ \\\n' )
+    
+    ##  process the sizes file (script.args.sizes_file) and create a source code file (invoke Spiral) for each size
+    with open ( script.args.sizes_file, 'r' ) as file:
+        currpid = os.getpid()
+        myscrf  = 'myscript_' + str ( currpid ) + '.g'
+        testsf  = 'testscript_' + str ( currpid ) + '.g'
+
+        for line in file:
+            line = line.strip()
+            if line.startswith('#') or not line:
+                continue
+
+            testscript = open ( testsf, 'w' )
+            testscript.write ( line + '\n' )
+            testscript.write ( 'libdir := "' + script.srcs_dir + '"; \n' )
+            testscript.write ( 'file_suffix := "' + script.file_suffix + '"; \n' )
+            _fwd = 'false' if script.args.inverse else 'true'
+            testscript.write ( 'fwd := ' + _fwd + '; \n' )
+            testscript.write ( 'codefor := "' + script.args.platform + '"; \n' )
+            ##  testscript.write ( 'createJIT := true;\n' )
+            testscript.close()
+
+            line = re.sub ( ' ', '', line )                 ## suppress white space
+            pattern = r'szcube:=\[(\d+),(\d+),(\d+)\];'
+            m = re.match ( pattern, line)
+            if not m:
+                print ( f'Invalid line format: {line}', flush = True )
+                continue
+
+            dims = [int(m.group(i)) for i in range(1, 4)]
+
+            if re.match ( 'rconv', script.xform_name ) and script.args.platform == 'CPU' and dims[0] > 260:
+                continue
+
+            ##  Assumption: gap file is named {script.orig_file_stem}-frame.g
+            ##  Generate the SPIRAL script: cat testscript_$pid.g & {transform}-frame.g
+            script.frame_file = re.sub ( '_$', '', script.orig_file_stem ) + '-frame.g'
+            
+            _spiralhome = os.environ.get('SPIRAL_HOME')
+            _catfils = os.path.join ( _spiralhome, 'gap', 'bin', 'catfiles.py' )
+            cmdstr = f'"{sys.executable}" "{_catfils}" "{myscrf}" "{testsf}" "{script.frame_file}"'
+            result = subprocess.run ( cmdstr, shell=True, check=True )
+            res = result.returncode
+
+            ##  Generate the code by running SPIRAL
+            if sys.platform == 'win32':
+                cmdstr = os.path.join ( _spiralhome, 'bin', 'spiral.bat' ) + ' < ' + myscrf
+            else:
+                cmdstr = os.path.join ( _spiralhome, 'bin', 'spiral' ) + ' < ' + myscrf
+
+            script.func_stem = f'{script.file_stem}{dims[0]}x{dims[1]}x{dims[2]}_{script.args.platform}'
+            script.file_name = script.func_stem + script.file_suffix
+            script.src_file_path = script.srcs_dir + '/' + script.file_name
+            failure_written = False
+            if not script.regen:
+                ##  Not regenerating library, run Spiral to generate the code
+                try:
+                    result = subprocess.run ( cmdstr, shell=True, check=True )
+                    res = result.returncode
+                except:
+                    ##  Spiral exited with an error (non-zero return code).  Log the failure.
+                    ##  Failed to generate file -- note it in build-lib-code-failures.txt
+                    print ( 'Spiral code generation failed, error logged to build-lib-code-failures.txt', flush = True )
+                    bldf = open ( 'build-lib-code-failures.txt', 'a' )
+                    bldf.write  ( 'Failed to generate:   ' + script.src_file_path + '\n' )
+                    bldf.close  ()
+                    failure_written = True
+                    if os.path.exists ( script.src_file_path ):
+                        os.remove ( script.src_file_path )
+
+            else:
+                ##  Just print a message and skip copde gen (test python process/logic)
+                print ( 'Regenerate API & header files, use existing source file: ' + script.file_name, flush = True )
+
+            ##  Add the file name to the list of sources, update declarations etc. if file exists
+            if os.path.exists ( script.src_file_path ):
+                cmake_srcs.write ( '    ' + script.file_name + '\n' )
+
+                ##  Add the extern declarations and track func name for header file
+                extern_decls.append ( 'extern "C" { extern void init_' + script.func_stem + '();  }\n' )
+                extern_decls.append ( 'extern "C" { extern void destroy_' + script.func_stem + '();  }\n' )
+
+                extern_decls.append ( 'extern "C" { extern void ' + script.func_stem )
+                if script.xform_name == 'psatd':
+                    extern_decls.append ( '( double **output, double **input, double **sym );  }\n\n' )
+                else:
+                    extern_decls.append ( '( double *output, double *input, double *sym );  }\n\n' )
+
+                all_cubes.append ( '    { ' + f'{dims[0]}, {dims[1]}, {dims[2]}' + ' },\n' )
+                tuple_funcs.append ( '    { ' + f'init_{script.func_stem}, destroy_{script.func_stem}, ' )
+                tuple_funcs.append ( script.func_stem + ' },\n' )
+                metadata.append ( '    {  \\"' + SP_KEY_DIMENSIONS + '\\": [ ' f'{dims[0]}, {dims[1]}, {dims[2]}' + ' ],\\\n' )
+                metadata.append ( '       \\"' + SP_KEY_DIRECTION + '\\": \\"' )
+                if _fwd == 'true':
+                    metadata.append ( SP_STR_FORWARD )
+                else:
+                    metadata.append ( SP_STR_INVERSE )
+                metadata.append ( '\\",\\\n' )
+                metadata.append ( '       \\"' + SP_KEY_NAMES + '\\": {\\\n' )
+                metadata.append ( '         \\"' + SP_KEY_DESTROY + '\\": \\"destroy_' + script.func_stem + '\\",\\\n' )
+                metadata.append ( '         \\"' + SP_KEY_EXEC + '\\": \\"' + script.func_stem + '\\",\\\n' )
+                metadata.append ( '         \\"' + SP_KEY_INIT + '\\": \\"init_' + script.func_stem + '\\" },\\\n' )
+                ##  For now we're only doing C ordering...
+                metadata.append ( '       \\"' + SP_KEY_ORDER + '\\": \\"' + SP_STR_C + '\\",\\\n' )
+                metadata.append ( '       \\"' + SP_KEY_PLATFORM + '\\": \\"' + script.args.platform + '\\",\\\n' )
+                ##  For now all libs generated are double precision -- maybe look at this in future
+                metadata.append ( '       \\"' + SP_KEY_PRECISION + '\\": \\"' + SP_STR_DOUBLE + '\\",\\\n' )
+                metadata.append ( '       \\"' + SP_KEY_TRANSFORMTYPE + '\\": \\"' + script.sp_type + '\\"\\\n' )
+                metadata.append ( '    },\\\n' )
+
+            else:
+                ##  File was not successfully created
+                if not failure_written:
+                    ##  Failed to generate file -- note it in build-lib-code-failures.txt
+                    bldf = open ( 'build-lib-code-failures.txt', 'a' )
+                    bldf.write  ( 'Failed to generate:   ' + script.src_file_path + '\n' )
+                    bldf.close  ()
+
+        ##  All cube sizes processed: close list of sources, create header file
+        cmake_srcs.write ( ')\n' )
+        cmake_srcs.close()
+
+        ##  Create the declarations header file.  Decls files have either 'cpu' or 'gpu' (when
+        ##  target is CUDA | HIP | SYCL) in the name.  Write the file body, the extern
+        ##  declarations, the tuple functions table, and the list of sizes to the file in turn.
+    
+        _hfil = os.path.join ( script.srcs_dir, script.file_stem + script.decor_platform + 'decls.h' )
+        _header_fil = open ( _hfil, 'w' )
+        _filebody = start_header_file ( 'LIB_', script )
+        _header_fil.write ( _filebody )
+        _header_fil.write ( extern_decls.get() )
+        tuple_funcs.append ( '    { NULL, NULL, NULL }\n};\n\n' )
+        _header_fil.write ( tuple_funcs.get() )
+        all_cubes.append ( '    { 0, 0, 0 }\n};\n\n' )
+        _header_fil.write ( all_cubes.get() )
+        _header_fil.write ( '#endif\n\n' )
+        _header_fil.close ()
+
+        ##  Create the public header file
+
+        _hfil = os.path.join ( script.srcs_dir, script.file_stem + script.decor_platform + 'public.h' )
+        _header_fil = open ( _hfil, 'w' )
+        _filebody = start_header_file ( 'PUBLIC_',  script )
+        _filebody = _filebody + body_public_header ( script )
+        _header_fil.write ( _filebody )
+        _header_fil.close ()
+
+        ##  Create the {script.args.platform} library API file.  This is the public API for the target
+
+        _hfil = os.path.join ( script.srcs_dir, script.file_stem + script.decor_platform + 'libentry' + script.file_suffix )
+        _api_file = open ( _hfil, 'w' )
+        _filebody = library_api ( script )
+        if script.args.platform != 'SYCL':
+            _filebody = _filebody + python_cuda_api ( script )
+        _api_file.write ( _filebody )
+        _api_file.close ()
+
+        ##  Create the metadata file.
+
+        _hfil = os.path.join ( script.srcs_dir, script.file_stem + script.decor_platform + 'metadata' + script.file_suffix )
+        _api_file = open ( _hfil, 'w' )
+        _filebody = create_metadata ( script, metadata.get() )
+        _api_file.write ( _filebody )
+        _api_file.close ()
+
+        ##  Create the CMakeLists.txt file
+        _hfil = os.path.join ( script.srcs_dir, 'CMakeLists.txt' )
+        _cmake_file = open ( _hfil, 'w' )
+        _filebody = cmake_library ( script )
+        _cmake_file.write ( _filebody )
+        _cmake_file.close ()
+
+        if os.path.exists ( myscrf ):
+            os.remove ( myscrf )
+        if os.path.exists ( testsf ):
+            os.remove ( testsf )
+
+    return
+
+
+def main():
+    args = parse_args()
+    script = setup_script_options ( args )
+
+    ##  We want to potentially run the build_code_files function twice
+    ##  Pass 1: build all files specified in the sizes file
+    ##  Pass 2: optional, depends on a master sizes file spcified
+    pass2 = False
+    if script.regen:
+        pass2 = script.regen
+        script.regen = False
+
+    build_code_files ( script )
+
+    if pass2:
+        script.regen = pass2
+        script.args.sizes_file = script.args.sizes_master       ##  Force processing on master file
+        build_code_files ( script )
+
+
+if __name__ == '__main__':
+    main()
+
+

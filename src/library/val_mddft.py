@@ -9,77 +9,60 @@ import sys
 import re
 import os
 import numpy as np
+import argparse
 
-if len(sys.argv) < 2:
-    print ('Usage: ' + sys.argv[0] + ': libdir [-s cube_size] [-f sizes_file]' )
-    sys.exit ('missing argument(s), NOTE: Only one of -s or -f should be specified')
 
 _under = '_'
-_libdir = sys.argv[1]
-fftxpre = 'fftx_'
-myvar   = sys.argv[0]
-if re.match ( 'val_', myvar ):
-    _xfmseg = re.split ( _under, myvar )
-    _xfmseg = re.split ( '\.', _xfmseg[1] )
-    _xform  = fftxpre + _xfmseg[0]
 
-_xform  = _xform.rstrip()                             ## remove training newline
+def setup_input_array ( array_shape ):
+    "Create an input array based on the array shape tuple"
 
-if not re.match ( '_$', _xform ):                ## append an underscore if one is not present
-    _xform = _xform + _under
-
-if re.match ( '^.*_.*_', _xform ):
-    _xfmseg = re.split ( _under, _xform )
-    _libfwd = _xfmseg[0] + _under + _xfmseg[1]
-    _libinv = _xfmseg[0] + _under + 'i' + _xfmseg[1]
-
-if sys.platform == 'win32':
-    _libfwd = _libfwd + '.dll'
-    _libinv = _libinv + '.dll'
-    _libext = '.dll'
-elif sys.platform == 'darwin':
-    _libfwd = 'lib' + _libfwd + '.dylib'
-    _libinv = 'lib' + _libinv + '.dylib'
-    _libext = '.dylib'
-else:
-    _libfwd = 'lib' + _libfwd + '.so'
-    _libinv = 'lib' + _libinv + '.so'
-    _libext = '.so'
-
-print ( 'library stems for fwd/inv xforms = ' + _libfwd + ' / ' + _libinv + ' lib ext = ' + _libext, flush = True )
+    ##  Setup source (input) data -- fill with random values
+    src = np.random.random(array_shape) + np.random.random(array_shape) * 1j
+    return src;
 
 
-def exec_xform ( segnams, dims, fwd, libext, typecode ):
-    "Run a transform specified by segment names and fwd flag of size dims"
-
-    dx = int ( dims[0] )
-    dy = int ( dims[1] )
-    dz = int ( dims[2] )
-    dz_adj = dz // 2 + 1
-
-    _dftsz      = np.zeros(3).astype(ctypes.c_int)
-    _dftsz[0] = dx
-    _dftsz[1] = dy
-    _dftsz[2] = dz
-
-    froot = segnams[0] + _under
-    if not fwd:
-        froot = froot + 'i'
-    froot = froot + segnams[1]
-    pywrap = froot + libext + _under + 'python' + _under
+def run_python_version ( src, fwd ):
+    "Create the output array by calling NumPy"
 
     if fwd:
-        _libsegs = re.split ( '\.', _libfwd )
-        uselib = _libsegs[0] + libext + '.' + _libsegs[1]
+        dst = np.fft.fftn ( src )
+        dst = dst / np.size ( dst )             ##  Normalize after performing forward transform
     else:
-        _libsegs = re.split ( '\.', _libinv )
-        uselib = _libsegs[0] + libext + '.' + _libsegs[1]
+        dst = np.fft.ifftn ( src )              ##  NumPy inverse is already normalized
+ 
+    return dst;
 
-    _sharedLibPath = os.path.join ( os.path.realpath ( _libdir ), uselib )
+
+def exec_xform ( libdir, libfwd, libinv, libext, dims, fwd, platform, typecode, warn ):
+    "Run a transform from the requested library of size dims"
+
+    ##  First, ensure the library we need exists...
+    uselib = libfwd + platform + libext if fwd else libinv + platform + libext
+    _sharedLibPath = os.path.join ( os.path.realpath ( libdir ), uselib )
     if not os.path.exists ( _sharedLibPath ):
-        print ( 'library file: ' + uselib + ' does not exist - continue', flush = True )
+        if warn:
+            print ( f'library file: {uselib} does not exist - continue', flush = True )
         return
 
+    array_shape = tuple(dims)
+    src = setup_input_array ( array_shape )
+
+    ##  Setup function name and specify size to find in library
+    if sys.platform == 'win32':
+        froot = libfwd if fwd else libinv
+    else:
+        froot = libfwd[3:] if fwd else libinv[3:]
+
+    pywrap = froot + platform + _under + 'python' + _under
+
+    _xfmsz    = np.zeros(3).astype(ctypes.c_int)
+    _xfmsz[0] = dims[0]
+    _xfmsz[1] = dims[1]
+    _xfmsz[2] = dims[2]
+
+    ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
+    ##  the library (these setup/teardown GPU resources when using GPU libraries).
     _sharedLibAccess = ctypes.CDLL ( _sharedLibPath )
 
     func = pywrap + 'init' + _under + 'wrapper'
@@ -87,110 +70,115 @@ def exec_xform ( segnams, dims, fwd, libext, typecode ):
     if _libFuncAttr is None:
         msg = 'could not find function: ' + func
         raise RuntimeError(msg)
-    _status = _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
+    _status = _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
     if not _status:
-        print ( 'Size: ' + str(_dftsz) + ' was not found in library - continue' )
+        print ( f'Size: {_xfmsz} was not found in library - continue', flush = True )
         return
 
-    ##  Setup source (input) data -- fill with random values
-    _src        = np.random.rand(dx, dy, dz).astype(complex)
-    _src_spiral = _src.view(dtype=np.double)
-    for ix in range ( dx ):
-        for iy in range ( dy ):
-            for iz in range ( dz ):
-                vr = np.random.random()
-                vi = np.random.random()
-                _src[ix, iy, iz] = vr + vi * 1j
+    ##  Destination (output) -- fill with zeros
+    _dst_spiral = np.zeros_like ( src )
+    _xfm_sym    = np.ones ( shape=(10, 10, 10), dtype=complex )       ## dummy symbol
 
-    ##  Destination (output) -- fill with zeros, one for spiral, one for python
-    _dst_python = np.zeros(shape=(dx, dy, dz), dtype=complex)
-    _dst_spiral = np.zeros(shape=(dx, dy, dz), dtype=complex)
-    _xfm_sym    = np.ones (shape=(10, 10, 10), dtype=complex)       ## dummy symbol
-
-    ##  Evaluate using Spiral generated code in library.  Use the python wrapper funcs in
-    ##  the library (these setup/teardown GPU resources when using GPU libraries).
     ##  Call the library function
     func = pywrap + 'run' + _under + 'wrapper'
-    _libFuncAttr = getattr ( _sharedLibAccess, func )
-    _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ),
-                   _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
-                   _src.ctypes.data_as ( ctypes.c_void_p ),
-                   _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
-    ##  Normalize Spiral result
-    _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
+    try:
+        _libFuncAttr = getattr ( _sharedLibAccess, func )
+        _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ),
+                       _dst_spiral.ctypes.data_as ( ctypes.c_void_p ),
+                       src.ctypes.data_as ( ctypes.c_void_p ),
+                       _xfm_sym.ctypes.data_as ( ctypes.c_void_p ) )
+        ##  Normalize Spiral result
+        _dst_spiral = _dst_spiral / np.size ( _dst_spiral )
+
+    except Exception as e:
+        print ( 'Error occurred during library function call:', type(e).__name__ )
+        print ( 'Exception details:', str(e) )
+        return
 
     ##  Call the transform's destroy function
     func = pywrap + 'destroy' + _under + 'wrapper'
     _libFuncAttr = getattr ( _sharedLibAccess, func )
-    _libFuncAttr ( _dftsz.ctypes.data_as ( ctypes.c_void_p ) )
+    _libFuncAttr ( _xfmsz.ctypes.data_as ( ctypes.c_void_p ) )
 
-    ##  Evaluate using numpy
-    if fwd:
-        ##  Normalize the results of the forward xfrom...
-        _dst_python = np.fft.fftn ( _src )
-        _dst_python = _dst_python / np.size ( _dst_python )
-    else:
-        ##  Result of inverse xform is already normalized...
-        _dst_python = np.fft.ifftn ( _src )
+    ##  Get the python answer using the same input
+    _dst_python = run_python_version ( src, fwd )
 
     ##  Check difference
     diff = np.max ( np.absolute ( _dst_spiral - _dst_python ) )
-    if fwd:
-        dir = 'forward'
-    else:
-        dir = 'inverse'
-
-    print ( 'Difference between Python / Spiral(' + typecode + ') [' + dir + '] transforms = ' + str ( diff ), flush = True )
+    dir = 'forward' if fwd else 'inverse'
+    msg = 'are' if diff < 1e-7 else 'are NOT'
+    print ( f'Python / Spiral({typecode}) [{dir}] transforms {msg} equivalent, difference = {diff}', flush = True )
 
     return;
 
 
-_sizesfile = 'cube-sizes.txt'
+def main():
+    parser = argparse.ArgumentParser ( description = 'Validate FFTX built libraries against NumPy computed versions of the transforms' )
+    ##  Positional argument: libdir
+    parser.add_argument ( 'libdir', type=str, help='directory containing the library' )
+    ##  Optional argument: -e or --emit
+    parser.add_argument ( '-e', '--emit', action='store_true', help='emit warnings when True, default is False' )
+    ##  mutually exclusive optional arguments
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument ( '-s', '--size', type=str, help='3D size specification of the transform (e.g., 80x80x120)' )
+    group.add_argument ( '-f', '--file', type=str, help='file containing sizes to loop over' )
+    args = parser.parse_args()
 
-if len(sys.argv) > 2:
-    ##  Optional problem size or file specified:
-    if sys.argv[2] == '-s':
-        ##  problem size is specified:  e.g., 80x80x80
-        _probsz = sys.argv[3]
-        _probsz = _probsz.rstrip()                  ##  remove training newline
-        _dims = re.split ( 'x', _probsz )
+    script_name = os.path.splitext ( os.path.basename ( sys.argv[0] ) )[0]
+    if script_name.startswith('val_'):
+        xfmseg = script_name.split('_')[1]
+        xform = xfmseg
 
-        print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
-        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
+    libdir = args.libdir.rstrip('/')
+    libprefix = '' if sys.platform == 'win32' else 'lib'
+    libfwd = libprefix + 'fftx_' + xform
+    libinv = libprefix + 'fftx_i' + xform
+    libext = '.dll' if sys.platform == 'win32' else '.dylib' if sys.platform == 'darwin' else '.so'
+    print ( f'library stems for fwd/inv xforms = {libfwd} / {libinv} lib ext = {libext}', flush = True )
 
-        exit ()
+    if args.size:
+        dims = [int(d) for d in args.size.split('x')]
+        print ( f'Size = {dims[0]} x {dims[1]} x {dims[2]}', flush = True )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU', args.emit )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU', args.emit )
 
-    elif sys.argv[2] == '-f':
-        ##  Option sizes file is specified:  use the supplied filename to loop over desired sizes
-        _sizesfile = sys.argv[3]
-        _sizesfile = _sizesfile.rstrip()
+        exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU', args.emit )
+        exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU', args.emit )
 
+        sys.exit ()
+
+    if args.file:
+        sizesfile = args.file.rstrip()
     else:
-        print ( 'Unrecognized argument: ' + sys.argv[2] + ' ignoring remainder of command line', flush = True )
+        sizesfile = 'cube-sizes-gpu.txt'
 
+    ##  Process the sizes file, extracting the dimentions and running the transform.  The
+    ##  sizes file contains records of the form:
+    ##      szcube := [ 128, 128, 128 ];
+    ##  where:
+    ##      the X, Y, and Z dimensions are specified (dimension need not be cubic)
 
-with open ( _sizesfile, 'r' ) as fil:
-    for line in fil.readlines():
-        ##  print ( 'Line read = ' + line )
-        if re.match ( '[ \t]*#', line ):                ## ignore comment lines
-            continue
+    with open ( sizesfile, 'r' ) as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith('#') or not line:
+                continue
 
-        if re.match ( '[ \t]*$', line ):                ## skip lines consisting of whitespace
-            continue
+            line = re.sub ( ' ', '', line )                 ## suppress white space
+            pattern = r'szcube:=\[(\d+),(\d+),(\d+)\];'
+            m = re.match ( pattern, line)
+            if not m:
+                print ( f'Invalid line format: {line}', flush = True )
+                continue
 
-        line = re.sub ( '.*\[', '', line )              ## drop "szcube := ["
-        line = re.sub ( '\].*', '', line )              ## drop "];"
-        line = re.sub ( ' *', '', line )                ## compress out white space
-        line = line.rstrip()                            ## remove training newline
-        _dims = re.split ( ',', line )
+            dims = [int(m.group(i)) for i in range(1, 4)]
+            print ( f'Size = {dims[0]} x {dims[1]} x {dims[2]}', flush = True )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_cpu', 'CPU', args.emit )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_cpu', 'CPU', args.emit )
 
-        print ( 'Size = ' + _dims[0] + 'x' + _dims[1] + 'x' + _dims[2], flush = True )
-        exec_xform ( _xfmseg, _dims, True, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, False, '_cpu', 'CPU' )
-        exec_xform ( _xfmseg, _dims, True, '_gpu', 'GPU' )
-        exec_xform ( _xfmseg, _dims, False, '_gpu', 'GPU' )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, True, '_gpu', 'GPU', args.emit )
+            exec_xform ( libdir, libfwd, libinv, libext, dims, False, '_gpu', 'GPU', args.emit )
 
-    exit()
+if __name__ == '__main__':
+    main()
+

@@ -20,14 +20,7 @@ project ( rconv ${_lang_add} ${_lang_base} )
 set ( _stem fftx )
 set ( _prefixes )	##  prefixes not required for test${PROJECT_NAME}, as it now uses RTC
 
-include ( CMakeDependentOption )
-cmake_dependent_option ( BLD_RCONV_EX "Build rconv example" ON "RCONV_LIB" OFF )
-
-if ( BLD_RCONV_EX )
-    ##  set ( BUILD_PROGS test${PROJECT_NAME}_lib )		## this requires a prebuilt library
-endif ()
-
-list ( APPEND BUILD_PROGS test${PROJECT_NAME} )
+set ( BUILD_PROGS test${PROJECT_NAME}_lib test${PROJECT_NAME} )
 
 ##  One .cpp file is coded with device_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )

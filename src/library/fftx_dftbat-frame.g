@@ -1,11 +1,20 @@
-##  Copyright (c) 2018-2021, Carnegie Mellon University
+##  Copyright (c) 2018-2023, Carnegie Mellon University
 ##  See LICENSE for details
 
-# 1d batch of 1d and multidimensional of complex DFTs
+##  batch of 1D complex DFTs
 
-Load(fftx);;
-ImportAll(fftx);;
-ImportAll(simt);
+##  Parameters expected to be defined ahead of this code:
+##  fftlen -- length of FFT
+##  nbatch -- batch size
+##  rdstride -- read stride type { APar | AVec }
+##  wrstride -- write stride type { APar | AVec }
+##  codefor -- which architecture to generate code for { CUDA | CPU | HIP }
+##  fwd -- Transform direction { true | false }
+##  libdir -- name of directory in which to write files
+##  file_suffix -- suffix part of output file name
+
+Load(fftx);
+ImportAll(fftx);
 
 ##  If the variable createJIT is defined and set true then load the jit module
 if ( IsBound(createJIT) and createJIT ) then
@@ -15,11 +24,13 @@ fi;
 
 if codefor = "CUDA" then
     conf := LocalConfig.fftx.confGPU();
+elif codefor = "HIP" then
+    conf := FFTXGlobals.defaultHIPConf();
+elif codefor = "SYCL" then
+    conf := FFTXGlobals.defaultOpenCLConf();
 elif codefor = "CPU" then
     conf := LocalConfig.fftx.defaultConf();
-else    
-    conf := FFTXGlobals.defaultHIPConf();
-fi;;
+fi;
 
 if fwd then
     prefix := "fftx_dftbat_";
@@ -29,57 +40,45 @@ else
     prefix := "fftx_idftbat_";
     jitpref := "cache_idftbat_";
     sign   := 1;
-fi;;
+fi;
 
-ns := szns[1];;
-name := prefix::StringInt(nbatch)::"_type"::StringInt(stridetype)::"_len"::StringInt(szns[1]);;
-name := name::"_"::codefor;;
-jitname := jitpref::StringInt(nbatch)::"_type"::StringInt(stridetype)::"_len"::StringInt(szns[1]);;
-jitname := jitname::"_"::codefor::".txt";
+if 1 = 1 then
+    name := prefix::StringInt(fftlen)::"_bat_"::StringInt(nbatch)::"_"::wrstride::"_"::rdstride::"_"::codefor;
+    jitname := jitpref::StringInt(fftlen)::"_bat_"::StringInt(nbatch)::"_"::wrstride::"_"::rdstride::"_"::codefor::".txt";
 
-tags := [[APar, APar], [APar, AVec], [AVec, APar]];;
+    PrintLine("fftx_dftbat: name = ", name, " length = ", fftlen, " bat = ", nbatch, " write stride: ", wrstride,
+              " read stride: ", rdstride );
 
-PrintLine("fftx_dft-batch: name = ", name, " bat X stride X len = ", nbatch, " ", stridetype, " ", ns, " jitname = ", jitname);
-# t := let(batch := nbatch,
-#     apat := When(true, APar, AVec),
-#     k := sign,
-#     ##  name := "dft"::StringInt(Length(ns))::"d_batch",  
-#     TFCall(TRC(TTensorI(MDDFT(ns, k), batch, apat, apat)), 
-#         rec(fname := name, params := []))
-# );;
-t := let (
-    name := name,
-    TFCall ( TRC ( TTensorI ( TTensorI ( DFT ( ns, sign ), nbatch, APar, APar),
-                              nbatch, tags[stridetype][1], tags[stridetype][2] ) ),
-             rec(fname := name, params := [] ) )
-);;
+    _wr := APar; if wrstride = "AVec" then _wr := AVec; fi;
+    _rd := APar; if rdstride = "AVec" then _rd := AVec; fi;
+    
+    t := let ( name := name,
+               TFCall ( TRC ( TTensorI ( DFT ( fftlen, sign ), nbatch, _wr, _rd ) ),
+                        rec(fname := name, params := [] ) )
+              );
 
-opts := conf.getOpts(t);;
-# temporary fix, need to update opts derivation
-opts.tags := opts.tags { [1, 2] };;
-Append ( opts.breakdownRules.TTensorI, [CopyFields ( IxA_L_split, rec(switch := true) ),
-                                        CopyFields ( L_IxA_split, rec(switch := true) ) ] );; 
+    opts := conf.getOpts(t);
+    if not IsBound ( libdir ) then
+        libdir := "srcs";
+    fi;
 
-if not IsBound ( libdir ) then
-    libdir := "srcs";
-fi;;
-##  We need the Spiral functions wrapped in 'extern C' for adding to a library
-opts.wrapCFuncs := true;;
+    ##  We need the Spiral functions wrapped in 'extern C' for adding to a library
+    opts.wrapCFuncs := true;
+    tt := opts.tagIt(t);
 
-tt := opts.tagIt(t);;
-
-c := opts.fftxGen(tt);;
-##  opts.prettyPrint(c);
-PrintTo(libdir::"/"::name::file_suffix, opts.prettyPrint(c));
+    c := opts.fftxGen(tt);
+    ##  opts.prettyPrint(c);
+    PrintTo ( libdir::"/"::name::file_suffix, opts.prettyPrint(c) );
+fi;
 
 ##  If the variable createJIT is defined and set true then output the JIT code to a file
 if ( IsBound(createJIT) and createJIT ) then
     cachedir := GetEnv("FFTX_HOME");
     if (cachedir = "") then cachedir := "../.."; fi;
     cachedir := cachedir::"/cache_jit_files/";
-    GASMAN ( "collect" );
     if ( codefor = "HIP" ) then PrintTo ( cachedir::jitname, PrintHIPJIT ( c, opts ) ); fi;
     if ( codefor = "CUDA" ) then PrintTo ( cachedir::jitname, PrintJIT2 ( c, opts ) ); fi;
+    if ( codefor = "SYCL" ) then PrintTo ( cachedir::jitname, PrintOpenCLJIT ( c, opts ) ); fi;
     if ( codefor = "CPU" ) then PrintTo ( cachedir::jitname, opts.prettyPrint ( c ) ); fi;
 fi;
 

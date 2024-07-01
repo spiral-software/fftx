@@ -1,0 +1,139 @@
+//  Info pulled from header files: batch1dprdftObj.hpp & ibatch1dprdftObj.hpp
+//  batch 1D prdft - FORWARD
+
+// read seq (APar -> 0), write seq (APar -> 0)
+transform := let ( TFCall ( TTensorI ( PRDFT ( N, sign ), B, write, read ),
+                            rec ( fname := name, params := [] ) ) );
+
+// read seq (APar -> 0), write strided (AVec -> 1)
+transform := let ( TFCall ( Prm ( fTensor ( L ( PRDFT1 ( N, sign ).dims()[1]/2 * B,
+                                                PRDFT1 ( N, sign ).dims()[1]/2 ),
+                                            fId (2) ) ) *
+                            TTensorI ( PRDFT1 ( N, sign ), B, APar, read ),
+                            rec ( fname := name, params := [] ) ) );
+
+//read strided (AVec -> 1), write seq (APar -> 0)
+transform := let ( TFCall ( TTensorI ( PRDFT1 ( N, sign ), B, APar, read ) *
+                            Prm ( fTensor ( L ( PRDFT1 ( N, sign ).dims()[2]/2 * B, B ), fId (2) ) ),
+                            rec ( fname := name, params := [] ) ) );
+
+//  batch 1D prdft - INVERSE
+
+//read seq (APar -> 0), write seq (APar -> 0)
+transform := let ( TFCall ( TRC ( TTensorI ( PRDFT ( N, sign), B, write, read ) ),
+                            rec ( fname := name, params := [] ) ) );
+
+// read seq (APar -> 0), write strided (AVec -> 1)
+transform := let ( TFCall ( Prm ( fTensor ( L ( IPRDFT1 ( N, -1 ).dims()[1]/2 * B,
+                                                IPRDFT1 ( N, -1 ).dims()[1]/2 ),
+                                            fId (2) ) ) *
+                            TTensorI ( IPRDFT1 ( N, -1 ), B, APar, read ),
+                            rec ( fname := name, params := [] ) ) );
+
+//read strided (AVec -> 1), write seq (APar -> 0)
+transform := let ( TFCall ( TTensorI ( IPRDFT ( N, -1 ), B, APar, APar ) *
+                            Prm ( fTensor ( L ( IPRDFT1 ( N, -1 ).dims()[2]/2 * B, B ), fId (2) ) ),
+                            rec ( fname := name, params := [] ) ) );
+
+Legend:  N == fftlen;  B == nbatch;  write == _wr;  read == _rd;
+
+    name := prefix::StringInt(fftlen)::"_bat_"::StringInt(nbatch)::"_"::wrstride::"_"::rdstride::"_"::codefor;
+    jitname := jitpref::StringInt(fftlen)::"_bat_"::StringInt(nbatch)::"_"::wrstride::"_"::rdstride::"_"::codefor::".txt";
+
+    PrintLine("fftx_prdftbat: name = ", name, " length = ", fftlen, " bat = ", nbatch, " write stride: ", wrstride,
+              " read stride: ", rdstride );
+
+    _wr := APar; if wrstride = "AVec" then _wr := AVec; fi;
+    _rd := APar; if rdstride = "AVec" then _rd := AVec; fi;
+
+    ##  we have 6 cases (ignoring AVec/AVec combos for now) all possibly different:
+    ##  Forward and Inverse; APar/APar, AVec/APar, and APar/AVec
+    if fwd then
+        if rdstride = "APar" and wrstride = "APar" then
+            t := let ( TFCall ( TTensorI ( PRDFT ( fftlen, sign ), nbatch, _wr, _rd ),
+                                rec ( fname := name, params := [] ) ) );
+        elif rdstride = "APar" and wrstride = "AVec" then
+            t := let ( TFCall ( Prm ( fTensor ( L ( PRDFT1 ( fftlen, sign ).dims()[1]/2 * nbatch,
+                                                    PRDFT1 ( fftlen, sign ).dims()[1]/2 ),
+                                                fId (2) ) ) *
+                                TTensorI ( PRDFT1 ( fftlen, sign ), nbatch, APar, _rd ),
+                               rec ( fname := name, params := [] ) ) );
+        elif rdstride = "AVec" and wrstride = "APar" then
+            t := let ( TFCall ( TTensorI ( PRDFT1 ( fftlen, sign ), nbatch, APar, _rd ) *
+                                Prm ( fTensor ( L ( PRDFT1 ( fftlen, sign ).dims()[2]/2 * nbatch, nbatch ), fId (2) ) ),
+                                rec ( fname := name, params := [] ) ) );
+        else
+            ##  AVec/AVec - not implemented
+            PrintLine ( "Avec/Avec case not implemented" );
+        fi;
+    else
+        if rdstride = "APar" and wrstride = "APar" then
+            t := let ( TFCall ( TRC ( TTensorI ( PRDFT ( fftlen, sign), nbatch, _wr, _rd ) ),
+                                rec ( fname := name, params := [] ) ) );
+        elif rdstride = "APar" and wrstride = "AVec" then
+            t := let ( TFCall ( Prm ( fTensor ( L ( IPRDFT1 ( fftlen, sign ).dims()[1]/2 * nbatch,
+                                                    IPRDFT1 ( fftlen, sign ).dims()[1]/2 ),
+                                                fId (2) ) ) *
+                                TTensorI ( IPRDFT1 ( fftlen, sign ), nbatch, APar, _rd ),
+                                rec ( fname := name, params := [] ) ) );        
+        elif rdstride = "AVec" and wrstride = "APar" then
+            t := let ( TFCall ( TTensorI ( IPRDFT ( fftlen, sign ), nbatch, APar, APar ) *
+                                Prm ( fTensor ( L ( IPRDFT1 ( fftlen, sign ).dims()[2]/2 * nbatch, nbatch ), fId (2) ) ),
+                                rec ( fname := name, params := [] ) ) );
+        else
+            ##  AVec/AVec - not implemented
+            PrintLine ( "Avec/Avec case not implemented" );
+        fi;
+    fi;
+
+---------------------------------------------------------------------------------------------------
+
+Updates from new versions of batch1dprdftObj.hpp & ibatch1dprdftObj.hpp
+
+
+// read seq, write seq
+static std::string batch1dprdft_script_0x0 = "transform := let(\n\
+         TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\
+            rec(fname := name, params := [])));";
+
+// read seq, write strided
+static std::string batch1dprdft_script_0x1 = "transform := let(\n\
+    TFCall(Prm(fTensor(L(PRDFT1(N, sign).dims()[1]/2 * B, PRDFT1(N, sign).dims()[1]/2), fId(2))) *\n\
+    TTensorI(PRDFT1(N, sign), B, APar, read),\n\
+    rec(fname := name, params := [])));";
+
+//read strided, write seq
+static std::string batch1dprdft_script_1x0 = "transform := let(\n\
+         TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\
+            rec(fname := name, params := [])));";
+
+//read strided, write strided
+static std::string batch1dprdft_script_1x1 = "transform := let(\n\
+    TFCall(Prm(fTensor(L(PRDFT1(N, sign).dims()[1]/2 * B, PRDFT1(N, sign).dims()[1]/2), fId(2))) *\n\
+    TTensorI(PRDFT1(N, sign), B, APar, read),\n\
+    rec(fname := name, params := [])));";
+
+----------------------------------------
+
+
+//read seq, write seq
+static std::string ibatch1dprdft_script_0x0 = "transform := let(\n\
+         TFCall(TTensorI(IPRDFT(N, 1), B, write, read),\n\
+            rec(fname := name, params := [])));";
+
+//read seq, write strided
+static std::string ibatch1dprdft_script_0x1 = "transform := let(\n\
+         TFCall(TTensorI(IPRDFT(N, 1), B, write, read),\n\
+            rec(fname := name, params := [])));";
+
+//read strided, write seq
+static std::string ibatch1dprdft_script_1x0 = "transform := let(\n\
+    TFCall(TTensorI(IPRDFT(N, 1), B, write, APar) * \n\
+        Prm(fTensor(L(IPRDFT1(N, 1).dims()[2]/2 * B, B), fId(2))), \n\
+    rec(fname := name, params := [])));";
+
+//read strided, write strided
+static std::string ibatch1dprdft_script_1x1 = "transform := let(\n\
+    TFCall(TTensorI(IPRDFT(N, 1), B, write, APar) * \n\
+        Prm(fTensor(L(IPRDFT1(N, 1).dims()[2]/2 * B, B), fId(2))), \n\
+    rec(fname := name, params := [])));";
