@@ -254,7 +254,7 @@ PYTHON_DOCSTRING       = YES
 # documentation from any documented member that it re-implements.
 # The default value is: YES.
 
-INHERIT_DOCS           = YES
+INHERIT_DOCS           = NO
 
 # If the SEPARATE_MEMBER_PAGES tag is set to YES then doxygen will produce a new
 # page for each member. If set to NO, the documentation of a member will be part
@@ -951,11 +951,11 @@ INPUT                  = "@DOXYGEN_INPUT_DIR@/fftx3.hpp" \
                          "@DOXYGEN_INPUT_DIR@/imddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/mdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/imdprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/bath1ddftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/batch1ddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/ibatch1ddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/batch1dprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/ibatch1dprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/bath2ddftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/batch2ddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/ibatch2ddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/batch2dprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/ibatch2dprdftObj.hpp" \
