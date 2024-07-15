@@ -3,12 +3,14 @@ using namespace fftx;
 /**
    Class for forward complex-to-complex 3D FFT.
 
-   In <tt>FFTXProblem::args</tt>,
-   - <tt>args[0]</tt> is a pointer to a <tt>std::complex<double></tt> output array;
-   - <tt>args[1]</tt> is a pointer to a <tt>std::complex<double></tt> input array;
+   <tt>FFTXProblem::args</tt> must be set to a <tt>std::vector<void*></tt> of length 3, where
+   - <tt>args[0]</tt> is a pointer to a complex output array of size the product of the dimensions of <tt>FFTXProblem::sizes</tt>;
+   - <tt>args[1]</tt> is a pointer to a complex input array of size the product of the dimensions of <tt>FFTXProblem::sizes</tt>;
    - <tt>args[2]</tt> is not used and can be set to NULL.
 
-   <tt>FFTXProblem::name</tt> must be set to  <tt>"mddft"</tt>.
+   <tt>FFTXProblem::sizes</tt> must be set to a <tt>std::vector<int></tt> of length 3, containing the transform size in each coordinate dimension.
+
+   <tt>FFTXProblem::name</tt> must be set to <tt>"mddft"</tt>.
  */
 class MDDFTProblem: public FFTXProblem {
 public:
