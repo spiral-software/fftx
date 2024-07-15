@@ -276,6 +276,8 @@ namespace fftx
     }
 
     T* m_local_data = nullptr;
+
+    /** Pointer to a block in memory containing the data. */
     global_ptr<T> m_data;
 
     /** The domain (box) on which the array is defined. */

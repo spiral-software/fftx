@@ -1,5 +1,15 @@
 using namespace fftx;
 
+/**
+   Class for forward complex-to-complex 3D FFT.
+
+   In <tt>FFTXProblem::args</tt>,
+   - <tt>args[0]</tt> is a pointer to a <tt>std::complex<double></tt> output array;
+   - <tt>args[1]</tt> is a pointer to a <tt>std::complex<double></tt> input array;
+   - <tt>args[2]</tt> is not used and can be set to NULL.
+
+   <tt>FFTXProblem::name</tt> must be set to  <tt>"mddft"</tt>.
+ */
 class MDDFTProblem: public FFTXProblem {
 public:
     using FFTXProblem::FFTXProblem;
