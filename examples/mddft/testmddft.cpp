@@ -144,28 +144,29 @@ int main(int argc, char* argv[])
 
     fftx::array_t<3,std::complex<double>> inputHostArray(domain);
     fftx::array_t<3,std::complex<double>> outputFFTXHostArray(domain);
-    fftx::array_t<3,std::complex<double>> symbolHostArray(domain);
+    // fftx::array_t<3,std::complex<double>> symbolHostArray(domain);
     fftx::array_t<3,std::complex<double>> outputVendorHostArray(domain);
+    /*
+    fftx::box_t<2> domain ( point_t<2> ( { { 1, 1 } } ),
+                            point_t<2> ( { { mm, nn } } ));
+
+    fftx::array_t<2,std::complex<double>> inputHostArray(domain);
+    fftx::array_t<2,std::complex<double>> outputFFTXHostArray(domain);
+    // fftx::array_t<2,std::complex<double>> symbolHostArray(domain);
+    fftx::array_t<2,std::complex<double>> outputVendorHostArray(domain);
+    */
 
     size_t npts = domain.size();
     size_t bytes = npts * sizeof(std::complex<double>);
 
     auto inputHostPtr = inputHostArray.m_data.local();
     auto outputFFTXHostPtr = outputFFTXHostArray.m_data.local();
-    auto symbolHostPtr = symbolHostArray.m_data.local();
+    // auto symbolHostPtr = symbolHostArray.m_data.local();
+    auto symbolHostPtr = (std::complex<double>*) NULL;
     auto outputVendorHostPtr = outputVendorHostArray.m_data.local();
 
-#if defined FFTX_CUDA
-    //  CUdeviceptr  inputTfmPtr, outputTfmPtr, symbolTfmPtr;
-    std::complex<double> *inputTfmPtr, *outputTfmPtr, *symbolTfmPtr;
-#elif defined FFTX_HIP
-    hipDeviceptr_t  inputTfmPtr, outputTfmPtr, symbolTfmPtr;
-#elif defined FFTX_SYCL
-#else  
-    double * inputTfmPtr, *outputTfmPtr, *symbolTfmPtr;
-#endif
-
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
     std::cout << "allocating memory\n";
     DEVICE_MALLOC((void **)&inputTfmPtr, bytes);
     if ( DEBUGOUT ) std::cout << "allocated inputTfmPtr on device\n";
@@ -173,16 +174,17 @@ int main(int argc, char* argv[])
     DEVICE_MALLOC((void **)&outputTfmPtr, bytes);
     if ( DEBUGOUT ) std::cout << "allocated outputTfmPtr on device\n";
 
-    DEVICE_MALLOC((void **)&symbolTfmPtr, bytes);
+    DEVICE_MALLOC((void **)&symbolTfmPtr, 0); // not needed
 #elif defined (FFTX_SYCL)
     // If you do sycl::buffer<std::complex<double>> then you need npts * 2.
-    sycl::buffer<double> outputTfmPtr((double*) outputFFTXHostPtr, npts * 2);
     sycl::buffer<double> inputTfmPtr((double*) inputHostPtr, npts * 2);
-    sycl::buffer<double> symbolTfmPtr((double*) symbolHostPtr, npts * 2);
+    sycl::buffer<double> outputTfmPtr((double*) outputFFTXHostPtr, npts * 2);
+    sycl::buffer<double> symbolTfmPtr((double*) symbolHostPtr, 0); // not needed
 #else // CPU
-    inputTfmPtr = (double *) inputHostPtr;
-    outputTfmPtr = (double *) outputFFTXHostPtr;
-    symbolTfmPtr = new double[npts];
+    double* inputTfmPtr = (double *) inputHostPtr;
+    double* outputTfmPtr = (double *) outputFFTXHostPtr;
+    // double* symbolTfmPtr = new double[npts];
+    double* symbolTfmPtr = (double *) NULL;
 #endif
 
 #if defined FFTX_CUDA
