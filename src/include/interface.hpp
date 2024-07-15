@@ -288,7 +288,7 @@ public:
       The manner of specifying the pointer in each element of <tt>args</tt> depends on the backend:
       - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "device_macros.h"</tt>).
       - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "device_macros.h"</tt>).
-      - for SYCL, specify <tt>(void*) ptr</tt> with <tt>sycl::buffer<double></tt>.
+      - for SYCL, specify <tt>(void*) ptr</tt> with <tt>sycl::buffer<double> ptr</tt>.
       - for CPU, specify <tt>(void*) ptr</tt> with <tt>double* ptr</tt>.
   */
     std::vector<void*> args;
