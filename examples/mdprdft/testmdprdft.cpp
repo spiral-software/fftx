@@ -209,38 +209,25 @@ int main(int argc, char* argv[])
     auto outputComplexVendorHostPtr = outputComplexVendorHostArray.m_data.local();
     auto outputRealVendorHostPtr = outputRealVendorHostArray.m_data.local();
 
-#if defined(FFTX_CUDA)
-    // CUdeviceptr  inputTfmPtr, outputTfmPtr, symbolTfmPtr;
-    double *inputTfmPtr, *outputTfmPtr, *symbolTfmPtr;
-    std::complex<double> *tempTfmPtr;
-#elif defined(FFTX_HIP)
-    hipDeviceptr_t  inputTfmPtr, outputTfmPtr, symbolTfmPtr, tempTfmPtr;
-    // double * inputTfmPtr, *outputTfmPtr, *symbolTfmPtr;
-    // std::complex<double> * tempTfmPtr;
-#elif defined FFTX_SYCL
-#else
-    double * inputTfmPtr, *outputTfmPtr, *symbolTfmPtr;
-    std::complex<double> * tempTfmPtr;
-#endif
-
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr, tempTfmPtr;
     if ( DEBUGOUT )std::cout << "allocating memory" << std::endl;
-    DEVICE_MALLOC(&inputTfmPtr, npts * sizeof(double));
-    DEVICE_MALLOC(&outputTfmPtr, npts * sizeof(double));
-    DEVICE_MALLOC(&symbolTfmPtr,  nptsTrunc * sizeof(double));
-    DEVICE_MALLOC(&tempTfmPtr, nptsTrunc * sizeof(std::complex<double>));
+    DEVICE_MALLOC((void **)&inputTfmPtr, npts * sizeof(double));
+    DEVICE_MALLOC((void **)&outputTfmPtr, npts * sizeof(double));
+    symbolTfmPtr = (DEVICE_PTR) NULL;
+    DEVICE_MALLOC((void **)&tempTfmPtr, nptsTrunc * sizeof(std::complex<double>));
 #elif defined(FFTX_SYCL)
-    sycl::buffer<double> outputTfmPtr(outputRealFFTXHostPtr, npts);
     sycl::buffer<double> inputTfmPtr(inputHostPtr, npts);
-    sycl::buffer<double> symbolTfmPtr(inputHostPtr, npts);
+    sycl::buffer<double> outputTfmPtr(outputRealFFTXHostPtr, npts);
+    sycl::buffer<double> symbolTfmPtr((double*) NULL, 0); // not needed
     // sycl::buffer<std::complex<double>> tempTfmPtr(outputComplexFFTXHostPtr, nptsTrunc * 2);
     // Use sycl::buffer on double because of problems if on complex.
     sycl::buffer<double> tempTfmPtr((double*) outputComplexFFTXHostPtr, nptsTrunc * 2);
 #else
-    inputTfmPtr = (double *) inputHostPtr;
-    outputTfmPtr = (double *) outputRealFFTXHostPtr;
-    tempTfmPtr = new std::complex<double>[nptsTrunc];
-    symbolTfmPtr = new double[npts];
+    double* inputTfmPtr = (double *) inputHostPtr;
+    double* outputTfmPtr = (double *) outputRealFFTXHostPtr;
+    double* symbolTfmPtr = (double *) NULL;
+    std::complex<double>* tempTfmPtr = new std::complex<double>[nptsTrunc];
 #endif
     if ( DEBUGOUT ) std::cout << "memory allocated" << std::endl;
 
@@ -565,13 +552,13 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     DEVICE_FREE(inputTfmPtr);
     DEVICE_FREE(outputTfmPtr);
-    DEVICE_FREE(symbolTfmPtr);
+    // DEVICE_FREE(symbolTfmPtr);
     DEVICE_FREE(tempTfmPtr);
 #elif defined(FFTX_SYCL)
     sycl::free(sharedRealPtr, sycl_context);
     sycl::free(sharedComplexPtr, sycl_context);
 #else
-    delete[] symbolTfmPtr;
+    // delete[] symbolTfmPtr;
     delete[] tempTfmPtr;
 #endif
 
