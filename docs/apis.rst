@@ -75,7 +75,6 @@ MDDFTProblem
 ------------
 
 .. doxygenclass:: MDDFTProblem
-   :members:
 ..   :allow-dot-graphs:
 
 .. _IMDDFTProblem:
@@ -84,7 +83,6 @@ IMDDFTProblem
 -------------
 
 .. doxygenclass:: IMDDFTProblem
-   :members:
 ..   :allow-dot-graphs:
 
 .. _MDPRDFTProblem:
@@ -93,7 +91,6 @@ MDPRDFTProblem
 --------------
 
 .. doxygenclass:: MDPRDFTProblem
-   :members:
 ..   :allow-dot-graphs:
 
 .. _IMDPRDFTProblem:
@@ -102,45 +99,7 @@ IMDPRDFTProblem
 ---------------
 
 .. doxygenclass:: IMDPRDFTProblem
-   :members:
 ..   :allow-dot-graphs:
-
-.. _BATCH1DDFTProblem:
-
-BATCH1DDFTProblem
-------------
-
-.. doxygenclass:: BATCH1DDFTProblem
-   :members:
-..   :allow-dot-graphs:
-
-.. _IBATCH1DDFTProblem:
-
-IBATCH1DDFTProblem
--------------
-
-.. doxygenclass:: IBATCH1DDFTProblem
-   :members:
-..   :allow-dot-graphs:
-
-.. _BATCH1DPRDFTProblem:
-
-BATCH1DPRDFTProblem
---------------
-
-.. doxygenclass:: BATCH1DPRDFTProblem
-   :members:
-..   :allow-dot-graphs:
-
-.. _IBATCH1DPRDFTProblem:
-
-IBATCH1DPRDFTProblem
----------------
-
-.. doxygenclass:: IBATCH1DPRDFTProblem
-   :members:
-..   :allow-dot-graphs:
-
 
 
 .. AVOID .. doxygengroup:: docTitleCmdGroup
