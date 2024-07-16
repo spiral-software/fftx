@@ -338,7 +338,7 @@ public:
         T_IN* inputHostPtr = a_inArray.m_data.local();
         T_OUT* outputHostPtr = a_outArray.m_data.local();
 
-        auto sym_pts = m_fullExtents.product();
+        // auto sym_pts = m_fullExtents.product();
 #if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         // on GPU
         auto input_pts = m_inDomain.size();
@@ -349,7 +349,7 @@ public:
         // double* symDevicePtr;
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        auto sym_bytes = sym_pts * sizeof(double);
+        // auto sym_bytes = sym_pts * sizeof(double);
         auto input_bytes = input_pts * sizeof(T_IN);
         auto output_bytes = output_pts * sizeof(T_OUT);
 
@@ -360,7 +360,8 @@ public:
 
         DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
         DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
-        DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
+        // DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
+        symDevicePtr = (DEVICE_PTR) NULL;
         
         DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
                         MEM_COPY_HOST_TO_DEVICE);
@@ -408,7 +409,7 @@ public:
 	// 4. Clean up.
         DEVICE_FREE((void*)inputDevicePtr);
         DEVICE_FREE((void*)outputDevicePtr);
-        DEVICE_FREE((void*)symDevicePtr);
+        // DEVICE_FREE((void*)symDevicePtr);
 #elif defined(FFTX_SYCL)
         if (m_tp == FFTX_HANDLE)
           {          
@@ -429,8 +430,9 @@ public:
 	    auto output_doubles = output_pts * sizeof(T_OUT)/sizeof(double);
 	    sycl::buffer<double> inputBuffer((double *) inputHostPtr, input_doubles);
 	    sycl::buffer<double> outputBuffer((double *) outputHostPtr, output_doubles);
-	    double* symHostPtr = new double[sym_pts];
-	    sycl::buffer<double> symBuffer(symHostPtr, sym_pts);
+	    // double* symHostPtr = new double[sym_pts];
+	    // sycl::buffer<double> symBuffer(symHostPtr, sym_pts);
+            sycl::buffer<double> symBuffer((double*) NULL, 0); // not needed
 	    std::vector<void*> args{(void*)&(outputBuffer), (void*)&(inputBuffer), (void*)&(symBuffer)};
 
 	    // 2. Perform the transform.
@@ -439,7 +441,7 @@ public:
 	    m_transformProblemPtr->transform();
 
 	    // 3. Clean up.
-	    delete[] symHostPtr;
+	    // delete[] symHostPtr;
 	  }
 #endif
 #else
@@ -457,13 +459,14 @@ public:
             double *dX, *dY, *dsym;
             dX = (double *) inputHostPtr;
             dY = (double *) outputHostPtr;
-            dsym = new double[sym_pts];
+            // dsym = new double[sym_pts];
+            dsym = (double*) NULL;
             // dsym = new std::complex<double>[m_fullExtents.product()];
 	    // Size and type of m_transformProblemPtr are already set.
             std::vector<void*> args{(void*)dY, (void*)dX, (void*)dsym};
             m_transformProblemPtr->setArgs(args);
             m_transformProblemPtr->transform();
-            delete[] dsym;
+            // delete[] dsym;
           }
 #endif
       }
