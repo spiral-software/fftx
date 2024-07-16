@@ -951,14 +951,6 @@ INPUT                  = "@DOXYGEN_INPUT_DIR@/fftx3.hpp" \
                          "@DOXYGEN_INPUT_DIR@/imddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/mdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/imdprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/batch1ddftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/ibatch1ddftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/batch1dprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/ibatch1dprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/batch2ddftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/ibatch2ddftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/batch2dprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/ibatch2dprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftx3utilities.h"
 # INPUT                  = ../src/include/fftx3.hpp \
 #                          ../src/include/interface.hpp \
