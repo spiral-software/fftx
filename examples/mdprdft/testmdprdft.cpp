@@ -340,7 +340,8 @@ int main(int argc, char* argv[])
 	// (Use different randomized data each iteration)
 	setInput((double*) inputHostPtr, sizes);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY(inputTfmPtr, inputHostPtr, npts * sizeof(double),
+        DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
+                        npts * sizeof(double),
                         MEM_COPY_HOST_TO_DEVICE);
  	if ( DEBUGOUT ) std::cout << "copied MDPRDFT input from host to device\n";
 #endif
@@ -349,7 +350,7 @@ int main(int argc, char* argv[])
         mdp.transform();
         mdprdft_gpu[itn] = mdp.getTime();
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputComplexFFTXHostPtr, tempTfmPtr,
+        DEVICE_MEM_COPY ( outputComplexFFTXHostPtr, (void*)tempTfmPtr,
                           nptsTrunc * sizeof(std::complex<double>),
                           MEM_COPY_DEVICE_TO_HOST );
 #endif
@@ -373,7 +374,7 @@ int main(int argc, char* argv[])
             DEVICE_EVENT_RECORD ( custop );
             DEVICE_EVENT_SYNCHRONIZE ( custop );
             DEVICE_EVENT_ELAPSED_TIME ( &mdprdft_vendor_millisec[itn], custart, custop );
-            DEVICE_MEM_COPY ( outputComplexVendorHostPtr, tempTfmPtr,
+            DEVICE_MEM_COPY ( outputComplexVendorHostPtr, (void*)tempTfmPtr,
                               nptsTrunc * sizeof(std::complex<double>),
                               MEM_COPY_DEVICE_TO_HOST );
 #elif defined ( FFTX_SYCL)
@@ -462,7 +463,7 @@ int main(int argc, char* argv[])
         symmetrizeHermitian(outputComplexFFTXHostArray,
 			    outputRealFFTXHostArray);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)    
-        DEVICE_MEM_COPY (tempTfmPtr, outputComplexFFTXHostPtr,
+        DEVICE_MEM_COPY ((void*)tempTfmPtr, outputComplexFFTXHostPtr,
                          nptsTrunc * sizeof(std::complex<double>),
                          MEM_COPY_HOST_TO_DEVICE );
         if ( DEBUGOUT ) std::cout << "copied IMDPRDFT input from host to device" << std::endl;
@@ -477,8 +478,9 @@ int main(int argc, char* argv[])
         if ( check_output )
           {
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-	    DEVICE_MEM_COPY ( outputRealFFTXHostPtr, outputTfmPtr,
-			      npts * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
+	    DEVICE_MEM_COPY ( outputRealFFTXHostPtr, (void*)outputTfmPtr,
+			      npts * sizeof(double),
+                              MEM_COPY_DEVICE_TO_HOST );
 
 	    DEVICE_EVENT_RECORD ( custart );
             res = DEVICE_FFT_EXECZ2D ( planC2R,
@@ -494,8 +496,9 @@ int main(int argc, char* argv[])
             DEVICE_EVENT_SYNCHRONIZE ( custop );
             DEVICE_EVENT_ELAPSED_TIME ( &imdprdft_vendor_millisec[itn], custart, custop );
             
-            DEVICE_MEM_COPY ( outputRealVendorHostPtr, outputTfmPtr,
-                              npts * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
+            DEVICE_MEM_COPY ( outputRealVendorHostPtr, (void*)outputTfmPtr,
+                              npts * sizeof(double),
+                              MEM_COPY_DEVICE_TO_HOST );
 #elif defined (FFTX_SYCL)
 	    // If this is absent then iterations after the first aren't correct.
 	    // N.B. tempHostAcc is double* because tempTfmPtr is sycl::buffer<double>.
@@ -550,10 +553,10 @@ int main(int argc, char* argv[])
 
     // Clean up.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    DEVICE_FREE(inputTfmPtr);
-    DEVICE_FREE(outputTfmPtr);
-    // DEVICE_FREE(symbolTfmPtr);
-    DEVICE_FREE(tempTfmPtr);
+    DEVICE_FREE((void*)inputTfmPtr);
+    DEVICE_FREE((void*)outputTfmPtr);
+    // DEVICE_FREE((void*)symbolTfmPtr);
+    DEVICE_FREE((void*)tempTfmPtr);
 #elif defined(FFTX_SYCL)
     sycl::free(sharedRealPtr, sycl_context);
     sycl::free(sharedComplexPtr, sycl_context);
