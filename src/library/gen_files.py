@@ -132,6 +132,7 @@ def body_public_header ( script ):
     str.append ( '//  array of sizes, each element is a struct of type fftx::point_t<3> specifying the X,\n' )
     str.append ( '//  Y, and Z dimensions\n\n' )
 
+    str.append ( 'extern "C" {\n\n' )
     str.append ( f'fftx::point_t<3> * {script.file_stem}{script.decor_platform}QuerySizes ();' + '\n' )
     str.append ( f'#define {script.file_stem}QuerySizes {script.file_stem}{script.decor_platform}QuerySizes' + '\n\n' )
 
@@ -165,15 +166,15 @@ def body_public_header ( script ):
 
     if script.xform_name != 'psatd':
         str.append ( '//  Wrapper functions to allow python to call CUDA/HIP GPU code.\n\n' )
-        str.append ( 'extern "C" {\n\n' )
+        ##  str.append ( 'extern "C" {\n\n' )
         str.append ( f'int  {script.file_stem}{script.decor_platform}python_init_wrapper ( int * req );' + '\n' )
 
         str.append ( f'void {script.file_stem}{script.decor_platform}python_run_wrapper ' )
         str.append ( '( int * req, double * output, double * input, double * sym );\n' )
 
-        str.append ( f'void {script.file_stem}{script.decor_platform}python_destroy_wrapper ( int * req );' + '\n\n}\n\n' )
+        str.append ( f'void {script.file_stem}{script.decor_platform}python_destroy_wrapper ( int * req );' + '\n\n' )
 
-    str.append ( '#endif\n\n' )
+    str.append ( '}\n\n#endif\n\n' )
 
     return str.get();
 
@@ -208,6 +209,7 @@ def library_api ( script ):
     str.append ( '//  Y, and Z dimensions of a transform in the library.  <N> is the number of sizes defined;\n' )
     str.append ( '//  the last entry in the returned list has all dimensions equal 0.\n\n' )
 
+    str.append ( 'extern "C" {\n\n' )
     str.append ( f'fftx::point_t<3> * {script.file_stem}{script.decor_platform}QuerySizes ()' + '\n{\n' )
     str.append ( '    fftx::point_t<3> *wp = (fftx::point_t<3> *) ' )
     str.append ( f' malloc ( sizeof ( AllSizes3_{script.args.platform} ) );' + '\n' )
@@ -276,6 +278,8 @@ def library_api ( script ):
 
     str.append ( '    return;\n' )
     str.append ( '}\n\n' )
+
+    str.append ( '}\n\n' )              ## Close the opening 'extern "C"'
 
     return str.get();
 
