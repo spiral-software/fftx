@@ -44,9 +44,9 @@ if 1 = 1 then
     t := let ( symvar := var ( "sym", TPtr(TReal) ),
                TFCall (
                    Compose ( [
-                       MDPRDFT ( [dx, dy, dz], -1),
+                       IMDPRDFT ( [dx, dy, dz], 1),
                        RCDiag ( FDataOfs ( symvar, dx * dy * dzadj * 2, 0 ) ),
-                       IMDPRDFT ( [dx, dy, dz], 1 )
+                       MDPRDFT ( [dx, dy, dz], -1 )
                    ]),
                    rec ( fname := name, params := [symvar] )
                )
