@@ -34,6 +34,6 @@ module use /soft/modulefiles
 module load spack-pe-gcc
 module load cmake
 module load python
-module load PrgEnv-gnu
-export ONEAPI_DEVICE_SELECTOR=opencl:gpu
+module load oneapi
+
 ```
