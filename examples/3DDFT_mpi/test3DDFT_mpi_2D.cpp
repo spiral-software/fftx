@@ -14,9 +14,15 @@ int main(int argc, char* argv[]) {
   int commRank;
   int p;
 
+  MPI_Comm_size(MPI_COMM_WORLD, &p);
+  MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
+
   // ==== for timing, set by argument ====================
   if (argc != 9) {
-    printf("usage: %s <M> <N> <K> <batch> <grid dim> <embedded> <forward> <complex>\n", argv[0]);
+    if (commRank == 0) {
+      printf("usage: %s <M> <N> <K> <batch> <grid split> <embedded> <forward> <complex>\n", argv[0]);
+    }
+    MPI_Finalize();
     exit(-1);
   }
   int M = atoi(argv[1]);
@@ -28,9 +34,6 @@ int main(int argc, char* argv[]) {
   bool is_forward = 0 < atoi(argv[7]);
   bool is_complex = 0 < atoi(argv[8]);
   // -----------------------------------------------------
-
-  MPI_Comm_size(MPI_COMM_WORLD, &p);
-  MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
 
   //define grid
   int r = grid;
@@ -141,10 +144,10 @@ int main(int argc, char* argv[]) {
   if (commRank == 0) {
     cout << "Problem size    : " << M << " x " << N << " x " << K << endl;
     cout << "Batch size      : " << batch << endl;
-    cout << "Complex         : " << (is_complex ? "Yes" : "No") << endl;
+    cout << "Grid split      : " << r << " x " << c << endl;
     cout << "Embedded        : " << (is_embedded ? "Yes": "No") << endl;
     cout << "Direction       : " << (is_forward ? "Forward": "Inverse") << endl;
-    cout << "Grid size       : " << r << " x " << c << endl;
+    cout << "Complex         : " << (is_complex ? "Yes" : "No") << endl;
   }
 
   for (int t = 0; t < 3; t++) {

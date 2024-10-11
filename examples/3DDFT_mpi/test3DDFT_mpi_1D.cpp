@@ -316,9 +316,9 @@ int main(int argc, char* argv[]) {
     if (rank == 0) {
       cout << "Problem size: " << M << " x " << N << " x " << K << endl;
       cout << "Batch size  : " << batch << endl;
-      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
       cout << "Embedded    : " << (is_embedded ? "Yes" : "No") << endl;
       cout << "Direction   : " << (is_forward ? "Forward" : "Inverse") << endl;
+      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
       cout << "MPI Ranks   : " << p << endl;
       cout << "Times       : " << endl;
     }
