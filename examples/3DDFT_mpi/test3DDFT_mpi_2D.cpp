@@ -18,9 +18,9 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
 
   // ==== for timing, set by argument ====================
-  if (argc != 9) {
+  if (argc != 10) {
     if (commRank == 0) {
-      printf("usage: %s <M> <N> <K> <batch> <grid split> <embedded> <forward> <complex>\n", argv[0]);
+      printf("usage: %s <M> <N> <K> <batch> <split for M> <split for N> <embedded> <forward> <complex>\n", argv[0]);
     }
     MPI_Finalize();
     exit(-1);
@@ -29,15 +29,22 @@ int main(int argc, char* argv[]) {
   int N = atoi(argv[2]);
   int K = atoi(argv[3]);
   int batch = atoi(argv[4]);
-  int grid = atoi(argv[5]);
-  bool is_embedded = 0 < atoi(argv[6]);
-  bool is_forward = 0 < atoi(argv[7]);
-  bool is_complex = 0 < atoi(argv[8]);
+  int Msplit = atoi(argv[5]);
+  int Nsplit = atoi(argv[6]);
+  bool is_embedded = 0 < atoi(argv[7]);
+  bool is_forward = 0 < atoi(argv[8]);
+  bool is_complex = 0 < atoi(argv[9]);
   // -----------------------------------------------------
 
+  if (Msplit * Nsplit != p) {
+    printf("error: product of splits %d and %d is %d, but there are %d MPI ranks\n",
+           Msplit, Nsplit, Msplit*Nsplit, p);
+    MPI_Finalize();
+    exit(-1);
+  }
   //define grid
-  int r = grid;
-  int c = grid;
+  // int r = grid;
+  // int c = grid;
 
   // 3d fft sizes
   uint64_t Mi, Ni, Ki;
@@ -58,24 +65,23 @@ int main(int argc, char* argv[]) {
   double *fftx_in;
   complex<double> *fftx_out;
 
-
   //embedded requires dim Z to be padded to full size (Ko instead of Ki)
   if (is_complex) {
-    fftx_in = new double[Ko * Mi * Ni/p * batch * 2];
-    fftx_out = new complex<double>[Mo * No * Ko/p * batch];
+    fftx_in = new double[(Ko * Mi * Ni)/p * batch * 2];
+    fftx_out = new complex<double>[(Mo * No * Ko)/p * batch];
   } else {
-    fftx_in = new double[Ko * Mi * Ni/p * batch];
-    fftx_out = new complex<double>[Mo * No * Ko/p * batch];  //does this need to be padded further?
+    fftx_in = new double[(Ko * Mi * Ni)/p * batch];
+    fftx_out = new complex<double>[(Mo * No * Ko)/p * batch];  //does this need to be padded further?
   }
 
   //allocate buffers
-  DEVICE_ERROR_T err = DEVICE_MALLOC(&in_buffer, Ko*Mi*Ni/p * (is_complex ? sizeof(complex<double>): sizeof(double))  * batch);
+  DEVICE_ERROR_T err = DEVICE_MALLOC(&in_buffer, (Ko*Mi*Ni)/p * (is_complex ? sizeof(complex<double>): sizeof(double))  * batch);
   if (err != DEVICE_SUCCESS) {
     cout << "DEVICE_MALLOC failed\n" << endl;
     exit(-1);
   }
 
-  err = DEVICE_MALLOC(&out_buffer, Mo*No*Ko/p * sizeof(complex<double>) * batch);
+  err = DEVICE_MALLOC(&out_buffer, (Mo*No*Ko)/p * sizeof(complex<double>) * batch);
   if (err != DEVICE_SUCCESS) {
     cout << "DEVICE_MALLOC failed\n" << endl;
     exit(-1);
@@ -84,15 +90,15 @@ int main(int argc, char* argv[]) {
   // initialize data to random values in the range (-1, 1).
   // assume data is padded in one dim as input.
   uint64_t cmplx = is_complex ? 2 : 1;
-  for (uint64_t n = 0; n < Ni/r; n++) {
-    for (uint64_t m = 0; m < Mi/c; m++) {
+  for (uint64_t n = 0; n < Ni/Nsplit; n++) {
+    for (uint64_t m = 0; m < Mi/Msplit; m++) {
       for (uint64_t k = 0; k < Ko; k++) {
         for (uint64_t b = 0; b < batch; b++) {
           double *in = fftx_in +
-            n * (Mi/c) * Ko * batch * cmplx +
-            m          * Ko * batch * cmplx +
-            k               * batch * cmplx +
-            b                       * cmplx +
+            n * (Mi/Msplit) * Ko * batch * cmplx +
+            m               * Ko * batch * cmplx +
+            k                    * batch * cmplx +
+            b                            * cmplx +
             0
           ;
           in[0] = (
@@ -130,13 +136,13 @@ int main(int argc, char* argv[]) {
   }
   //end init
 
-  err = DEVICE_MEM_COPY( in_buffer, fftx_in, Ko*Mi*Ni/p *  (is_complex ? sizeof(complex<double>): sizeof(double)) * batch, MEM_COPY_HOST_TO_DEVICE );
+  err = DEVICE_MEM_COPY( in_buffer, fftx_in, (Ko*Mi*Ni)/p *  (is_complex ? sizeof(complex<double>): sizeof(double)) * batch, MEM_COPY_HOST_TO_DEVICE );
   if (err != DEVICE_SUCCESS) {
     cout << "DEVICE_MEM_COPY failed\n" << endl;
     exit(-1);
   }
 
-  fftx_plan  plan = fftx_plan_distributed(r, c, M, N, K, batch, is_embedded, is_complex);
+  fftx_plan  plan = fftx_plan_distributed(Msplit, Nsplit, M, N, K, batch, is_embedded, is_complex);
 
   DEVICE_SYNCHRONIZE();
   MPI_Barrier(MPI_COMM_WORLD);
@@ -144,7 +150,7 @@ int main(int argc, char* argv[]) {
   if (commRank == 0) {
     cout << "Problem size    : " << M << " x " << N << " x " << K << endl;
     cout << "Batch size      : " << batch << endl;
-    cout << "Grid split      : " << r << " x " << c << endl;
+    cout << "Grid split      : " << Msplit << " x " << Nsplit << " x 1 " << endl;
     cout << "Embedded        : " << (is_embedded ? "Yes": "No") << endl;
     cout << "Direction       : " << (is_forward ? "Forward": "Inverse") << endl;
     cout << "Complex         : " << (is_complex ? "Yes" : "No") << endl;
@@ -161,7 +167,7 @@ int main(int argc, char* argv[]) {
     // double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
-    DEVICE_MEM_COPY(fftx_out, out_buffer, (Mo*No*Ko/p) * sizeof(complex<double>)*batch, MEM_COPY_DEVICE_TO_HOST);
+    DEVICE_MEM_COPY(fftx_out, out_buffer, ((Mo*No*Ko)/p) * sizeof(complex<double>)*batch, MEM_COPY_DEVICE_TO_HOST);
     DEVICE_SYNCHRONIZE();
 
     if (commRank == 0) {
