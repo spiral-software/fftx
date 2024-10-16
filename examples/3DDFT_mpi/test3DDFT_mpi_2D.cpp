@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
   // ==== for timing, set by argument ====================
   if (argc != 10) {
     if (commRank == 0) {
-      printf("usage: %s <M> <N> <K> <batch> <split for M> <split for N> <embedded> <forward> <complex>\n", argv[0]);
+      printf("usage: %s <M> <N> <K> <batch> <grid rows> <grid columns> <embedded> <forward> <complex>\n", argv[0]);
     }
     MPI_Finalize();
     exit(-1);
@@ -29,16 +29,18 @@ int main(int argc, char* argv[]) {
   int N = atoi(argv[2]);
   int K = atoi(argv[3]);
   int batch = atoi(argv[4]);
-  int Msplit = atoi(argv[5]);
-  int Nsplit = atoi(argv[6]);
+  int r = atoi(argv[5]);
+  int c = atoi(argv[6]);
   bool is_embedded = 0 < atoi(argv[7]);
   bool is_forward = 0 < atoi(argv[8]);
   bool is_complex = 0 < atoi(argv[9]);
   // -----------------------------------------------------
 
-  if (Msplit * Nsplit != p) {
-    printf("error: product of splits %d and %d is %d, but there are %d MPI ranks\n",
-           Msplit, Nsplit, Msplit*Nsplit, p);
+  if (c * r != p) {
+    if (commRank == 0) {
+      printf("error: product of splits %d and %d is %d, but there are %d MPI ranks\n",
+             c, r, c*r, p);
+    }
     MPI_Finalize();
     exit(-1);
   }
@@ -90,12 +92,12 @@ int main(int argc, char* argv[]) {
   // initialize data to random values in the range (-1, 1).
   // assume data is padded in one dim as input.
   uint64_t cmplx = is_complex ? 2 : 1;
-  for (uint64_t n = 0; n < Ni/Nsplit; n++) {
-    for (uint64_t m = 0; m < Mi/Msplit; m++) {
+  for (uint64_t n = 0; n < Ni/r; n++) {
+    for (uint64_t m = 0; m < Mi/c; m++) {
       for (uint64_t k = 0; k < Ko; k++) {
         for (uint64_t b = 0; b < batch; b++) {
           double *in = fftx_in +
-            n * (Mi/Msplit) * Ko * batch * cmplx +
+            n * (Mi/c) * Ko * batch * cmplx +
             m               * Ko * batch * cmplx +
             k                    * batch * cmplx +
             b                            * cmplx +
@@ -142,7 +144,7 @@ int main(int argc, char* argv[]) {
     exit(-1);
   }
 
-  fftx_plan  plan = fftx_plan_distributed(Msplit, Nsplit, M, N, K, batch, is_embedded, is_complex);
+  fftx_plan  plan = fftx_plan_distributed(r, c, M, N, K, batch, is_embedded, is_complex);
 
   DEVICE_SYNCHRONIZE();
   MPI_Barrier(MPI_COMM_WORLD);
@@ -150,7 +152,8 @@ int main(int argc, char* argv[]) {
   if (commRank == 0) {
     cout << "Problem size    : " << M << " x " << N << " x " << K << endl;
     cout << "Batch size      : " << batch << endl;
-    cout << "Grid split      : " << Msplit << " x " << Nsplit << " x 1 " << endl;
+    cout << "Grid rows       : " << r << endl;
+    cout << "Grid columns    : " << c << endl;
     cout << "Embedded        : " << (is_embedded ? "Yes": "No") << endl;
     cout << "Direction       : " << (is_forward ? "Forward": "Inverse") << endl;
     cout << "Complex         : " << (is_complex ? "Yes" : "No") << endl;
