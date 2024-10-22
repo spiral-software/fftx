@@ -212,7 +212,7 @@ int main(int argc, char* argv[]) {
                   ((K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))) ?
                   0.0 :
                   inputRealSymmetric(i+1, j+1, l+1, M, N, K);
-                printf("DR in_array %3d %3d %3d%18.8f\n", i+1, j+1, l+1, v);
+                printf("DR in_array %3zu %3zu %3zu%18.8f\n", i+1, j+1, l+1, v);
                 // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
                 host_in[((l0*N + j) * M*e + i)*batch + b] = v;
               }
@@ -270,7 +270,7 @@ int main(int argc, char* argv[]) {
         // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
         int imin = rank * Mi0;
         int imax = rank * Mi0 + Mi0-1;
-        printf("C2R rank %d : input (%d:%d, %d:%d, %d:%d)\n",
+        printf("C2R rank %d : input (%d:%zu, %d:%d, %d:%zu)\n",
                rank,  0, Ki-1,  imin, imax,  0, N*e-1);
       }
     // END DEBUG_OUTPUT
@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
               { // CI == 2; c == 0 for real part, 1 for imaginary part.
                 double rval = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI];
                 double ival = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + 1];
-                printf("IMDPRDFT input array%4d%4d%4d%18.8f%18.8f\n",
+                printf("IMDPRDFT input array%4zu%4zu%4zu%18.8f%18.8f\n",
                        j, i, l, rval, ival);
               }
             // END DEBUG_OUTPUT
@@ -728,7 +728,7 @@ int main(int argc, char* argv[]) {
                         // BEGIN DEBUG_OUTPUT
                         if (DEBUG_OUTPUT)
                           {
-                            printf("batch=%d %d %d %d part=%d ref=%12.4e test=%12.4e\n",
+                            printf("batch=%zu %zu %zu %zu part=%zu ref=%12.4e test=%12.4e\n",
                                    b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
                           }
                         // END DEBUG_OUTPUT
@@ -758,7 +758,7 @@ int main(int argc, char* argv[]) {
                   // BEGIN DEBUG_OUTPUT
                   if (DEBUG_OUTPUT)
                     {
-                      printf("DR out_array%4d%4d%4d%18.8f%18.8f\n",
+                      printf("DR out_array%4zu%4zu%4zu%18.8f%18.8f\n",
                              i, j, k, htest_out[tst_idx], href_out[ref_idx]);
                     }
                   // END DEBUG_OUTPUT
