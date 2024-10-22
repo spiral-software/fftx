@@ -270,7 +270,7 @@ int main(int argc, char* argv[]) {
         // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
         int imin = rank * Mi0;
         int imax = rank * Mi0 + Mi0-1;
-        printf("C2R rank %d : input (%d:%d, %d:%d, %d:%d)\n",
+        printf("C2R rank %d : input (%d:%zu, %d:%d, %d:%zu)\n",
                rank,  0, Ki-1,  imin, imax,  0, N*e-1);
       }
     // END DEBUG_OUTPUT
