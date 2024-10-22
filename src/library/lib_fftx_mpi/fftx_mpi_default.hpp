@@ -14,7 +14,7 @@
 
 using namespace std;
 
-fftx_plan  fftx_plan_distributed_default(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
+fftx_plan  fftx_plan_distributed_default(MPI_Comm comm, int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 void fftx_execute_default(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy_default(fftx_plan plan);
 

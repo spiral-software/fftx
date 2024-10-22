@@ -324,7 +324,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+  fftx_plan plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
   for (int t = 0; t < trials; t++) {
 
     double start_time = MPI_Wtime();

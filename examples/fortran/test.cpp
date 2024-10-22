@@ -387,7 +387,7 @@ extern "C"
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_mpi_spiral.cpp
-    fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    fftx_plan plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
     return plan;
   }
 }
@@ -413,7 +413,7 @@ extern "C"
     int batch = 1;
     bool is_embedded = false;
     bool is_complex = true;
-    holder.plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    holder.plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
   }
   
   void fftx_execute_mddft_dist_shim(
@@ -422,10 +422,6 @@ extern "C"
                                     std::complex<double>* in_buffer
                                     )
   {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
     size_t in_pts = holder.plan->M * holder.plan->N * holder.plan->K *
       holder.plan->b / holder.plan->r;
     size_t in_bytes = in_pts * sizeof(std::complex<double>);
@@ -472,7 +468,7 @@ extern "C"
     int batch = 1;
     bool is_embedded = false;
     bool is_complex = true;
-    holder.plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    holder.plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
   }
   
   void fftx_execute_imddft_dist_shim(
@@ -481,10 +477,6 @@ extern "C"
                                      std::complex<double>* in_buffer
                                      )
   {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
     size_t in_pts = holder.plan->M * holder.plan->N * holder.plan->K *
       holder.plan->b / holder.plan->r;
     size_t in_bytes = in_pts * sizeof(std::complex<double>);
@@ -523,8 +515,6 @@ extern "C"
                                    int p, int M, int N, int K,
                                    int npts, int nptsTrunc)
   {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     holder.npts = npts;
     holder.nptsTrunc = nptsTrunc;
     DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * holder.npts);
@@ -536,7 +526,7 @@ extern "C"
     int batch = 1;
     bool is_embedded = false;
     bool is_complex = false;
-    holder.plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    holder.plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
   }
   
   void fftx_execute_mdprdft_dist_shim(
@@ -601,7 +591,7 @@ extern "C"
     int batch = 1;
     bool is_embedded = false;
     bool is_complex = false;
-    holder.plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    holder.plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
   }
   
   void fftx_execute_imdprdft_dist_shim(
@@ -610,10 +600,6 @@ extern "C"
                                        std::complex<double>* in_buffer
                                        )
   {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
     // N.B. reversal.
     // fftx::point_t<3> sizesF({holder.plan->K, holder.plan->N, holder.plan->M});
     // fftx::point_t<3> sizesFtrunc = truncatedComplexDimensions(sizesF);

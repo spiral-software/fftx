@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) {
     exit(-1);
   }
 
-  fftx_plan  plan = fftx_plan_distributed(r, c, M, N, K, batch, is_embedded, is_complex);
+  fftx_plan  plan = fftx_plan_distributed(MPI_COMM_WORLD, r, c, M, N, K, batch, is_embedded, is_complex);
 
   DEVICE_SYNCHRONIZE();
   MPI_Barrier(MPI_COMM_WORLD);

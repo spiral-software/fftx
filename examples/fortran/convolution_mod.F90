@@ -317,7 +317,7 @@ contains
     ! fftx_3D_mddft_dist is initialized by
     ! int(nx_fft, kind=4), int(ny_fft, kind=4), int(nz_fft, kind=4)
     ! which gets sent to
-    ! fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    ! fftx_plan_distributed_1d(comm, p, M, N, K, batch, is_embedded, is_complex);
     ! so M = nx_fft, N = ny_fft, K = nz_fft.
     ! X loops over 1:nx, Y loops over 1:ny, Z loops over 1:nz.
     ! Layout of input data is [(Z0), Z1, Y, X] where
@@ -474,7 +474,7 @@ contains
     ! fftx_3D_mdprdft_dist is initialized by
     ! int(nx_fft, kind=4), int(ny_fft, kind=4), int(nz_fft, kind=4)
     ! which gets sent to
-    ! fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+    ! fftx_plan_distributed_1d(comm, p, M, N, K, batch, is_embedded, is_complex);
     ! so M = nx_fft, N = ny_fft, K = nz_fft.
     ! X loops over 1:nx, Y loops over 1:ny, Z loops over 1:nz.
     ! Layout of input data is [(Z0), Z1, Y, X] where
