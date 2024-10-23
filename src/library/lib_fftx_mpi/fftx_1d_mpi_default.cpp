@@ -20,10 +20,11 @@ inline int ceil_div(int a, int b) {
 }
 
 fftx_plan fftx_plan_distributed_1d_default(
-  int p, int M, int N, int K,
+  MPI_Comm comm, int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex
 ) {
   fftx_plan plan   = (fftx_plan) malloc(sizeof(fftx_plan_t));
+  plan->all_comm = comm;
   plan->M = M;
   plan->N = N;
   plan->K = K;
@@ -183,7 +184,7 @@ void fftx_execute_1d_default(
   int direction
 ) {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_rank(plan->all_comm, &rank);
 
   if (direction == DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {

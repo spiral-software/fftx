@@ -45,10 +45,11 @@ BATCH1DPRDFTProblem bprdstg1;
 IBATCH1DPRDFTProblem ibprdstg1;
 
 
-fftx_plan fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
+fftx_plan fftx_plan_distributed_spiral(MPI_Comm comm, int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
 
   fftx_plan plan = (fftx_plan) malloc(sizeof(fftx_plan_t));
 
+  plan->all_comm = comm;
   plan->b = batch;
   plan->is_embed = is_embedded;
   plan->is_complex = is_complex;

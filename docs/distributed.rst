@@ -25,11 +25,11 @@ The design of the FFTX distributed API is similar to many other libraries, i.e. 
 
 .. code-block:: none
 
-    //1D processor distribution, p is the number of processors. The number of processor is given by p
-    fftx_plan  plan = fftx_plan_distributed(p, X, Y, Z, batch, embedded, complex);
+    //1D processor distribution. The number of processors is given by p, and comm is an MPI communicator, typically MPI_COMM_WORLD.
+    fftx_plan  plan = fftx_plan_distributed(comm, p, X, Y, Z, batch, embedded, complex);
 
-    //2D processor distribution. The p processors are organized into a r x c grid.
-    fftx_plan  plan = fftx_plan_distributed(r, c, X, Y, Z, batch, embedded, complex);
+    //2D processor distribution. The p processors are organized into a r x c grid, and comm is an MPI communicator, typically MPI_COMM_WORLD.
+    fftx_plan  plan = fftx_plan_distributed(comm, r, c, X, Y, Z, batch, embedded, complex);
 
     //device_out_buffers, and device_in_buffers are assumed to be GPU pointers.
     fftx_execute(plan, device_out_buffer, device_in_buffer, direction);

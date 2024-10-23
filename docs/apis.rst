@@ -69,6 +69,39 @@ FFTXProblem
    :members:
 ..   :allow-dot-graphs:
 
+.. _MDDFTProblem:
+
+MDDFTProblem
+------------
+
+.. doxygenclass:: MDDFTProblem
+..   :allow-dot-graphs:
+
+.. _IMDDFTProblem:
+
+IMDDFTProblem
+-------------
+
+.. doxygenclass:: IMDDFTProblem
+..   :allow-dot-graphs:
+
+.. _MDPRDFTProblem:
+
+MDPRDFTProblem
+--------------
+
+.. doxygenclass:: MDPRDFTProblem
+..   :allow-dot-graphs:
+
+.. _IMDPRDFTProblem:
+
+IMDPRDFTProblem
+---------------
+
+.. doxygenclass:: IMDPRDFTProblem
+..   :allow-dot-graphs:
+
+
 .. AVOID .. doxygengroup:: docTitleCmdGroup
 .. AVOID    :project: FFTX
 .. AVOID .. doxygenpage:: dotgraphs because "dotgraphs" can't be found.

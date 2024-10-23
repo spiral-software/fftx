@@ -36,13 +36,13 @@ void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
 #endif
 
   int world_rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+  MPI_Comm_rank(plan->all_comm, &world_rank);
 
   int col_color = world_rank % plan->r;
   int row_color = world_rank / plan->r;
 
-  MPI_Comm_split(MPI_COMM_WORLD, row_color, world_rank, &(plan->row_comm));
-  MPI_Comm_split(MPI_COMM_WORLD, col_color, world_rank, &(plan->col_comm));
+  MPI_Comm_split(plan->all_comm, row_color, world_rank, &(plan->row_comm));
+  MPI_Comm_split(plan->all_comm, col_color, world_rank, &(plan->col_comm));
 
   size_t kDim = K;
   if (!(plan->is_complex))
@@ -80,18 +80,18 @@ void destroy_2d_comms(fftx_plan plan) {
   }
 }
 
-fftx_plan fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
+fftx_plan fftx_plan_distributed(MPI_Comm comm, int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
   fftx_plan plan;
 #if FORCE_VENDOR_LIB
   {
 #else
    if(is_complex || (!is_complex && batch == 1)) {
-    plan = fftx_plan_distributed_spiral(r, c, M, N, K, batch, is_embedded, is_complex);
-    plan->use_fftx = true;
+     plan = fftx_plan_distributed_spiral(comm, r, c, M, N, K, batch, is_embedded, is_complex);
+     plan->use_fftx = true;
   } else {
     std::cout << "configuration not supported, using vendor backend" << std::endl;
 #endif
-    plan = fftx_plan_distributed_default(r, c, M, N, K, batch, is_embedded, is_complex);
+    plan = fftx_plan_distributed_default(comm, r, c, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }
   return plan;
@@ -252,7 +252,7 @@ void unpack_embed(fftx_plan plan, complex<double> *dst, complex<double> *src, in
 
 void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded) {
   // int rank = -1;
-  // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // MPI_Comm_rank(plan->all_comm, &rank);
   // double start, stop, max_time;
   // if (rank == 0) { printf("%f,", -2.0); }
 
@@ -282,19 +282,19 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           plan->row_comm // TODO: Make sure this is the correct communicator
         ); // assume N dim is initially distributed along col comm.
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
         // start = MPI_Wtime();
         pack_embed(plan, Y, plan->recv_buffer, plan->b * plan->shape[0], plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1), plan->shape[1], is_embedded);
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
         // start = MPI_Wtime();
 #else
         // start = MPI_Wtime();
         DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_HOST);
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 
         // start = MPI_Wtime();
@@ -306,13 +306,13 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           plan->row_comm // TODO: Make sure this is the correct communicator
         ); // assume N dim is initially distributed along col comm.
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 
         // start = MPI_Wtime();
         pack_embed(plan, Y,                 X, plan->b * plan->shape[0], plan->shape[2] * plan->shape[4] * (is_embedded ? 2 : 1), plan->shape[1], is_embedded);
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 #endif
       } // end FFTX_MPI_EMBED_1
@@ -342,19 +342,19 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           plan->col_comm // TODO: make sure this is the right communicator to support non-square grid
         );
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 
         // start = MPI_Wtime();
         pack_embed(plan, Y, plan->recv_buffer, plan->b * plan->shape[2], plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[0] * (is_embedded ? 2 : 1), plan->shape[3], is_embedded);
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 #else
         // start = MPI_Wtime();
         DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(complex<double>) * plan->b, MEM_COPY_DEVICE_TO_HOST);
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 
         // start = MPI_Wtime();
@@ -366,13 +366,13 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           plan->col_comm // TODO: make sure this is the right communicator to support non-square grid
         );
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 
         // start = MPI_Wtime();
         pack_embed(plan, Y, X, plan->b * plan->shape[2], plan->shape[4] * (is_embedded ? 2 : 1) * plan->shape[0] * (is_embedded ? 2 : 1), plan->shape[3], is_embedded);
         // stop = MPI_Wtime();
-        // max_time = max_diff(start, stop, MPI_COMM_WORLD);
+        // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
 #endif
       } // end FFTX_MPI_EMBED_2

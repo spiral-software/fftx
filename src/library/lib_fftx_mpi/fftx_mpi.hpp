@@ -40,7 +40,7 @@ struct fftx_plan_t {
   bool is_forward;
   bool is_complex;
   bool use_fftx;
-  MPI_Comm row_comm, col_comm;
+  MPI_Comm all_comm, row_comm, col_comm;
   size_t shape[6]; // used for buffers for A2A.
   int M, N, K; // used for FFT sizes.
   DEVICE_FFT_HANDLE stg3, stg2, stg1;
@@ -52,7 +52,7 @@ typedef fftx_plan_t* fftx_plan;
 void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K);
 void destroy_2d_comms(fftx_plan plan);
 
-fftx_plan  fftx_plan_distributed(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
+fftx_plan  fftx_plan_distributed(MPI_Comm comm, int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 void fftx_execute(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy(fftx_plan plan);
 
