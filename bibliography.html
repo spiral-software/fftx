@@ -1,0 +1,377 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Further Reading &mdash; FFTX  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="FFTX Development Team" href="team.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FFTX
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation with C++ interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html">FFTX Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="apis.html">C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python.html">Python Package for FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributed.html">FFTX Distributed 3D FFT Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external.html">Demo FFTX External Application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="collaborations.html">Collaborations with other projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contributing to FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="team.html">FFTX Development Team</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Further Reading</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#fftx-and-spectralpack">FFTX and SpectralPACK</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#spiral">SPIRAL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ffts">FFTs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#distributed-and-multicore-ffts">Distributed and Multicore FFTs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interesting-target-hardware">Interesting Target Hardware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linear-algebra-libraries">Linear Algebra Libraries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#applications">Applications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#d-ffts-and-plane-wave-codes">3D FFTs and Plane Wave Codes</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FFTX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Further Reading</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/bibliography.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="further-reading">
+<h1>Further Reading<a class="headerlink" href="#further-reading" title="Link to this heading"></a></h1>
+<section id="fftx-and-spectralpack">
+<h2>FFTX and SpectralPACK<a class="headerlink" href="#fftx-and-spectralpack" title="Link to this heading"></a></h2>
+<blockquote id="fftxpfft18">
+<div><div class="line-block">
+<div class="line">1. Franz Franchetti, Daniele G. Spampinato, Anuva Kulkarni, Doru Thom Popovici, Tze Meng Low, Michael Franusich, Andrew Canning, Peter McCorquodale, Brian Van Straalen and Phillip Colella,</div>
+<div class="line">“<strong>FFTX and SpectralPack: A First Look</strong>”,</div>
+<div class="line"><em>IEEE International Conference on High Performance Computing, Data, and Analytics</em>,</div>
+<div class="line">Bengaluru, India (2018), pp. 18–27, doi: 10.1109/HiPCW.2018.8634111.</div>
+<div class="line"><a class="reference external" href="https://www.spiral.net/doc/papers/hipc_2018.pdf">[ PDF ]</a> <a class="reference external" href="https://www.spiral.net/doc/slides/fftx-pfft2018.pdf">[ Slides ]</a> <a class="reference external" href="https://hipc.org/pfft/">[ Conference ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">2. Franz Franchetti,</div>
+<div class="line">“<strong>SPIRAL, FFTX, and the path to SpectralPACK</strong>”,</div>
+<div class="line">talk given in the <a class="reference external" href="http://www.icts.nagoya-u.ac.jp/ja/exhibition/sc/2018/">Nagoya University Booth</a> at Supercomputing 2018, Dallas, TX.</div>
+<div class="line"><a class="reference external" href="https://www.spiral.net/doc/slides/sc2018nagoya.pdf">[ Slides ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">3. Franz Franchetti,</div>
+<div class="line">“<strong>FFTX and SpectralPack: A First Look</strong>”,</div>
+<div class="line"><a class="reference external" href="https://www.siam.org/conferences/CM/Main/cse19">SIAM Conference on Computational Science and Engineering</a>, Spokane, WA (2018).</div>
+<div class="line"><a class="reference external" href="https://www.spiral.net/doc/slides/cse2019.pdf">[ Slides ]</a></div>
+</div>
+</div></blockquote>
+</section>
+<section id="spiral">
+<h2>SPIRAL<a class="headerlink" href="#spiral" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. Franz Franchetti, Tze Meng Low, Doru Thom Popovici, Richard M. Veras, Member, Daniele G. Spampinato, Jeremy R. Johnson, Markus Püschel, James C. Hoe and José M. F. Moura,</div>
+<div class="line">“<strong>SPIRAL: Extreme Performance Portability</strong>”,</div>
+<div class="line"><em>Proceedings of the IEEE, Special Issue on From High Level Specifications to High Performance Code</em> (2018).</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/08510983_Spiral_IEEE_Final.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">2. Markus Püschel, Franz Franchetti and Yevgen Voronenko,</div>
+<div class="line">“<strong>Spiral</strong>”,</div>
+<div class="line"><em>Encyclopedia of Parallel Computing</em> (2011), pp. 1920–1933.</div>
+<div class="line"><a class="reference external" href="https://users.ece.cmu.edu/~franzf/papers/spiral-enc11.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">3. Markus Püschel, José M. F. Moura, Jeremy R. Johnson, David A. Padua, Manuela M. Veloso, Bryan Singer, Jianxin Xiong, Franz Franchetti, Aca Gacic, Yevgen Voronenko, Kang Chen, Robert W. Johnson and Nicholas Rizzolo,</div>
+<div class="line">“<strong>SPIRAL: Code Generation for DSP Transforms</strong>”,</div>
+<div class="line"><em>Proceedings of the IEEE</em>, <strong>93</strong> (2): 232–275, (2005).</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/si-spiral.pdf">[ PDF ]</a></div>
+</div>
+</div></blockquote>
+</section>
+<section id="ffts">
+<h2>FFTs<a class="headerlink" href="#ffts" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. Franz Franchetti, Markus Püschel,</div>
+<div class="line">“<strong>Fast Fourier Transform</strong>”,</div>
+<div class="line"><em>Encyclopedia of Parallel Computing 2011</em>, pp. 658–671.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/fft-enc11.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">2. F. Franchetti and M. Püschel,</div>
+<div class="line">“<strong>Generating High-Performance Pruned FFT Implementations</strong>”,</div>
+<div class="line"><em>Proceedings of International Conference on Acoustics, Speech, and Signal Processing (ICASSP)</em>, 2009, Taipei, Taiwan.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/icassp09.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">3. F. Franchetti, Y. Voronenko, S. Chellappa, J. M. F. Moura and M. Püschel,</div>
+<div class="line">“<strong>Discrete Fourier Transform on Multicores: Algorithms and Automatic Implementation</strong>”,</div>
+<div class="line"><em>IEEE Signal Processing Magazine, special issue on Signal Processing on Platforms with Multiple Cores</em>, 2009.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/spmag09.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">4. Yevgen Voronenko and Markus Püschel,</div>
+<div class="line">“<strong>Algebraic Signal Processing Theory: Cooley-Tukey Type Algorithms for Real DFTs</strong>”,</div>
+<div class="line"><em>IEEE Transactions on Signal Processing</em>, <strong>57</strong> (1): 205–222 (2009).</div>
+<div class="line"><a class="reference external" href="http://spiral.ece.cmu.edu:8080/pub-spiral/pubfile/jrft_131.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">5. Yevgen Voronenko, Frédéric de Mesmay and Markus Püschel,</div>
+<div class="line">“<strong>Computer Generation of General Size Linear Transform Libraries</strong>”,</div>
+<div class="line"><em>Proc. International Symposium on Code Generation and Optimization (CGO)</em>, pp. 102–113 (2009).</div>
+<div class="line"><a class="reference external" href="http://spiral.ece.cmu.edu:8080/pub-spiral/abstract.jsp?id=129">[ PDF ]</a></div>
+<div class="line"><br /></div>
+</div>
+</div></blockquote>
+</section>
+<section id="distributed-and-multicore-ffts">
+<h2>Distributed and Multicore FFTs<a class="headerlink" href="#distributed-and-multicore-ffts" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. D. T. Popovici, T. M. Low and F. Franchetti,</div>
+<div class="line">“<strong>Large Bandwidth-Efficient FFTs on Multicore and Multi-Socket Systems</strong>”,</div>
+<div class="line"><em>IEEE International Parallel &amp; Distributed Processing Symposium (IPDPS)</em>, 2018, Vancouver, Canada.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/ipdps2018_dtp.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">2. A. Bonelli, F. Franchetti, J. Lorenz, M. Püschel and C. W. Ueberhuber,</div>
+<div class="line">“<strong>Automatic Performance Optimization of the Discrete Fourier Transform on Distributed Memory Computers</strong>”,</div>
+<div class="line"><em>Proceedings of ISPA 06. Lecture Notes in Computer Science</em>, Volume 4330, pages 818-–832 (2006).</div>
+<div class="line">Best Paper Award.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/ispa06.pdf">[ PDF ]</a></div>
+</div>
+</div></blockquote>
+</section>
+<section id="interesting-target-hardware">
+<h2>Interesting Target Hardware<a class="headerlink" href="#interesting-target-hardware" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. Q. Guo, T. M. Low, N. Alachiotis, B. Akin, L. Pileggi, J. C. Hoe and F. Franchetti,</div>
+<div class="line">“<strong>Enabling Portable Energy Efficiency with Memory Accelerated Library</strong>”,</div>
+<div class="line"><em>48th IEEE/ACM International Symposium on Microarchitecture (MICRO-48)</em>, 2015, Waikiki, HI.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/micro2015.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">2. Berkin Akin, Franz Franchetti and James C. Hoe,</div>
+<div class="line">“<strong>Understanding the Design Space of DRAM-optimized Hardware FFT Accelerators</strong>”,</div>
+<div class="line"><em>Proc. IEEE International Conference on Application-Specific Systems, Architectures and Processors (ASAP)</em>, 2014, Zurich, Switzerland, pp. 248–255.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/asap14.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">3. P. A. Milder, F. Franchetti, J. C. Hoe and M. Püschel,</div>
+<div class="line">“<strong>Computer Generation of Hardware for Linear Digital Signal Processing Transforms</strong>”,</div>
+<div class="line"><em>ACM Transactions on Design Automation of Electronic Systems</em>, <strong>17</strong> (2), Article 15 (2012).</div>
+<div class="line">ACM TODAES Best Paper Award 2014 .</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/12todaes_161.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">4. Franz Franchetti, Yevgen Voronenko and G. Almasi,</div>
+<div class="line">“<strong>Automatic Generation of the HPC Challenges Global FFT Benchmark for BlueGene/P</strong>”,</div>
+<div class="line"><em>Proc. High Performance Computing for Computational Science (VECPAR)</em>, 2012, Kobe, Japan.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/AGofHPC.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">S. Chellappa, F. Franchetti and M. Püschel,</div>
+<div class="line">“<strong>Computer Generation of Fast Fourier Transforms for the Cell Broadband Engine</strong>”,</div>
+<div class="line"><em>Proceedings of the 23rd International Conference on Supercomputing (ICS)</em>, 2009, Yorktown Heights, NY.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/ics09.pdf">[ PDF ]</a></div>
+</div>
+</div></blockquote>
+</section>
+<section id="linear-algebra-libraries">
+<h2>Linear Algebra Libraries<a class="headerlink" href="#linear-algebra-libraries" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. Daniele G. Spampinato, Diego Fabregat-Traver, Paolo Bientinesi and Markus Püschel,</div>
+<div class="line">“<strong>Program Generation for Small-Scale Linear Algebra Applications</strong>”,</div>
+<div class="line"><em>Proc. International Symposium on Code Generation and Optimization (CGO)</em>, 2018, Vienna, Austria, pp. 327–339.</div>
+<div class="line"><a class="reference external" href="http://spiral.ece.cmu.edu:8080/pub-spiral/abstract.jsp?id=293">[ PDF ]</a></div>
+<div class="line"><br /></div>
+</div>
+<div class="line-block">
+<div class="line">2. Daniele G. Spampinato and Markus Püschel,</div>
+<div class="line">“<strong>A Basic Linear Algebra Compiler for Structured Matrices</strong>”,</div>
+<div class="line"><em>Proc. International Symposium on Code Generation and Optimization (CGO)</em>, 2016, Edinburgh, Scotland, pp. 117–127.</div>
+<div class="line"><a class="reference external" href="http://spiral.ece.cmu.edu:8080/pub-spiral/abstract.jsp?id=248">[ PDF ]</a></div>
+<div class="line"><br /></div>
+</div>
+<div class="line-block">
+<div class="line">3. Daniele G. Spampinato and Markus Püschel,</div>
+<div class="line">“<strong>A Basic Linear Algebra Compiler</strong>”,</div>
+<div class="line"><em>Proc. International Symposium on Code Generation and Optimization (CGO)</em>, 2014, Orlando, FL, pp. 23–32.</div>
+<div class="line"><a class="reference external" href="http://spiral.ece.cmu.edu:8080/pub-spiral/abstract.jsp?id=173">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">4. Frédéric de Mesmay, Franz Franchetti, Yevgen Voronenko and Markus Püschel</div>
+<div class="line">“<strong>Automatic Generation of Multithreaded Vectorized Adaptive Libraries for Matrix Multiplication</strong>”,</div>
+<div class="line"><em>Proc. International Workshop on Parallel Matrix Algorithms and Applications (PMAA)</em>, 2008, Zurich, Switzerland.</div>
+<div class="line"><a class="reference external" href="http://spiral.ece.cmu.edu:8080/pub-spiral/abstract.jsp?id=242">[ Ref ]</a></div>
+</div>
+</div></blockquote>
+</section>
+<section id="applications">
+<h2>Applications<a class="headerlink" href="#applications" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. Thom Popovici,</div>
+<div class="line">“<strong>An Approach to Specifying and Automatically Optimizing Fourier Transform Based Operations</strong>”,</div>
+<div class="line">PhD. thesis, Electrical and Computer Engineering, Carnegie Mellon University, 2018.</div>
+<div class="line"><a class="reference external" href="https://www.spiral.net/doc/papers/PopoviciThesis.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">2. A. Kulkarni, F. Franchetti and J. Kovacevic,</div>
+<div class="line">“<strong>Algorithm Design for Large Scale Parallel FFT-Based Simulations on Heterogeneous Platforms</strong>”,</div>
+<div class="line"><em>IEEE High Performance Extreme Computing Conference (HPEC)</em>, 2018, Waltham, MA.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/hpec_2018_ak.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">3. Tze-Meng Low, Qi Guo and Franz Franchetti,</div>
+<div class="line">“<strong>Optimizing Space Time Adaptive Processing Through Accelerating Memory-Bounded Operations</strong>”,</div>
+<div class="line"><em>Proc. High Performance Extreme Computing (HPEC)</em>, 2015, Waltham, MA.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/hpec2015.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">4. D. A. Popovici, F. Russell, K. Wilkinson, C-K. Skylaris, P. H. J. Kelly and F. Franchetti,</div>
+<div class="line">“<strong>Generating Optimized Fourier Interpolation Routines for Density Functional Theory Using SPIRAL</strong>”,</div>
+<div class="line"><em>Proceedings of the 29th IEEE International Parallel &amp; Distributed Processing Symposium (IPDPS)</em>, 2015, Hyderabad, India.</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/ipdps15.pdf">[ PDF ]</a></div>
+</div>
+<div class="line-block">
+<div class="line">5. F. Gygi, E. W. Draeger, M. Schulz, B. R. de Supinski, J. A. Gunnels, V. Austel, J. C. Sexton, F. Franchetti, S. Kral, C. W. Ueberhuber and J. Lorenz,</div>
+<div class="line">“<strong>Large-Scale Electronic Structure Calculations of High-Z Metals on the BlueGene/L Platform</strong>”,</div>
+<div class="line"><em>Proceedings of the ACM/IEEE conference on Supercomputing</em>, 2006, Tampa, FL.</div>
+<div class="line"><a class="reference external" href="https://awards.acm.org/bell/award-recipients">Gordon Bell Prize Winner</a> 2006 (Peak Performance Award).</div>
+<div class="line"><a class="reference external" href="http://users.ece.cmu.edu/~franzf/papers/sc06qbox.pdf">[ PDF ]</a></div>
+</div>
+</div></blockquote>
+</section>
+<section id="d-ffts-and-plane-wave-codes">
+<h2>3D FFTs and Plane Wave Codes<a class="headerlink" href="#d-ffts-and-plane-wave-codes" title="Link to this heading"></a></h2>
+<blockquote>
+<div><div class="line-block">
+<div class="line">1. A Canning, J Shalf, NJ Wright, S Anderson and M Gajbe,</div>
+<div class="line">“<strong>A Hybrid MPI/OpenMP 3D FFT for Plane Wave First-Principles Materials Science Codes</strong>”,</div>
+<div class="line"><em>Proceedings of the International Conference on Scientific Computing (CSC)</em>, 2012, Shanghai, China, p. 1.</div>
+</div>
+<div class="line-block">
+<div class="line">2. A Canning, J Shalf, LW Wang, H Wasserman and M Gajbe,</div>
+<div class="line">“<strong>A Comparison of Different Communication Structures for Scalable Parallel Three Dimensional FFTs in First Principles Codes</strong>”,</div>
+<div class="line">in Chapman, B., Desprez, F., Joubert, GR, et al.(eds.), <em>Proceed. ParCo 09</em>, 2009, Lyon, France, pp. 107–116.</div>
+</div>
+<div class="line-block">
+<div class="line">3. M Gajbe, A Canning, LW Wang, J Shalf, H Wasserman and R Vuduc,</div>
+<div class="line">“<strong>Auto-Tuning Distributed-Memory 3-Dimensional Fast Fourier Transforms on the Cray XT4</strong>”,</div>
+<div class="line"><em>Proc. Cray User’s Group (CUG) Meeting</em>, 2009, Atlanta, GA.</div>
+</div>
+<div class="line-block">
+<div class="line">4. A Canning,</div>
+<div class="line">“<strong>Scalable Parallel 3D FFTs for Electronic Structure Codes</strong>”,</div>
+<div class="line"><em>International Conference on High Performance Computing for Computational Science</em>, pp. 280–286, Springer, 2008.</div>
+</div>
+<div class="line-block">
+<div class="line">5. M Del Ben, H Felipe, A Canning, N Wichmann, K Raman and R Sasanka,</div>
+<div class="line">“<strong>Large-Scale GW Calculations on Pre-Exascale HPC Systems</strong>”,</div>
+<div class="line"><em>Computer Physics Communications</em>, <strong>235</strong>:187–195 (2018).</div>
+</div>
+<div class="line-block">
+<div class="line">6. L Oliker, A Canning, J Carter, C Iancu, M Lijewski, S Kamil and J Shalf,</div>
+<div class="line">“<strong>Scientific Application Performance on Candidate Petascale Platforms</strong>”,</div>
+<div class="line"><em>Proceedings of the 21st IEEE International Parallel &amp; Distributed Processing Symposium (IPDPS)</em>, 2007. Long Beach, CA.</div>
+</div>
+<div class="line-block">
+<div class="line">7. A Canning and D Raczkowski,</div>
+<div class="line">“<strong>Scaling First-Principles Plane Wave Codes to Thousands of Processors</strong>”,</div>
+<div class="line"><em>Computer Physics Communications</em>, <strong>169</strong> (1–3):449–453 (2005).</div>
+</div>
+<div class="line-block">
+<div class="line">8. A Canning, LW Wang, A Williamson and A Zunger,</div>
+<div class="line">“<strong>Parallel Empirical Pseudopotential Electronic Structure Calculations for Million Atom Systems</strong>”,</div>
+<div class="line"><em>Journal of Computational Physics</em>, <strong>160</strong> (1):29–41 (2000).</div>
+</div>
+</div></blockquote>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="team.html" class="btn btn-neutral float-left" title="FFTX Development Team" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, FFTX Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

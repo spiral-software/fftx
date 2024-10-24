@@ -1,0 +1,231 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction &mdash; FFTX  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation with C++ interface" href="install.html" />
+    <link rel="prev" title="FFTX documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FFTX
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#motivation">Motivation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#concept">Concept</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#license">License</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#citation">Citation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#acknowledgments">Acknowledgments</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation with C++ interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html">FFTX Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="apis.html">C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python.html">Python Package for FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributed.html">FFTX Distributed 3D FFT Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external.html">Demo FFTX External Application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="collaborations.html">Collaborations with other projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contributing to FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="team.html">FFTX Development Team</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Further Reading</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FFTX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Introduction</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/introduction.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h1>
+<p>FFTX is the exascale follow-on to the <a class="reference external" href="https://fftw.org">FFTW</a>
+open-source package for executing the discrete Fast Fourier
+Transform, as well as higher-level operations composed of FFTs
+and linear operators.
+It is based on <a class="reference external" href="https://www.spiral.net">SPIRAL</a>,
+a build-time code generator that produces
+high-performance kernels targeted to specific uses and platform
+environments.</p>
+<p>FFTX is being developed as a cooperative effort between Lawrence
+Berkeley National Laboratory, Carnegie Mellon University, and
+SpiralGen, Inc.</p>
+<section id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Link to this heading"></a></h2>
+<p>The workhorse FFT, used heavily across a wide spectrum of large
+scientific applications, has typically been provided by vendor
+libraries and a few open source projects, primarily FFTW.
+As computing
+platforms have quickly evolved into ever larger and more complex
+heterogeneous composites of new types of processors with new
+instruction sets and deep layers of parallelism, it has been
+increasingly difficult to keep the libraries in sync with the rapid
+progress, and FFTW is no longer under active development.  That leaves
+a long list of still-relevant legacy code unable to take advantage of
+the scale and speed of the new machines using their existing methods,
+but FFTX provides a path for moving this code into exascale and
+beyond.</p>
+<p>FFTs are not especially useful by themselves,
+but they show their real value in
+the context of larger algorithms that have a typical sequence of:</p>
+<ol class="arabic simple">
+<li><p>gather a bunch of data</p></li>
+<li><p>transform it with FFTs</p></li>
+<li><p>do something to the transformed data</p></li>
+<li><p>transform it back with inverse FFTs</p></li>
+<li><p>pass on the interesting parts of the results</p></li>
+</ol>
+<p>Using library routines for the FFTs still leaves a lot of complicated
+platform-sensitive hand-written code to glue it all together.
+Like the FFT libraries, reworking this non-trivial algorithm-specific
+code for a new high-performance system’s architecture is a task
+approaching the edge of possible.  A key goal of FFTX’s design is to
+provide an API for specifying entire FFT-using kernels as single
+hardware-independent entities, thus opening an avenue for tremendous
+performance enhancements while freeing the scientific application
+writer from the grungy hardware details.</p>
+</section>
+<section id="concept">
+<h2>Concept<a class="headerlink" href="#concept" title="Link to this heading"></a></h2>
+<p>From a casual look at its <a class="reference internal" href="apis.html#fftx-apis"><span class="std std-ref">API</span></a>, FFTX appears to be a
+pre-built library, but the heart of FFTX is a build-time code
+generator, <a class="reference external" href="http://spiral.net">SPIRAL</a>, that produces very high
+performance kernels targeted to their specific uses and platform
+environments.
+Coupled to the platform-aware code generator is a sophisticated front
+end that interprets the details of the algorithms from the FFTX API,
+which it treats as a DSL for algorithm specification.</p>
+<p>As part of the build process, the application is compiled and run in
+<em>observe</em> mode, when FFTX follows the execution path through calls
+into the FFTX API while implementing the calls with simple unoptimized
+library code for correctness checks.  Once the use details are
+collected, they are passed on to SPIRAL, which generates the
+high-performance kernels for linking into the production version of
+the code.  These two steps can be seamless parts of build requiring no
+extra interaction.</p>
+</section>
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Link to this heading"></a></h2>
+<p>FFTX is a fully open-source project publicly available under a
+BSD-style license.  Its main tool chain component SPIRAL, along with
+its companion project <a class="reference internal" href="bibliography.html#fftxpfft18"><span class="std std-ref">SpectralPACK</span></a>, are both fully
+open source with similar “no-strings” licenses.  This means you are
+free to use FFTX for whatever you like, be it academic, commercial,
+creating forks or derivatives, as long as you copy the license
+statement if you redistribute it.</p>
+<p>Although not required by the FFTX license, if you can, please cite
+FFTX when using it in your work and also consider
+<a class="reference internal" href="contribute.html#contribute"><span class="std std-ref">contributing</span></a>
+your changes back to the main FFTX project.</p>
+</section>
+<section id="citation">
+<h2>Citation<a class="headerlink" href="#citation" title="Link to this heading"></a></h2>
+<p>To cite FFTX in publications use:</p>
+<blockquote>
+<div><p>Franz Franchetti, Daniele G. Spampinato, Anuva Kulkarni,
+Doru Thom Popovici, Tze Meng Low,
+Michael Franusich, Andrew Canning, Peter McCorquodale,
+Brian Van Straalen, and Phillip Colella,
+“<strong>FFTX and SpectralPack: A First Look</strong>”,
+<em>IEEE International Conference on High Performance Computing,
+Data, and Analytics</em>,
+Bengaluru, India (2018), pp. 18–27,
+doi: 10.1109/HiPCW.2018.8634111.</p>
+</div></blockquote>
+</section>
+<section id="acknowledgments">
+<h2>Acknowledgments<a class="headerlink" href="#acknowledgments" title="Link to this heading"></a></h2>
+<p>This project was supported by the
+<a class="reference external" href="https://www.exascaleproject.org/">Exascale Computing Project</a>
+(17-SC-20-SC), a joint project of the U.S. Department of Energy’s
+Office of Science and National Nuclear Security Administration,
+responsible for delivering a capable exascale ecosystem, including
+software, applications, and hardware technology, to support the
+nation’s exascale computing imperative.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="FFTX documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="install.html" class="btn btn-neutral float-right" title="Installation with C++ interface" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, FFTX Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

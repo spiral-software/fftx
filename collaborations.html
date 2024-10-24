@@ -1,0 +1,243 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collaborations with other projects &mdash; FFTX  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contributing to FFTX" href="contribute.html" />
+    <link rel="prev" title="Demo FFTX External Application" href="external.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FFTX
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation with C++ interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="README.html">FFTX Project</a></li>
+<li class="toctree-l1"><a class="reference internal" href="apis.html">C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python.html">Python Package for FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributed.html">FFTX Distributed 3D FFT Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external.html">Demo FFTX External Application</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Collaborations with other projects</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#spinifel-single-particle-imaging">Spinifel single-particle imaging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plane-wave-distributed-fft">Plane Wave Distributed FFT</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contributing to FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="team.html">FFTX Development Team</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Further Reading</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FFTX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Collaborations with other projects</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/collaborations.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="collaborations-with-other-projects">
+<h1>Collaborations with other projects<a class="headerlink" href="#collaborations-with-other-projects" title="Link to this heading"></a></h1>
+<p>This page lists collaborations with other projects
+to use FFTX for algorithm kernels.</p>
+<section id="spinifel-single-particle-imaging">
+<h2>Spinifel single-particle imaging<a class="headerlink" href="#spinifel-single-particle-imaging" title="Link to this heading"></a></h2>
+<p><a class="reference external" href="https://gitlab.osti.gov/mtip/spinifel">Spinifel</a>
+is an application that recovers the density distribution of
+molecules from X-ray diffraction images.
+It is being developed at Lawrence Berkeley National Laboratory, SLAC
+National Accelerator Laboratory, and Los Alamos National Laboratory.</p>
+<p>Spinifel is written in Python and depends on the NumPy and CuPy libraries.
+Two kernels within Spinifel make heavy use of FFTs:
+<em>free-space convolution</em> and <em>phasing</em>.</p>
+<p>The <a class="reference internal" href="python.html#python-for-fftx"><span class="std std-ref">Python Package for FFTX</span></a>
+includes a module, <code class="docutils literal notranslate"><span class="pre">convo</span></code>, with interfaces to functions
+performing these two operations.</p>
+<ul>
+<li><p>The <strong>free-space convolution</strong> kernel
+has two 3D input arrays:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ugrid</span></code>, of dimensions <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">F_ugrid_conv_</span></code>, of dimensions <code class="docutils literal notranslate"><span class="pre">2M</span> <span class="pre">x</span> <span class="pre">2M</span> <span class="pre">x</span> <span class="pre">2M</span></code>.</p></li>
+</ul>
+<p>The original Python code for this kernel is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ugrid_ups</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">M</span><span class="p">,)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">uvect</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">ugrid_ups</span><span class="p">[:</span><span class="n">M</span><span class="p">,</span> <span class="p">:</span><span class="n">M</span><span class="p">,</span> <span class="p">:</span><span class="n">M</span><span class="p">]</span> <span class="o">=</span> <span class="n">ugrid</span>
+<span class="n">F_ugrid_ups</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftn</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">ugrid_ups</span><span class="p">))</span>
+<span class="n">F_ugrid_conv_out_ups</span> <span class="o">=</span> <span class="n">F_ugrid_ups</span> <span class="o">*</span> <span class="n">F_ugrid_conv_</span>
+<span class="n">ugrid_conv_out_ups</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">cupy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftn</span><span class="p">(</span><span class="n">F_ugrid_conv_out_ups</span><span class="p">))</span>
+<span class="n">ugrid_conv_out</span> <span class="o">=</span> <span class="n">ugrid_conv_out_ups</span><span class="p">[:</span><span class="n">M</span><span class="p">,</span> <span class="p">:</span><span class="n">M</span><span class="p">,</span> <span class="p">:</span><span class="n">M</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The output array <code class="docutils literal notranslate"><span class="pre">ugrid_conv_out</span></code> has dimensions <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span></code>.</p>
+<p>With the Python Package for FFTX,
+we can replace this kernel with the line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ugrid_conv_out</span> <span class="o">=</span> <span class="n">fftx</span><span class="o">.</span><span class="n">convo</span><span class="o">.</span><span class="n">mdrfsconv</span><span class="p">(</span><span class="n">ugrid</span><span class="p">,</span> <span class="n">F_ugrid_conv_</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>The <strong>phasing</strong> kernel
+has two 3D input arrays:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rho_</span></code>, of dimensions <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">amplitudes</span></code>, also of dimensions <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span></code>.</p></li>
+</ul>
+<p>The original Python code for this kernel is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rho_hat_</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">fftn</span><span class="p">(</span><span class="n">rho_</span><span class="p">)</span>
+<span class="n">phases_</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">angle</span><span class="p">(</span><span class="n">rho_hat_</span><span class="p">)</span>
+<span class="n">amp_mask_</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">M</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">M</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cupy</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span>
+<span class="n">amp_mask_</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">rho_hat_mod_</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">amp_mask_</span><span class="p">,</span> <span class="n">amplitudes_</span> <span class="o">*</span> <span class="n">cupy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="n">phases_</span><span class="p">),</span> <span class="n">rho_hat_</span><span class="p">)</span>
+<span class="n">rho_mod_</span> <span class="o">=</span> <span class="n">cupy</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftn</span><span class="p">(</span><span class="n">rho_hat_mod_</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+</pre></div>
+</div>
+<p>The output array <code class="docutils literal notranslate"><span class="pre">rho_mod_</span></code> has dimensions <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span> <span class="pre">x</span> <span class="pre">M</span></code>.</p>
+<p>With the Python Package for FFTX,
+we can replace this kernel with the line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rho_mod_</span> <span class="o">=</span> <span class="n">fftx</span><span class="o">.</span><span class="n">convo</span><span class="o">.</span><span class="n">stepphase</span><span class="p">(</span><span class="n">rho_</span><span class="p">,</span> <span class="n">amplitudes_</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Both free-space convolution (<code class="docutils literal notranslate"><span class="pre">mdrfsconv</span></code>)
+and phasing (<code class="docutils literal notranslate"><span class="pre">stepphase</span></code>) are implemented in the
+<code class="docutils literal notranslate"><span class="pre">convo</span></code> module of the
+<a class="reference internal" href="python.html#python-for-fftx"><span class="std std-ref">Python Package for FFTX</span></a>
+as <em>integrated algorithms</em>.  That is to say, each instance on its particular
+size is run through the SPIRAL code-generation system, optimizing
+computation and communication within the whole kernel.
+This approach speeds up both kernels by <strong>4 times</strong> over the
+original Python with CuPy on arrays of the sizes used by Spinifel
+(<code class="docutils literal notranslate"><span class="pre">M</span></code> set to 81, 105, 125, 165, 189, or 225).</p>
+</section>
+<section id="plane-wave-distributed-fft">
+<h2>Plane Wave Distributed FFT<a class="headerlink" href="#plane-wave-distributed-fft" title="Link to this heading"></a></h2>
+<p>In the plane wave (PW) implementation for the electron wavefunction
+basis set in density functional theory (DFT), different parts of the
+Hamiltonian are evaluated in real space or Fourier space depending on
+which is the most efficient. For example, the Kinetic Energy term is
+evaluated in Fourier space while the electron-electron interaction is
+evaluated in real space. Fourier transforms are used to move the
+wavefunctions and potential terms between real and Fourier space. Each
+wavefunction is defined on a 3D grid in real space and a sphere of
+points in Fourier space. The sphere comes from the energy cut-off in
+the Fourier expansion which is the maximum length of the wavevector
+corresponding to a sphere in Fourier space. The diameter of the sphere
+is typically half the size of the real-space grid dimension as to
+maintain the same accuracy in real space, as the calculations in
+Fourier space, the real space grid must be larger. Plane wave DFT
+based codes therefore require a specialized distributed 3D FFT going
+from a sphere in Fourier space to a standard 3D grid in real space.</p>
+<p>In the parallel distributed FFTX library the user can specify an
+embedded grid within the full grid, in Fourier space, that contains
+all the non-zero Fourier coefficients. In the case of the plane wave
+implementation we can embed the sphere in a smaller grid that contains
+the sphere to create a 3D FFT specific to plane wave codes.</p>
+<p>The figure below shows the pruned Fourier space grid on the left,
+and the full real-space grid on the right.</p>
+<img alt="[pruned/embedded 3D FFT for plane wave codes]" src="_images/prunedPW.png" />
+<p>In the case of a typical plane wave
+code application where the sphere diameter is half the size of the
+full grid this specialized 3D FFT will perform <strong>1.7 times fewer FLOPs</strong>
+and communicate <strong>four times less data</strong> than using a standard full grid
+3D FFT (for a standard 1D pencil data layout where we have complete
+planes on each GPU/CPU).</p>
+<p>The stand-alone benchmark, which can be used in other PW codes, takes
+as input, the half size grid in Fourier space that contains the sphere
+padded with zeros, as shown in the figure above.
+The output is then the full double sized grid in real space.
+An example of how to use this PW FFT is given in the repo directory
+<a class="reference external" href="https://github.com/spiral-software/fftx/tree/main/examples/3DDFT_mpi">examples/3DDFT_mpi</a>
+which also contains a README file
+explaining the general usage of the distributed 3D FFTX routines.</p>
+<p>As a proof of principle, we have implemented the embedded PW FFTX
+routine in the PW branch of NWChem and obtained the same results, to
+the specified degree of convergence for a benchmark carbon dimer
+molecule, as using their native distributed sphere to cube FFTs. This
+was run on the Frontier Cray/HP leadership class computer at Oak Ridge
+National Laboratory (ORNL).</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="external.html" class="btn btn-neutral float-left" title="Demo FFTX External Application" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="contribute.html" class="btn btn-neutral float-right" title="Contributing to FFTX" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, FFTX Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

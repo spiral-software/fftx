@@ -1,0 +1,649 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FFTX Project &mdash; FFTX  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="C++ API" href="apis.html" />
+    <link rel="prev" title="Installation with C++ interface" href="install.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            FFTX
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation with C++ interface</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">FFTX Project</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#license">License</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#building-fftx">Building FFTX</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-spiral-and-associated-packages">1. Install SPIRAL and associated packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clone-the-fftx-repository">2. Clone the FFTX repository.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generate-library-source-code">3. Generate library source code.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compile-library-source-code-and-examples">4. Compile library source code and examples.</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-on-windows">Building on Windows</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#running-fftx-example-programs">Running FFTX Example Programs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libraries">Libraries</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#fftx-libraries-built">FFTX Libraries Built</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#library-api">Library API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linking-against-fftx-libraries">Linking Against FFTX Libraries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#external-application-linking-with-fftx">External Application Linking With FFTX</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="apis.html">C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="python.html">Python Package for FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributed.html">FFTX Distributed 3D FFT Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external.html">Demo FFTX External Application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="collaborations.html">Collaborations with other projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contributing to FFTX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="team.html">FFTX Development Team</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Further Reading</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">FFTX</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">FFTX Project</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="fftx-project">
+<h1>FFTX Project<a class="headerlink" href="#fftx-project" title="Link to this heading"></a></h1>
+<p>This is the public repository for the <strong>FFTX</strong> API source, examples, and
+documentation.</p>
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Link to this heading"></a></h2>
+<p>This project is licensed under the BSD License (available
+<a class="reference external" href="https://www.github.com/spiral-software/fftx/blob/main/License.txt">here</a>)</p>
+<p>Copyright (c) 2018-2023, Carnegie Mellon University. All rights
+reserved.</p>
+<section id="building-fftx">
+<h3>Building FFTX<a class="headerlink" href="#building-fftx" title="Link to this heading"></a></h3>
+</section>
+</section>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<p>There are several pre-requisites that must be installed prior to
+building and using <strong>FFTX</strong>. You will need:</p>
+<ul class="simple">
+<li><p><strong>CMake</strong>, minimum version 3.14; however, a more-modern version is
+preferred as some deprecated features must be used with older
+versions.</p></li>
+<li><p>if on Linux/Unix, <strong>gcc</strong> and <strong>make</strong>.</p></li>
+<li><p>if on Windows, <strong>Visual Studio</strong>, and an ability to run <strong>bash</strong>
+shell scripts. You can use the Git Bash shell available with <strong>git</strong>,
+but other shells such as Cygwin or msys will also work.</p></li>
+<li><p>if on macOS, version 10.14 (Mojave) or later of macOS, with a
+compatible version of <strong>Xcode</strong> and <strong>Xcode Command Line Tools</strong>.</p></li>
+<li><p><strong>python</strong>, version 3.6 or higher. On some systems, both <strong>python</strong>
+(usually version 2.7) and <strong>python3</strong> exist. The scripts used to
+create the <strong>FFTX</strong> library source code check the version of
+<strong>python</strong>, and if it is version 2.X it will try to run <strong>python3</strong>
+instead. A user, therefore, should not have to worry whether
+<strong>python</strong> or <strong>python3</strong> comes first in the user’s path.</p></li>
+</ul>
+</section>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<p>A brief summary of the steps necessary to install FFTX follows; these
+steps outline the most straight forward case (building for CPU only),
+for more complex installs and to utilize GPUs please follow the more
+detailed instructions below.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>1.  Make a directory to hold the download code and cd to it (e.g., mkdir ~/work ; cd ~/work)
+2.  git clone https://github.com/spiral-software/fftx
+3.  cd fftx
+4.  export FFTX_HOME=`pwd`
+5.  unset SPIRAL_HOME
+6.  source ./get_spiral.sh
+7.  ./config-fftx-libs.sh
+8.  mkdir build
+9.  cd build/
+10. cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CPU ..
+11. make install -j
+</pre></div>
+</div>
+<p>To build and use <strong>FFTX</strong>, including how to utilize GPUs, please follow
+these steps:</p>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="#1-install-spiral-and-associated-packages">Install SPIRAL and associated
+packages.</a></p></li>
+<li><p><a class="reference external" href="#2-clone-the-fftx-repository">Clone the FFTX repository.</a></p></li>
+<li><p><a class="reference external" href="#3-generate-library-source-code">Generate library source code.</a></p></li>
+<li><p><a class="reference external" href="#4-compile-library-source-code-and-examples">Compile library source code and
+examples.</a></p></li>
+</ol>
+</section>
+<section id="install-spiral-and-associated-packages">
+<span id="id1"></span><h2>1. Install SPIRAL and associated packages<a class="headerlink" href="#install-spiral-and-associated-packages" title="Link to this heading"></a></h2>
+<p>If you already have SPIRAL installed (and have the <strong>SPIRAL_HOME</strong>
+environment variable set) FFTX will use that installation and you can
+skip to <a class="reference external" href="#2-clone-the-fftx-repository">step 2, “Clone the FFTX
+repository”</a>.</p>
+<p>If you want to manually install SPIRAL follow the steps below;
+alternatively, skip to <a class="reference external" href="#2-clone-the-fftx-repository">step 2, “Clone the FFTX
+repository”</a> and have FFTX pull down
+the necessary SPIRAL repositories and perform the build steps.</p>
+<p>Clone <strong>spiral-software</strong> (available
+<a class="reference external" href="https://www.github.com/spiral-software/spiral-software">here</a>) to a
+location on your computer. E.g.,:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">~/</span><span class="n">work</span>
+<span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">spiral</span><span class="o">-</span><span class="n">software</span><span class="o">/</span><span class="n">spiral</span><span class="o">-</span><span class="n">software</span>
+</pre></div>
+</div>
+<p>This location is known as <em>SPIRAL HOME</em>, and you must set an environment
+variable <strong>SPIRAL_HOME</strong> (here, <strong>``~/work/spiral-software``</strong>) to point
+to this location later.</p>
+<p><strong>FFTX</strong> requires the <strong>SPIRAL</strong> packages
+<a class="reference external" href="https://www.github.com/spiral-software/spiral-package-fftx">fftx</a>,
+<a class="reference external" href="https://www.github.com/spiral-software/spiral-package-simt">simt</a>,
+<a class="reference external" href="https://www.github.com/spiral-software/spiral-package-mpi">mpi</a>, and
+<a class="reference external" href="https://www.github.com/spiral-software/spiral-package-jit">jit</a>.</p>
+<p>You need to download these separately, as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd $SPIRAL_HOME/namespaces/packages
+git clone https://www.github.com/spiral-software/spiral-package-fftx fftx
+git clone https://www.github.com/spiral-software/spiral-package-simt simt
+git clone https://www.github.com/spiral-software/spiral-package-mpi mpi
+git clone https://www.github.com/spiral-software/spiral-package-jit jit
+</pre></div>
+</div>
+<p><strong>NOTES:</strong></p>
+<ul class="simple">
+<li><p>The <strong>SPIRAL</strong> packages must be installed under directory
+<strong>$SPIRAL_HOME/namespaces/packages</strong> and must be placed in folders
+with the prefix <em>spiral-package-</em> removed.</p></li>
+<li><p>If you already have <strong>spiral-software</strong> installed, please refresh the
+installation to ensure you’re up-to-date, especially for the
+<strong>SPIRAL</strong> packages.</p></li>
+<li><p>It is preferable to download the <strong>SPIRAL</strong> packages <em>before</em>
+performing the <strong>SPIRAL</strong> build steps.</p></li>
+</ul>
+<p>Follow the build instructions for <strong>spiral-software</strong> (see the
+<strong>README</strong>
+<a class="reference external" href="https://github.com/spiral-software/spiral-software/blob/master/README.md">here</a>
+).</p>
+</section>
+<section id="clone-the-fftx-repository">
+<span id="id2"></span><h2>2. Clone the FFTX repository.<a class="headerlink" href="#clone-the-fftx-repository" title="Link to this heading"></a></h2>
+<p>Clone <strong>FFTX</strong> to a location on your computer. E.g.,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">~/</span><span class="n">work</span>
+<span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">spiral</span><span class="o">-</span><span class="n">software</span><span class="o">/</span><span class="n">fftx</span>
+<span class="n">cd</span> <span class="n">fftx</span>
+</pre></div>
+</div>
+<p>Set the environment variable <strong>FFTX_HOME</strong> to point to the directory
+where you want to install <strong>FFTX</strong> (which is not necessarily the same
+directory where you have cloned <strong>FFTX</strong>; you may want to have separate
+installation directories for different backends).</p>
+<p>If you have not already installed SPIRAL and the SPIRAL packages
+required for FFTX, you can have them downloaded and built from the
+repositories by sourcing the <strong>get_spiral.sh</strong> shell script now. This
+script checks the definition of the <strong>SPIRAL_HOME</strong> environment
+variable, and if undefined it will get the SPIRAL code, build it and
+export a definition for <strong>SPIRAL_HOME</strong>. Make sure you source (vs. run)
+the script:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">.</span> <span class="o">./</span><span class="n">get_spiral</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="n">get_spiral</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+</section>
+<section id="generate-library-source-code">
+<span id="id3"></span><h2>3. Generate library source code.<a class="headerlink" href="#generate-library-source-code" title="Link to this heading"></a></h2>
+<p><strong>FFTX</strong> builds libraries of transforms for a set of different sizes.
+The library source code is generated from <strong>SPIRAL</strong> script
+specifications, and must be created before building <strong>FFTX</strong> itself. For
+the sizes that are pre-built the code will be added to libraries (the
+pre-defined fixed-size libraries). Alternatively, sizes not defined can
+have the code generated and compiled at run-time (RTC).</p>
+<p>Before creating the library source code consider if you will be running
+on CPU only, or also utilizing a GPU. If you create all the source code
+(and related <strong>cmake</strong> scripts and library APIs) for GPU and then try
+building for CPU only you may encounter compiler errors or unexpected
+results. It is recommended that you have separate installs for CPU and
+GPU.</p>
+<p>The shell script <strong>config-fftx-libs.sh</strong> is a utility script in the
+<strong>FFTX</strong> home directory that marshals resources for building the
+libraries and examples. There is a flag that enables or disables the
+building of examples (enabled by default). NOTE: All libraries <strong>should
+be created</strong>; creating the library is a pre-requisite to creating its
+API files (files which are required later when building the RTC code).
+Building the examples may be turned off if you only need to build the
+libraries for an external application). The script is self-documenting;
+typically it should not be edited (unless you need to disable building
+the examples).</p>
+<p>NOTE: It is required that you build all libraries (even if you add few
+or no fixed size entries to the library). This is because the API header
+files are created automatically at build time. At run time the API can
+check if a specific transform of the requested size exists in the
+library and use it if it exists. If it doesn’t exist then the desired
+transform can be generated and compiled on-the-fly (RTC).</p>
+<p>Run the script as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">config</span><span class="o">-</span><span class="n">fftx</span><span class="o">-</span><span class="n">libs</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">platform</span><span class="o">&gt;</span>
+<span class="c1">##  where &lt;platform&gt; is one of { CPU [default] | CUDA | HIP | SYCL }</span>
+</pre></div>
+</div>
+<p>If no argument is provided, then the platform defaults to CPU. This
+script runs the <strong>build-lib-code.sh</strong> script in the <strong>src/library</strong>
+directory and will marshal the resources and options needed for the set
+of libraries. This step can take quite some time depending on the number
+of transforms and set of sizes to create. The code is targeted to run on
+a CPU or a GPU (either CUDA or HIP or SYCL) depending on the platform
+specified with the script. By default, only a small number of fixed
+sizes will be created for the fixed-size libraries.</p>
+<p>The text file <strong>``build-lib-code-failures.txt``</strong> will contain a list of
+any library transforms that failed to generate in this step.</p>
+<p>Running <strong>config-fftx-libs.sh</strong> also creates a file called
+<strong>options.cmake</strong>. The options defined in this file are used by
+<strong>CMake</strong> to determine what is actually compiled at build time.</p>
+</section>
+<section id="compile-library-source-code-and-examples">
+<span id="id4"></span><h2>4. Compile library source code and examples.<a class="headerlink" href="#compile-library-source-code-and-examples" title="Link to this heading"></a></h2>
+<p>From your <strong>FFTX</strong> home directory, set up a <strong>build</strong> folder (which can
+be given any name, and you may want to have separate ones for different
+backends). When you configure using <strong>CMake</strong> you must specify the
+install prefix that <strong>CMake</strong> should use (the system default location
+for <strong>CMake</strong> may be a directory for which you do not have write
+privileges). Do that by setting the environment variable <strong>FFTX_HOME</strong>
+and specifying either the directory path or the environment variable on
+the <strong>CMake</strong> command line.</p>
+<p><strong>NOTES:</strong></p>
+<ul class="simple">
+<li><p>You will need <strong>FFTX_HOME</strong> set in order to use or reference <strong>FFTX</strong>
+artifacts externally.</p></li>
+<li><p><strong>FFTX_HOME</strong> may be, but does not have to be, the same as your
+<strong>FFTX</strong> home directory.</p></li>
+<li><p>Some tips for building on a supercomputing platform at NERSC or OLCF
+are available
+<a class="reference external" href="https//github.com/spiral-software/spiral-software/blob/master/supercomputer-README.md">here.</a></p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export FFTX_HOME=~/work/fftx
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CPU ..      # build for CPU, *or*
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CUDA ..     # build for CUDA, *or*
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -DCMAKE_CXX_COMPILER=hipcc -D_codegen=HIP ..      # build for HIP
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -DCMAKE_CXX_COMPILER=icpx -D_codegen=SYCL ..      # build for SYCL
+
+make install
+</pre></div>
+</div>
+<p>When <strong>FFTX</strong> is built, the final step (of <em>make install</em>) creates a
+tree structure (at the location specified by <strong>CMAKE_INSTALL_PREFIX</strong>).
+The following directories will be created/populated:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Directory Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>./CMakeIncludes</strong></p></td>
+<td><p>CMake include files and functions to ease
+integration with <strong>FFTX</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>./bin</strong></p></td>
+<td><p>Executables for example programs built as
+part of the <strong>FFTX</strong> distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>./lib</strong></p></td>
+<td><p><strong>FFTX</strong> libraries, that can be called by
+external applications</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>./include</strong></p></td>
+<td><p>Include files for using <strong>FFTX</strong> libraries</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>./cache_jit_files</strong></p></td>
+<td><p>Folder containing the RTC code generated
+for any transform not found in a fixed-size
+library</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="building-on-windows">
+<h2>Building on Windows<a class="headerlink" href="#building-on-windows" title="Link to this heading"></a></h2>
+<p><strong>FFTX</strong> can be built on Windows; however, you need to be able to run a
+[bash] shell script as mentioned above to build the library source code.
+To build <strong>FFTX</strong>, open a shell and do the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd fftx
+./config-fftx-libs.sh &lt;platform&gt; where &lt;platform&gt; is one of { CPU [default] | CUDA | HIP }
+export FFTX_HOME=~/work/fftx
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CUDA ..
+cmake --build . --target install --config Release
+</pre></div>
+</div>
+<p>This shows an example building for CUDA on Windows. You can also build
+for CPU or AMD HIP or Intel SYCL as shown above (under Building for
+Linux).</p>
+<section id="running-fftx-example-programs">
+<h3>Running FFTX Example Programs<a class="headerlink" href="#running-fftx-example-programs" title="Link to this heading"></a></h3>
+<p>After building <strong>FFTX</strong>, to run the programs that are in the
+<strong>examples</strong> subtree, simply do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd $FFTX_HOME/bin
+./testrconv
+./testverify
+</pre></div>
+</div>
+<p>etc. Since we set <strong>RPATH</strong> to point to where the libraries are
+installed, you likely will not need to adjust the library path variable,
+typically <strong>LD_LIBRARY_PATH</strong>.</p>
+<p>NOTE: On Windows <strong>RPATH</strong> does not work correctly. If you encounter
+“missing library” errors when trying to run add the directory containing
+the installed libraries to your <strong>PATH</strong>.</p>
+<p>The README in the <strong>examples</strong> folder
+<a class="reference external" href="https://github.com/spiral-software/fftx/blob/master/examples/README.md">here</a>
+contains a list of examples, how to run them, and how to add a new
+example. More details about individual examples may be found in the
+individual example folder’s README file.</p>
+</section>
+<section id="libraries">
+<h3>Libraries<a class="headerlink" href="#libraries" title="Link to this heading"></a></h3>
+<p>The libraries built and copied to the <strong>$FFTX_HOME/lib</strong> folder can be
+used by external applications to leverage <strong>FFTX</strong> transforms. To access
+the necessary include files and libraries, an external application’s
+<strong>CMakeLists.txt</strong> should include
+<strong>CMakeInclude/FFTXCmakeFunctions.cmake</strong>. A full example of an external
+application linking with <strong>FFTX</strong> libraries is available in the
+<a class="reference external" href="https://www.github.com/spiral-software/fftx-demo-extern-app">fftx-demo-extern-app</a>.</p>
+</section>
+</section>
+<section id="fftx-libraries-built">
+<h2>FFTX Libraries Built<a class="headerlink" href="#fftx-libraries-built" title="Link to this heading"></a></h2>
+<p><strong>FFTX</strong> builds libraries for 1D and 3D FFTs for a single device. FFTs
+are built for a set of specific sizes, thus not all possible sizes will
+be found in the libraries. There are default files specifying the sizes
+to build for each of: 1D FFTs and 3D FFTs (default file names below).
+You can customize the set of sizes to build by either editing these
+files <strong>or</strong> provide your own files – just override the default file
+name in the <strong>config-fftx-libs.sh</strong> script. If you provide your own
+file(s) just follow the format shown in the default file(s). The default
+files specifying the sizes to build for each group of transforms are
+(all files are in the src/library folder):</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>File Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1D FFT</p></td>
+<td><p>dftbatch-sizes.txt</p></td>
+<td><p>Batch of 1D FFTs</p></td>
+</tr>
+<tr class="row-odd"><td><p>3D FFT</p></td>
+<td><p>cube-sizes-cpu.txt</p></td>
+<td><p>3D FFTs for CPU</p></td>
+</tr>
+<tr class="row-even"><td><p>3D FFT</p></td>
+<td><p>cube-sizes-gpu.txt</p></td>
+<td><p>3D FFTs for GPU</p></td>
+</tr>
+</tbody>
+</table>
+<p>The following is a list of the libraries built:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Type</p></th>
+<th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>3D FFT</p></td>
+<td><p>fftx_mddft</p></td>
+<td><p>Forward 3D FFT complex to
+complex</p></td>
+</tr>
+<tr class="row-odd"><td><p>3D FFT</p></td>
+<td><p>fftx_imddft</p></td>
+<td><p>Inverse 3D FFT complex to
+complex</p></td>
+</tr>
+<tr class="row-even"><td><p>3D FFT</p></td>
+<td><p>fftx_mdprdft</p></td>
+<td><p>Forward 3D FFT real to complex</p></td>
+</tr>
+<tr class="row-odd"><td><p>3D FFT</p></td>
+<td><p>fftx_imdprdft</p></td>
+<td><p>Inverse 3D FFT complex to real</p></td>
+</tr>
+<tr class="row-even"><td><p>3D Convolution</p></td>
+<td><p>fftx_rconv</p></td>
+<td><p>3D real convolution</p></td>
+</tr>
+<tr class="row-odd"><td><p>1D FFT</p></td>
+<td><p>fftx_dftbat</p></td>
+<td><p>Forward batch of 1D FFT complex
+to complex</p></td>
+</tr>
+<tr class="row-even"><td><p>1D FFT</p></td>
+<td><p>fftx_idftbat</p></td>
+<td><p>Inverse batch of 1D FFT complex
+to complex</p></td>
+</tr>
+<tr class="row-odd"><td><p>1D FFT</p></td>
+<td><p>fftx_prdftbat</p></td>
+<td><p>Forward batch of 1D FFT real to
+complex (in development)</p></td>
+</tr>
+<tr class="row-even"><td><p>1D FFT</p></td>
+<td><p>fftx_iprdftbat</p></td>
+<td><p>Inverse batch of 1D FFT complex
+to real (in development)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="library-api">
+<h2>Library API<a class="headerlink" href="#library-api" title="Link to this heading"></a></h2>
+<p>The following example shows usage of the 3D FFT complex-to-complex
+transform (others are similar; just use the appropriate names and header
+file(s) from the table above). The user (calling application) is
+responsible for setting up memory buffers and allocations as required
+(i.e., host memory for serial code, device memory for GPU code). The
+following abstract assumes device memory buffers are already
+allocated/initialized as needed; error checking is omitted for clarity
+and brevity:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#include &quot;fftx3.hpp&quot;</span>
+<span class="c1">#include &quot;transformlib.hpp&quot;</span>
+
+    <span class="n">std</span><span class="p">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span> <span class="n">sizes</span><span class="p">{</span> <span class="n">mm</span><span class="p">,</span> <span class="n">nn</span><span class="p">,</span> <span class="n">kk</span> <span class="p">};</span>         <span class="o">//</span> <span class="s1">&#39;cube&#39;</span> <span class="n">dimensions</span>
+    <span class="n">std</span><span class="p">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">void</span> <span class="o">*&gt;</span> <span class="n">args</span><span class="p">{</span> <span class="n">dY</span><span class="p">,</span> <span class="n">dX</span><span class="p">,</span> <span class="n">dsym</span> <span class="p">};</span>     <span class="o">//</span> <span class="n">pointers</span> <span class="n">to</span> <span class="n">the</span> <span class="n">Output</span><span class="p">,</span> <span class="n">Input</span><span class="p">,</span> <span class="ow">and</span> <span class="n">symbol</span> <span class="n">arrays</span>
+
+    <span class="n">MDDFTProblem</span> <span class="n">mdp</span> <span class="p">(</span> <span class="n">args</span><span class="p">,</span> <span class="n">sizes</span><span class="p">,</span> <span class="s2">&quot;mddft&quot;</span> <span class="p">);</span>    <span class="o">//</span> <span class="n">Define</span> <span class="n">transform</span>
+
+    <span class="n">mdp</span><span class="o">.</span><span class="n">transform</span><span class="p">();</span>                              <span class="o">//</span> <span class="n">Run</span> <span class="n">the</span> <span class="n">transform</span>
+</pre></div>
+</div>
+<p>If the size specified with the transform definition is found in a
+library then that code is executed; however, if it is not found in a
+library then RTC is invoked to generate and compile the necessary code
+(this is also cached for future use).</p>
+</section>
+<section id="linking-against-fftx-libraries">
+<h2>Linking Against FFTX Libraries<a class="headerlink" href="#linking-against-fftx-libraries" title="Link to this heading"></a></h2>
+<p><strong>FFTX</strong> provides a <strong>cmake</strong> include file,
+<strong>FFTXCmakeFunctions.cmake</strong>, that provides functions to facilitate
+compiling and linking external applications with the <strong>FFTX</strong> libraries.
+An external application should include this file
+(<strong>$FFTX_HOME/CMakeIncludes/FFTXCmakeFunctions.cmake</strong>) in order to
+access the following helper functions to compile/link with the <strong>FFTX</strong>
+libraries. Two functions are available:</p>
+<ol class="arabic simple">
+<li><p><strong>FFTX_add_includes_libs_to_target</strong> ( target ) – This function adds
+the include file paths, the linker library path, and the library
+names to the specified target.</p></li>
+<li><p><strong>FFTX_find_libraries</strong>() – This function finds the <strong>FFTX</strong>
+libraries, linker library path, and include file paths and exposes
+the following variables:</p></li>
+</ol>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>CMake Variable Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>FFTX_LIB_INCLUDE_PATHS</strong></p></td>
+<td><p>Include paths for <strong>FFTX</strong> include &amp;
+library headers</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>FFTX_LIB_NAMES</strong></p></td>
+<td><p>List of <strong>FFTX</strong> libraries</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>FFTX_LIB_LIBRARY_PATH</strong></p></td>
+<td><p>Path to libraries (for linker)</p></td>
+</tr>
+</tbody>
+</table>
+<p>An application will typically need only call
+<strong>FFTX_add_includes_libs_to_target</strong>(), and let <strong>FFTX</strong> handle the
+assignment of paths, etc. to the target. Only if an application
+specifically needs to access the named variables above is it necessary
+to call <strong>FFTX_find_libraries</strong>().</p>
+</section>
+<section id="external-application-linking-with-fftx">
+<h2>External Application Linking With FFTX<a class="headerlink" href="#external-application-linking-with-fftx" title="Link to this heading"></a></h2>
+<p>A complete example of an external application that builds test programs
+utilizing the <strong>FFTX</strong> libraries is available at
+<a class="reference external" href="https://www.github.com/spiral-software/fftx-demo-extern-app">fftx-demo-extern-app</a>.
+If you’re interested in how to link an external application with
+<strong>FFTX</strong> please download this example and review the
+<strong>``CMakeLists.txt``</strong> therein for specific details. As an example, in
+brief, the required steps to add the Poisson test program (using
+<strong>cmake</strong>) are:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>set ( POISSON1_TEST poissonTest )
+
+##  FFTX_HOME must be defined in the environment or on the command line
+if ( DEFINED ENV{FFTX_HOME} )
+    message ( STATUS &quot;FFTX_HOME = $ENV{FFTX_HOME}&quot; )
+    set ( FFTX_SOURCE_DIR $ENV{FFTX_HOME} )
+else ()
+    if ( &quot;x${FFTX_HOME}&quot; STREQUAL &quot;x&quot; )
+        message ( FATAL_ERROR &quot;FFTX_HOME environment variable undefined and not specified on command line&quot; )
+    endif ()
+    set ( FFTX_SOURCE_DIR ${FFTX_HOME} )
+endif ()
+
+##  Include FFTX CMake functions
+include ( &quot;${FFTX_SOURCE_DIR}/CMakeIncludes/FFTXCmakeFunctions.cmake&quot; )
+
+add_executable          ( ${POISSON1_TEST} ${POISSON1_TEST}.cpp )
+target_link_libraries   ( ${POISSON1_TEST} PRIVATE dl )
+
+FFTX_add_includes_libs_to_target ( ${POISSON1_TEST} )
+</pre></div>
+</div>
+<p>The Poisson test program is a CPU only sample program using the FFTX
+library and RTC interfaces. When the program is run it accepts a single
+argument, <strong>nx</strong>, that specifies the dimension of a cube to test. If no
+argument is provided, a default value of <strong>128</strong> is used. The program
+may be run for different size cubes as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">poissonTest</span>             <span class="c1">## defaults to 128^8; runs codegen</span>
+<span class="n">poissonTest</span> <span class="o">-</span><span class="n">nx</span> <span class="mi">80</span>      <span class="c1">## Size 80^3, is present in the FFTX libraries</span>
+<span class="n">poissonTest</span> <span class="o">-</span><span class="n">nx</span> <span class="mi">64</span>      <span class="c1">## Size 64^3, is present in the FFTX libraries</span>
+<span class="n">poissonTest</span> <span class="o">-</span><span class="n">nx</span> <span class="mi">224</span>     <span class="c1">## Size 224^3; runs codegen</span>
+</pre></div>
+</div>
+<p>For sizes in the FFTX libraries the program calls into the library and
+runs immediately. For sizes not in the libraries, <strong>Spiral</strong> is run to
+generate the required source code, which is then compiled into a
+temporary library and executed. The source code is cached (meaning that
+if the specific size is run again, <strong>Spiral</strong> is not required as the
+source code is reused).</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="install.html" class="btn btn-neutral float-left" title="Installation with C++ interface" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="apis.html" class="btn btn-neutral float-right" title="C++ API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, FFTX Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
