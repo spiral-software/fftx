@@ -1,5 +1,17 @@
 using namespace fftx;
 
+/**
+   Class for inverse complex-to-complex 3D FFT.
+
+   <tt>FFTXProblem::args</tt> must be set to a <tt>std::vector<void*></tt> of length 3, where
+   - <tt>args[0]</tt> is a pointer to a complex output array of size the product of the dimensions in <tt>FFTXProblem::sizes</tt>;
+   - <tt>args[1]</tt> is a pointer to a complex input array of size the product of the dimensions in <tt>FFTXProblem::sizes</tt>;
+   - <tt>args[2]</tt> is not used and can be set to NULL.
+
+   <tt>FFTXProblem::sizes</tt> must be set to a <tt>std::vector<int></tt> of length 3, containing the transform size in each coordinate dimension.
+
+   <tt>FFTXProblem::name</tt> must be set to <tt>"imddft"</tt>.
+ */
 class IMDDFTProblem: public FFTXProblem {
 public:
     using FFTXProblem::FFTXProblem;

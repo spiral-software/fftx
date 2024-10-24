@@ -57,7 +57,7 @@ using namespace std;
 // void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is_embedded);
 
 
-fftx_plan  fftx_plan_distributed_spiral(int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
+fftx_plan  fftx_plan_distributed_spiral(MPI_Comm comm, int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex);
 void fftx_execute_spiral(fftx_plan plan, double* out_buffer, double*in_buffer,int direction);
 void fftx_plan_destroy_spiral(fftx_plan plan);
 

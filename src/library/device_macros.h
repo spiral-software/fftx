@@ -25,6 +25,7 @@
 #define DEVICE_ERROR_T hipError_t
 #define DEVICE_GET_LAST_ERROR hipGetLastError
 #define DEVICE_GET_ERROR_STRING hipGetErrorString
+#define DEVICE_PTR hipDeviceptr_t
 #define DEVICE_FFT_TYPE hipfftType
 #define DEVICE_FFT_RESULT hipfftResult
 #define DEVICE_FFT_HANDLE hipfftHandle
@@ -94,6 +95,7 @@
 #define DEVICE_ERROR_T cudaError_t
 #define DEVICE_GET_LAST_ERROR cudaGetLastError
 #define DEVICE_GET_ERROR_STRING cudaGetErrorString
+#define DEVICE_PTR CUdeviceptr
 #define DEVICE_FFT_TYPE cufftType
 #define DEVICE_FFT_RESULT cufftResult
 #define DEVICE_FFT_HANDLE cufftHandle

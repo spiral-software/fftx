@@ -239,8 +239,11 @@ inline void Executor::createProg() {
     ocl_dev=sycl::get_native<cl::sycl::backend::opencl,sycl::device>(dev);
     ocl_ctx=sycl::get_native<cl::sycl::backend::opencl,sycl::context>(ctx);
 
-    ocl_queue = clCreateCommandQueueWithProperties(ocl_ctx, ocl_dev,0,&err);
-    q = sycl::make_queue<sycl::backend::opencl>(ocl_queue,ctx); 
+    // ocl_queue = clCreateCommandQueueWithProperties(ocl_ctx, ocl_dev, 0, &err);
+    // q = sycl::make_queue<sycl::backend::opencl>(ocl_queue, ctx);
+    sycl::property_list props{sycl::property::queue::enable_profiling()};
+    q = sycl::queue(ctx, dev, props);
+
     if ( DEBUGOUT ) std::cout << "created program\n";
 }
 
@@ -337,6 +340,7 @@ inline void Executor::initializeVars() {
 
 inline float Executor::initAndLaunch(std::vector<void*>& args) {
     auto start = std::chrono::high_resolution_clock::now();
+    uint64_t profile_nanosec = 0;
     for(int i = 0; i < kernel_names.size(); i++) {
         if ( DEBUGOUT ) {
             std::cout << kernel_names.at(i) << std::endl;
@@ -348,6 +352,7 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
         cl_kernel ocl_kernel = clCreateKernel(ocl_program, kernel_names.at(i).c_str(), &err);
         sycl::kernel sycl_kernel = sycl::make_kernel<sycl::backend::opencl>(ocl_kernel, ctx);
         
+        sycl::event e =
         q.submit([&](sycl::handler& h){
                   for(int j = 0; j < kernel_args[i].size(); j++) {
                          if ( DEBUGOUT ) {
@@ -405,11 +410,16 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
                 h.parallel_for(
                 sycl::nd_range<3>(grid*block, block),
                 sycl_kernel);
-                }).wait();
+                });
+        q.wait();
+        uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+        uint64_t e_end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
+        profile_nanosec += e_end - e_start;
 	}
     auto stop = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float, std::milli> duration = stop - start;
-    GPUtime = duration.count();
+    // GPUtime = duration.count();
+    GPUtime = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
     return getKernelTime();
 }
 

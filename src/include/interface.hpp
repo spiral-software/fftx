@@ -272,6 +272,10 @@ inline void printJITBackend(std::string name, std::vector<int> sizes) {
     - <tt>FFTXProblem::args</tt>, containing pointers to arrays to be used;
     - <tt>FFTXProblem::sizes</tt>, containing problem size;
     - <tt>FFTXProblem::name</tt>, a string that specifies the transform type.
+
+    <tt>FFTXProblem</tt> is a pure virtual class; the functions
+    <tt>randomProblemInstance()</tt> and <tt>semantics()</tt>
+    need to be defined in any derived class.
 */
 class FFTXProblem {
 public:
@@ -279,7 +283,13 @@ public:
   /** Array of length 3 that contains the following.
       - <tt>args[0]</tt>:  pointer to output array.
       - <tt>args[1]</tt>:  pointer to input array.
-      - <tt>args[2]</tt>:  pointer to symbol array (not used by all transforms).
+      - <tt>args[2]</tt>:  pointer to symbol array (not used by all transforms). If not used, then can be set to NULL.
+
+      The manner of specifying the pointer in each element of <tt>args</tt> depends on the backend:
+      - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "device_macros.h"</tt>).
+      - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "device_macros.h"</tt>).
+      - for SYCL, specify <tt>(void*) ptr</tt> with <tt>sycl::buffer<double> ptr</tt>.
+      - for CPU, specify <tt>(void*) ptr</tt> with <tt>double* ptr</tt>.
   */
     std::vector<void*> args;
 

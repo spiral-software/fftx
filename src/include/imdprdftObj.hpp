@@ -33,6 +33,18 @@ static std::string imdprdft_script = "szhalfcube := DropLast(szcube,1)::[Int(Las
         rec(fname:=name, params:= [symvar])\n\
     );";
 
+/**
+   Class for complex-to-real 3D FFT.
+
+   <tt>FFTXProblem::args</tt> must be set to a <tt>std::vector<void*></tt> of length 3, where
+   - <tt>args[0]</tt> is a pointer to a real output array of size the product of the dimensions in <tt>FFTXProblem::sizes</tt>;
+   - <tt>args[1]</tt> is a pointer to a complex input array of size the product of a truncated version of the dimensions in <tt>FFTXProblem::sizes</tt>: this will be <tt>sizes[0]*sizes[1]*(sizes[2]+1)/2</tt>;
+   - <tt>args[2]</tt> is not used and can be set to NULL.
+
+   <tt>FFTXProblem::sizes</tt> must be set to a <tt>std::vector<int></tt> of length 3, containing the transform size in each coordinate dimension.
+
+   <tt>FFTXProblem::name</tt> must be set to <tt>"imdprdft"</tt>.
+ */
 class IMDPRDFTProblem: public FFTXProblem {
 public:
     using FFTXProblem::FFTXProblem;
