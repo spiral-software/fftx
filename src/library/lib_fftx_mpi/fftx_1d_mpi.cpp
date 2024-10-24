@@ -50,19 +50,19 @@ void destroy_1d_comms(fftx_plan plan) {
 }
 
 fftx_plan fftx_plan_distributed_1d(
-  int p, int M, int N, int K,
+  MPI_Comm comm, int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex) {
   fftx_plan plan;
 #if FORCE_VENDOR_LIB
   {
 #else
   if(is_complex || (!is_complex && batch == 1)) {
-    plan = fftx_plan_distributed_1d_spiral(p, M, N, K, batch, is_embedded, is_complex);
+    plan = fftx_plan_distributed_1d_spiral(comm, p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = true;
   } else {
 #endif
     std::cout << "configuration not supported, using vendor backend" << std::endl;
-    plan = fftx_plan_distributed_1d_default(p, M, N, K, batch, is_embedded, is_complex);
+    plan = fftx_plan_distributed_1d_default(comm, p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }
   return plan;
@@ -73,7 +73,7 @@ void fftx_mpi_rcperm_1d(
 ) {
   size_t e = is_embedded ? 2 : 1;
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_rank(plan->all_comm, &rank);
 
   switch (stage) {
     case FFTX_MPI_EMBED_1:
@@ -105,7 +105,7 @@ void fftx_mpi_rcperm_1d(
             MPI_DOUBLE_COMPLEX,
             plan->recv_buffer, recvSize,
             MPI_DOUBLE_COMPLEX,
-            MPI_COMM_WORLD
+            plan->all_comm
           );
           //      [ceil(X'/px), pz, Z/pz, Y] <= [pz, ceil(X'/px), Z/pz, Y]
           // i.e. [ceil(X'/px),        Z, Y]
@@ -231,7 +231,7 @@ void fftx_mpi_rcperm_1d(
             MPI_DOUBLE_COMPLEX,
             plan->recv_buffer, recvSize,
             MPI_DOUBLE_COMPLEX,
-            MPI_COMM_WORLD
+            plan->all_comm
           );
 
           DEVICE_MEM_COPY(
@@ -267,7 +267,7 @@ void fftx_mpi_rcperm_1d(
             MPI_DOUBLE_COMPLEX,
             plan->recv_buffer, recvSize,
             MPI_DOUBLE_COMPLEX,
-            MPI_COMM_WORLD
+            plan->all_comm
           );
 
           DEVICE_MEM_COPY(

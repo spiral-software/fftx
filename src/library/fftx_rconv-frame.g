@@ -42,11 +42,27 @@ if 1 = 1 then
     dz := szcube[3];
     dzadj := Int(dz / 2) + 1;
     t := let ( symvar := var ( "sym", TPtr(TReal) ),
+## This segment checked in to the repo 2024-05-08 16:29:27; segfaults.
+#              TFCall (
+#                   Compose ( [
+#                       IMDPRDFT ( [dx, dy, dz], 1),
+#                       RCDiag ( FDataOfs ( symvar, dx * dy * dzadj * 2, 0 ) ),
+#                       MDPRDFT ( [dx, dy, dz], -1 )
+## This segment was the original method.
+               var_1:= var("var_1", BoxND( [dx, dy, dzadj], TReal)),
+               var_2:= var("var_2", BoxND( [dx, dy, dzadj], TReal)),
+               var_3:= var("var_3", BoxND( [dx, dy, dz], TReal)),
+               var_4:= var("var_4", BoxND( [dx, dy, dz], TReal)),
+               var_3:= X,
+               var_4:= Y,
                TFCall (
-                   Compose ( [
-                       IMDPRDFT ( [dx, dy, dz], 1),
-                       RCDiag ( FDataOfs ( symvar, dx * dy * dzadj * 2, 0 ) ),
-                       MDPRDFT ( [dx, dy, dz], -1 )
+                        TDecl(TDAG([
+                        TDAGNode(MDPRDFT(szcube,-1), var_1,var_3),
+                        TDAGNode(Diag(diagTensor(FDataOfs(symvar,dx*dy*dzadj,0),fConst(TReal, 2, 1))), var_2,var_1),
+                        TDAGNode(IMDPRDFT(szcube,1), var_4,var_2),
+                        ]),
+                     [var_1,var_2
+## End segment.
                    ]),
                    rec ( fname := name, params := [symvar] )
                )

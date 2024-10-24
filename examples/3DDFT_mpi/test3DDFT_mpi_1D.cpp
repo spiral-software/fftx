@@ -9,11 +9,96 @@
 using namespace std;
 
 #define DEBUG 0
+#define DEBUG_OUTPUT 0
 #define PRETTY_PRINT 1
 #define TOLERANCE 1e-8
 
 inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
+}
+
+// When running with p ranks, length of LAST dimension must be divisible by p.
+
+using cx = std::complex<double>;
+
+// In the C2R (!is_complex && !is_forward) case only,
+// the input must be Hermitian-symmetric
+// in order for the output to be real.
+
+// A Hermitian-symmetric vector of length n, with k in range 0:n-1,
+// must be of the form testfun(k, n), where:
+
+// cx testfun(size_t k, size_t n)
+// {
+//   if (k == 0)
+//     return cx(AN ARBITRARY REAL NUMBER, 0.0);
+//   else if (2*k == n)
+//     return cx(ANOTHER ARBITRARY REAL NUMBER, 0.0);
+//   else if (2*k < n)
+//     return cx(AN ARBITRARY FUNCTION OF k, ANOTHER ARBITRARY FUNCTION OF k);
+//   else if (2*k > n)
+//     return conj(testfun(n - k, n)); // RECURSIVE CALL TO THE FUNCTION
+//   else
+//     return cx(0., 0.);
+// }
+
+// We will take a product of these functions, one for each of the 3 dimensions.
+// That will give us a function with 3D Hermitian symmetry.
+
+cx testfun0hermitian(size_t k, size_t n)
+{
+  if (k == 0)
+    return cx(1.5, 0.0);
+  else if (2*k == n)
+    return cx(2.2, 0.0);
+  else if (2*k < n)
+    return cx(sin(k * 1.), log((1 + k)*1.));
+  else if (2*k > n)
+    return conj(testfun0hermitian(n - k, n));
+  else
+    return cx(0., 0.);
+}
+
+cx testfun1hermitian(size_t k, size_t n)
+{
+  if (k == 0)
+    return cx(-0.9, 0.0);
+  else if (2*k == n)
+    return cx(1.3, 0.0);
+  else if (2*k < n)
+    return cx(cos(k * 1.), tan(1. + (k*1.)/(n*2.)));
+  else if (2*k > n)
+    return conj(testfun1hermitian(n - k, n));
+  else
+    return cx(0., 0.);
+}
+
+cx testfun2hermitian(size_t k, size_t n)
+{
+  if (k == 0)
+    return cx(1.1, 0.0);
+  else if (2*k == n)
+    return cx(-0.7, 0.0);
+  else if (2*k < n)
+    return cx(exp(-abs(k * 1.)), atan(1. + (k*1.)/(n*1.)));
+  else if (2*k > n)
+    return conj(testfun2hermitian(n - k, n));
+  else
+    return cx(0., 0.);
+}
+
+cx testfunhermitian(size_t k0, size_t k1, size_t k2,
+                    size_t n0, size_t n1, size_t n2)
+{
+  return testfun0hermitian(k0, n0) * testfun1hermitian(k1, n1) * testfun2hermitian(k2, n2);
+}
+  
+
+double inputRealSymmetric(int i, int j, int l, int K, int N, int M)
+{
+  double center = ((K + 1)*1.)/2.;
+  double y = sin(i*1. - center) * ((j*j)*3. + 5. * cos(l*1.));
+  return y;
 }
 
 int main(int argc, char* argv[]) {
@@ -120,6 +205,19 @@ int main(int argc, char* argv[]) {
       for (size_t j = 0; j < N; j++) {
         for (size_t i = 0; i < M*e; i++) {
           for (size_t b = 0; b < batch; b++) {
+            if (DEBUG_OUTPUT && R2C)
+              { // CI == 1
+                // Note that we set host_in to zero if l >= K.
+                double v =
+                  ((K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))) ?
+                  0.0 :
+                  inputRealSymmetric(i+1, j+1, l+1, M, N, K);
+                printf("DR in_array %3zu %3zu %3zu%18.8f\n", i+1, j+1, l+1, v);
+                // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
+                host_in[((l0*N + j) * M*e + i)*batch + b] = v;
+              }
+            else
+              {
             for (size_t c = 0; c < CI; c++) {
               host_in[((l0 * N*M*e + j * M*e + i)*batch + b)*CI + c] = (
                 (K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))
@@ -127,6 +225,7 @@ int main(int argc, char* argv[]) {
                 0.0 :
                 2.0 * rand() / RAND_MAX - 1.0;
             }
+              }
           }
         }
       }
@@ -163,6 +262,18 @@ int main(int argc, char* argv[]) {
     DEVICE_MALLOC(&dev_out,      out_size);
 
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
+    // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
+    //        C2R, N*e-1, p*Mi0-1, Ki-1);
+    // BEGIN DEBUG_OUTPUT
+    if (C2R)
+      {
+        // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
+        int imin = rank * Mi0;
+        int imax = rank * Mi0 + Mi0-1;
+        printf("C2R rank %d : input (%d:%zu, %d:%d, %d:%zu)\n",
+               rank,  0, Ki-1,  imin, imax,  0, N*e-1);
+      }
+    // END DEBUG_OUTPUT
     for (size_t j = 0; j < N*e; j++) {
       for (size_t i0 = 0; i0 < Mi0; i0++) {
         size_t i = rank * Mi0 + i0;
@@ -173,9 +284,27 @@ int main(int argc, char* argv[]) {
                 // simple check for inverse is all elements are equal to the first element.
                 host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (j == 0 && i == 0 && l == 0 && c == 0) ? 1.0 * M*e * N*e * K*e * (b + 1) : 0.0;
               } else {
+                if (C2R)
+                  { // CI == 2; c == 0 for real part, 1 for imaginary part.
+                    host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = (c == 0) ?
+                      real(testfunhermitian(j, i, l,  N*e, M*e, K*e)) :
+                      imag(testfunhermitian(j, i, l,  N*e, M*e, K*e));
+                  }
+                else
+                  {
                 host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + c] = 2.0 * rand() / RAND_MAX - 1.0;
+                  }
               }
             }
+            // BEGIN DEBUG_OUTPUT
+            if (DEBUG_OUTPUT && C2R)
+              { // CI == 2; c == 0 for real part, 1 for imaginary part.
+                double rval = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI];
+                double ival = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + 1];
+                printf("IMDPRDFT input array%4zu%4zu%4zu%18.8f%18.8f\n",
+                       j, i, l, rval, ival);
+              }
+            // END DEBUG_OUTPUT
           }
         }
       }
@@ -187,15 +316,15 @@ int main(int argc, char* argv[]) {
     if (rank == 0) {
       cout << "Problem size: " << M << " x " << N << " x " << K << endl;
       cout << "Batch size  : " << batch << endl;
-      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
       cout << "Embedded    : " << (is_embedded ? "Yes" : "No") << endl;
       cout << "Direction   : " << (is_forward ? "Forward" : "Inverse") << endl;
+      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
       cout << "MPI Ranks   : " << p << endl;
       cout << "Times       : " << endl;
     }
   }
 
-  fftx_plan plan = fftx_plan_distributed_1d(p, M, N, K, batch, is_embedded, is_complex);
+  fftx_plan plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
   for (int t = 0; t < trials; t++) {
 
     double start_time = MPI_Wtime();
@@ -596,6 +725,13 @@ int main(int argc, char* argv[]) {
                       size_t ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
 
                       if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
+                        // BEGIN DEBUG_OUTPUT
+                        if (DEBUG_OUTPUT)
+                          {
+                            printf("batch=%zu %zu %zu %zu part=%zu ref=%12.4e test=%12.4e\n",
+                                   b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
+                          }
+                        // END DEBUG_OUTPUT
                         correct = false;
                       }
                     }
@@ -619,6 +755,13 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
                   size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
+                  // BEGIN DEBUG_OUTPUT
+                  if (DEBUG_OUTPUT)
+                    {
+                      printf("DR out_array%4zu%4zu%4zu%18.8f%18.8f\n",
+                             i, j, k, htest_out[tst_idx], href_out[ref_idx]);
+                    }
+                  // END DEBUG_OUTPUT
                   if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
                     correct = false;
                   }
