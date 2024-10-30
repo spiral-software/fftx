@@ -171,7 +171,6 @@ int main(int argc, char* argv[])
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
-    fftx::OutStream() << "allocating memory\n";
     DEVICE_MALLOC((void **)&inputTfmPtr, bytes);
     if ( DEBUGOUT ) fftx::OutStream() << "allocated inputTfmPtr on device\n";
 
@@ -252,8 +251,8 @@ int main(int argc, char* argv[])
       }
     catch (sycl::exception const &e)
       {
-	fftx::OutStream() << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
-	fftx::OutStream() << "Program terminating." << std::endl;
+	fftx::ErrStream() << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
+	fftx::ErrStream() << "Program terminating." << std::endl;
 	exit(-1);
 	// dev = sycl::device(sycl::cpu_selector_v);
       }
@@ -278,7 +277,7 @@ int main(int argc, char* argv[])
     fftx::OutStream() << "Running on: "
                       << Q.get_device().get_info<sycl::info::device::name>()
                       << std::endl;
-	  
+
     auto inputVendorPtr = sycl::malloc_shared< std::complex<double> >
       (npts, sycl_device, sycl_context);
     auto outputVendorPtr = sycl::malloc_shared< std::complex<double> >
