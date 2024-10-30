@@ -64,7 +64,6 @@ contains
     complex(C_DOUBLE_COMPLEX), dimension(:, :, :), intent(out) :: out_array
     complex(C_DOUBLE_COMPLEX), dimension(:, :, :), intent(in) :: in_array
     integer :: ix, iy, iz ! loop indices
-    complex(C_DOUBLE_COMPLEX), dimension(:, :, :), allocatable :: expanded
 
     do iz = 1, nz_global
        do iy = 1, ny_global
@@ -244,7 +243,6 @@ contains
     integer :: minx, maxx, miny, maxy, minz, maxz
     real(C_DOUBLE), dimension(:, :, :), allocatable :: expanded
 
-    ! print *, 'Rank', mpi_rank, 'calling exchange'
     minx = lbound(in_array, 1)
     miny = lbound(in_array, 2)
     minz = lbound(in_array, 3)
