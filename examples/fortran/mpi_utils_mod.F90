@@ -173,32 +173,34 @@ module mpi_utils_mod
             enddo
          enddo
       enddo
+
+      if (mpi_size .gt. 1) then
+         ! Assume that array is distributed along split_dim = 3.
+         ! allocate(slab(minx-1:maxx+1, miny-1:maxy+1))
+         allocate(slab(lx, ly))
+         npts = lx * ly
+         inext = MODULO(mpi_rank - 1, mpi_size)
+         iprev = MODULO(mpi_rank + 1, mpi_size)
       
-      ! Assume that array is distributed along split_dim = 3.
-      ! allocate(slab(minx-1:maxx+1, miny-1:maxy+1))
-      allocate(slab(lx, ly))
-      npts = lx * ly
-      inext = MODULO(mpi_rank - 1, mpi_size)
-      iprev = MODULO(mpi_rank + 1, mpi_size)
+         ! Send leftmost slab with original data from this rank to previous rank.
+         slab = expanded(:, :, 2)
+         sendtag = 0
+         recvtag = 0
+         call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE, &
+              inext, sendtag, iprev, recvtag, &
+              MPI_COMM_WORLD, mpistatus, my_mpi_err)
+         expanded(:, :, lz) = slab
       
-      ! Send leftmost slab with original data from this rank to previous rank.
-      slab = expanded(:, :, 2)
-      sendtag = 0
-      recvtag = 0
-      call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE, &
-           inext, sendtag, iprev, recvtag, &
-           MPI_COMM_WORLD, mpistatus, my_mpi_err)
-      expanded(:, :, lz) = slab
-      
-      ! Send rightmost slab with original data from this rank to next rank.
-      slab = expanded(:, :, lz - 1)
-      ! Send slab from here to idest; receive slab here from isource.
-      sendtag = 1
-      recvtag = 1
-      call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE, &
-           iprev, sendtag, inext, recvtag, &
-           MPI_COMM_WORLD, mpistatus, my_mpi_err)
-      expanded(:, :, 1) = slab
+         ! Send rightmost slab with original data from this rank to next rank.
+         slab = expanded(:, :, lz - 1)
+         ! Send slab from here to idest; receive slab here from isource.
+         sendtag = 1
+         recvtag = 1
+         call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE, &
+              iprev, sendtag, inext, recvtag, &
+              MPI_COMM_WORLD, mpistatus, my_mpi_err)
+         expanded(:, :, 1) = slab
+      endif
     end subroutine MPIExchange3dReal
     
     subroutine MPIExchange3dComplex(expanded, arr)
