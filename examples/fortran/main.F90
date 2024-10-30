@@ -1,9 +1,9 @@
 PROGRAM FFTX_CONVOLUTION
   use mpi_utils_mod
-  use problem_dimensions_mod, only : initProblemDimensions
-  use data_functions_mod
+!  use problem_dimensions_mod, only : initProblemDimensions
+!  use data_functions_mod
   use transform_tests_mod
-  use convolution_mod
+  use convolution_mod, only : singleRealConvolutionTest, singleComplexConvolutionTest, distRealConvolutionTest, distComplexConvolutionTest
   implicit none
 
   DOUBLE PRECISION :: starttime, endtime, time, time_max
