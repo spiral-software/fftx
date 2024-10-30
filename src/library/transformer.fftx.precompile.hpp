@@ -89,17 +89,17 @@ namespace fftx {
       bool dstSame = (dstExtents == m_outputSize);
       if (!srcSame)
         {
-          std::cout << "error: transformer<" << DIM << ">"
-                    << m_size << "::transform"
-                    << " called with input array size " << srcExtents
-                    << std::endl;
+          fftx::ErrStream() << "error: transformer<" << DIM << ">"
+                            << m_size << "::transform"
+                            << " called with input array size " << srcExtents
+                            << std::endl;
         }
       if (!dstSame)
         {
-          std::cout << "error: transformer<" << DIM << ">"
-                    << m_size << "::transform"
-                    << " called with output array size " << dstExtents
-                    << std::endl;
+          fftx::ErrStream() << "error: transformer<" << DIM << ">"
+                            << m_size << "::transform"
+                            << " called with output array size " << dstExtents
+                            << std::endl;
         }
 
       if (srcSame && dstSame)
@@ -187,12 +187,14 @@ namespace fftx {
       if (a_tupl == nullptr)
         {
           m_defined = false;
-          printf("%s is not in the library.\n", name().c_str());
+          // printf("%s is not in the library.\n", name().c_str());
+          fftx::OutStream() << name() << " is not in the library." << std::endl;
         }
       else
         {
           // printf("transformer: this size is in the library. Initializing.\n");
-          printf("%s is in the library. Initializing.\n", name().c_str());
+          // printf("%s is in the library. Initializing.\n", name().c_str());
+          fftx::OutStream() << name() << " is in the library. Initializing." << std::endl;
           // Still need to set transform_spiral in the derived class.
           init_spiral = *a_tupl->initfp;
           destroy_spiral = *a_tupl->destroyfp;

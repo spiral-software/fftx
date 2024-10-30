@@ -253,8 +253,8 @@ void writeArray(fftx::array_t<DIM, T>& a_arr)
   size_t npts = dom.size();
   for (size_t ind = 0; ind < npts; ind++)
     {
-      std::cout << ind << "  " << pointFromPositionBox(ind, dom)
-                << "  " << arrPtr[ind] << std::endl;
+      fftx::OutStream() << ind << "  " << pointFromPositionBox(ind, dom)
+                        << "  " << arrPtr[ind] << std::endl;
     }
 }
 
@@ -660,7 +660,7 @@ template<int DIM>
 void fillSymmetric(fftx::array_t<DIM, std::complex<double> >& a_arrOut,
                    fftx::array_t<DIM, std::complex<double> >& a_arrIn)
 {
-  std::cout << "*** symmetrizing C2R" << std::endl;
+  fftx::OutStream() << "*** symmetrizing C2R" << std::endl;
   fftx::box_t<DIM> inputDomain = a_arrIn.m_domain;
   std::complex<double>* arrInPtr = a_arrIn.m_data.local();
 
@@ -689,8 +689,10 @@ void fillSymmetric(fftx::array_t<DIM, std::complex<double> >& a_arrOut,
             }
           else
             {
-              std::cout << "fillSymmetric: " << ptOut << " from " << ptRefIn
-                        << " which is not in input domain" << std::endl;
+              fftx::OutStream() << "fillSymmetric: " << ptOut
+                                << " from " << ptRefIn
+                                << " which is not in input domain"
+                                << std::endl;
             }
         }
     }

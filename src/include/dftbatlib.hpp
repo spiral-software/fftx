@@ -17,14 +17,14 @@ public:
     void randomProblemInstance() {
     }
     void semantics() {
-        std::cout << "szns := [" << sizes.at(0) << "];" << std::endl;
-        std::cout << "nbatch := " << sizes.at(1) << ";" << std::endl;
-        std::cout << "stridetype := " << sizes.at(2) << ";" << std::endl;
-        std::cout << "sign := " << sizes.at(3) << ";" << std::endl;
+        fftx::OutStream() << "szns := [" << sizes.at(0) << "];" << std::endl;
+        fftx::OutStream() << "nbatch := " << sizes.at(1) << ";" << std::endl;
+        fftx::OutStream() << "stridetype := " << sizes.at(2) << ";" << std::endl;
+        fftx::OutStream() << "sign := " << sizes.at(3) << ";" << std::endl;
          if(sizes.at(4) == -1)
-            std::cout << "prefix := \"fftx_dftbat_\";" << std::endl;
+            fftx::OutStream() << "prefix := \"fftx_dftbat_\";" << std::endl;
         else
-            std::cout << "prefix := \"fftx_idftbat_\";" << std::endl;
-        std::cout << dftbat_script << std::endl;
+            fftx::OutStream() << "prefix := \"fftx_idftbat_\";" << std::endl;
+        fftx::OutStream() << dftbat_script << std::endl;
     }
 };
