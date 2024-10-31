@@ -15,6 +15,12 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import subprocess, os
+from datetime import datetime
+
+# Define a custom timestamp variable
+rst_epilog = f"""
+.. |timestamp| replace:: {datetime.now().strftime('%B %d, %Y at %H:%M')}
+"""
 
 # Check if we're running on Read the Docs' servers
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'

@@ -22,6 +22,8 @@ FFTX is being developed as a cooperative effort between Lawrence
 Berkeley National Laboratory, Carnegie Mellon University, and
 SpiralGen, Inc.
 
+Documentation generated on |timestamp|.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
