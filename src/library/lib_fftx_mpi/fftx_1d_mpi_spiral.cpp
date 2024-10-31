@@ -27,7 +27,7 @@
 #include "cpubackend.hpp"
 #endif
 
-using namespace std;
+// using namespace std;
 
 BATCH1DDFTProblem bdstg1_1d;
 BATCH1DDFTProblem bdstg2_1d;
@@ -102,8 +102,8 @@ fftx_plan fftx_plan_distributed_1d_spiral(
   int invK0 = ceil_div(K*e, p);
 
   size_t buff_size = ((size_t) M0) * ((size_t) M1) * ((size_t) N*e) * 1 * ((size_t) invK0) * ((size_t) batch); // can either omit M1 or K1. arbit omit K1.
-  DEVICE_MALLOC(&(plan->Q3), sizeof(complex<double>) * buff_size * batch);
-  DEVICE_MALLOC(&(plan->Q4), sizeof(complex<double>) * buff_size * batch);
+  DEVICE_MALLOC(&(plan->Q3), sizeof(std::complex<double>) * buff_size * batch);
+  DEVICE_MALLOC(&(plan->Q4), sizeof(std::complex<double>) * buff_size * batch);
 
   return plan;
 }

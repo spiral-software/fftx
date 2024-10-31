@@ -40,7 +40,7 @@ inline std::string getCUDARuntime() {
     const char * tmp2 = std::getenv("CUDA_HOME");
      std::string tmp(tmp2 ? tmp2 : "");
         if (tmp.empty()) {
-            std::cout << "[ERROR] No such variable found! Please set CUDA_HOME to point to top level cuda directory" << std::endl;
+            fftx::OutStream() << "[ERROR] No such variable found! Please set CUDA_HOME to point to top level cuda directory" << std::endl;
             exit(-1);
         }
     #if defined (_WIN32) || defined (_WIN64)
@@ -125,7 +125,7 @@ inline Executor::string_code Executor::hashit(std::string const& inString) {
 }
 
 inline void Executor::parseDataStructure(std::string input) {
-    // std::cout << input << std::endl;
+    // fftx::OutStream() << input << std::endl;
     // std::ifstream t(input);
     // std::stringstream ds;
     // ds << t.rdbuf();
@@ -158,16 +158,16 @@ inline void Executor::parseDataStructure(std::string input) {
                 in_params.push_back(std::make_tuple("&"+words.at(1), atoi(words.at(2).c_str()), words.at(3)));
                 break;
             case 2:
-                if ( DEBUGOUT ) std::cout << "the kernel name is " << words.at(1) << "\n";
+                if ( DEBUGOUT ) fftx::OutStream() << "the kernel name is " << words.at(1) << "\n";
                 kernel_name = words.at(1);
                 break;
             case 3:
-                // std::cout << "enterd case 3\n";
-                // std::cout << words.at(1) << " " << words.at(2) << " " << words.at(3) << " \n";
+                // fftx::OutStream() << "enterd case 3\n";
+                // fftx::OutStream() << words.at(1) << " " << words.at(2) << " " << words.at(3) << " \n";
                 int loc = atoi(words.at(1).c_str());
                 int size = atoi(words.at(2).c_str());
                 int dt = atoi(words.at(3).c_str());
-                //std::cout << "the case is " << dt << std::endl;
+                //fftx::OutStream() << "the case is " << dt << std::endl;
                 //convert this to a string because spiral prints string type
                 switch(dt) {
                     case 0: //int
@@ -233,8 +233,8 @@ inline void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-    if( DEBUGOUT ) std::cout << kernels << std::endl;
-    if ( DEBUGOUT ) std::cout << "parsed input\n";
+    if( DEBUGOUT ) fftx::OutStream() << kernels << std::endl;
+    if ( DEBUGOUT ) fftx::OutStream() << "parsed input\n";
 }
 
 inline void Executor::createProg() {
@@ -244,14 +244,14 @@ inline void Executor::createProg() {
     0, // numHeaders
     NULL, // headers
     NULL)); 
-    if ( DEBUGOUT ) std::cout << "created program\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "created program\n";
 }
 
 inline void Executor::getVars() {
     for(int i = 0; i < device_names.size(); i++) {
         DEVICE_RTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
     }
-    if ( DEBUGOUT ) std::cout << "added variables\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "added variables\n";
 }
 
 inline void Executor::compileProg() {
@@ -259,7 +259,7 @@ inline void Executor::compileProg() {
     compileResult = nvrtcCompileProgram(prog, 
     2, 
     opts); 
-    if ( DEBUGOUT ) std::cout << "compiled program\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "compiled program\n";
 }
 
 inline void Executor::getLogsAndPTX() {
@@ -267,11 +267,11 @@ inline void Executor::getLogsAndPTX() {
     log = new char[logSize];
     DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
     if (compileResult != NVRTC_SUCCESS) {
-        std::cout << "compile failure with code "<< nvrtcGetErrorString(compileResult) << std::endl;
+        fftx::OutStream() << "compile failure with code "<< nvrtcGetErrorString(compileResult) << std::endl;
         for(int i = 0; i < logSize; i++) {
-            std::cout << log[i];
+            fftx::OutStream() << log[i];
         }
-        std::cout << std::endl;
+        fftx::OutStream() << std::endl;
         exit(1);
     }
     delete[] log;
@@ -289,22 +289,22 @@ inline void Executor::getLogsAndPTX() {
     0, 0, 0));
     DEVICE_SAFE_CALL(cuLinkComplete(linkState, &cubin, &cubinSize));
     DEVICE_SAFE_CALL(cuModuleLoadData(&module, cubin));
-    if ( DEBUGOUT ) std::cout << "created module\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "created module\n";
 }
 
 inline void Executor::initializeVars() {
     for(int i = 0; i < device_names.size(); i++) {
-        if ( DEBUGOUT ) std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
+        if ( DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
         DEVICE_RTC_SAFE_CALL(nvrtcGetLoweredName(
                                  prog, 
                                  std::get<0>(device_names[i]).c_str(), // name expression
                                  &name                         // lowered name
                                  ));
-        if ( DEBUGOUT ) std::cout << "it got past lower name\n";
+        if ( DEBUGOUT ) fftx::OutStream() << "it got past lower name\n";
         CUdeviceptr variable_addr;
         DEVICE_SAFE_CALL(cuModuleGetGlobal(&variable_addr, NULL, module, name));
-         if ( DEBUGOUT ) std::cout << "it got past get global\n";
+         if ( DEBUGOUT ) fftx::OutStream() << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
@@ -331,7 +331,7 @@ inline void Executor::initializeVars() {
             }
             case pointer_int:
             {
-                if ( DEBUGOUT ) std::cout << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) fftx::OutStream() << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
                 DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
                 DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
@@ -340,7 +340,7 @@ inline void Executor::initializeVars() {
             }
             case pointer_float:
             {
-                if ( DEBUGOUT ) std::cout << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) fftx::OutStream() << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
                 DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
                 DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
@@ -349,7 +349,7 @@ inline void Executor::initializeVars() {
             }
             case pointer_double:
             {
-                if ( DEBUGOUT ) std::cout << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( DEBUGOUT ) fftx::OutStream() << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
                 DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
                 DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
@@ -361,20 +361,20 @@ inline void Executor::initializeVars() {
 }
 
 inline void Executor::destoryProg() {
-    if ( DEBUGOUT ) std::cout << "destoryed program call\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "destoryed program call\n";
     DEVICE_RTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
 inline float Executor::initAndLaunch(std::vector<void*>& args) {
-    if ( DEBUGOUT ) std::cout << "the kernel name is " << kernel_name << std::endl;
+    if ( DEBUGOUT ) fftx::OutStream() << "the kernel name is " << kernel_name << std::endl;
     DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
 
-    if ( DEBUGOUT ) std::cout << "configuring device execution environment " << std::endl;
+    if ( DEBUGOUT ) fftx::OutStream() << "configuring device execution environment " << std::endl;
     DEVICE_SAFE_CALL(cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 1073741824));
     DEVICE_SAFE_CALL(cuFuncSetCacheConfig(kernel, CU_FUNC_CACHE_PREFER_L1));
      
 
-    if ( DEBUGOUT ) std::cout << "launched kernel\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "launched kernel\n";
     CUevent start, stop;
     DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
     DEVICE_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
@@ -395,18 +395,18 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
 
 inline void Executor::execute(std::string file_name) {
     //int count = *((int*)inputargs.at(0));
-    // std::cout << "count is" << counts << std::endl;
-    // std::cout << (char*)inputargs.at(inputargs.size()-1) << std::endl;
-    // std::cout << (inputargs.at(inputargs.size()-2))[counts-1] << std::endl;
-    //std::cout << in.at(0).m_domain.size() << std::endl;
-    if ( DEBUGOUT ) std::cout << "begin parsing\n";
+    // fftx::OutStream() << "count is" << counts << std::endl;
+    // fftx::OutStream() << (char*)inputargs.at(inputargs.size()-1) << std::endl;
+    // fftx::OutStream() << (inputargs.at(inputargs.size()-2))[counts-1] << std::endl;
+    //fftx::OutStream() << in.at(0).m_domain.size() << std::endl;
+    if ( DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
     parseDataStructure(file_name);
     if ( DEBUGOUT ) {
-        std::cout << "finished parsing\n";
+        fftx::OutStream() << "finished parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
-            std::cout << std::get<0>(device_names[i]) << std::endl;
+            fftx::OutStream() << std::get<0>(device_names[i]) << std::endl;
         }
-        std::cout << kernel_name << std::endl;
+        fftx::OutStream() << kernel_name << std::endl;
     }
     createProg();
     getVars();

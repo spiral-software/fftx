@@ -21,29 +21,29 @@ public:
     void randomProblemInstance() {
     }
     void semantics() {
-        std::cout << "Import(realdft);" << std::endl;
-        std::cout << "N := " << sizes.at(0) << ";" << std::endl;
-        std::cout << "B := " << sizes.at(1) << ";" << std::endl;
-        std::cout << "b := " << sizes.at(2) << ";" << std::endl;
+        fftx::OutStream() << "Import(realdft);" << std::endl;
+        fftx::OutStream() << "N := " << sizes.at(0) << ";" << std::endl;
+        fftx::OutStream() << "B := " << sizes.at(1) << ";" << std::endl;
+        fftx::OutStream() << "b := " << sizes.at(2) << ";" << std::endl;
         if(sizes.at(3) == 0) {
-            std::cout << "read := APar;" << std::endl;
+            fftx::OutStream() << "read := APar;" << std::endl;
         }
         else{
-            std::cout << "read := AVec;" << std::endl;
+            fftx::OutStream() << "read := AVec;" << std::endl;
         }
         if(sizes.at(4) == 0) {
-            std::cout << "write := APar;" << std::endl;
+            fftx::OutStream() << "write := APar;" << std::endl;
         }
         else{
-            std::cout << "write := AVec;" << std::endl;
+            fftx::OutStream() << "write := AVec;" << std::endl;
         }
-        std::cout << "sign := -1;" << std::endl;
-        std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
+        fftx::OutStream() << "sign := -1;" << std::endl;
+        fftx::OutStream() << "name := \""<< name << "_spiral" << "\";" << std::endl;
         if(sizes.at(3) == 0 && sizes.at(4) == 0)
-            std::cout << batch2dprdft_script_0x0 << std::endl;
+            fftx::OutStream() << batch2dprdft_script_0x0 << std::endl;
         else if(sizes.at(3) == 0 && sizes.at(4) == 1)
-            std::cout << batch2dprdft_script_0x1 << std::endl;
+            fftx::OutStream() << batch2dprdft_script_0x1 << std::endl;
         else if(sizes.at(3) == 1 && sizes.at(4) == 0)
-            std::cout << batch2dprdft_script_1x0 << std::endl;
+            fftx::OutStream() << batch2dprdft_script_1x0 << std::endl;
     }
 };

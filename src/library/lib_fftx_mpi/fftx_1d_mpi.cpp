@@ -13,7 +13,7 @@
 #include "fftx_mpi_default.hpp"
 #include "fftx_1d_mpi_default.hpp"
 
-using namespace std;
+// using namespace std;
 
 inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
@@ -29,11 +29,11 @@ void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
 
   size_t max_size = (((size_t)M0)*((size_t)M1)*((size_t)N)*((size_t)K0)*((size_t)K1)*((size_t)(plan->is_embed ? 8 : 1))/(plan->r)) * plan->b;
 #if CUDA_AWARE_MPI
-  DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(complex<double>));
-  DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(complex<double>));
+  DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(std::complex<double>));
+  DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(std::complex<double>));
 #else
-  plan->send_buffer = (complex<double> *) malloc(max_size * sizeof(complex<double>));
-  plan->recv_buffer = (complex<double> *) malloc(max_size * sizeof(complex<double>));
+  plan->send_buffer = (std::complex<double> *) malloc(max_size * sizeof(std::complex<double>));
+  plan->recv_buffer = (std::complex<double> *) malloc(max_size * sizeof(std::complex<double>));
 #endif
 }
 
@@ -61,7 +61,7 @@ fftx_plan fftx_plan_distributed_1d(
     plan->use_fftx = true;
   } else {
 #endif
-    std::cout << "configuration not supported, using vendor backend" << std::endl;
+    fftx::OutStream() << "configuration not supported, using vendor backend" << std::endl;
     plan = fftx_plan_distributed_1d_default(comm, p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }
@@ -94,7 +94,7 @@ void fftx_mpi_rcperm_1d(
 
           DEVICE_MEM_COPY(
             plan->send_buffer, X,
-            buffer_size * sizeof(complex<double>),
+            buffer_size * sizeof(std::complex<double>),
             MEM_COPY_DEVICE_TO_HOST
           );
           // TODO: make sure buffer is padded out before send?
@@ -112,19 +112,19 @@ void fftx_mpi_rcperm_1d(
           if (is_embedded) {
             DEVICE_MEM_COPY(
               Y, plan->recv_buffer,
-              sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
+              sizeof(std::complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
               MEM_COPY_HOST_TO_DEVICE
             );
             pack_embed(
               plan,
-              (complex<double> *) X, (complex<double> *) Y,
+              (std::complex<double> *) X, (std::complex<double> *) Y,
               plan->shape[4] * plan->N * plan->b,
               plan->shape[0],
               plan->shape[5],
               false
             );
             embed(
-              (complex<double> *) Y, (complex<double> *) X,
+              (std::complex<double> *) Y, (std::complex<double> *) X,
               plan->shape[2], // faster
               plan->shape[2], // faster padded
               plan->shape[0] * plan->shape[5] * plan->shape[4], // slower
@@ -133,12 +133,12 @@ void fftx_mpi_rcperm_1d(
           } else {
             DEVICE_MEM_COPY(
               X, plan->recv_buffer,
-              sizeof(complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
+              sizeof(std::complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
               MEM_COPY_HOST_TO_DEVICE
             );
             pack_embed(
               plan,
-              (complex<double> *) Y, (complex<double> *) X,
+              (std::complex<double> *) Y, (std::complex<double> *) X,
               plan->shape[4] * plan->shape[2] * plan->b,
               plan->shape[0],
               plan->shape[5],
@@ -155,14 +155,14 @@ void fftx_mpi_rcperm_1d(
           size_t K0 = ceil_div(plan->K, plan->r);
           size_t K1 = plan->r;
           // embed(
-          //   (complex<double> *) Y, (complex<double> *) X,
+          //   (std::complex<double> *) Y, (std::complex<double> *) X,
           //   plan->K * plan->b, // fastest dim, to be doubled and embedded
           //   K1 * K0 * plan->b, // faster padded dim, which K is embedded in.
           //   plan->N*e * plan->shape[0] // slower dim
           // );
 
           embed(
-            (complex<double> *) Y, (complex<double> *) X,
+            (std::complex<double> *) Y, (std::complex<double> *) X,
             plan->K, // fastest dim, to be doubled and embedded
             K1 * K0, // faster padded dim, which K is embedded in.
             plan->N*e * plan->shape[0], // slower dim
@@ -175,7 +175,7 @@ void fftx_mpi_rcperm_1d(
           // swap pointers.
           // void *tmp = (void *) X;
           // X = Y;
-          // Y = (complex<double> *) tmp;
+          // Y = (std::complex<double> *) tmp;
         }
       }
       break;
@@ -201,7 +201,7 @@ void fftx_mpi_rcperm_1d(
           // arg size isn't supposed to be padded in the dim that it's going to be padded in.
           {
             pack(
-              (complex<double> *) Y, (complex<double> *) X,
+              (std::complex<double> *) Y, (std::complex<double> *) X,
               plan->shape[0],
               plan->K*e * plan->N*e * plan->b, // istride
               K0 * plan->N*e * plan->b, // ostride
@@ -218,7 +218,7 @@ void fftx_mpi_rcperm_1d(
           size_t recvSize = sendSize;
           DEVICE_MEM_COPY(
             plan->send_buffer, Y,
-            sizeof(complex<double>) * K1 * sendSize,
+            sizeof(std::complex<double>) * K1 * sendSize,
             MEM_COPY_DEVICE_TO_HOST
           );
 
@@ -236,7 +236,7 @@ void fftx_mpi_rcperm_1d(
 
           DEVICE_MEM_COPY(
             Y, plan->recv_buffer,
-            sizeof(complex<double>) * plan->shape[1] * recvSize,
+            sizeof(std::complex<double>) * plan->shape[1] * recvSize,
             MEM_COPY_HOST_TO_DEVICE
           );
         } else {
@@ -245,7 +245,7 @@ void fftx_mpi_rcperm_1d(
             size_t b = plan->shape[5];
             size_t c = plan->shape[0];
             pack(
-              (complex<double> *) Y, (complex<double> *) X,
+              (std::complex<double> *) Y, (std::complex<double> *) X,
               b,   a, c*a,
               c, b*a,   a,
               a
@@ -256,7 +256,7 @@ void fftx_mpi_rcperm_1d(
           size_t recvSize = sendSize;
           DEVICE_MEM_COPY(
             plan->send_buffer, Y,
-            sizeof(complex<double>) * plan->shape[5] * sendSize,
+            sizeof(std::complex<double>) * plan->shape[5] * sendSize,
             MEM_COPY_DEVICE_TO_HOST
           );
 
@@ -272,7 +272,7 @@ void fftx_mpi_rcperm_1d(
 
           DEVICE_MEM_COPY(
             Y, plan->recv_buffer,
-            sizeof(complex<double>) * plan->shape[5] * recvSize,
+            sizeof(std::complex<double>) * plan->shape[5] * recvSize,
             MEM_COPY_HOST_TO_DEVICE
           );
         }

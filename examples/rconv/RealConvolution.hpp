@@ -91,7 +91,7 @@ public:
   {
     if (m_tp == EMPTY)
       {
-        std::cout << "calling exec on empty RealConvolution" << std::endl;
+        fftx::ErrStream() << "calling exec on empty RealConvolution" << std::endl;
       }
     else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB)
       {
@@ -196,9 +196,10 @@ public:
   {
     if (!a_tfm.isDefined())
       {
-        std::cout << "transformation not defined" << std::endl;
+        fftx::ErrStream() << "transformation not defined" << std::endl;
         return;
       }
+    fftx::OutStream() << std::scientific << std::setprecision(5);
 
     m_tfm = a_tfm;
     m_rounds = a_rounds;
@@ -211,8 +212,9 @@ public:
     updateMax(err, testConstantSymbol());
     updateMax(err, testDelta());
     updateMax(err, testPoisson());
-    printf("%dD tests in %d rounds max error %11.5e\n",
-           DIM, m_rounds, err);
+    fftx::OutStream() << DIM << "D tests in "
+                      << m_rounds << " rounds max error " << err
+                      << std::endl;
   }
 
 protected:
@@ -242,7 +244,8 @@ protected:
   {
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("calling testConstantSymbol<%d>\n", DIM);
+        fftx::OutStream() << "calling testConstantSymbol<"
+                          << DIM << ">" << std::endl;
       }
     fftx::array_t<DIM, double> input(m_domain);
     fftx::array_t<DIM, double> output(m_domain);
@@ -259,14 +262,17 @@ protected:
         updateMax(errConstantSymbol, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random input with constant symbol max error %11.5e\n",
-                   DIM, err);
+            fftx::OutStream() << DIM
+                              << "D random input with constant symbol max error "
+                              << err << std::endl;
           }
       }
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD random input with constant symbol in %d rounds: max error %11.5e\n",
-               DIM, m_rounds, errConstantSymbol);
+        fftx::OutStream() << DIM
+                          << "D random input with constant symbol in "
+                          << m_rounds << " rounds: max error "
+                          << errConstantSymbol << std::endl;
       }
     return errConstantSymbol;
   }
@@ -275,7 +281,8 @@ protected:
   {
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("calling testDelta<%d>\n", DIM);
+        fftx::OutStream() << "calling testDelta<"
+                          << DIM << ">" << std::endl;
       }
     fftx::array_t<DIM, double> input(m_domain);
     fftx::array_t<DIM, double> output(m_domain);
@@ -308,7 +315,9 @@ protected:
     double errDelta = absMaxDiffArray(input, output);
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD delta function test: max error %11.5e\n", DIM, errDelta);
+        fftx::OutStream() << DIM
+                          << "D delta function test: max error "
+                          << errDelta << std::endl;
       }
     return errDelta;
   }
@@ -317,7 +326,8 @@ protected:
   {
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("calling testPoisson<%d>\n", DIM);
+        fftx::OutStream() << "calling testPoisson<"
+                          << DIM << ">" << std::endl;
       }
     fftx::array_t<DIM, double> input(m_domain);
     fftx::array_t<DIM, double> output(m_domain);
@@ -436,8 +446,9 @@ protected:
     double errPoisson = absMaxDiffArray(lap2output, input);
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD Poisson test: max error %11.5e\n",
-               DIM, errPoisson);
+        fftx::OutStream() << DIM
+                          << "D Poisson test: max error "
+                          << errPoisson << std::endl;
       }
     return errPoisson;
   }

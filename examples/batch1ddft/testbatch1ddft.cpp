@@ -22,8 +22,10 @@
 #define CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
-        fprintf(stderr, "Cuda error in file '%s' in line %i : %s.\n",        \
-                __FILE__, __LINE__, cudaGetErrorString( err) );              \
+      fftx::ErrStream() << "Cuda error in file '" << __FILE__                \
+                        << "' in line " << __LINE__                          \
+                        << " : " << cudaGetErrorString( err)                 \
+                        << "." << std::endl;                                 \
         exit(EXIT_FAILURE);                                                  \
     } \
 }
@@ -64,7 +66,7 @@ static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_
     for ( int indx = 0; indx < arrsz; indx++ ) {
         DEVICE_FFT_DOUBLECOMPLEX s = spiral_Y[indx];
         DEVICE_FFT_DOUBLECOMPLEX c = devfft_Y[indx];
-        // std::cout << spiral_Y[indx] << ":" << devfft_Y[indx] << std::endl;
+        // fftx::OutStream() << spiral_Y[indx] << ":" << devfft_Y[indx] << std::endl;
 
 
         bool elem_correct = ( (abs(s.x - c.x) < 1e-7) && (abs(s.y - c.y) < 1e-7) );
@@ -72,9 +74,12 @@ static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_
         maxdelta = maxdelta < (double)(abs(s.y -c.y)) ? (double)(abs(s.y -c.y)) : maxdelta ;
         correct &= elem_correct;
     }
-    
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
+
+    fftx::OutStream() << "Correct: " << (correct ? "True" : "False") << "\t"
+                      << "Max delta = "
+                      << std::scientific << std::uppercase << maxdelta
+                      << std::endl;
+    std::flush(fftx::OutStream());
 
     return;
 }
@@ -129,10 +134,13 @@ int main(int argc, char* argv[])
             write = atoi ( & argv[1][baz] );
             break;
         case 'h':
-            printf ( "Usage: %s: [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]\n", argv[0] );
+            fftx::OutStream() << "Usage: " << argv[0]
+                            << " [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]"
+                              << std::endl;
             exit (0);
         default:
-            printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+            fftx::OutStream() << prog << ": unknown argument: "
+                              << argv[1] << " ... ignored:" << std::endl;
         }
         argv++, argc--;
     }
@@ -145,7 +153,7 @@ int main(int argc, char* argv[])
     else
         writes = "Strided";
 
-     if ( DEBUGOUT ) std::cout << N << " " << B << " " << reads << " " << writes << std::endl;
+     if ( DEBUGOUT ) fftx::OutStream() << N << " " << B << " " << reads << " " << writes << std::endl;
     std::vector<int> sizes{N,B, read,write};
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
@@ -159,7 +167,7 @@ int main(int argc, char* argv[])
 
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-     if ( DEBUGOUT ) std::cout << "allocating memory" << std::endl;
+     if ( DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
     DEVICE_MALLOC((void**)&dX, inputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void **)&dY, outputHost.size() * sizeof(std::complex<double>));
     DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
@@ -213,26 +221,26 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     
     
     if(read == 0 && write == 0) {
-         if ( DEBUGOUT ) std::cout << "APAR, APAR" << std::endl;
+         if ( DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N, //plan, rank, n,
                                     &N,   1,  N, // iembed, istride, idist,
                                     &N,   1,  N, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     } else if(read == 0 && write == 1) { 
-         if ( DEBUGOUT ) std::cout << "APAR, AVEC" << std::endl;
+         if ( DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N, //plan, rank, n,
                                     &N,   1,  N, // iembed, istride, idist,
                                     &N,   B,  1, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }else if(read == 1 && write == 0) {
-         if ( DEBUGOUT ) std::cout << "AVEC, APAR" << std::endl;
+         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N,  //plan, rank, n,
                                     &N,   B,  1,  // iembed, istride, idist,
                                     &N,   1,  N,  // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }
     else {
-         if ( DEBUGOUT ) std::cout << "AVEC, AVEC" << std::endl;
+         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
         res = DEVICE_FFT_PLAN_MANY(&plan, 1, &N,  //plan, rank, n,
                                     &N,   B,  1,  // iembed, istride, idist,
                                     &N,   B,  1,  // oembed, ostride, odist,
@@ -240,7 +248,8 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     }
 
     if ( res != DEVICE_FFT_SUCCESS ) {
-        printf ( "Create DEVICE_FFT_PLAN_MANY failed with error code %d ... skip buffer check\n", res );
+        fftx::OutStream() << "Create DEVICE_FFT_PLAN_MANY failed with error code "
+                          << res << " ... skip buffer check" << std::endl;
         check_buff = false;
     }
 #endif
@@ -254,16 +263,16 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
         DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(std::complex<double>),
                         MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( DEBUGOUT ) std::cout << "copied X" << std::endl;
+        if ( DEBUGOUT ) fftx::OutStream() << "copied X" << std::endl;
         
         b1dft.transform();
         batch1ddft_gpu[itn] = b1dft.getTime();
     
     #if defined(FFTX_SYCL)		
 	{
-    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
-		sycl::host_accessor h_acc(buf_tempX);
-		std::cout << h_acc[0] << std::endl;
+          fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+          sycl::host_accessor h_acc(buf_tempX);
+          fftx::OutStream() << h_acc[0] << std::endl;
 	}
 	#endif
 
@@ -278,7 +287,8 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
                                        (DEVICE_FFT_DOUBLECOMPLEX *) tempX,
                                       DEVICE_FFT_FORWARD);
             if ( res != DEVICE_FFT_SUCCESS) {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+                                  << res << " ... skip buffer check" << std::endl;
                 check_buff = false;
                 //  break;
             }
@@ -289,7 +299,12 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
             DEVICE_MEM_COPY ( outDevfft1.data(), tempX,
                               outDevfft1.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
 
-            printf ( "DFT = %d Batch = %d Read = %s Write = %s \tBatch 1D FFT (Forward)\t", N, B, reads.c_str(), writes.c_str());
+            // printf ( "DFT = %d Batch = %d Read = %s Write = %s \tBatch 1D FFT (Forward)\t", N, B, reads.c_str(), writes.c_str());
+            fftx::OutStream() << "DFT = " << N
+                              << " Batch = " << B
+                              << " Read = " << reads
+                              << " Write = " << writes
+                              << " \tBatch 1D FFT (Forward)\t";
             checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.data(),
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.data(),
                                  (long) outDevfft1.size() );
@@ -318,9 +333,9 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     	
 	#if defined (FFTX_SYCL)
 	{
-    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
-		sycl::host_accessor h_acc(buf_Y);
-		std::cout << h_acc[0] << std::endl;
+          fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+          sycl::host_accessor h_acc(buf_Y);
+          fftx::OutStream() << h_acc[0] << std::endl;
 	}
     #endif
 
@@ -336,7 +351,8 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
                                        (DEVICE_FFT_DOUBLECOMPLEX *) dY,
                                       DEVICE_FFT_INVERSE);
             if ( res != DEVICE_FFT_SUCCESS) {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+                                  << res << " ... skip buffer check" << std::endl;
                 check_buff = false;
                 // break;
             }
@@ -347,7 +363,12 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
             DEVICE_MEM_COPY ( outDevfft2.data(), dY,
                               outDevfft2.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
 
-            printf ( "DFT = %d Batch = %d Read = %s Write = %s  \tBatch 1D FFT (Inverse)\t", N, B, reads.c_str(), writes.c_str());
+            // printf ( "DFT = %d Batch = %d Read = %s Write = %s  \tBatch 1D FFT (Inverse)\t", N, B, reads.c_str(), writes.c_str());
+            fftx::OutStream() << "DFT = " << N
+                              << " Batch = " << B
+                              << " Read = " << reads
+                              << " Write = " << writes
+                              << " \tBatch 1D FFT (Inverse)\t";
             checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost2.data(),
                                  (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft2.data(),
                                  (long) outDevfft2.size() );
@@ -357,32 +378,52 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
 
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );        //  , devfft.c_str() );
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on Batch 1D FFT (forward) for " << iterations
+                      << " trials of size " << sizes.at(0)
+                      << " and batch " << sizes.at(1) << ":"
+                      << std::endl;
+    fftx::OutStream() << "Trial #\tSpiral\trocfft" << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, batch1ddft_gpu[itn], devmilliseconds[itn] );
+      fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
+                        << batch1ddft_gpu[itn] << "\t"
+                        << devmilliseconds[itn] << std::endl;
     }
 
-    printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d:\nTrial #\tSpiral\trocfft\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1) );
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on Batch 1D FFT (inverse) for " << iterations
+                      << " trials of size " << sizes.at(0)
+                      << " and batch " << sizes.at(1) << ":"
+                      << std::endl;
+    fftx::OutStream() << "Trial #\tSpiral\trocfft" << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, ibatch1ddft_gpu[itn], invdevmilliseconds[itn] );
+      fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
+                        << ibatch1ddft_gpu[itn] << "\t"
+                        << invdevmilliseconds[itn] << std::endl;
     }
 #else
-     printf ( "Times in milliseconds for %s on Batch 1D FFT (forward) for %d trials of size %d and batch %d\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on Batch 1D FFT (forward) for " << iterations
+                      << " trials of size " << sizes.at(0)
+                      << " and batch " << sizes.at(1) << ":"
+                      << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\n", itn, batch1ddft_gpu[itn]);
+      fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
+                        << batch1ddft_gpu[itn] << std::endl;
     }
 
-    printf ( "Times in milliseconds for %s on Batch 1D FFT (inverse) for %d trials of size %d and batch %d\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1));
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on Batch 1D FFT (inverse) for " << iterations
+                      << " trials of size " << sizes.at(0)
+                      << " and batch " << sizes.at(1) << ":"
+                      << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\n", itn, ibatch1ddft_gpu[itn]);
+      fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
+                        << ibatch1ddft_gpu[itn] << std::endl;
     }
 #endif
 
-    printf("%s: All done, exiting\n", prog);
-  
+    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+
     return 0;
 }

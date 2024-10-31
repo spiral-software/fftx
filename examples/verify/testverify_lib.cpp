@@ -54,15 +54,24 @@ int main(int argc, char* argv[])
           verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          // printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          fftx::OutStream() << "Usage: " << argv[0]
+                            << ": [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]"
+                            << std::endl;
           exit (0);
       default:
-          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+          // printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+        fftx::OutStream() << prog << ": unknown argument: " << argv[1]
+                          << " ... ignored"
+                          << std::endl;
       }
       argv++, argc--;
   }
 
-  printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
+  // printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
+  fftx::OutStream() << "Running with verbosity " << verbosity
+                    << ", random " << rounds << " rounds"
+                    << std::endl;
 
   /*
     Set up random number generator.
@@ -123,6 +132,7 @@ int main(int argc, char* argv[])
       }
     }
 
-  printf("%s: All done, exiting\n", prog);
+  // printf("%s: All done, exiting\n", prog);
+  fftx::OutStream() << prog << ": All done, exiting" << std::endl;
   return 0;
 }

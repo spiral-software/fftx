@@ -1,10 +1,13 @@
 #ifndef DEVICE_MACROS_HEADER
 #define DEVICE_MACROS_HEADER
 
+// Need this for ErrStream().
+#include "fftx3.hpp"
+
 #if defined(FFTX_HIP)
 #include <hip/hiprtc.h>
 #include <hip/hip_runtime.h>
-#include <hipfft.h>
+#include <hipfft/hipfft.h>
 #include <rocfft/rocfft.h>
 
 #define DEVICE_SUCCESS hipSuccess
@@ -51,8 +54,8 @@
     do {                                                            \
         hiprtcResult result = (x);									\
         if ( result != HIPRTC_SUCCESS ) {                           \
-            std::cerr << "\nrtc error: " #x " failed with error "	\
-                      << hiprtcGetErrorString(result) << '\n';      \
+          fftx::ErrStream() << "\nrtc error: " #x " failed with error "	\
+                            << hiprtcGetErrorString(result) << '\n';    \
             exit ( 1 );                                             \
         }                                                           \
     } while (0)
@@ -61,8 +64,8 @@
     do {                                                            \
         hipError_t result = (x);									\
         if (result != hipSuccess ) {                                \
-            std::cerr << "\nmain error: " <<  hipGetErrorName(result) << " failed with error " \
-                      << hipGetErrorString(result) << '\n';         \
+            fftx::ErrStream() << "\nmain error: " <<  hipGetErrorName(result) << " failed with error " \
+                              << hipGetErrorString(result) << '\n';     \
             exit ( 1 );                                             \
         }                                                           \
     } while(0)
@@ -121,8 +124,8 @@
     do {                                                        \
         nvrtcResult result = (x);								\
         if (result != NVRTC_SUCCESS) {                          \
-            std::cerr << "\nerror: " #x " failed with error "	\
-                      << nvrtcGetErrorString(result) << '\n';   \
+            fftx::ErrStream() << "\nerror: " #x " failed with error "	\
+                              << nvrtcGetErrorString(result) << '\n';   \
             exit ( 1 );                                         \
         }                                                       \
     } while(0)
@@ -133,8 +136,8 @@
         if (result != CUDA_SUCCESS) {                           \
             const char *msg;                                    \
             cuGetErrorName(result, &msg);                       \
-            std::cerr << "\nerror: " #x " failed with error "	\
-                      << msg << '\n';                           \
+            fftx::ErrStream() << "\nerror: " #x " failed with error "	\
+                              << msg << '\n';                           \
             exit(1);                                            \
         }                                                       \
     } while(0)
@@ -155,9 +158,9 @@ inline void DEVICE_CHECK_ERROR(DEVICE_ERROR_T a_rc)
 #endif
   if (a_rc != DEVICE_SUCCESS)
     {
-      std::cerr << "Failure with code " << a_rc
-                << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
-                << std::endl;
+      fftx::ErrStream() << "Failure with code " << a_rc
+                        << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
+                        << std::endl;
       exit(-1);
     }
 }
@@ -166,9 +169,9 @@ inline void DEVICE_CHECK(DEVICE_ERROR_T a_rc, const std::string& a_name)
 {
    if (a_rc != DEVICE_SUCCESS)
      {
-        std::cerr << a_name << " failed with code " << a_rc
-                  << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
-                  << std::endl;
+        fftx::ErrStream() << a_name << " failed with code " << a_rc
+                          << " meaning " << DEVICE_GET_ERROR_STRING(a_rc)
+                          << std::endl;
         exit(-1);
      }
 }
@@ -178,11 +181,11 @@ inline void DEVICE_FFT_CHECK(DEVICE_FFT_RESULT a_rc, const std::string& a_name)
    if (a_rc != DEVICE_FFT_SUCCESS)
      {
         // There does not appear to be a HIP analogue.
-        std::cerr << a_name << " failed with code " << a_rc
+        fftx::ErrStream() << a_name << " failed with code " << a_rc
 #if defined(__CUDACC__)
-                  << " meaning " << _cudaGetErrorEnum(a_rc)
+                          << " meaning " << _cudaGetErrorEnum(a_rc)
 #endif
-                  << std::endl;
+                          << std::endl;
         exit(-1);
      }
 }
