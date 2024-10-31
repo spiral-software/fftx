@@ -36,7 +36,7 @@ if read_the_docs_build:
 # -- Project information -----------------------------------------------------
 
 project = 'FFTX'
-copyright = f"2024, FFTX Team.\nDocumentation generated on {current_date}"
+copyright = f"2024, FFTX Team.		Documentation generated on {current_date}"
 author = 'FFTX Team'
 
 
