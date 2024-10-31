@@ -45,4 +45,3 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-Documentation generated on |timestamp|.

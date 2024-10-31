@@ -15,12 +15,23 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import subprocess, os
-from datetime import datetime
+import datetime
 
-# Define a custom timestamp variable
-rst_epilog = f"""
-.. |timestamp| replace:: {datetime.now().strftime('%B %d, %Y at %H:%M')}
-"""
+# Get current time and format a 'docs generated on' message
+
+current_date = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
+html_context = {
+    "doc_generated_on": f"Documentation generated on {current_date}"
+}
+
+# Inject the context variable to be used in HTML themes
+def setup(app):
+    app.add_config_value("html_context", {}, "env")
+    app.connect("html-page-context", update_context)
+
+def update_context(app, pagename, templatename, context, doctree):
+    context["doc_generated_on"] = html_context["doc_generated_on"]
+
 
 # Check if we're running on Read the Docs' servers
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
@@ -37,7 +48,7 @@ if read_the_docs_build:
 # -- Project information -----------------------------------------------------
 
 project = 'FFTX'
-copyright = '2023, FFTX Team'
+copyright = '2024, FFTX Team'
 author = 'FFTX Team'
 
 
