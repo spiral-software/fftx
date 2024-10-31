@@ -106,3 +106,5 @@ IMDPRDFTProblem
 .. AVOID    :project: FFTX
 .. AVOID .. doxygenpage:: dotgraphs because "dotgraphs" can't be found.
 .. AVOID .. doxygenindex:: because it writes out too much.
+
+Documentation generated on |timestamp|.

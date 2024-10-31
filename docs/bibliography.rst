@@ -256,3 +256,5 @@ Applications
 	| "**Parallel Empirical Pseudopotential Electronic Structure Calculations for Million Atom Systems**",
 	| *Journal of Computational Physics*, **160** (1):29--41 (2000).
 
+
+Documentation generated on |timestamp|.
