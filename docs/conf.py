@@ -24,15 +24,6 @@ html_context = {
     "doc_generated_on": f"Documentation generated on {current_date}"
 }
 
-# Inject the context variable to be used in HTML themes
-def setup(app):
-    app.add_config_value("html_context", {}, "env")
-    app.connect("html-page-context", update_context)
-
-def update_context(app, pagename, templatename, context, doctree):
-    context["doc_generated_on"] = html_context["doc_generated_on"]
-
-
 # Check if we're running on Read the Docs' servers
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
