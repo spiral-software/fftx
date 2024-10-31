@@ -3,7 +3,7 @@
 
 #include <mpi.h>
 
-using namespace std;
+// using namespace std;
 
 inline double max_diff(double start, double end, const MPI_Comm&  comm) {
   double my_time = end - start;

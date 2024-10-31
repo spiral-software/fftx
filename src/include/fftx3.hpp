@@ -53,6 +53,28 @@ namespace fftx
   static bool tracing = false; // when creating a trace program user sets this to 'true'
 
   /**
+     For writing things out.
+   */
+
+  static std::ostream* osout = &std::cout;
+  
+  static std::ostream* oserr = &std::cerr;
+
+  inline std::ostream& OutStream() { return *osout; }
+
+  inline std::ostream& ErrStream() { return *oserr; }
+
+  inline void setOutStream(std::ostream* os) { osout = os; }
+
+  inline void setErrStream(std::ostream* os) { oserr = os; }
+
+  static std::ostream osnull(NULL);
+  
+  inline void setOutSilent() { osout = &osnull; }
+
+  inline void setErrSilent() { oserr = &osnull; }
+  
+  /**
      Counter for generated variable names duringn FFTX codegen tracing.
      Not meant for FFTX users, but can be used when debugging codegen itself.
   */
@@ -247,7 +269,7 @@ namespace fftx
       if (tracing)
         {
           m_data = global_ptr<T>((T*)ID);
-          std::cout<<"var_"<<ID<<":= var(\"var_"<<ID<<"\", BoxND("<<a_box.extents()<<", TReal));\n";
+          OutStream()<<"var_"<<ID<<":= var(\"var_"<<ID<<"\", BoxND("<<a_box.extents()<<", TReal));\n";
           ID++;
         }
       else
@@ -352,7 +374,7 @@ namespace fftx
   {
     box_t<DIM-1> b = array.m_domain.projectC();
     array_t<DIM-1, T> rtn(b);
-    std::cout<<"var_"<<(uint64_t)rtn.m_data.local()<<":=nth(var_"<<(uint64_t)array.m_data.local()<<","<<index<<");\n";
+    OutStream()<<"var_"<<(uint64_t)rtn.m_data.local()<<":=nth(var_"<<(uint64_t)array.m_data.local()<<","<<index<<");\n";
     return rtn;
   }
 
@@ -360,13 +382,13 @@ namespace fftx
   template<int DIM, typename T>
   void copy(array_t<DIM, T>& dest, const array_t<DIM, T>& src)
   {
-    std::cout<<"    TDAGNode(TGath(fBox("<<src.m_domain.extents()<<")),var_"<<dest.id()<<", var_"<<src.id()<<"),\n";
+    OutStream()<<"    TDAGNode(TGath(fBox("<<src.m_domain.extents()<<")),var_"<<dest.id()<<", var_"<<src.id()<<"),\n";
   }
 
   /** \internal */
   inline void rawScript(const std::string& a_rawScript)
   {
-    std::cout<<"\n"<<a_rawScript<<"\n";
+    OutStream()<<"\n"<<a_rawScript<<"\n";
   }
 
   /** \internal */
@@ -417,7 +439,7 @@ namespace fftx
              array_t<DIM, std::complex<double>>& destination,
              array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",-1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",-1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
   
   /** \internal */
@@ -426,7 +448,7 @@ namespace fftx
              array_t<DIM, std::complex<double>>& destination,
              array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"   TDAGNode(TTensorI(MDDFT("<<extents<<",1),"<<batch<<",APar, APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
     
   /** \internal */
@@ -435,7 +457,7 @@ namespace fftx
                array_t<DIM+1, double>& destination,
                array_t<DIM+1, double>& source)
   {
-    std::cout<<"    TDAGNode(TTensorI(MDPRDFT("<<extent<<",-1),"<<batch<<",APar,APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"    TDAGNode(TTensorI(MDPRDFT("<<extent<<",-1),"<<batch<<",APar,APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
   /** \internal */
@@ -444,7 +466,7 @@ namespace fftx
                array_t<DIM+1, double>& destination,
                array_t<DIM+1, double>& source)
   {
-    std::cout<<"    TDAGNode(TTensorI(IMDPRDFT("<<extent<<",1),"<<batch<<",APar,APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"    TDAGNode(TTensorI(IMDPRDFT("<<extent<<",1),"<<batch<<",APar,APar), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
   /** \internal */
@@ -453,7 +475,7 @@ namespace fftx
              array_t<DIM, std::complex<double>>& destination,
              array_t<DIM, double>& source)
   {
-    std::cout<<"    TDAGNode(MDPRDFT("<<extent<<",-1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n"; // FIXME: was 1, not -1.
+    OutStream()<<"    TDAGNode(MDPRDFT("<<extent<<",-1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n"; // FIXME: was 1, not -1.
   }
 
   /** \internal */
@@ -462,7 +484,7 @@ namespace fftx
               array_t<DIM, double>& destination,
               array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"    TDAGNode(IMDPRDFT("<<extent<<",1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n"; // FIXME: was -1, not 1.
+    OutStream()<<"    TDAGNode(IMDPRDFT("<<extent<<",1), var_"<<destination.id()<<",var_"<<source.id()<<"),\n"; // FIXME: was -1, not 1.
   }
 
   /** \internal */
@@ -471,7 +493,7 @@ namespace fftx
               array_t<DIM, std::complex<double>>& destination,
               const array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"    TDAGNode(Diag(diagTensor(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0),fConst(TReal, 2, 1))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"    TDAGNode(Diag(diagTensor(FDataOfs(symvar,"<<symbol.m_domain.size()<<",0),fConst(TReal, 2, 1))), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
   /** \internal */
@@ -480,39 +502,39 @@ namespace fftx
               array_t<DIM, std::complex<double>>& destination,
               const array_t<DIM, std::complex<double>>& source)
   {
-    std::cout<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"    TDAGNode(RCDiag(FDataOfs(symvar,"<<2*symbol.m_domain.size()<<",0)), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
   /** \internal */
   inline void include(const char* includeFile)
   {
-    std::cout<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
+    OutStream()<<"opts.includes:=opts.includes::["<<includeFile<<"];\n";
   }
 
   /** \internal */
   template<int DIM, typename T>
   void zeroEmbedBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
   {
-    std::cout<<"    TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<",[";
+    OutStream()<<"    TDAGNode(ZeroEmbedBox("<<destination.m_domain.extents()<<",[";
     for(int i=0; i<DIM; i++)
       {
-        std::cout<<"["<<source.m_domain.lo[i]<<".."<<source.m_domain.hi[i]<<"]";
-        if(i<DIM-1) std::cout<<",";
+        OutStream()<<"["<<source.m_domain.lo[i]<<".."<<source.m_domain.hi[i]<<"]";
+        if(i<DIM-1) OutStream()<<",";
       }
-    std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
 
   /** \internal */
   template<int DIM, typename T>
   void extractBox(array_t<DIM, T>& destination, const array_t<DIM, T>& source)
   {
-    std::cout<<"    TDAGNode(ExtractBox("<<source.m_domain.extents()<<",[";
+    OutStream()<<"    TDAGNode(ExtractBox("<<source.m_domain.extents()<<",[";
     for(int i=0; i<DIM; i++)
       {
-        std::cout<<"["<<destination.m_domain.lo[i]<<".."<<destination.m_domain.hi[i]<<"]";
-        if(i<DIM-1) std::cout<<",";
+        OutStream()<<"["<<destination.m_domain.lo[i]<<".."<<destination.m_domain.hi[i]<<"]";
+        if(i<DIM-1) OutStream()<<",";
       }
-    std::cout<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
+    OutStream()<<"]), var_"<<destination.id()<<",var_"<<source.id()<<"),\n";
   }
   
   /** \internal */
@@ -531,7 +553,7 @@ namespace fftx
     inputType = TypeName<T>::Get();
     for(int i=0; i<COUNT; i++)
       {
-        std::cout<<"var_"<<a_inputs[i].id()<<":= nth(X,"<<i<<");\n";
+        OutStream()<<"var_"<<a_inputs[i].id()<<":= nth(X,"<<i<<");\n";
       }
   }
   /** \internal */
@@ -539,7 +561,7 @@ namespace fftx
   void setInputs(const array_t<DIM, T>& a_inputs)
   {
     inputType = TypeName<T>::Get();
-    std::cout<<"var_"<<a_inputs.id()<<":= X;\n";
+    OutStream()<<"var_"<<a_inputs.id()<<":= X;\n";
   }
   
   /** \internal */
@@ -549,7 +571,7 @@ namespace fftx
     outputType = TypeName<T>::Get();
     for(int i=0; i<COUNT; i++)
       {
-        std::cout<<"var_"<<a_outputs[i].id()<<":= nth(Y,"<<i<<");\n";
+        OutStream()<<"var_"<<a_outputs[i].id()<<":= nth(Y,"<<i<<");\n";
       }
   }
   /** \internal */
@@ -557,14 +579,14 @@ namespace fftx
   void setOutputs(const array_t<DIM, T>& a_outputs)
   {
     outputType = TypeName<T>::Get();
-    std::cout<<"var_"<<a_outputs.id()<<":= Y;\n";
+    OutStream()<<"var_"<<a_outputs.id()<<":= Y;\n";
   }
 
   /** \internal */
   template<int DIM, typename T, std::size_t COUNT>
   void setSymbol(const  std::array<array_t<DIM, T>, COUNT>& a_symbol)
   {
-    std::cout<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
+    OutStream()<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
   }
   
   /** \internal */
@@ -573,7 +595,7 @@ namespace fftx
                 array_t<DIM,T>& destination,
                 const array_t<DIM,T>& source)
   {
-    std::cout<<"    TDAGNode(TResample("
+    OutStream()<<"    TDAGNode(TResample("
              <<destination.m_domain.extents()<<","
              <<source.m_domain.extents()<<","<<shift<<"),"
              <<"var_"<<destination.id()<<","
@@ -582,17 +604,17 @@ namespace fftx
   /** \internal */
   inline void openDAG()
   {
-  //  std::cout<<"conf := FFTXGlobals.defaultWarpXConf();\n";
-  //  std::cout<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
-  //  std::cout<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
-    std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
+  //  OutStream()<<"conf := FFTXGlobals.defaultWarpXConf();\n";
+  //  OutStream()<<"opts := FFTXGlobals.getOpts(conf);\n";                                     
+  //  OutStream()<<"symvar := var(\"sym\", TPtr(TPtr(TReal)));\n";
+    OutStream()<<"transform:= TFCall(TDecl(TDAG([\n";
   }
 
   /** \internal */
   inline void openScalarDAG()
   {
-    std::cout<<"symvar := var(\"sym\", TPtr(TReal));\n";
-    std::cout<<"transform:= TFCall(TDecl(TDAG([\n";
+    OutStream()<<"symvar := var(\"sym\", TPtr(TReal));\n";
+    OutStream()<<"transform:= TFCall(TDecl(TDAG([\n";
   }
   
  
@@ -674,18 +696,18 @@ namespace fftx
    headerFile<<header_text<<"\n";
    headerFile.close();
    
-   std::cout<<"\n]),\n   [";
+   OutStream()<<"\n]),\n   [";
    if(COUNT==0)
      {}
    else
      {
-      std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
-      for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
+      OutStream()<<"var_"<<(uint64_t)localVars[0].m_data.local();
+      for(int i=1; i<COUNT; i++) OutStream()<<", var_"<<(uint64_t)localVars[i].m_data.local();
      }
-     std::cout<<"]\n),\n";
-     std::cout<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
+     OutStream()<<"]\n),\n";
+     OutStream()<<"rec(XType:= TPtr(TPtr(TReal)), YType:=TPtr(TPtr(TReal)), fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
               <<");\n";
-     std::cout<<"prefix:=\""<<name<<"\";\n";
+     OutStream()<<"prefix:=\""<<name<<"\";\n";
   }
 
   /** \internal */
@@ -814,18 +836,18 @@ template<int DIM>
    headerFile<<header_text<<"\n";
    headerFile.close();
 
-   std::cout<<"\n]),\n   [";
+   OutStream()<<"\n]),\n   [";
     // if(COUNT==0){}
     // else
     //   {
-    //     std::cout<<"var_"<<(uint64_t)localVars[0].m_data.local();
-    //     for(int i=1; i<COUNT; i++) std::cout<<", var_"<<(uint64_t)localVars[i].m_data.local();
+    //     OutStream()<<"var_"<<(uint64_t)localVars[0].m_data.local();
+    //     for(int i=1; i<COUNT; i++) OutStream()<<", var_"<<(uint64_t)localVars[i].m_data.local();
     //   }
-   std::cout <<localVarNames;
-   std::cout<<"]\n),\n";
-   std::cout<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
+   OutStream() <<localVarNames;
+   OutStream()<<"]\n),\n";
+   OutStream()<<"rec(fname:=\""<<name<<"_spiral\", params:= [symvar])\n"
             <<");\n";
-   std::cout<<"prefix:=\""<<name<<"\";\n";
+   OutStream()<<"prefix:=\""<<name<<"\";\n";
 } 
  
  
@@ -1150,11 +1172,6 @@ template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long CO
     return output;
   }
 
-
-           
- 
-
-  
 }
 
 
@@ -1262,7 +1279,7 @@ namespace fftx_helper
                     T* vec = dvec[b];
                     T temp1;
                     assign(temp1, vec[indkjhalfsize]);
-                    // std::cout << "size=" << size << " tablestep=" << tablestep << " : k=" << k << " j=" << j << " j*tablestep = " << (j*tablestep) << "\n";
+                    // OutStream() << "size=" << size << " tablestep=" << tablestep << " : k=" << k << " j=" << j << " j*tablestep = " << (j*tablestep) << "\n";
                     multiply(temp1, expTable[j*tablestep]);
                     T temp2;
                     assign(temp2, vec[indkj]);
@@ -1270,7 +1287,7 @@ namespace fftx_helper
                     assign(vec[indkjhalfsize], temp2);
                     subtract(vec[indkjhalfsize], temp1);
                   }
-                // std::cout << "k=" << k << " j=" << j << "\n";
+                // OutStream() << "k=" << k << " j=" << j << "\n";
               }
           }
         if (size == n)  // Prevent overflow in 'size *= 2'

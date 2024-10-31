@@ -20,7 +20,7 @@
 // #define FFTX_FORWARD  1
 // #define FFTX_BACKWARD 2
 
-using namespace std;
+// using namespace std;
 
 // #define CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
 // #define CUDA_AWARE_MPI 0

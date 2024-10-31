@@ -267,7 +267,7 @@ public:
     m_sign = a_sign;
     m_inDomain = inDomainFromSize(m_name, m_fullExtents);
     m_outDomain = outDomainFromSize(m_name, m_fullExtents);
-    std::cout << "input on " << m_inDomain << ", output on " << m_outDomain << std::endl;
+    fftx::OutStream() << "input on " << m_inDomain << ", output on " << m_outDomain << std::endl;
     m_tp = FFTX_PROBLEM;
   }
   
@@ -328,7 +328,7 @@ public:
   {
     if (m_tp == EMPTY)
       {
-        std::cout << "calling exec on empty TransformFunction" << std::endl;
+        fftx::ErrStream() << "calling exec on empty TransformFunction" << std::endl;
       }
     else if (m_tp == FFTX_HANDLE ||
              m_tp == FFTX_LIB ||
@@ -574,10 +574,11 @@ public:
   {
     if (!a_tfm.isDefined())
       {
-        std::cout << "transformation not defined" << std::endl;
+        fftx::ErrStream() << "transformation not defined" << std::endl;
         return;
       }
-
+    fftx::OutStream() << std::scientific << std::setprecision(5);
+    
     m_tfm = a_tfm;
     m_rounds = a_rounds;
     m_verbosity = a_verbosity;
@@ -598,10 +599,12 @@ public:
     updateMax(err, test1());
     updateMax(err, test2());
     updateMax(err, test3());
-    printf("%dD test on %s in %d rounds max relative error %11.5e\n",
-           DIM, m_tfm.name().c_str(), m_rounds, err);
-    //    printf("%dD test on NAME in %d rounds max relative error %11.5e\n",
-    //           DIM, m_rounds, err);
+    // printf("%dD test on %s in %d rounds max relative error %11.5e\n",
+    //        DIM, m_tfm.name().c_str(), m_rounds, err);
+    fftx::OutStream() << DIM << "D test on " << m_tfm.name()
+                      << " in " << m_rounds
+                      << " rounds max relative error " << err
+                      << std::endl;
   }
 
 protected:
@@ -721,7 +724,7 @@ protected:
       {
         fixed[a_dim] = hi[a_dim] - (a_shift+1);
       }
-    // std::cout << "setRotator in " << a_dim << " shift " << a_shift
+    // fftx::OutStream() << "setRotator in " << a_dim << " shift " << a_shift
     // << " waves " << fixed << " of " << a_arr.m_domain << std::endl;
     setProductWaves(a_arr, a_dom.extents(), fixed, -1);
   }
@@ -789,12 +792,18 @@ protected:
         updateMax(errtest1, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD linearity test round %d max relative error %11.5e\n", DIM, itn, err);
+            // printf("%dD linearity test round %d max relative error %11.5e\n", DIM, itn, err);
+            fftx::OutStream() << DIM << "D linearity test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
           }
       }
     if (m_verbosity >= SHOW_CATEGORIES)
-      {
-        printf("%dD Test 1 (linearity) in %d rounds: max relative error %11.5e\n", DIM, m_rounds, errtest1);
+      {        
+        // printf("%dD Test 1 (linearity) in %d rounds: max relative error %11.5e\n", DIM, m_rounds, errtest1);
+        fftx::OutStream() << DIM << "D Test 1 (linearity) in " << m_rounds
+                          << ": max relative error " << errtest1
+                          << std::endl;
       }
     return errtest1;
   }
@@ -811,8 +820,11 @@ protected:
     updateMax(errtest2, test2impulseRandom(outputVar)); // only if output is complex
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD Test 2 (impulses) in %d rounds: max relative error %11.5e\n",
-               DIM, m_rounds, errtest2);
+        // printf("%dD Test 2 (impulses) in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2);
+        fftx::OutStream() << DIM << "D Test 2 (impulses) in " << m_rounds
+                          << " rounds: max relative error " << errtest2
+                          << std::endl;
       }
     return errtest2;
   }
@@ -828,8 +840,10 @@ protected:
     double errtest2impulse1 = absMaxRelDiffArray(outImpulse, all1out);
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD unit impulse low corner test: max relative error %11.5e\n",
-               DIM, errtest2impulse1);
+        // printf("%dD unit impulse low corner test: max relative error %11.5e\n",
+        // DIM, errtest2impulse1);
+        fftx::OutStream() << DIM << "D unit impulse low corner test: max relative error "
+                          << errtest2impulse1 << std::endl;
       }
     return errtest2impulse1;
   }
@@ -865,14 +879,20 @@ protected:
         updateMax(errtest2impulsePlus, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random + unit impulse low corner test round %d max relative error %11.5e\n", DIM, itn, err);
+            // printf("%dD random + unit impulse low corner test round %d max relative error %11.5e\n", DIM, itn, err);
+            fftx::OutStream() << DIM << "D random + unit impulse low corner test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
           }
       }
 
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD unit impulse low corner test in %d rounds: max relative error %11.5e\n",
-             DIM, m_rounds, errtest2impulsePlus);
+        // printf("%dD unit impulse low corner test in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2impulsePlus);
+        fftx::OutStream() << DIM << "D unit impulse low corner test in " << m_rounds
+                          << ": max relative error " << errtest2impulsePlus
+                          << std::endl;
       }
     return errtest2impulsePlus;
   }
@@ -894,8 +914,10 @@ protected:
     double errtest2constant = absMaxRelDiffArray(outImpulse, magImpulse);
     if (m_verbosity >= SHOW_SUBTESTS)
     {
-       printf("%dD constant test: max relative error %11.5e\n",
-              DIM, errtest2constant);
+      // printf("%dD constant test: max relative error %11.5e\n",
+      // DIM, errtest2constant);
+      fftx::OutStream() << DIM << "D constant test: max relative error "
+                        << errtest2constant << std::endl;
     }
     return errtest2constant;
   }
@@ -934,15 +956,21 @@ protected:
         updateMax(errtest2constantPlus, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random + constant test round %d max relative error %11.5e\n",
-                   DIM, itn, err);
+            // printf("%dD random + constant test round %d max relative error %11.5e\n",
+            // DIM, itn, err);
+            fftx::OutStream() << DIM << "D random + constant test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
           }
       }
 
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD random + constant test in %d rounds: max relative error %11.5e\n",
-               DIM, m_rounds, errtest2constantPlus);
+        // printf("%dD random + constant test in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2constantPlus);
+        fftx::OutStream() << DIM << "D random + constant test in " << m_rounds
+                          << ": max relative error " << errtest2constantPlus
+                          << std::endl;
       }
     return errtest2constantPlus;
   }
@@ -976,15 +1004,21 @@ protected:
         updateMax(errtest2impulseRandom, err);
         if (m_verbosity >= SHOW_ROUNDS)
           {
-            printf("%dD random impulse test round %d max relative error %11.5e\n",
-                   DIM, itn, err);
+            // printf("%dD random impulse test round %d max relative error %11.5e\n",
+            // DIM, itn, err);
+            fftx::OutStream() << DIM << "D random impulse test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
           }
       }
 
     if (m_verbosity >= SHOW_SUBTESTS)
       {
-        printf("%dD random impulse in %d rounds: max relative error %11.5e\n",
-               DIM, m_rounds, errtest2impulseRandom);
+        // printf("%dD random impulse in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2impulseRandom);
+        fftx::OutStream() << DIM << "D random impulse in " << m_rounds
+                          << ": max relative error " << errtest2impulseRandom
+                          << std::endl;
       }
     return errtest2impulseRandom;
   }
@@ -998,8 +1032,11 @@ protected:
     updateMax(errtest3, test3frequency(inputVar)); // only if input is complex
     if (m_verbosity >= SHOW_CATEGORIES)
       {
-        printf("%dD Test 3 (shifts) in %d rounds: max relative error %11.5e\n",
-               DIM, m_rounds, errtest3);
+        // printf("%dD Test 3 (shifts) in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest3);
+        fftx::OutStream() << DIM << "D Test 3 (shifts) in " << m_rounds
+                          << ": max relative error " << errtest3
+                          << std::endl;
       }
     return errtest3;
   }
@@ -1037,14 +1074,20 @@ protected:
             updateMax(errtest3time, errtest3timeDim[d]);
             if (m_verbosity >= SHOW_ROUNDS)
               {
-                printf("%dD dim %d time-shift test %d max relative error %11.5e\n",
-                       DIM, d, itn, err);
+                // printf("%dD dim %d time-shift test %d max relative error %11.5e\n",
+                // DIM, d, itn, err);
+                fftx::OutStream() << DIM << "D dim " << d << " time-shift test "
+                                  << itn << " max relative error " << err
+                                  << std::endl;
               }
           }
         if (m_verbosity >= SHOW_SUBTESTS)
           {
-            printf("%dD dim %d time-shift test in %d rounds: max relative error %11.5e\n",
-                   DIM, d, m_rounds, errtest3timeDim[d]);
+            // printf("%dD dim %d time-shift test in %d rounds: max relative error %11.5e\n",
+            // DIM, d, m_rounds, errtest3timeDim[d]);
+            fftx::OutStream() << DIM << "D dim " << d << " time-shift test in "
+                              << m_rounds << " rounds: max relative error "
+                              << errtest3timeDim[d] << std::endl;
           }
       }
     return errtest3time;
@@ -1088,13 +1131,22 @@ protected:
             updateMax(errtest3frequency, errtest3frequencyDim[d]);
             if (m_verbosity >= SHOW_ROUNDS)
               {
-                printf("%dD dim %d frequency-shift test %d max relative error %11.5e\n", DIM, d, itn, err);
+                // printf("%dD dim %d frequency-shift test %d max relative error %11.5e\n", DIM, d, itn, err);
+                fftx::OutStream() << DIM << "D dim " << d
+                                  << " frequency-shift test " << itn
+                                  << " max relative error " << err
+                                  << std::endl;
               }
           }
         if (m_verbosity >= SHOW_SUBTESTS)
           {
-            printf("%dD dim %d frequency-shift test in %d rounds: max relative error %11.5e\n",
-                   DIM, d, m_rounds, errtest3frequencyDim[d]);
+            // printf("%dD dim %d frequency-shift test in %d rounds: max relative error %11.5e\n",
+            // DIM, d, m_rounds, errtest3frequencyDim[d]);
+            fftx::OutStream() << DIM << "D dim " << d
+                              << " frequency-shift test in " << m_rounds
+                              << " rounds: max relative error "
+                              << errtest3frequencyDim[d]
+                              << std::endl;
           }
       }
     return errtest3frequency;

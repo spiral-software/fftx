@@ -19,7 +19,7 @@ namespace fftx {
     imddft(const point_t<DIM>& a_size) :
       transformer<DIM, std::complex<double>, std::complex<double>>(a_size)
     {
-      // std::cout << "Defining imddft<" << DIM << ">" << this->m_size
+      // fftx::OutStream() << "Defining imddft<" << DIM << ">" << this->m_size
       // << std::endl;
       // look up this transform size in the database.
       // I would prefer if this was a constexpr kind of thing where we fail at compile time

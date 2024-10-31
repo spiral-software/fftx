@@ -113,8 +113,10 @@ static void checkOutputs_R2C ( DOUBLECOMPLEX *outputFFTXPtr,
         correct &= elem_correct;
       }
     
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
+    // printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
+    fftx::OutStream() << "Correct: " << (correct ? "True" : "False") << "\t"
+                      << "Max delta = " << maxdelta << std::endl;
+    std::flush(fftx::OutStream());
 
     return;
 }
@@ -137,8 +139,10 @@ static void checkOutputs_C2R ( DOUBLEREAL *outputFFTXPtr,
         correct &= elem_correct;
     }
     
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
+    // printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
+    fftx::OutStream() << "Correct: " << (correct ? "True" : "False") << "\t"
+                      << "Max delta = " << maxdelta << std::endl;
+    std::flush(fftx::OutStream());
 
     return;
 }
@@ -178,15 +182,23 @@ int main(int argc, char* argv[])
             kk = atoi ( & argv[1][baz] );
             break;
         case 'h':
-            printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+            // printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+            fftx::OutStream() << "Usage: " << argv[0]
+                              << ": [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]"
+                              << std::endl;
             exit (0);
         default:
-            printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+            fftx::OutStream() << prog
+                              << ": unknown argument: " << argv[1]
+                              << " ... ignored" << std::endl;
         }
         argv++, argc--;
     }
+
+    fftx::OutStream() << std::scientific << std::uppercase;
+    
     int K_adj = (int) ( kk / 2 ) + 1;
-    std::cout << mm << " " << nn << " " << kk << std::endl;
+    fftx::OutStream() << mm << " " << nn << " " << kk << std::endl;
     std::vector<int> sizes{mm,nn,kk};
     std::vector<int> sizesTrunc{mm,nn,K_adj};
     fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
@@ -211,7 +223,7 @@ int main(int argc, char* argv[])
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr, tempTfmPtr;
-    if ( DEBUGOUT )std::cout << "allocating memory" << std::endl;
+    if ( DEBUGOUT )fftx::OutStream() << "allocating memory" << std::endl;
     DEVICE_MALLOC((void **)&inputTfmPtr, npts * sizeof(double));
     DEVICE_MALLOC((void **)&outputTfmPtr, npts * sizeof(double));
     symbolTfmPtr = (DEVICE_PTR) NULL;
@@ -229,7 +241,7 @@ int main(int argc, char* argv[])
     double* symbolTfmPtr = (double *) NULL;
     std::complex<double>* tempTfmPtr = new std::complex<double>[nptsTrunc];
 #endif
-    if ( DEBUGOUT ) std::cout << "memory allocated" << std::endl;
+    if ( DEBUGOUT ) fftx::OutStream() << "memory allocated" << std::endl;
 
 #if defined FFTX_CUDA
     std::vector<void*> argsR2C{&tempTfmPtr, &inputTfmPtr, &symbolTfmPtr};
@@ -271,7 +283,8 @@ int main(int argc, char* argv[])
     res = DEVICE_FFT_PLAN3D ( &planR2C, mm, nn, kk, xfmtypeR2C );
     if ( res != DEVICE_FFT_SUCCESS )
       {
-        printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
+        fftx::OutStream() << "Create DEVICE_FFT_PLAN3D failed with error code "
+                          << res << " ... skip buffer check" << std::endl;
         check_output = false;
       }
 #elif defined (FFTX_SYCL)
@@ -282,8 +295,8 @@ int main(int argc, char* argv[])
       }
     catch (sycl::exception const &e)
       {
-	std::cout << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
-	std::cout << "Program terminating." << std::endl;
+	fftx::OutStream() << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
+	fftx::OutStream() << "Program terminating." << std::endl;
 	exit(-1);
 	// dev = sycl::device(sycl::cpu_selector_v);
       }
@@ -305,7 +318,7 @@ int main(int argc, char* argv[])
     //	  sycl::queue Q(sycl::default_selector{});
     auto sycl_device = Q.get_device();
     auto sycl_context = Q.get_context();
-    std::cout << "Running on: "
+    fftx::OutStream() << "Running on: "
 	      << Q.get_device().get_info<sycl::info::device::name>() << std::endl;
 	  
     auto sharedRealPtr = sycl::malloc_shared< double >
@@ -343,7 +356,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
                         npts * sizeof(double),
                         MEM_COPY_HOST_TO_DEVICE);
- 	if ( DEBUGOUT ) std::cout << "copied MDPRDFT input from host to device\n";
+ 	if ( DEBUGOUT ) fftx::OutStream() << "copied MDPRDFT input from host to device\n";
 #endif
         
         // Run transform: input inputTfmPtr, output tempTfmPtr.
@@ -367,7 +380,9 @@ int main(int argc, char* argv[])
                                        );
             if ( res != DEVICE_FFT_SUCCESS)
               {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+                                  << res << " ... skip buffer check"
+                                  << std::endl;
                 check_output = false;
                 //  break;
               }
@@ -421,7 +436,9 @@ int main(int argc, char* argv[])
 		  }
 	      }
 #endif
-	    printf ( "cube = [ %d, %d, %d ]\tMDPRDFT (Forward)\t", mm, nn, kk );
+            fftx::OutStream() << "cube = [ "
+                              << mm << ", " << nn << ", " << kk << " ]\t"
+                              << "MDPRDFT (Forward) \t";
 	    checkOutputs_R2C ( (DOUBLECOMPLEX *) outputComplexFFTXHostPtr,
 			       (DOUBLECOMPLEX *) outputComplexVendorHostPtr,
 			       (long) nptsTrunc);
@@ -450,7 +467,8 @@ int main(int argc, char* argv[])
     res = DEVICE_FFT_PLAN3D ( &planC2R, mm, nn, kk, xfmtypeC2R );
     if ( res != DEVICE_FFT_SUCCESS )
       {
-        printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
+        fftx::OutStream() << "Create DEVICE_FFT_PLAN3D failed with error code "
+                          << res << " ... skip buffer check" << std::endl;
         check_output = false;
       }
 #endif
@@ -466,7 +484,7 @@ int main(int argc, char* argv[])
         DEVICE_MEM_COPY ((void*)tempTfmPtr, outputComplexFFTXHostPtr,
                          nptsTrunc * sizeof(std::complex<double>),
                          MEM_COPY_HOST_TO_DEVICE );
-        if ( DEBUGOUT ) std::cout << "copied IMDPRDFT input from host to device" << std::endl;
+        if ( DEBUGOUT ) fftx::OutStream() << "copied IMDPRDFT input from host to device" << std::endl;
 #endif
 
         // Run transform: input tempTfmPtr, output outputTfmPtr.
@@ -488,7 +506,9 @@ int main(int argc, char* argv[])
                                        (DEVICE_FFT_DOUBLEREAL *) outputTfmPtr);
             if ( res != DEVICE_FFT_SUCCESS)
               {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
+                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+                                  << res << " ... skip buffer check"
+                                  << std::endl;
                 check_output = false;
                 //  break;
               }
@@ -543,7 +563,9 @@ int main(int argc, char* argv[])
 		outputRealVendorHostPtr[ind] = sharedRealPtr[ind];
 	      }
 #endif
-	    printf ( "cube = [ %d, %d, %d ]\tIMDPRDFT (Inverse)\t", mm, nn, kk );
+            fftx::OutStream() << "cube = [ "
+                              << mm << ", " << nn << ", " << kk << " ]\t"
+                              << "IMDPRDFT (Inverse)\t";
 	    checkOutputs_C2R ( (DOUBLEREAL*) outputRealFFTXHostPtr,
 			       (DOUBLEREAL*) outputRealVendorHostPtr,
 			       (long) npts );
@@ -566,47 +588,78 @@ int main(int argc, char* argv[])
 #endif
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
-    printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d:\n",
-	     descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );
-    printf ( "Trial#    Spiral           %s\n", vendorfft.c_str() );
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on MDPRDFT (forward) for " << iterations
+                      << " trials of size "
+                      << sizes.at(0) << " "
+                      << sizes.at(1) << " "
+                      << sizes.at(2) << ":" << std::endl;
+    fftx::OutStream() << "Trial#    Spiral           " << vendorfft
+                      << std::endl;
     for (int itn = 0; itn < iterations; itn++)
       {
-        printf ( "%4d%17.7e%17.7e\n", itn+1, mdprdft_gpu[itn], mdprdft_vendor_millisec[itn] );
+        fftx::OutStream() << std::setw(4) << (itn+1)
+                          << std::scientific << std::setprecision(7)
+                          << std::setw(17) << mdprdft_gpu[itn]
+                          << std::setw(17) << mdprdft_vendor_millisec[itn]
+                          << std::endl;
       }
 
-    printf ( "Times in milliseconds for %s on MDPRDFT (inverse) for %d trials of size %d %d %d:\n",
-	     descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );
-    printf ( "Trial#    Spiral           %s\n", vendorfft.c_str() );
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on MDPRDFT (inverse) for " << iterations
+                      << " trials of size "
+                      << sizes.at(0) << " "
+                      << sizes.at(1) << " "
+                      << sizes.at(2) << ":" << std::endl;
+    fftx::OutStream() << "Trial#    Spiral           " << vendorfft
+                      << std::endl;
     for (int itn = 0; itn < iterations; itn++)
       {
-        printf ( "%4d%17.7e%17.7e\n", itn+1, imdprdft_gpu[itn], imdprdft_vendor_millisec[itn] );
+        fftx::OutStream() << std::setw(4) << (itn+1)
+                          << std::scientific << std::setprecision(7)
+                          << std::setw(17) << imdprdft_gpu[itn]
+                          << std::setw(17) << imdprdft_vendor_millisec[itn]
+                          << std::endl;
       }
 
     delete[] mdprdft_vendor_millisec;
     delete[] imdprdft_vendor_millisec;
 #else
-    printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d\n",
-	     descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-    printf ( "Trial#    Spiral\n");
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on MDPRDFT (forward) for " << iterations
+                      << " trials of size "
+                      << sizes.at(0) << " "
+                      << sizes.at(1) << " "
+                      << sizes.at(2) << ":" << std::endl;
+    fftx::OutStream() << "Trial#    Spiral" << std::endl;
     for (int itn = 0; itn < iterations; itn++)
       {
-        printf ( "%4d%17.7e\n", itn+1, mdprdft_gpu[itn] );
+        fftx::OutStream() << std::setw(4) << (itn+1)
+                          << std::scientific << std::setprecision(7)
+                          << std::setw(17) << mdprdft_gpu[itn]
+                          << std::endl;
       }
 
-    printf ( "Times in milliseconds for %s on MDPRDFT (inverse) for %d trials of size %d %d %d\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-    printf ( "Trial#    Spiral\n");
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on MDPRDFT (inverse) for " << iterations
+                      << " trials of size "
+                      << sizes.at(0) << " "
+                      << sizes.at(1) << " "
+                      << sizes.at(2) << ":" << std::endl;
+    fftx::OutStream() << "Trial#    Spiral" << std::endl;
     for (int itn = 0; itn < iterations; itn++)
       {
-	printf ( "%4d%17.7e\n", itn+1, imdprdft_gpu[itn] );
+        fftx::OutStream() << std::setw(4) << (itn+1)
+                          << std::scientific << std::setprecision(7)
+                          << std::setw(17) << imdprdft_gpu[itn]
+                          << std::endl;
       }
 #endif
     delete[] mdprdft_gpu;
     delete[] imdprdft_gpu;
 
-    printf("%s: All done, exiting\n", prog);
-  
-    fflush ( stdout );
+    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    std::flush(fftx::OutStream());
 
     return 0;
 

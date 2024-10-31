@@ -178,7 +178,8 @@ def library_api ( script ):
     str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
     str.append ( '//  See LICENSE for details\n\n' )
 
-    str.append ( '#include <stdio.h>\n' )
+    # str.append ( '#include <stdio.h>\n' )
+    str.append ( '#include <iostream>\n' )
     str.append ( '#include <stdlib.h>\n' )
     str.append ( '#include <string.h>\n' )
     str.append ( f'#include "{script.file_stem}{script.decor_platform}decls.h"' + '\n' )
@@ -189,8 +190,9 @@ def library_api ( script ):
     elif script.args.platform == 'HIP':
         str.append ( '#include <hip/hip_runtime.h>\n\n' )
         str.append ( '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
-        str.append ( 'if (err != hipSuccess) {  printf("%s(%i) : %s: %s\\n", __FILE__, __LINE__, ' )
-        str.append ( '(str), hipGetErrorString(err) ); } }\n\n' )
+        # str.append ( 'if (err != hipSuccess) {  printf("%s(%i) : %s: %s\\n", __FILE__, __LINE__, ' )
+        # str.append ( '(str), hipGetErrorString(err) ); } }\n\n' )
+        str.append ( 'if (err != hipSuccess) {  fftx::ErrStream() << __FILE__ << "(" << __LINE__ << ") : " << str << ": " << hipGetErrorString(err) << std::endl; } }\n\n' )
     elif script.args.platform == 'SYCL':
         str.append ( '#include <CL/sycl.hpp>\n\n' )
 
@@ -398,7 +400,7 @@ def create_metadata ( script, metadata ):
     str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
     str.append ( '//  See LICENSE for details\n\n' )
 
-    str.append ( '#include <stdio.h>\n' )
+    # str.append ( '#include <stdio.h>\n' )
     str.append ( '#include <stdlib.h>\n' )
     str.append ( '#include <string.h>\n\n' )
 

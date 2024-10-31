@@ -13,8 +13,8 @@ void rconvDimension(std::vector<int> sizes,
                     int a_rounds,
                     int a_verbosity)
 {
-  std::cout << "***** test " << DIM << "D real convolution on "
-            << a_domain << std::endl;
+  fftx::OutStream() << "***** test " << DIM << "D real convolution on "
+                    << a_domain << std::endl;
 
   // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
   RCONVProblem rp("rconv");
@@ -67,16 +67,21 @@ int main(int argc, char* argv[])
           verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+          fftx::OutStream() << "Usage: " << argv[0]
+                            << ": [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -s MMxNNxKK ] [ -h (print help message) ]"
+                            << std::endl;
           exit (0);
       default:
-          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+        fftx::OutStream() << prog << ": unknown argument: "
+                          << argv[1] << " ... ignored" << std::endl;
       }
       argv++, argc--;
   }
-  
-  printf("Running size %dx%dx%d with verbosity %d, random %d rounds\n", mm, nn, kk, verbosity, rounds);
-  // std::cout << mm << " " << nn << " " << kk << std::endl;
+
+  // printf("Running size %dx%dx%d with verbosity %d, random %d rounds\n", mm, nn, kk, verbosity, rounds);
+  fftx::OutStream() << "Running size " << mm << "x" << nn << "x" << kk
+                    << " with verbosity " << verbosity
+                    << ", random " << rounds << " rounds" << std::endl;
   std::vector<int> sizes{mm, nn, kk};
 
   /*
@@ -107,6 +112,6 @@ int main(int argc, char* argv[])
   rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
   // rconv3::destroy();
   
-  printf("%s: All done, exiting\n", prog);
+  fftx::OutStream() << prog << ": All done, exiting" << std::endl;
   return 0;
 }

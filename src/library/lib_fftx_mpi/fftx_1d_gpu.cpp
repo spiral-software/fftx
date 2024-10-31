@@ -91,7 +91,9 @@ DEVICE_ERROR_T embed(
     __embed<<<dim3(slower), dim3(min(2*faster, 1024))>>>((double2 *) dst, (double2 *) src, faster, slower);
     DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          // fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
 		return device_status;
 	}
 	return DEVICE_SUCCESS;
@@ -112,7 +114,9 @@ DEVICE_ERROR_T embed(
     __embed<<<dim3(slower), dim3(min(2*faster, 1024))>>>((double2 *) dst, (double2 *) src, faster, faster_padded, slower);
     DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          // fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
 		return device_status;
 	}
 	return DEVICE_SUCCESS;
@@ -134,7 +138,9 @@ DEVICE_ERROR_T embed(
     __embed<<<dim3(2*faster, slower), dim3(min(copy_size, (size_t) 1024))>>>((double2 *) dst, (double2 *) src, faster, faster_padded, slower, copy_size);
     DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
 	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          // fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
 		return device_status;
 	}
 	return DEVICE_SUCCESS;

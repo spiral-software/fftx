@@ -102,7 +102,7 @@ class Executor {
 };
 
 float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
-    if ( DEBUGOUT) std::cout << "Loading shared library\n";
+    if ( DEBUGOUT) fftx::OutStream() << "Loading shared library\n";
 
     #if defined (_WIN32) || defined (_WIN64)
         shared_lib = (void *)LoadLibrary("temp/Release/tmp.dll");
@@ -118,10 +118,10 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         char * errorMessage;
             FormatMessage ( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
                             NULL, error, 0, (char *)&errorMessage, 0, NULL );
-            std::cout << "Cannot open library: " << (errorMessage) << std::endl;
+            fftx::OutStream() << "Cannot open library: " << (errorMessage) << std::endl;
             LocalFree(errorMessage);
         #else
-            std::cout << "Cannot open library: " << dlerror() << '\n';
+            fftx::OutStream() << "Cannot open library: " << dlerror() << '\n';
         #endif
         exit(0);
     }
@@ -150,7 +150,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     if(fn1) {
         fn1();
     }else {
-        std::cout << init << "function didnt run" << std::endl;
+        fftx::OutStream() << init << "function didnt run" << std::endl;
     }
     if(fn2) {
       if(args.size() < 3)
@@ -158,12 +158,12 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
       else
         fn2((double*)args.at(0),(double*)args.at(1), (double*)args.at(2));
     }else {
-        std::cout << transform << "function didnt run" << std::endl;
+        fftx::OutStream() << transform << "function didnt run" << std::endl;
     }
     if(fn3){
         fn3();
     }else {
-        std::cout << destroy << "function didnt run" << std::endl;
+        fftx::OutStream() << destroy << "function didnt run" << std::endl;
     }
     auto stop = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float, std::milli> duration = stop - start;
@@ -180,7 +180,7 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
 
 
 void Executor::execute(std::string result) {
-    if ( DEBUGOUT) std::cout << "entered CPU backend execute\n";
+    if ( DEBUGOUT) fftx::OutStream() << "entered CPU backend execute\n";
     std::string compile;
     
     char buff[FILENAME_MAX]; //create string buffer to hold path
@@ -194,7 +194,7 @@ void Executor::execute(std::string result) {
         systemret = system("rm -rf temp");
         
     if ( DEBUGOUT) {
-        std::cout << "created compile\n";
+        fftx::OutStream() << "created compile\n";
     }
 
     std::string result2 = result.substr(result.find("#include"));
@@ -204,7 +204,7 @@ void Executor::execute(std::string result) {
         int check = mkdir("temp", 0777);
     #endif
     if(check != 0) {
-        std::cout << "failed to create temp directory for runtime code\n";
+        fftx::OutStream() << "failed to create temp directory for runtime code\n";
         exit(-1);
     }
     std::ofstream out("temp/spiral_generated.c");
@@ -217,11 +217,11 @@ void Executor::execute(std::string result) {
     cmakelists << cmake_script;
     cmakelists.close();
     if ( DEBUGOUT )
-        std::cout << "compiling\n";
+        fftx::OutStream() << "compiling\n";
     
     check = chdir("temp");
     if(check != 0) {
-        std::cout << "failed to change to temp directory for runtime code\n";
+        fftx::OutStream() << "failed to change to temp directory for runtime code\n";
         exit(-1);
     }
 
@@ -241,12 +241,12 @@ void Executor::execute(std::string result) {
 
     check = chdir(current_working_dir.c_str());
     if(check != 0) {
-        std::cout << "failed to change to working directory for runtime code\n";
+        fftx::OutStream() << "failed to change to working directory for runtime code\n";
         exit(-1);
     }
     // systemret = system("cd ..;");
     if ( DEBUGOUT )
-        std::cout << "finished compiling\n";
+        fftx::OutStream() << "finished compiling\n";
 }
 
 float Executor::getKernelTime() {
