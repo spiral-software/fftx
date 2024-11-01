@@ -11,31 +11,31 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-software
-        ref: develop
+        ##  ref: develop
         path: spiral
     - name: Checkout repo spiral-package-fftx
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-fftx
-        ref: develop
+        ##  ref: develop
         path: spiral/namespaces/packages/fftx
     - name: Checkout repo spiral-package-simt
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-simt
-        ref: develop
+        ##  ref: develop
         path: spiral/namespaces/packages/simt
     - name: Checkout repo spiral-package-mpi
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-mpi
-        ref: develop
+        ##  ref: develop
         path: spiral/namespaces/packages/mpi
     - name: Checkout repo spiral-package-jit
       uses: actions/checkout@v4
       with:
         repository: spiral-software/spiral-package-jit
-        ref: develop
+        ##  ref: develop
         path: spiral/namespaces/packages/jit
     - name: Install dependencies
       run: |
@@ -59,10 +59,9 @@ jobs:
     - name: Checkout FFTX
       uses: actions/checkout@v4
       with:
-        ## repository: spiral-software/fftx
-        repository: ${{ github.repository }}
+        repository: spiral-software/fftx
         ##  ref: develop
-        ref: ${{ github.ref_name }}
+        ref: ${{ github.ref }}
         path: fftx
     - name: Configure FFTX
       env:
