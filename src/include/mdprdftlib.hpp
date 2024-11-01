@@ -21,11 +21,11 @@ public:
     void randomProblemInstance() {
     }
     void semantics() {
-        std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
-        std::cout << "prdft := MDPRDFT;" << std::endl;
-        std::cout << "sign := -1;" << std::endl;
-        std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
-        std::cout << mdprdft_script << std::endl;
+        fftx::OutStream() << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
+        fftx::OutStream() << "prdft := MDPRDFT;" << std::endl;
+        fftx::OutStream() << "sign := -1;" << std::endl;
+        fftx::OutStream() << "name := \""<< name << "_spiral" << "\";" << std::endl;
+        fftx::OutStream() << mdprdft_script << std::endl;
     }
 };
 
@@ -35,10 +35,10 @@ public:
     void randomProblemInstance() {
     }
     void semantics() {
-        std::cout << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
-        std::cout << "prdft := IMDPRDFT;" << std::endl;
-        std::cout << "sign := 1;" << std::endl;
-        std::cout << "name := \""<< name << "_spiral" << "\";" << std::endl;
-        std::cout << mdprdft_script << std::endl;
+        fftx::OutStream() << "szcube := [" << sizes.at(0) << ", " << sizes.at(1) << ", " << sizes.at(2) << "];" << std::endl;
+        fftx::OutStream() << "prdft := IMDPRDFT;" << std::endl;
+        fftx::OutStream() << "sign := 1;" << std::endl;
+        fftx::OutStream() << "name := \""<< name << "_spiral" << "\";" << std::endl;
+        fftx::OutStream() << mdprdft_script << std::endl;
     }
 };

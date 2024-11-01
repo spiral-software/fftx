@@ -6,7 +6,7 @@
 
 #include "fftx_mpi.hpp"
 
-using namespace std;
+// using namespace std;
 
 #define DEBUG 0
 #define DEBUG_OUTPUT 0
@@ -113,7 +113,9 @@ int main(int argc, char* argv[]) {
 
   if (argc != 10) {
     if (rank == 0) {
-      printf("usage: %s <M> <N> <K> <batch> <embedded> <forward> <complex> <trials> <check>\n", argv[0]);
+      fftx::OutStream() << "usage: " << argv[0]
+                        << " <M> <N> <K> <batch> <embedded> <forward> <complex> <trials> <check>"
+                        << std::endl;
     }
     MPI_Finalize();
     exit(-1);
@@ -136,7 +138,7 @@ int main(int argc, char* argv[]) {
 
   if (trials <= 0) {
     if (rank == 0) {
-      printf("Error: trials must be greater than 0\n");
+      fftx::OutStream() << "Error: trials must be greater than 0" << std::endl;
     }
     MPI_Finalize();
     exit(-1);
@@ -212,7 +214,14 @@ int main(int argc, char* argv[]) {
                   ((K <= l) || (is_embedded && (i < M/2 || 3 * M/2 <= i))) ?
                   0.0 :
                   inputRealSymmetric(i+1, j+1, l+1, M, N, K);
-                printf("DR in_array %3zu %3zu %3zu%18.8f\n", i+1, j+1, l+1, v);
+                // printf("DR in_array %3zu %3zu %3zu%18.8f\n", i+1, j+1, l+1, v);
+                fftx::OutStream() << "DR in_array"
+                                  << std::setw(4) << (i+1)
+                                  << std::setw(4) << (j+1)
+                                  << std::setw(4) << (l+1)
+                                  << std::scientific << std::setprecision(8)
+                                  << std::setw(18) << v
+                                  << std::endl;
                 // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
                 host_in[((l0*N + j) * M*e + i)*batch + b] = v;
               }
@@ -270,8 +279,10 @@ int main(int argc, char* argv[]) {
         // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
         int imin = rank * Mi0;
         int imax = rank * Mi0 + Mi0-1;
-        printf("C2R rank %d : input (%d:%zu, %d:%d, %d:%zu)\n",
-               rank,  0, Ki-1,  imin, imax,  0, N*e-1);
+        fftx::OutStream() << "C2R rank " << rank
+                          << " : input (" << 0 << ":" << (Ki-1)
+                          << ", " << imin << ":" << imax
+                          << ", " << 0 << ":" << (N*e-1) << ")" << std::endl;
       }
     // END DEBUG_OUTPUT
     for (size_t j = 0; j < N*e; j++) {
@@ -301,8 +312,15 @@ int main(int argc, char* argv[]) {
               { // CI == 2; c == 0 for real part, 1 for imaginary part.
                 double rval = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI];
                 double ival = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + 1];
-                printf("IMDPRDFT input array%4zu%4zu%4zu%18.8f%18.8f\n",
-                       j, i, l, rval, ival);
+                // printf("IMDPRDFT input array%4zu%4zu%4zu%18.8f%18.8f\n",
+                // j, i, l, rval, ival);
+                fftx::OutStream() << "IMDPRDFT input array"
+                                  << std::setw(4) << j
+                                  << std::setw(4) << i
+                                  << std::setw(4) << l
+                                  << std::scientific << std::setprecision(8)
+                                  << std::setw(18) << rval
+                                  << std::setw(18) << ival << std::endl;
               }
             // END DEBUG_OUTPUT
           }
@@ -314,13 +332,13 @@ int main(int argc, char* argv[]) {
 
   if (PRETTY_PRINT) {
     if (rank == 0) {
-      cout << "Problem size: " << M << " x " << N << " x " << K << endl;
-      cout << "Batch size  : " << batch << endl;
-      cout << "Embedded    : " << (is_embedded ? "Yes" : "No") << endl;
-      cout << "Direction   : " << (is_forward ? "Forward" : "Inverse") << endl;
-      cout << "Complex     : " << (is_complex ? "Yes" : "No") << endl;
-      cout << "MPI Ranks   : " << p << endl;
-      cout << "Times       : " << endl;
+      fftx::OutStream() << "Problem size: " << M << " x " << N << " x " << K << std::endl;
+      fftx::OutStream() << "Batch size  : " << batch << std::endl;
+      fftx::OutStream() << "Embedded    : " << (is_embedded ? "Yes" : "No") << std::endl;
+      fftx::OutStream() << "Direction   : " << (is_forward ? "Forward" : "Inverse") << std::endl;
+      fftx::OutStream() << "Complex     : " << (is_complex ? "Yes" : "No") << std::endl;
+      fftx::OutStream() << "MPI Ranks   : " << p << std::endl;
+      fftx::OutStream() << "Times       : " << std::endl;
     }
   }
 
@@ -336,9 +354,9 @@ int main(int argc, char* argv[]) {
 
     if (rank == 0) {
       if (PRETTY_PRINT) {
-        cout << "\tTrial " << t << ": " << max_time << " seconds" << endl;
+        fftx::OutStream() << "\tTrial " << t << ": " << max_time << " seconds" << std::endl;
       } else {
-        cout
+        fftx::OutStream()
           << M << "," << N << "," << K << ","
           << batch << ","
           << p << ","
@@ -348,7 +366,7 @@ int main(int argc, char* argv[]) {
           << (check == 1 ? "first_elem" : "local") << ","
           << max_time;
         if (t < trials-1) { // only check last iter, will write its own end line.
-          cout << endl;
+          fftx::OutStream() << std::endl;
         }
       }
     }
@@ -437,11 +455,11 @@ int main(int argc, char* argv[]) {
                 }
                 if (DEBUG) {
                   size_t test_idx2 = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO;
-                  cout << "(" << k << "," << j << "," << i << ")\t";
-                  printf(
-                    "%12f %12f\n",
-                    host_out[test_idx2 + 0], host_out[test_idx2 + 1]
-                  );
+                  fftx::OutStream() << "(" << k << "," << j << "," << i << ")\t"
+                                    << std::fixed << std::setw(12)
+                                    << host_out[test_idx2 + 0] << " "
+                                    << std::setw(12)
+                                    << host_out[test_idx2 + 1] << std::endl;
                 }
               }
             }
@@ -452,12 +470,12 @@ int main(int argc, char* argv[]) {
     }
     if (rank == 0) {
       if (PRETTY_PRINT) {
-        cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
+        fftx::OutStream() << "Correct     : " << (correct ? "Yes" : "No") << std::endl;
       } else {
         if (correct) {
-          cout << ",1";
+          fftx::OutStream() << ",1";
         } else {
-          cout << ",0";
+          fftx::OutStream() << ",0";
         }
       }
     }
@@ -465,7 +483,7 @@ int main(int argc, char* argv[]) {
     // only check for N, M, K <= 32, and some small number of processors.
     if (M > 64 || N > 64 || K > 64 || p > 4) {
       if (rank == 0) {
-        cout << ",X" << endl;
+        fftx::OutStream() << ",X" << std::endl;
       }
       goto end;
     }
@@ -661,14 +679,16 @@ int main(int argc, char* argv[]) {
           plan, (DEVICE_FFT_DOUBLEREAL *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out
         );
       } else {
-        cout << "Error: unknown plan type." << endl;
+        fftx::OutStream() << "Error: unknown plan type." << std::endl;
         goto end;
       }
 
       {
         DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
         if (device_status != DEVICE_SUCCESS) {
-          fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after 3DFFT!\n", device_status);
+          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code "
+                            << device_status << " after 3DFFT!"
+                            << std::endl;
         }
       }
 
@@ -683,7 +703,9 @@ int main(int argc, char* argv[]) {
       {
         DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
         if (device_status != DEVICE_SUCCESS) {
-          fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after 3DFFT!\n", device_status);
+          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code "
+                            << device_status << " after 3DFFT!"
+                            << std::endl;
         }
       }
 
@@ -693,7 +715,7 @@ int main(int argc, char* argv[]) {
       size_t m1 = p;
 
       if (DEBUG) {
-        printf("\n");
+        fftx::OutStream() << std::endl;
       }
 
       // check href_out against htest_out.
@@ -711,13 +733,16 @@ int main(int argc, char* argv[]) {
                       if (DEBUG) {
                         bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < TOLERANCE;
                         same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < TOLERANCE;
-                        cout << "(" << k << "," << j << "," << i << ")\t";
-                        printf(
-                          "%12f %12f\t%12f %12f\t%s\n",
-                          href_out [ ref_idx2 + 0], href_out [ ref_idx2 + 1],
-                          htest_out[test_idx2 + 0], htest_out[test_idx2 + 1],
-                          (same ? "" : "X")
-                        );
+                        fftx::OutStream() << "(" << k << "," << j << "," << i << ")\t"
+                                          << std::setw(12)
+                                          << href_out [ ref_idx2 + 0] << " "
+                                          << std::setw(12)
+                                          << href_out [ ref_idx2 + 1] << "\t"
+                                          << std::setw(12)
+                                          << htest_out[test_idx2 + 0] << " "
+                                          << std::setw(12)
+                                          << htest_out[test_idx2 + 1]
+                                          << (same ? "" : "X") << std::endl;
                       }
 
                     for (size_t c = 0; c < CO; c++) {
@@ -728,8 +753,17 @@ int main(int argc, char* argv[]) {
                         // BEGIN DEBUG_OUTPUT
                         if (DEBUG_OUTPUT)
                           {
-                            printf("batch=%zu %zu %zu %zu part=%zu ref=%12.4e test=%12.4e\n",
-                                   b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
+                            // printf("batch=%zu %zu %zu %zu part=%zu ref=%12.4e test=%12.4e\n",
+                            // b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
+                            fftx::OutStream() << "batch=" << b << " "
+                                              << k << " " << j << " " << i
+                                              << " part=" << c
+                                              << std::scientific << std::setw(12)
+                                              << std::setprecision(4)
+                                              << " ref=" << href_out[ref_idx]
+                                              << std::scientific << std::setw(12)
+                                              << " test=" << htest_out[tst_idx]
+                                              << std::endl;
                           }
                         // END DEBUG_OUTPUT
                         correct = false;
@@ -750,7 +784,10 @@ int main(int argc, char* argv[]) {
                 if (DEBUG) {
                   size_t ref_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
                   size_t tst_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
-                  printf("%f\t%f\n", href_out[ref_idx2], htest_out[tst_idx2]);
+                  // printf("%f\t%f\n", href_out[ref_idx2], htest_out[tst_idx2]);
+                  fftx::OutStream() << std::fixed
+                                    << href_out[ref_idx2] << "\t"
+                                    << htest_out[tst_idx2] << std::endl;
                 }
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
@@ -758,8 +795,16 @@ int main(int argc, char* argv[]) {
                   // BEGIN DEBUG_OUTPUT
                   if (DEBUG_OUTPUT)
                     {
-                      printf("DR out_array%4zu%4zu%4zu%18.8f%18.8f\n",
-                             i, j, k, htest_out[tst_idx], href_out[ref_idx]);
+                      // printf("DR out_array%4zu%4zu%4zu%18.8f%18.8f\n",
+                      // i, j, k, htest_out[tst_idx], href_out[ref_idx]);
+                      fftx::OutStream() << "DR out_array"
+                                        << std::setw(4) << i
+                                        << std::setw(4) << j
+                                        << std::setw(4) << k
+                                        << std::scientific << std::setprecision(8)
+                                        << std::setw(18) << htest_out[tst_idx]
+                                        << std::setw(18) << href_out[ref_idx]
+                                        << std::endl;
                     }
                   // END DEBUG_OUTPUT
                   if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
@@ -772,12 +817,12 @@ int main(int argc, char* argv[]) {
         }
       }
       if (PRETTY_PRINT) {
-        cout << "Correct     : " << (correct ? "Yes" : "No") << endl;
+        fftx::OutStream() << "Correct     : " << (correct ? "Yes" : "No") << std::endl;
       } else {
         if (correct) {
-          cout << ",1";
+          fftx::OutStream() << ",1";
         } else {
-          cout << ",0";
+          fftx::OutStream() << ",0";
         }
       }
 
@@ -790,12 +835,12 @@ int main(int argc, char* argv[]) {
   } else { // end check on correctness check
     // not checking.
     if (rank == 0) {
-      cout << ",-";
+      fftx::OutStream() << ",-";
     }
   }
 
   if (rank == 0) {
-    cout << endl;
+    fftx::OutStream() << std::endl;
   }
 
 end:

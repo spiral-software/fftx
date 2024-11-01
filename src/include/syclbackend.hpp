@@ -221,7 +221,7 @@ inline void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-    if ( DEBUGOUT ) std::cout << "parsed input\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "parsed input\n";
 
 }
 
@@ -230,7 +230,7 @@ inline void Executor::createProg() {
         dev = sycl::device(sycl::gpu_selector_v);
     }
     catch (sycl::exception const &e) {
-        std::cout << "you are running on a system without a gpu, for best results please use a gpu, program terminating" << std::endl;
+        fftx::OutStream() << "you are running on a system without a gpu, for best results please use a gpu, program terminating" << std::endl;
         exit(-1);
 //         dev = sycl::device(sycl::cpu_selector_v);
     }
@@ -244,19 +244,19 @@ inline void Executor::createProg() {
     sycl::property_list props{sycl::property::queue::enable_profiling()};
     q = sycl::queue(ctx, dev, props);
 
-    if ( DEBUGOUT ) std::cout << "created program\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "created program\n";
 }
 
 inline void Executor::compileProg() {
     const char * kernelSource = kernels.c_str();
     ocl_program = clCreateProgramWithSource(ocl_ctx,1,&(kernelSource), nullptr, &err);
     clBuildProgram(ocl_program, 1, &ocl_dev, "-cl-std=CL3.0", nullptr, nullptr);
-    if ( DEBUGOUT ) std::cout << "compiled program\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "compiled program\n";
 }
 
 inline void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
-        if ( DEBUGOUT ) std::cout << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) <<
+        if ( DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) <<
             " this is the size "<< std::get<1>(device_names.at(i)) << " this is the type " << std::get<2>(device_names[i]) <<
              " this is the region of memory " << std::get<3>(device_names[i]) << std::endl;
         int size = std::get<1>(device_names.at(i));
@@ -343,9 +343,9 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
     uint64_t profile_nanosec = 0;
     for(int i = 0; i < kernel_names.size(); i++) {
         if ( DEBUGOUT ) {
-            std::cout << kernel_names.at(i) << std::endl;
-            std::cout << kernel_params[i*6] << " " << kernel_params[i*6+1] << " " << kernel_params[i*6+2] << std::endl;
-            std::cout << kernel_params[i*6+3] << " " <<  kernel_params[i*6+4] << " " << kernel_params[i*6+5] << std::endl;
+            fftx::OutStream() << kernel_names.at(i) << std::endl;
+            fftx::OutStream() << kernel_params[i*6] << " " << kernel_params[i*6+1] << " " << kernel_params[i*6+2] << std::endl;
+            fftx::OutStream() << kernel_params[i*6+3] << " " <<  kernel_params[i*6+4] << " " << kernel_params[i*6+5] << std::endl;
         }
         sycl::range<3> grid (kernel_params[i*6],kernel_params[i*6+1],kernel_params[i*6+2]);
         sycl::range<3> block (kernel_params[i*6+3],kernel_params[i*6+4],kernel_params[i*6+5]);
@@ -356,7 +356,7 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
         q.submit([&](sycl::handler& h){
                   for(int j = 0; j < kernel_args[i].size(); j++) {
                          if ( DEBUGOUT ) {
-                            std::cout << "This is the kernel arg name " << kernel_args.at(i).at(j) << std::endl;
+                            fftx::OutStream() << "This is the kernel arg name " << kernel_args.at(i).at(j) << std::endl;
                          }
                          if(sig_types.find(kernel_args.at(i).at(j)) != sig_types.end()) {
                              if(std::get<1>(sig_types.at(kernel_args.at(i).at(j))) == 1) {
@@ -382,7 +382,7 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
                                       auto data_acc = global2buffer_double.at(kernel_args.at(i).at(j)).get_access<sycl::access_mode::read_write, sycl::target::device>(h);
                                       h.set_arg(j,data_acc);
                                  } else {
-                                     std::cout << "device variable needed but sycl buffer never created" << std::endl;
+                                     fftx::OutStream() << "device variable needed but sycl buffer never created" << std::endl;
                                      exit(-1);
                                  }
                                   
@@ -397,13 +397,13 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
                                      sycl::local_accessor<double> shm_acc(sycl::range<1>(std::get<1>(local2type.at(kernel_args.at(i).at(j)))), h);
                                      h.set_arg(j, shm_acc);
                                  } else {
-                                     std::cout << "shared memory is using an unsupported type " << std::get<1>(local2type.at(kernel_args.at(i).at(j))) << std::endl;
+                                     fftx::OutStream() << "shared memory is using an unsupported type " << std::get<1>(local2type.at(kernel_args.at(i).at(j))) << std::endl;
                                      exit(-1);
                                  }
                              }
                          } 
                           else{
-                             std::cout << "kernel execution failed dramatically" << std::endl;
+                             fftx::OutStream() << "kernel execution failed dramatically" << std::endl;
                              exit(-1);
                          }
                     }
@@ -424,19 +424,19 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
 }
 
 inline void Executor::execute(std::string input) {
-    if ( DEBUGOUT ) std::cout << "begin parsing\n";
+    if ( DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
     
     parseDataStructure(input);
     
     if ( DEBUGOUT ) {
-        std::cout << "finished parsing\n";
+        fftx::OutStream() << "finished parsing\n";
         for(auto it = device_names_map.cbegin(); it != device_names_map.cend(); it++) {
-            std::cout << (*it).first << std::endl;
+            fftx::OutStream() << (*it).first << std::endl;
         }
         for(int i = 0; i < kernel_names.size(); i++) {
-            std::cout << kernel_names[i] << std::endl;
+            fftx::OutStream() << kernel_names[i] << std::endl;
         }
-        std::cout << kernels << std::endl;
+        fftx::OutStream() << kernels << std::endl;
     }
     createProg();
     compileProg();

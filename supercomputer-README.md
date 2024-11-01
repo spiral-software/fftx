@@ -25,6 +25,7 @@ module load cray-python
 module use /soft/modulefiles
 module load cmake
 module load python
+export ONEAPI_DEVICE_SELECTOR=opencl:gpu
 ```
 
 * #### On **aurora** system at Argonne Leadership Computing Facility (ALCF):
@@ -34,5 +35,5 @@ module load spack-pe-gcc
 module load cmake
 module load python
 module load oneapi
-
+export ONEAPI_DEVICE_SELECTOR=opencl:gpu
 ```

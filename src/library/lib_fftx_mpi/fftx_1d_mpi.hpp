@@ -12,7 +12,7 @@
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"
 
-using namespace std;
+// using namespace std;
 
 void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K);
 void destroy_1d_comms(fftx_plan plan);

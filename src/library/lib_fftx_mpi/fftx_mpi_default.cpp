@@ -9,7 +9,7 @@
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"
 
-using namespace std;
+// using namespace std;
 
 
 fftx_plan fftx_plan_distributed_default(MPI_Comm comm, int r, int c, int M, int N, int K, int batch, bool is_embedded, bool is_complex) {
@@ -27,8 +27,8 @@ fftx_plan fftx_plan_distributed_default(MPI_Comm comm, int r, int c, int M, int 
   uint64_t n = N;
   uint64_t k = K;
 
-  DEVICE_MALLOC(&(plan->Q3), m*n*k*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC(&(plan->Q4), m*n*k*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q3), m*n*k*(is_embedded ? 8 : 1) / (r * c) * sizeof(std::complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q4), m*n*k*(is_embedded ? 8 : 1) / (r * c) * sizeof(std::complex<double>) * batch);
 
   int batch_sizeZ = m/r * n/c;
   int batch_sizeX = n/c * k/r;

@@ -15,6 +15,11 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import subprocess, os
+import datetime
+
+# Get current time and format a 'docs generated on' message
+
+current_date = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
 
 # Check if we're running on Read the Docs' servers
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
@@ -31,7 +36,7 @@ if read_the_docs_build:
 # -- Project information -----------------------------------------------------
 
 project = 'FFTX'
-copyright = '2023, FFTX Team'
+copyright = f"2024, FFTX Team.            Documentation generated on {current_date}"
 author = 'FFTX Team'
 
 

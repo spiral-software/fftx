@@ -20,7 +20,7 @@ namespace fftx {
     rconv(const point_t<DIM>& a_size) :
       transformer<DIM, double, double>(a_size)
     {
-      // std::cout << "Defining rconv<" << DIM << ">" << this->m_size
+      // fftx::OutStream() << "Defining rconv<" << DIM << ">" << this->m_size
       // << std::endl;
       m_sizeHalf = this->sizeHalf();
       this->m_inputSize = this->m_size;
@@ -66,22 +66,25 @@ namespace fftx {
       bool symSame = (symExtents == m_sizeHalf);
       if (!srcSame)
         {
-          std::cout << "error: rconv<" << DIM << ">"  << (this->m_size) << "::transform"
-                    << " called with input array size " << srcExtents
-                    << std::endl;
+          fftx::ErrStream() << "error: rconv<" << DIM << ">"
+                            << (this->m_size) << "::transform"
+                            << " called with input array size " << srcExtents
+                            << std::endl;
         }
       if (!dstSame)
         {
-          std::cout << "error: rconv<" << DIM << ">"  << (this->m_size) << "::transform"
-                    << " called with output array size " << dstExtents
-                    << std::endl;
+          fftx::ErrStream() << "error: rconv<" << DIM << ">"
+                            << (this->m_size) << "::transform"
+                            << " called with output array size " << dstExtents
+                            << std::endl;
         }
       if (!symSame)
         {
-          std::cout << "error: rconv<" << DIM << ">"  << (this->m_size) << "::transform"
-                    << " needs symbol array size " << m_sizeHalf
-                    << " but called with size " << symExtents
-                    << std::endl;
+          fftx::ErrStream() << "error: rconv<" << DIM << ">"
+                            << (this->m_size) << "::transform"
+                            << " needs symbol array size " << m_sizeHalf
+                            << " but called with size " << symExtents
+                            << std::endl;
         }
       if (srcSame && dstSame && symSame)
         {

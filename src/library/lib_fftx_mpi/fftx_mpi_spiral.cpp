@@ -27,7 +27,7 @@
 #endif
 
 
-using namespace std;
+// using namespace std;
 
 BATCH1DDFTProblem bdstg1;
 BATCH1DDFTProblem bdstg2;
@@ -59,8 +59,8 @@ fftx_plan fftx_plan_distributed_spiral(MPI_Comm comm, int r, int c, int M, int N
 
   init_2d_comms(plan, r, c,  M,  N, K);   //embedding uses the input sizes
 
-  DEVICE_MALLOC(&(plan->Q3), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
-  DEVICE_MALLOC(&(plan->Q4), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q3), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(std::complex<double>) * batch);
+  DEVICE_MALLOC(&(plan->Q4), M*N*K*(is_embedded ? 8 : 1) / (r * c) * sizeof(std::complex<double>) * batch);
 
   // int batch_sizeZ = M/r * N/c;
   int batch_sizeX = N/c * K/r;
