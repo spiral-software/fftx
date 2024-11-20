@@ -19,7 +19,7 @@
 #include "device_macros.h"
 #elif defined (FFTX_SYCL)
 // #include "mkl_dfti.h"
-// #include <CL/sycl.hpp>
+// #include <sycl/sycl.hpp>
 #include <oneapi/mkl/dfti.hpp>
 // #include <oneapi/mkl/vm.hpp>
 #endif

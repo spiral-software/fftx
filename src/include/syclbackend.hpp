@@ -4,7 +4,7 @@
 //  Copyright (c) 2018-2022, Carnegie Mellon University
 //  See LICENSE for details
 
-#include<CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <vector>
 #include <iostream>
 #include <string>
@@ -236,8 +236,8 @@ inline void Executor::createProg() {
     }
 
     ctx= sycl::context(dev);
-    ocl_dev=sycl::get_native<cl::sycl::backend::opencl,sycl::device>(dev);
-    ocl_ctx=sycl::get_native<cl::sycl::backend::opencl,sycl::context>(ctx);
+    ocl_dev=sycl::get_native<sycl::backend::opencl,sycl::device>(dev);
+    ocl_ctx=sycl::get_native<sycl::backend::opencl,sycl::context>(ctx);
 
     // ocl_queue = clCreateCommandQueueWithProperties(ocl_ctx, ocl_dev, 0, &err);
     // q = sycl::make_queue<sycl::backend::opencl>(ocl_queue, ctx);
