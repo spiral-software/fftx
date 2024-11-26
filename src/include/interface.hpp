@@ -238,6 +238,28 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
 
 }
 
+inline void printSpiralScript(std::string spiral_script, std::string name, std::vector<int> sizes) {
+    std::ofstream output_file;
+    std::string file_name;
+    file_name.append(getFFTX()+"script_"+name+"_"+std::to_string(sizes.at(0)));
+    for(int i = 1; i< sizes.size(); i++) {
+        file_name.append("x"+std::to_string(sizes.at(i)));
+    }
+#if defined FFTX_HIP
+    file_name.append("_HIP.g");
+#elif defined FFTX_CUDA 
+    file_name.append("_CUDA.g");
+#elif defined FFTX_SYCL
+    file_name.append("_SYCL.g");
+#else
+    file_name.append("_CPU.g");
+#endif
+    fftx::OutStream() << "Writing SPIRAL script to " << file_name << std::endl;
+    output_file.open(file_name);
+    output_file << spiral_script;
+    output_file.close();
+}
+
 inline void getImportAndConf() {
     fftx::OutStream() << "Load(fftx);\nImportAll(fftx);\n";
     #if (defined FFTX_HIP || FFTX_CUDA || FFTX_SYCL)
@@ -439,7 +461,8 @@ inline std::string FFTXProblem::semantics2() {
     #else
         close(p[0]);
     #endif
-    if(PRINTSCRIPT) fftx::OutStream() << script << std::endl;
+    if (PRINTSCRIPT) printSpiralScript(script, name, sizes);
+
     #if defined(FFTX_HIP) || defined(FFTX_CUDA) || defined(FFTX_SYCL)
     if(result.find("spiral> JIT BEGIN") == std::string::npos) {
       //  if(DEBUGOUT) fftx::OutStream() << script << std::endl;
