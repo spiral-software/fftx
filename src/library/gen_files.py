@@ -204,7 +204,7 @@ def library_api ( script ):
         str.append ( 'if (err != hipSuccess) {  fftx::ErrStream() << str << ": " << hipGetErrorString(err) << std::endl;  ' )
         str.append ( 'exit(-1); } }\n\n' )
     elif script.args.platform == 'SYCL':
-        str.append ( '#include <CL/sycl.hpp>\n\n' )
+        str.append ( '#include <sycl/sycl.hpp>\n\n' )
 
     str.append ( '//  Query the list of sizes available from the library; returns a pointer to an\n' )
     str.append ( '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying the X,\n' )
