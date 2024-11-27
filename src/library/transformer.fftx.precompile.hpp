@@ -1,13 +1,13 @@
 #ifndef transformer_PRECOMPILE_H
 #define transformer_PRECOMPILE_H
 
-// This is included in device_macros.h
+// This is included in fftxdevice_macros.h
 //#ifdef FFTX_HIP
 //#include <hip/hip_runtime.h>
 //#endif
 
 #include "fftx3.hpp"
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
 /*
  Real 3D convolution class for precompiled transforms

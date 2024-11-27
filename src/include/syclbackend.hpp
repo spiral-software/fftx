@@ -14,7 +14,7 @@
 #include <iomanip>
 #include <fcntl.h>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #pragma once
 
 #if defined ( PRINTDEBUG )

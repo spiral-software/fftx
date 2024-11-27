@@ -22,7 +22,7 @@ set ( _prefixes )	##  prefixes not required for test${PROJECT_NAME}, as it now u
 
 set ( BUILD_PROGS test${PROJECT_NAME}_lib test${PROJECT_NAME} )
 
-##  One .cpp file is coded with device_macros and should build for CUDA & HIP
+##  One .cpp file is coded with fftxdevice_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====

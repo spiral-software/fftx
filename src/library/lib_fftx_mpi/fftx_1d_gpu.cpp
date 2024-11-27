@@ -1,5 +1,5 @@
 // implement embedded packing kernel
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_1d_gpu.h"
 
 __global__

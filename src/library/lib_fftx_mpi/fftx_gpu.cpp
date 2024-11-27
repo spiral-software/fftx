@@ -3,7 +3,7 @@
 #include <malloc.h>
 #include <complex>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 
 // using namespace std;

@@ -35,7 +35,7 @@ typedef struct transformTuple {
 } transformTuple_t;
 #endif
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "transformer.fftx.precompile.hpp"
 
 std::mt19937 generator;

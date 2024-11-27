@@ -15,7 +15,7 @@
 // #include "fftx_rconv_cpu_public.h"
 // #endif
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 // #include "rconv.fftx.precompile.hpp"
 
 std::mt19937 generator;

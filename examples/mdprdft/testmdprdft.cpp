@@ -16,7 +16,7 @@
 #include "cpubackend.hpp"
 #endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
 // #include "mkl_dfti.h"
 // #include <sycl/sycl.hpp>

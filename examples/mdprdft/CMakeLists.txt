@@ -18,7 +18,7 @@ set ( _stem fftx )
 set ( _prefixes  )
 set ( BUILD_PROGS test${PROJECT_NAME} )
 
-##  One .cpp file is coded with device_macros and should build for CUDA & HIP
+##  One .cpp file is coded with fftxdevice_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
 
 if ( NOT WIN32 )

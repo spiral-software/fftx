@@ -13,7 +13,7 @@
 // #include "fftx3utilities.h"
 
 //#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined (FFTX_SYCL)
-// #include "device_macros.h"
+// #include "fftxdevice_macros.h"
 // #endif
 
 // NOTE: assuming only 1 plan going at a time? otherwise, need to figure out a way to pass new GPU

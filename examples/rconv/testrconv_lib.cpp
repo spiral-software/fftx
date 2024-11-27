@@ -11,7 +11,7 @@
 
 #include "fftx3utilities.h"
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "RealConvolution.hpp"
 
 template<int DIM>

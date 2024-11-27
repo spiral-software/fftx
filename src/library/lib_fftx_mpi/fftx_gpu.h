@@ -5,7 +5,7 @@
 
 #include <complex>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
 DEVICE_ERROR_T pack(
 	std::complex<double> *dst,

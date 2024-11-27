@@ -16,7 +16,7 @@
 #include "cpubackend.hpp"
 #endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #endif
 
 #define CH_CUDA_SAFE_CALL( call) {                                    \

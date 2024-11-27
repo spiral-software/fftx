@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #pragma once
 #if defined ( PRINTDEBUG )
 #define DEBUGOUT 1

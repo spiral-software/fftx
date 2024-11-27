@@ -2,7 +2,7 @@
 #include <complex>
 #include <iostream>
 #include <stdlib.h>     /* srand, rand */
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
 #include "fftx_mpi.hpp"
 

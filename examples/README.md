@@ -30,7 +30,7 @@ allowing different transforms to be tested.
 There will be at least one test harness program used to exercise the
 transform(s) defined.  The naming convention for the test harness is
 **test**_project_.**cpp**.  The suffix for programs is **.cpp**, in general the
-codes were developed using macros (see **device_macros.h**) that define the
+codes were developed using macros (see **fftxdevice_macros.h**) that define the
 appropiate code or API depending on whether one is building for CPU, CUDA, or
 HIP.  The CMakeLists.txt in each folder set appropriate properties on source
 files for the intended compiler (e.g., hipcc for HIP or nvcc for CUDA).
