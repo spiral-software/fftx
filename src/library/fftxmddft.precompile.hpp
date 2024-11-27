@@ -2,7 +2,7 @@
 #define mddft_PRECOMPILE_H
 
 #include "fftx3.hpp"
-#include "transformer.fftx.precompile.hpp"
+#include "fftxtransformer.precompile.hpp"
 
 /*
  Inverse Complex to Complex DFT class for precompiled transforms

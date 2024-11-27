@@ -62,12 +62,12 @@ message ( STATUS "Library names = ${_library_names}" )
 
 
 ##  List of header files to be copies to .../include on 'make install'
-set ( _incl_files imddft.fftx.precompile.hpp
-	imdprdft.fftx.precompile.hpp
-	mddft.fftx.precompile.hpp
-	mdprdft.fftx.precompile.hpp
-	rconv.fftx.precompile.hpp
-	transformer.fftx.precompile.hpp
+set ( _incl_files fftximddft.precompile.hpp
+	fftximdprdft.precompile.hpp
+	fftxmddft.precompile.hpp
+	fftxmdprdft.precompile.hpp
+	fftxrconv.precompile.hpp
+	fftxtransformer.precompile.hpp
 	fftxdevice_macros.h
     )
 

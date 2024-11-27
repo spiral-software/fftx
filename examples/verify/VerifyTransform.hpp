@@ -36,7 +36,7 @@ typedef struct transformTuple {
 #endif
 
 #include "fftxdevice_macros.h"
-#include "transformer.fftx.precompile.hpp"
+#include "fftxtransformer.precompile.hpp"
 
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).

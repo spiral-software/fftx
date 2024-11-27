@@ -2,7 +2,7 @@
 #define rconv_PRECOMPILE_H
 
 #include "fftx3.hpp"
-#include "transformer.fftx.precompile.hpp"
+#include "fftxtransformer.precompile.hpp"
 
 /*
  Real convolution class for precompiled transforms

@@ -16,7 +16,7 @@
 // #endif
 
 #include "fftxdevice_macros.h"
-// #include "rconv.fftx.precompile.hpp"
+// #include "fftxrconv.precompile.hpp"
 
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).
