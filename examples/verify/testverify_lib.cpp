@@ -24,7 +24,7 @@
 #include "fftx3utilities.h"
 
 #include "fftxdevice_macros.h"
-#include "VerifyTransform.hpp"
+#include "fftxVerifyTransform.hpp"
 
 int main(int argc, char* argv[])
 {

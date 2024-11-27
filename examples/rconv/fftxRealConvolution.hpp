@@ -7,7 +7,7 @@
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
 #include "fftxinterface.hpp"
-#include "rconvObj.hpp"
+#include "fftxrconvObj.hpp"
 
 // #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 // #include "fftx_rconv_gpu_public.h"

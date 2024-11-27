@@ -4,7 +4,7 @@
 #include "fftx3utilities.h"
 #include "fftxdevice_macros.h"
 
-#include "VerifyTransform.hpp"
+#include "fftxVerifyTransform.hpp"
 #include "fftxmddftObj.hpp"
 #include "fftximddftObj.hpp"
 #include "fftxmdprdftObj.hpp"

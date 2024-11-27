@@ -1,7 +1,7 @@
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
 
-#include "RealConvolution.hpp"
+#include "fftxRealConvolution.hpp"
 #include "fftx3utilities.h"
 
 // using namespace fftx;

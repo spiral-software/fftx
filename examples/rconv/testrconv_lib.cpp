@@ -12,7 +12,7 @@
 #include "fftx3utilities.h"
 
 #include "fftxdevice_macros.h"
-#include "RealConvolution.hpp"
+#include "fftxRealConvolution.hpp"
 
 template<int DIM>
 void rconvDimension(std::vector<int> sizes,
