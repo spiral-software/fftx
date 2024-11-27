@@ -10,13 +10,13 @@
 #include "mddftlib.hpp"
 #include "mdprdftlib.hpp"
 #include "dftbatlib.hpp"
-// #include "cudabackend.hpp"
+// #include "fftxcudabackend.hpp"
 #if defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #elif defined FFTX_CUDA
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #else
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
 #include "fftx3.hpp"
 #include <array>

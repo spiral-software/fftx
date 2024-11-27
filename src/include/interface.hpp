@@ -35,13 +35,13 @@
 #include <array>
 #include <chrono>
 #if defined FFTX_CUDA
-#include "cudabackend.hpp"
+#include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #elif defined FFTX_SYCL
-#include "syclbackend.hpp"
+#include "fftxsyclbackend.hpp"
 #else
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
 #include "fftx_mddft_gpu_public.h"

@@ -20,11 +20,11 @@
 // #include "batch2dprdftObj.hpp"
 // #include "ibatch2dprdftObj.hpp"
 #if defined FFTX_CUDA
-#include "cudabackend.hpp"
+#include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #else
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
 
 // using namespace std;
