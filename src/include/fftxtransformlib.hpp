@@ -1,8 +1,8 @@
 #include "fftxmddftlib.hpp"
 #include "fftxmdprdftlib.hpp"
-#include "batch1ddftObj.hpp"
-#include "batch1dprdftObj.hpp"
-#include "ibatch1ddftObj.hpp"
-#include "ibatch1dprdftObj.hpp"
+#include "fftxbatch1ddftObj.hpp"
+#include "fftxbatch1dprdftObj.hpp"
+#include "fftxibatch1ddftObj.hpp"
+#include "fftxibatch1dprdftObj.hpp"
 
 #pragma once

@@ -14,7 +14,7 @@ At its most basic, an example consists of a test harness to exercise the transfo
 and a **cmake** file to build the example.
 
 Most examples are structured this way.  A header file (typically named
-*transform*Obj.hpp provides the **Spiral** specification such that **Spiral**
+fftx*transform*Obj.hpp provides the **Spiral** specification such that **Spiral**
 can generate the code for the transform.  The header files for defined
 transforms are maintained inthe directory: **$FFTX_HOME/src/include**
 

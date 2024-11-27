@@ -6,10 +6,10 @@
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftx_mpi.hpp"
 #endif
-#include "mddftObj.hpp"
-#include "imddftObj.hpp"
-#include "mdprdftObj.hpp"
-#include "imdprdftObj.hpp"
+#include "fftxmddftObj.hpp"
+#include "fftximddftObj.hpp"
+#include "fftxmdprdftObj.hpp"
+#include "fftximdprdftObj.hpp"
 // #include "fftx3utilities.h"
 
 //#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined (FFTX_SYCL)

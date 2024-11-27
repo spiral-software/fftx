@@ -1,4 +1,4 @@
-//  Info pulled from header files: batch1dprdftObj.hpp & ibatch1dprdftObj.hpp
+//  Info pulled from header files: fftxbatch1dprdftObj.hpp & fftxibatch1dprdftObj.hpp
 //  batch 1D prdft - FORWARD
 
 // read seq (APar -> 0), write seq (APar -> 0)
@@ -88,7 +88,7 @@ Legend:  N == fftlen;  B == nbatch;  write == _wr;  read == _rd;
 
 ---------------------------------------------------------------------------------------------------
 
-Updates from new versions of batch1dprdftObj.hpp & ibatch1dprdftObj.hpp
+Updates from new versions of fftxbatch1dprdftObj.hpp & fftxibatch1dprdftObj.hpp
 
 
 // read seq, write seq

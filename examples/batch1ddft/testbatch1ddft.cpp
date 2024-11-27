@@ -1,8 +1,8 @@
 #include "fftx3.hpp"
 #include "fftxinterface.hpp"
-#include "batch1ddftObj.hpp"
+#include "fftxbatch1ddftObj.hpp"
 #include <math.h>  
-#include "ibatch1ddftObj.hpp"
+#include "fftxibatch1ddftObj.hpp"
 #include <string>
 #include <fstream>
 

@@ -1,8 +1,8 @@
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
 #include "fftxinterface.hpp"
-#include "mddftObj.hpp"
-#include "imddftObj.hpp"
+#include "fftxmddftObj.hpp"
+#include "fftximddftObj.hpp"
 #include <string>
 #include <fstream>
 

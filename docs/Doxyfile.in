@@ -947,10 +947,10 @@ WARN_LOGFILE           =
 
 INPUT                  = "@DOXYGEN_INPUT_DIR@/fftx3.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftxinterface.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/mddftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/imddftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/mdprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/imdprdftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftxmddftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftximddftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftxmdprdftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftximdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftx3utilities.h"
 # INPUT                  = ../src/include/fftx3.hpp \
 #                          ../src/include/fftxinterface.hpp \

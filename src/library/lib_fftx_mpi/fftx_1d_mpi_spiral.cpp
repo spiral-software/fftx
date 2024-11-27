@@ -11,14 +11,14 @@
 #include "fftx_mpi.hpp"
 
 #include "fftxinterface.hpp"
-#include "batch1ddftObj.hpp"
-#include "ibatch1ddftObj.hpp"
-#include "batch2ddftObj.hpp"
-#include "ibatch2ddftObj.hpp"
-#include "batch1dprdftObj.hpp"
-#include "ibatch1dprdftObj.hpp"
-// #include "batch2dprdftObj.hpp"
-// #include "ibatch2dprdftObj.hpp"
+#include "fftxbatch1ddftObj.hpp"
+#include "fftxibatch1ddftObj.hpp"
+#include "fftxbatch2ddftObj.hpp"
+#include "fftxibatch2ddftObj.hpp"
+#include "fftxbatch1dprdftObj.hpp"
+#include "fftxibatch1dprdftObj.hpp"
+// #include "fftxbatch2dprdftObj.hpp"
+// #include "fftxibatch2dprdftObj.hpp"
 #if defined FFTX_CUDA
 #include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
