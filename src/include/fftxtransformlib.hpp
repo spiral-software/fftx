@@ -1,5 +1,5 @@
-#include "mddftlib.hpp"
-#include "mdprdftlib.hpp"
+#include "fftxmddftlib.hpp"
+#include "fftxmdprdftlib.hpp"
 #include "batch1ddftObj.hpp"
 #include "batch1dprdftObj.hpp"
 #include "ibatch1ddftObj.hpp"

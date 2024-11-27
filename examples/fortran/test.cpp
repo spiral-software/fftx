@@ -2,7 +2,7 @@
 // #include "stdio.h"
 #include <complex>
 
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftx_mpi.hpp"
 #endif

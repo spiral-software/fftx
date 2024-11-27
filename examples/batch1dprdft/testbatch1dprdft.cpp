@@ -1,5 +1,5 @@
 #include "fftx3.hpp"
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 #include "batch1dprdftObj.hpp"
 #include <math.h>  
 #include "ibatch1dprdftObj.hpp"

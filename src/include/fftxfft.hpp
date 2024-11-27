@@ -6,10 +6,10 @@
 #include <unordered_map>
 #include <tuple>
 #include <utility>
-#include "interface.hpp"
-#include "mddftlib.hpp"
-#include "mdprdftlib.hpp"
-#include "dftbatlib.hpp"
+#include "fftxinterface.hpp"
+#include "fftxmddftlib.hpp"
+#include "fftxmdprdftlib.hpp"
+#include "fftxdftbatlib.hpp"
 // #include "fftxcudabackend.hpp"
 #if defined FFTX_HIP
 #include "fftxhipbackend.hpp"

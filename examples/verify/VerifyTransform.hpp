@@ -5,7 +5,7 @@
 #include <random>
 
 #include "fftx3.hpp"
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 // #include "fftx3utilities.h"
 
 // Define {init|destroy|run}TransformFunc and transformTuple if undefined.

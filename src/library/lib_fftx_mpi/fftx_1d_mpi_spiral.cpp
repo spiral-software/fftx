@@ -10,7 +10,7 @@
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"
 
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 #include "batch1ddftObj.hpp"
 #include "ibatch1ddftObj.hpp"
 #include "batch2ddftObj.hpp"

@@ -6,7 +6,7 @@
 
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 #include "rconvObj.hpp"
 
 // #if defined(FFTX_CUDA) || defined(FFTX_HIP)

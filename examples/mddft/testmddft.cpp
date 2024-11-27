@@ -1,6 +1,6 @@
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 #include "mddftObj.hpp"
 #include "imddftObj.hpp"
 #include <string>
