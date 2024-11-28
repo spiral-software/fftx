@@ -308,8 +308,8 @@ public:
       - <tt>args[2]</tt>:  pointer to symbol array (not used by all transforms). If not used, then can be set to NULL.
 
       The manner of specifying the pointer in each element of <tt>args</tt> depends on the backend:
-      - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
-      - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
+      - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>FFTX_DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
+      - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>FFTX_DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
       - for SYCL, specify <tt>(void*) ptr</tt> with <tt>sycl::buffer<double> ptr</tt>.
       - for CPU, specify <tt>(void*) ptr</tt> with <tt>double* ptr</tt>.
   */
@@ -493,10 +493,10 @@ inline void FFTXProblem::transform(){
         if ( DEBUGOUT) fftx::OutStream() << "found size in fixed library\n";
         ( * tupl->initfp )();
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
-            DEVICE_EVENT_T custart, custop;
-            DEVICE_EVENT_CREATE ( &custart );
-            DEVICE_EVENT_CREATE ( &custop );
-            DEVICE_EVENT_RECORD ( custart );
+            FFTX_DEVICE_EVENT_T custart, custop;
+            FFTX_DEVICE_EVENT_CREATE ( &custart );
+            FFTX_DEVICE_EVENT_CREATE ( &custop );
+            FFTX_DEVICE_EVENT_RECORD ( custart );
         #else
             auto start = std::chrono::high_resolution_clock::now();
         #endif
@@ -514,9 +514,9 @@ inline void FFTXProblem::transform(){
                 ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(1) );
             #endif
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &gpuTime, custart, custop );
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &gpuTime, custart, custop );
         #else
             auto stop = std::chrono::high_resolution_clock::now();
             std::chrono::duration<float, std::milli> duration = stop - start;

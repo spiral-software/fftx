@@ -81,7 +81,7 @@ __embed(
     }
 }
 
-DEVICE_ERROR_T embed(
+FFTX_DEVICE_ERROR_T embed(
     std::complex<double> *dst,
     std::complex<double> *src,
     int faster,
@@ -89,18 +89,18 @@ DEVICE_ERROR_T embed(
 ) {
     // pad fastest dim with zeros on either side in tensor of shape [b, 2a]
     __embed<<<dim3(slower), dim3(min(2*faster, 1024))>>>((double2 *) dst, (double2 *) src, faster, slower);
-    DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-          // fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code " << device_status
+    FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
                             << " after launching addKernel!" << std::endl;
 		return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 
 }
 
-DEVICE_ERROR_T embed(
+FFTX_DEVICE_ERROR_T embed(
     std::complex<double> *dst,
     std::complex<double> *src,
     int faster,
@@ -112,18 +112,18 @@ DEVICE_ERROR_T embed(
     // get rid of padding as part of embedding.
     // pad fastest dim with zeros on either side in tensor of shape [b, 2a]
     __embed<<<dim3(slower), dim3(min(2*faster, 1024))>>>((double2 *) dst, (double2 *) src, faster, faster_padded, slower);
-    DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-          // fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code " << device_status
+    FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
                             << " after launching addKernel!" << std::endl;
 		return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 
 }
 
-DEVICE_ERROR_T embed(
+FFTX_DEVICE_ERROR_T embed(
     std::complex<double> *dst,
     std::complex<double> *src,
     size_t faster,
@@ -136,13 +136,13 @@ DEVICE_ERROR_T embed(
     // get rid of padding as part of embedding.
     // pad fastest dim with zeros on either side in tensor of shape [b, 2a]
     __embed<<<dim3(2*faster, slower), dim3(min(copy_size, (size_t) 1024))>>>((double2 *) dst, (double2 *) src, faster, faster_padded, slower, copy_size);
-    DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-          // fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code " << device_status
+    FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
                             << " after launching addKernel!" << std::endl;
 		return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 
 }

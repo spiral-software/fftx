@@ -201,7 +201,7 @@ inline void Executor::parseDataStructure(std::string input) {
 }
 
 inline void Executor::createProg() {
-    DEVICE_RTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     "test.cu", // name
     0, // numHeaders
@@ -240,10 +240,10 @@ inline void Executor::compileProg() {
 }
 
 inline void Executor::getLogsAndPTX() {
-    DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
     //fftx::OutStream() << "this is the log size" << logSize << "\n";
     log = new char[logSize];
-    DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLog(prog, log));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLog(prog, log));
     if (compileResult != HIPRTC_SUCCESS) {
         fftx::OutStream() << "compile failure with code "<< hiprtcGetErrorString (compileResult) << std::endl;
         for(int i = 0; i < logSize; i++) {
@@ -253,11 +253,11 @@ inline void Executor::getLogsAndPTX() {
         exit(1);
     }
     delete[] log;
-    DEVICE_RTC_SAFE_CALL(hiprtcGetCodeSize(prog, &ptxSize));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetCodeSize(prog, &ptxSize));
     //fftx::OutStream() << "this is the program size" << ptxSize << "\n";
     ptx = new char[ptxSize];
-    DEVICE_RTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
-    DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
+    FFTX_DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
     if ( DEBUGOUT ) fftx::OutStream() << "created module\n";
 }
 
@@ -265,7 +265,7 @@ inline void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
         if ( DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
-        DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(
+        FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(
         prog, 
         std::get<0>(device_names[i]).c_str(), // name expression
         &name                         // lowered name
@@ -273,26 +273,26 @@ inline void Executor::initializeVars() {
         if ( DEBUGOUT ) fftx::OutStream() << "it got past lower name\n";
         hipDeviceptr_t variable_addr;
         size_t bytes{};
-        DEVICE_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
+        FFTX_DEVICE_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
         if ( DEBUGOUT ) fftx::OutStream() << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
             {
                 int * value = (int*)(data.at(i));
-                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
                 break;
             }
             case one:
             {
                 float * value = (float*)(data.at(i));
-                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
                 break;
             }
             case two:
             {   
                 double * value = (double*)(data.at(i));
-                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
                 break;
             }
             case constant:
@@ -303,8 +303,8 @@ inline void Executor::initializeVars() {
             {
                 int * h1;
                 if ( DEBUGOUT ) fftx::OutStream() << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
-                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
+                FFTX_DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -312,8 +312,8 @@ inline void Executor::initializeVars() {
             {
                 float * h1;
                 if ( DEBUGOUT ) fftx::OutStream() << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
-                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
+                FFTX_DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -321,8 +321,8 @@ inline void Executor::initializeVars() {
             {
                 double * h1;
                 if ( DEBUGOUT ) fftx::OutStream() << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
-                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
+                FFTX_DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -333,8 +333,8 @@ inline void Executor::initializeVars() {
 }
 
 inline void Executor::destoryProg() {
-    //DEVICE_RTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
-    DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
+    //FFTX_DEVICE_RTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
 }
 
 
@@ -347,8 +347,8 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
     
     for(int i = 0; i < kernel_names.size(); i++) {
     const char* name;
-    DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
-    DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
+    FFTX_DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
 
     // // // Execute parent kernel.
     if ( DEBUGOUT ) fftx::OutStream() << "launched kernel\n";
@@ -356,21 +356,21 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
         fftx::OutStream() << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
             "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
             "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventRecord(start,0));
-    DEVICE_SAFE_CALL(
+    FFTX_DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
+    FFTX_DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
+    FFTX_DEVICE_SAFE_CALL(hipEventRecord(start,0));
+    FFTX_DEVICE_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
                           kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
                           kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
                           0, nullptr, nullptr, // shared mem and stream
                           (void**)&config));
-    DEVICE_SAFE_CALL(hipEventRecord(stop,0));
-    DEVICE_SAFE_CALL(hipEventSynchronize(stop));
+    FFTX_DEVICE_SAFE_CALL(hipEventRecord(stop,0));
+    FFTX_DEVICE_SAFE_CALL(hipEventSynchronize(stop));
     float localtime;
-    DEVICE_SAFE_CALL(hipEventElapsedTime(&localtime, start, stop)); 
+    FFTX_DEVICE_SAFE_CALL(hipEventElapsedTime(&localtime, start, stop)); 
     GPUtime += localtime;
-    // DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
+    // FFTX_DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
     }
     return getKernelTime();
 }

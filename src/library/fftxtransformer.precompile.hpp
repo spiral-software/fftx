@@ -39,21 +39,21 @@ namespace fftx {
     }
 
 #if defined(__CUDACC__) || defined(FFTX_HIP)
-    DEVICE_EVENT_T m_start, m_stop;
+    FFTX_DEVICE_EVENT_T m_start, m_stop;
     void kernelStart()
     {
-      DEVICE_CHECK(DEVICE_EVENT_RECORD(m_start),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_RECORD(m_start),
                    "device event record in kernelStart");
     }
     void kernelStop()
     {
-      DEVICE_CHECK(DEVICE_EVENT_RECORD(m_stop),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_RECORD(m_stop),
                    "device event record in kernelStop");
-      DEVICE_CHECK(DEVICE_SYNCHRONIZE(),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_SYNCHRONIZE(),
                    "device synchronize in kernelStop");
-      DEVICE_CHECK(DEVICE_EVENT_SYNCHRONIZE(m_stop),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_SYNCHRONIZE(m_stop),
                    "device event synchronize in kernelStop");
-      DEVICE_CHECK(DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop),
                    "device event elapsed time in kernelStop");
     }
 #else
@@ -204,9 +204,9 @@ namespace fftx {
         {
           init_spiral();
 #if defined(__CUDACC__) || defined(FFTX_HIP)
-          DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_start),
+          FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_CREATE(&m_start),
                        "device event create start in setInit");
-          DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_stop),
+          FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_CREATE(&m_stop),
                        "device event create stop in setInit");
 #endif
           m_defined = true;

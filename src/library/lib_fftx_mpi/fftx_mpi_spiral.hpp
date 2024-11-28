@@ -41,8 +41,8 @@
 //   MPI_Comm row_comm, col_comm;
 //   size_t shape[6]; // used for buffers for A2A.
 //   int M, N, K; // used for FFT sizes.
-//   DEVICE_FFT_HANDLE stg3, stg2, stg1;
-//   DEVICE_FFT_HANDLE stg2i, stg1i;
+//   FFTX_DEVICE_FFT_HANDLE stg3, stg2, stg1;
+//   FFTX_DEVICE_FFT_HANDLE stg2i, stg1i;
 // };
 
 // typedef fftx_plan_t* fftx_plan;

@@ -23,10 +23,10 @@
 double *dist_dev_out = NULL, *dist_dev_in = NULL, *dist_dev_sym = NULL;
 
 // Allocate space on device, for type T, if pointer is NULL.
-#define DEVICE_MALLOC_TYPE_IFNULL(ptr, T, npts) ( { if (ptr == NULL) DEVICE_MALLOC_TYPE(ptr, T, npts); })
+#define FFTX_DEVICE_MALLOC_TYPE_IFNULL(ptr, T, npts) ( { if (ptr == NULL) FFTX_DEVICE_MALLOC_TYPE(ptr, T, npts); })
 
 // Allocate space on device, for type T.
-#define DEVICE_MALLOC_TYPE(ptr, T, npts) ( { DEVICE_MALLOC(&ptr, npts * sizeof(T)); } )
+#define FFTX_DEVICE_MALLOC_TYPE(ptr, T, npts) ( { FFTX_DEVICE_MALLOC(&ptr, npts * sizeof(T)); } )
 
 // Allocate space on device, for type T.
 #define HOST_MALLOC_TYPE(ptr, T, npts) ( { ptr = (T*) malloc(npts * sizeof(T)); } )
@@ -44,32 +44,32 @@ double *dist_dev_out = NULL, *dist_dev_in = NULL, *dist_dev_sym = NULL;
 
 #define HOST_HOLDER_ARGS(holder) {(void*)(holder.dev_out), (void*)(holder.dev_in), (void*)(holder.dev_sym)}
 
-#define DEVICE_COPY_INPUT(holder, buffer, bytes) ( { DEVICE_MEM_COPY(holder.dev_in, buffer, bytes, MEM_COPY_HOST_TO_DEVICE); } )
+#define FFTX_DEVICE_COPY_INPUT(holder, buffer, bytes) ( { FFTX_DEVICE_MEM_COPY(holder.dev_in, buffer, bytes, FFTX_MEM_COPY_HOST_TO_DEVICE); } )
 
-#define DEVICE_COPY_OUTPUT(holder, buffer, bytes) ( { DEVICE_MEM_COPY(buffer, holder.dev_out, bytes, MEM_COPY_DEVICE_TO_HOST); } )
+#define FFTX_DEVICE_COPY_OUTPUT(holder, buffer, bytes) ( { FFTX_DEVICE_MEM_COPY(buffer, holder.dev_out, bytes, FFTX_MEM_COPY_DEVICE_TO_HOST); } )
 
 #define HOST_COPY_INPUT(holder, buffer, bytes) ( { memcpy(holder.dev_in, buffer, bytes); } )
 
 #define HOST_COPY_OUTPUT(holder, buffer, bytes) ( { memcpy(buffer, holder.dev_out, bytes); } )
 
 // Free up space on device, if pointer is not NULL.
-#define DEVICE_FREE_NONNULL(ptr) ( { if (ptr != NULL) DEVICE_FREE(ptr); } )
+#define FFTX_DEVICE_FREE_NONNULL(ptr) ( { if (ptr != NULL) FFTX_DEVICE_FREE(ptr); } )
 
 #define HOST_FREE_NONNULL(ptr) ( { if (ptr != NULL) free(ptr); } )
 
 // Macros set different for device or host.
 #if defined (FFTX_CUDA)
 #define HOST_OR_DEVICE_HOLDER_ARGS   CUDA_HOLDER_ARGS
-#define HOST_OR_DEVICE_MALLOC_TYPE   DEVICE_MALLOC_TYPE
-#define HOST_OR_DEVICE_COPY_INPUT    DEVICE_COPY_INPUT
-#define HOST_OR_DEVICE_COPY_OUTPUT   DEVICE_COPY_OUTPUT
-#define HOST_OR_DEVICE_FREE_NONNULL  DEVICE_FREE_NONNULL
+#define HOST_OR_DEVICE_MALLOC_TYPE   FFTX_DEVICE_MALLOC_TYPE
+#define HOST_OR_DEVICE_COPY_INPUT    FFTX_DEVICE_COPY_INPUT
+#define HOST_OR_DEVICE_COPY_OUTPUT   FFTX_DEVICE_COPY_OUTPUT
+#define HOST_OR_DEVICE_FREE_NONNULL  FFTX_DEVICE_FREE_NONNULL
 #elif defined (FFTX_HIP)
 #define HOST_OR_DEVICE_HOLDER_ARGS   HIP_HOLDER_ARGS
-#define HOST_OR_DEVICE_MALLOC_TYPE   DEVICE_MALLOC_TYPE
-#define HOST_OR_DEVICE_COPY_INPUT    DEVICE_COPY_INPUT
-#define HOST_OR_DEVICE_COPY_OUTPUT   DEVICE_COPY_OUTPUT
-#define HOST_OR_DEVICE_FREE_NONNULL  DEVICE_FREE_NONNULL
+#define HOST_OR_DEVICE_MALLOC_TYPE   FFTX_DEVICE_MALLOC_TYPE
+#define HOST_OR_DEVICE_COPY_INPUT    FFTX_DEVICE_COPY_INPUT
+#define HOST_OR_DEVICE_COPY_OUTPUT   FFTX_DEVICE_COPY_OUTPUT
+#define HOST_OR_DEVICE_FREE_NONNULL  FFTX_DEVICE_FREE_NONNULL
 #else // CPU
 #define HOST_OR_DEVICE_HOLDER_ARGS   HOST_HOLDER_ARGS
 #define HOST_OR_DEVICE_MALLOC_TYPE   HOST_MALLOC_TYPE
@@ -381,8 +381,8 @@ extern "C"
   {
     //    printf("fftx_plan_distributed p=%d, M=%d, N=%d, K=%d, batch=%d, is_embedded=%d, is_complex=%d\n", 
     //           p, M, N, K, batch,  is_embedded, is_complex);
-    DEVICE_MALLOC_TYPE_IFNULL(dist_dev_in, double, 2 * M * N * K * batch / p);
-    DEVICE_MALLOC_TYPE_IFNULL(dist_dev_out, double, 2 * M * N * K * batch / p);
+    FFTX_DEVICE_MALLOC_TYPE_IFNULL(dist_dev_in, double, 2 * M * N * K * batch / p);
+    FFTX_DEVICE_MALLOC_TYPE_IFNULL(dist_dev_out, double, 2 * M * N * K * batch / p);
     // This is fftx_plan_distributed_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
@@ -404,8 +404,8 @@ extern "C"
   void fftx_plan_mddft_dist_shim(mddft_dist_holder& holder,
                                  int p, int M, int N, int K, int npts)
   {
-    DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * npts);
-    DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * npts);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * npts);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * npts);
     // This is fftx_plan_distributed_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
@@ -425,24 +425,24 @@ extern "C"
     size_t in_pts = holder.plan->M * holder.plan->N * holder.plan->K *
       holder.plan->b / holder.plan->r;
     size_t in_bytes = in_pts * sizeof(std::complex<double>);
-    DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
+    FFTX_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     
     // This is fftx_plan_distributed_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_mpi_spiral.cpp
-    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, DEVICE_FFT_FORWARD);
+    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, FFTX_DEVICE_FFT_FORWARD);
 
     size_t out_pts = holder.plan->M * holder.plan->N * holder.plan->K *
       holder.plan->b / holder.plan->r;
     size_t out_bytes = out_pts * sizeof(std::complex<double>);
-    DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+    FFTX_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
   }
 
   void fftx_plan_destroy_mddft_dist_shim(mddft_dist_holder& holder)
   {
-    DEVICE_FREE_NONNULL(holder.dev_in);
-    DEVICE_FREE_NONNULL(holder.dev_out);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_in);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_out);
     delete holder.plan;
   }
 }
@@ -459,8 +459,8 @@ extern "C"
   void fftx_plan_imddft_dist_shim(imddft_dist_holder& holder,
                                   int p, int M, int N, int K, int npts)
   {
-    DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * npts);
-    DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * npts);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * npts);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * npts);
     // This is fftx_plan_distributed_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
@@ -480,22 +480,22 @@ extern "C"
     size_t in_pts = holder.plan->M * holder.plan->N * holder.plan->K *
       holder.plan->b / holder.plan->r;
     size_t in_bytes = in_pts * sizeof(std::complex<double>);
-    DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
+    FFTX_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
 
     // This is fftx_execute_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
-    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, DEVICE_FFT_INVERSE);
+    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, FFTX_DEVICE_FFT_INVERSE);
 
     size_t out_pts = holder.plan->M * holder.plan->N * holder.plan->K *
       holder.plan->b / holder.plan->r;
     size_t out_bytes = out_pts * sizeof(std::complex<double>);
-    DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+    FFTX_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
   }
 
   void fftx_plan_destroy_imddft_dist_shim(imddft_dist_holder& holder)
   {
-    DEVICE_FREE_NONNULL(holder.dev_in);
-    DEVICE_FREE_NONNULL(holder.dev_out);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_in);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_out);
     delete holder.plan;
   }
 }
@@ -517,8 +517,8 @@ extern "C"
   {
     holder.npts = npts;
     holder.nptsTrunc = nptsTrunc;
-    DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * holder.npts);
-    DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * holder.nptsTrunc);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * holder.npts);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * holder.nptsTrunc);
     // This is fftx_plan_distributed_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
@@ -544,22 +544,22 @@ extern "C"
     // Do not divide by holder.plan->r, because holder.npts is already LOCAL.
     size_t in_pts = holder.npts * holder.plan->b;
     size_t in_bytes = in_pts * sizeof(double);
-    DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
+    FFTX_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     
     // This is fftx_execute_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
-    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, DEVICE_FFT_FORWARD);
+    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, FFTX_DEVICE_FFT_FORWARD);
 
     // Do not divide by holder.plan->r, because holder.nptsTrunc is already LOCAL.
     size_t out_pts = holder.nptsTrunc * holder.plan->b;
     size_t out_bytes = out_pts * sizeof(std::complex<double>);
-    DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+    FFTX_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
   }
 
   void fftx_plan_destroy_mdprdft_dist_shim(mdprdft_dist_holder& holder)
   {
-    DEVICE_FREE_NONNULL(holder.dev_in);
-    DEVICE_FREE_NONNULL(holder.dev_out);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_in);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_out);
     delete holder.plan;
   }
 }
@@ -582,8 +582,8 @@ extern "C"
   {
     holder.npts = npts;
     holder.nptsTrunc = nptsTrunc;
-    DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * holder.npts);
-    DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * holder.nptsTrunc);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_in, double, 2 * holder.npts);
+    FFTX_DEVICE_MALLOC_TYPE(holder.dev_out, double, 2 * holder.nptsTrunc);
     // This is fftx_plan_distributed_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
     // where struct fftx_plan is defined in
@@ -609,22 +609,22 @@ extern "C"
     // Do not divide by holder.plan->r, because holder.nptsTrunc is already LOCAL.
     size_t in_pts = holder.nptsTrunc * holder.plan->b;
     size_t in_bytes = in_pts * sizeof(std::complex<double>);
-    DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
+    FFTX_DEVICE_COPY_INPUT(holder, in_buffer, in_bytes);
     
     // This is fftx_execute_1d_spiral in
     // $FFTX_HOME/src/library/lib_fftx_mpi/fftx_1d_mpi_spiral.cpp
-    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, DEVICE_FFT_INVERSE);
+    fftx_execute_1d(holder.plan, holder.dev_out, holder.dev_in, FFTX_DEVICE_FFT_INVERSE);
 
     // Do not divide by holder.plan->r, because holder.npts is already LOCAL.
     size_t out_pts = holder.npts * holder.plan->b;
     size_t out_bytes = out_pts * sizeof(double);
-    DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
+    FFTX_DEVICE_COPY_OUTPUT(holder, out_buffer, out_bytes);
   }
 
   void fftx_plan_destroy_imdprdft_dist_shim(imdprdft_dist_holder& holder)
   {
-    DEVICE_FREE_NONNULL(holder.dev_in);
-    DEVICE_FREE_NONNULL(holder.dev_out);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_in);
+    FFTX_DEVICE_FREE_NONNULL(holder.dev_out);
     delete holder.plan;
   }
 }

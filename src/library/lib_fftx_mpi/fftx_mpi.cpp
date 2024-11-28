@@ -28,8 +28,8 @@ void init_2d_comms(fftx_plan plan, int rr, int cc, int M, int N, int K) {
   size_t max_size = m*n*k*(plan->is_embed ? 8 : 1)/(plan->r * plan->c) * plan->b;
 
 #if CUDA_AWARE_MPI
-  DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(std::complex<double>));
-  DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(std::complex<double>));
+  FFTX_DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(std::complex<double>));
+  FFTX_DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(std::complex<double>));
 #else
   plan->send_buffer = (std::complex<double> *) malloc(max_size * sizeof(std::complex<double>));
   plan->recv_buffer = (std::complex<double> *) malloc(max_size * sizeof(std::complex<double>));
@@ -71,8 +71,8 @@ void destroy_2d_comms(fftx_plan plan) {
     MPI_Comm_free(&(plan->col_comm));
 
 #if CUDA_AWARE_MPI
-    DEVICE_FREE(plan->send_buffer);
-    DEVICE_FREE(plan->recv_buffer);
+    FFTX_DEVICE_FREE(plan->send_buffer);
+    FFTX_DEVICE_FREE(plan->recv_buffer);
 #else
     free(plan->send_buffer);
     free(plan->recv_buffer);
@@ -154,14 +154,14 @@ void pack_embed(fftx_plan plan, std::complex<double> *dst, std::complex<double> 
       }
     }
   }
-  DEVICE_MEM_COPY(dst, plan->send_buffer, buffer_size * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE);
+  FFTX_DEVICE_MEM_COPY(dst, plan->send_buffer, buffer_size * sizeof(std::complex<double>), FFTX_MEM_COPY_HOST_TO_DEVICE);
 #else
   //this part of the code does unpacking on the GPU
 #if (!CUDA_AWARE_MPI)  //this copies data to the GPU to perform packing
-  DEVICE_MEM_COPY(src, plan->recv_buffer, buffer_size * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE);
+  FFTX_DEVICE_MEM_COPY(src, plan->recv_buffer, buffer_size * sizeof(std::complex<double>), FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
 
-  DEVICE_ERROR_T err;
+  FFTX_DEVICE_ERROR_T err;
   if (is_embedded) {
     err = pack_embedded(
       dst, src,
@@ -176,7 +176,7 @@ void pack_embed(fftx_plan plan, std::complex<double> *dst, std::complex<double> 
       a
     );
   }
-  if (err != DEVICE_SUCCESS) {
+  if (err != FFTX_DEVICE_SUCCESS) {
     // fprintf(stderr, "pack failed Y <- St1_Comm!\n");
     fftx::ErrStream() << "pack failed Y <- St1_Comm!" << std::endl;
     exit(-1);
@@ -190,7 +190,7 @@ void unpack_embed(fftx_plan plan, std::complex<double> *dst, std::complex<double
   size_t buffer_size = a * b * c;
 #if CPU_PERMUTE
   //copy data to recv buffer on host in order to unpack into the send_buffer
-  DEVICE_MEM_COPY(plan->recv_buffer, src, buffer_size * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST);
+  FFTX_DEVICE_MEM_COPY(plan->recv_buffer, src, buffer_size * sizeof(std::complex<double>), FFTX_MEM_COPY_DEVICE_TO_HOST);
 
   //the CPU code needs to be updated. It is currently the packing code.
   if (is_embedded) {
@@ -226,7 +226,7 @@ void unpack_embed(fftx_plan plan, std::complex<double> *dst, std::complex<double
 #else
 
   //this part of the code does unpacking on the GPU
-  DEVICE_ERROR_T err;
+  FFTX_DEVICE_ERROR_T err;
   if (is_embedded) {
     //embedded unpack GPU code needs to be updated
     err = unpack_embedded(
@@ -241,13 +241,13 @@ void unpack_embed(fftx_plan plan, std::complex<double> *dst, std::complex<double
       a
     );
   }
-  if (err != DEVICE_SUCCESS) {
+  if (err != FFTX_DEVICE_SUCCESS) {
     // fprintf(stderr, "pack failed Y <- St1_Comm!\n");
     fftx::ErrStream() << "pack failed Y <- St1_Comm!" << std::endl;
     exit(-1);
   }
 #if (!CUDA_AWARE_MPI)  //this copies data to the GPU to perform packing
-  DEVICE_MEM_COPY(plan->send_buffer, dst, buffer_size * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST);
+  FFTX_DEVICE_MEM_COPY(plan->send_buffer, dst, buffer_size * sizeof(std::complex<double>), FFTX_MEM_COPY_DEVICE_TO_HOST);
 #endif
 #endif
 }
@@ -274,7 +274,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         // [xl, (yl, zl), xr] -> [xl, xr, (yl, zl)]
 #if CUDA_AWARE_MPI
         // start = MPI_Wtime();
-        DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_DEVICE_TO_DEVICE);
         MPI_Alltoall(
           // X, sendSize*plan->b,
           plan->send_buffer, sendSize*plan->b,
@@ -294,7 +294,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         // start = MPI_Wtime();
 #else
         // start = MPI_Wtime();
-        DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_DEVICE_TO_HOST);
         // stop = MPI_Wtime();
         // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
@@ -334,7 +334,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         // TODO: this copy shouldn't be necessary, but provides incorrect results without it.
         // should be able to just use X as input to MPI.
         // it could be a synchronization issue?
-        DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_DEVICE_TO_DEVICE);
         MPI_Alltoall(
 	        plan->send_buffer, sendSize*plan->b,
 	        // X, sendSize*plan->b,
@@ -354,7 +354,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
         // if (rank == 0) { printf("%f,", max_time); }
 #else
         // start = MPI_Wtime();
-        DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(plan->send_buffer, X, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_DEVICE_TO_HOST);
         // stop = MPI_Wtime();
         // max_time = max_diff(start, stop, plan->all_comm);
         // if (rank == 0) { printf("%f,", max_time); }
@@ -398,7 +398,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->col_comm
         ); // assume K dim is initially distributed along row comm.
-        DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_DEVICE_TO_DEVICE);
 #else
         unpack_embed(plan, Y, X, plan->b * plan->shape[2], plan->shape[4] * plan->shape[0], plan->shape[3], is_embedded);
         MPI_Alltoall(
@@ -408,7 +408,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->col_comm
         ); // assume K dim is initially distributed along row comm.
-        DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
       } // end FFTX_MPI_EMBED_3
       break;
@@ -431,7 +431,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->row_comm
         ); // assume N dim is initially distributed along col comm.
-        DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_DEVICE_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_DEVICE_TO_DEVICE);
 #else
         unpack_embed(plan, Y, X, plan->b * plan->shape[0], plan->shape[2] * plan->shape[4], plan->shape[1], is_embedded);
         MPI_Alltoall(
@@ -441,7 +441,7 @@ void fftx_mpi_rcperm(fftx_plan plan, double * _Y, double *_X, int stage, bool is
           MPI_DOUBLE_COMPLEX,
           plan->row_comm
         ); // assume N dim is initially distributed along col comm.
-        DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(Y, plan->recv_buffer, buffer_size * sizeof(std::complex<double>) * plan->b, FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
       } // end FFTX_MPI_EMBED_4
       break;

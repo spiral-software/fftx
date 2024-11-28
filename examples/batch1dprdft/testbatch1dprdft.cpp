@@ -51,14 +51,14 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
 // arrsz is the size of each array
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
+static void checkOutputBuffers_fwd ( FFTX_DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, FFTX_DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
 {
     bool correct = true;
     double maxdelta = 0.0;
 
     for ( int indx = 0; indx < arrsz; indx++ ) {
-        DEVICE_FFT_DOUBLECOMPLEX s = spiral_Y[indx];
-        DEVICE_FFT_DOUBLECOMPLEX c = devfft_Y[indx];
+        FFTX_DEVICE_FFT_DOUBLECOMPLEX s = spiral_Y[indx];
+        FFTX_DEVICE_FFT_DOUBLECOMPLEX c = devfft_Y[indx];
         // fftx::OutStream() << s.x << ":" << s.y << " ";
         // fftx::OutStream() << c.x << ":" << c.y << std::endl;
 
@@ -78,14 +78,14 @@ static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_
     return;
 }
 
-static void checkOutputBuffers_inv ( DEVICE_FFT_DOUBLEREAL *spiral_Y, DEVICE_FFT_DOUBLEREAL *devfft_Y, long arrsz )
+static void checkOutputBuffers_inv ( FFTX_DEVICE_FFT_DOUBLEREAL *spiral_Y, FFTX_DEVICE_FFT_DOUBLEREAL *devfft_Y, long arrsz )
 {
     bool correct = true;
     double maxdelta = 0.0;
 
     for ( int indx = 0; indx < arrsz; indx++ ) {
-        DEVICE_FFT_DOUBLEREAL s = spiral_Y[indx];
-        DEVICE_FFT_DOUBLEREAL c = devfft_Y[indx];
+        FFTX_DEVICE_FFT_DOUBLEREAL s = spiral_Y[indx];
+        FFTX_DEVICE_FFT_DOUBLEREAL c = devfft_Y[indx];
         // fftx::OutStream() << s << " " << c << std::endl;
 
         double deltar = abs ( s - c );
@@ -189,10 +189,10 @@ int main(int argc, char* argv[])
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
      if ( DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
-    DEVICE_MALLOC((void**)&dX, inputHost.size() * sizeof(double));
-    DEVICE_MALLOC((void **)&dY, outputHost2.size() * sizeof(double));
-    DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
-    DEVICE_MALLOC((void**)&tempX, outputHost.size()  * sizeof(std::complex<double>));
+    FFTX_DEVICE_MALLOC((void**)&dX, inputHost.size() * sizeof(double));
+    FFTX_DEVICE_MALLOC((void **)&dY, outputHost2.size() * sizeof(double));
+    FFTX_DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
+    FFTX_DEVICE_MALLOC((void**)&tempX, outputHost.size()  * sizeof(std::complex<double>));
 #elif defined FFTX_SYCL
   sycl::buffer<double> buf_Y(outputHost2.data(), outputHost2.size());
   sycl::buffer<double> buf_X(inputHost.data(), inputHost.size());
@@ -230,12 +230,12 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     //  Setup a plan to run the transform using cu or roc fft
-    DEVICE_FFT_HANDLE plan;
-    DEVICE_FFT_RESULT res;
-    DEVICE_FFT_TYPE   xfmtype = DEVICE_FFT_D2Z ;
-    DEVICE_EVENT_T custart, custop;
-    DEVICE_EVENT_CREATE ( &custart );
-    DEVICE_EVENT_CREATE ( &custop );
+    FFTX_DEVICE_FFT_HANDLE plan;
+    FFTX_DEVICE_FFT_RESULT res;
+    FFTX_DEVICE_FFT_TYPE   xfmtype = FFTX_DEVICE_FFT_D2Z ;
+    FFTX_DEVICE_EVENT_T custart, custop;
+    FFTX_DEVICE_EVENT_CREATE ( &custart );
+    FFTX_DEVICE_EVENT_CREATE ( &custop );
     float *devmilliseconds = new float[iterations];
     float *invdevmilliseconds = new float[iterations];
     bool check_buff = true;                // compare results of spiral - RTC with device fft
@@ -244,33 +244,33 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     int xc = N/2 +1; 
     if(read == 0 && write == 0) {
          if ( DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan, 1, &xr, //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr, //plan, rank, n,
                                     &xr,   1,  xr, // iembed, istride, idist,
                                     &xc,   1,  xc, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     } else if(read == 0 && write == 1) { 
          if ( DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan, 1, &xr, //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr, //plan, rank, n,
                                     &xr,   1,  xr, // iembed, istride, idist,
                                     &xc,   B,  1, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }else if(read == 1 && write == 0) {
          if ( DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan, 1, &xr,  //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr,  //plan, rank, n,
                                     &xr,   B,  1,  // iembed, istride, idist,
                                     &xc,   1,  xc,  // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }
     else {
          if ( DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan, 1, &xr,  //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr,  //plan, rank, n,
                                     &xr,   B,  1,  // iembed, istride, idist,
                                     &xc,   B,  1,  // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }
 
-    if ( res != DEVICE_FFT_SUCCESS ) {
-        fftx::OutStream() << "Create DEVICE_FFT_PLAN_MANY failed with error code "
+    if ( res != FFTX_DEVICE_FFT_SUCCESS ) {
+        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN_MANY failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_buff = false;
     }
@@ -282,8 +282,8 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
         // setup random data for input buffer (Use different randomized data each iteration)
         buildInputBuffer(hostinp, sizes);
     #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-        DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(double),
-                        MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(double),
+                        FFTX_MEM_COPY_HOST_TO_DEVICE);
         if ( DEBUGOUT ) fftx::OutStream() << "copied X" << std::endl;
     #endif
         
@@ -300,34 +300,34 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
 	  #endif
     
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputHost.data(), tempX,
-                          outputHost.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+        FFTX_DEVICE_MEM_COPY ( outputHost.data(), tempX,
+                          outputHost.size() * sizeof(std::complex<double>), FFTX_MEM_COPY_DEVICE_TO_HOST );
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
-            DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECD2Z ( plan,
-                                       (DEVICE_FFT_DOUBLEREAL    *) dX,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) tempX);
-            if ( res != DEVICE_FFT_SUCCESS) {
-                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+            FFTX_DEVICE_EVENT_RECORD ( custart );
+            res = FFTX_DEVICE_FFT_EXECD2Z ( plan,
+                                       (FFTX_DEVICE_FFT_DOUBLEREAL    *) dX,
+                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) tempX);
+            if ( res != FFTX_DEVICE_FFT_SUCCESS) {
+                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
                                   << res << " ... skip buffer check" << std::endl;
                 check_buff = false;
                 //  break;
             }
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outDevfft1.data(), tempX,
-                              outDevfft1.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
+            FFTX_DEVICE_MEM_COPY ( outDevfft1.data(), tempX,
+                              outDevfft1.size() * sizeof(std::complex<double>), FFTX_MEM_COPY_DEVICE_TO_HOST );
 
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
                               << " Read = " << reads
                               << " Write = " << writes
                               << " \tReal Batch 1D FFT (Forward)\t";
-            checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.data(),
-                                 (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.data(),
+            checkOutputBuffers_fwd ( (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) outputHost.data(),
+                                 (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.data(),
                                  (long) outDevfft1.size() );
         }
     #endif
@@ -345,30 +345,30 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
 #endif
 
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-DEVICE_FFT_HANDLE plan2;
-DEVICE_FFT_TYPE xfmtype2 = DEVICE_FFT_Z2D ;
+FFTX_DEVICE_FFT_HANDLE plan2;
+FFTX_DEVICE_FFT_TYPE xfmtype2 = FFTX_DEVICE_FFT_Z2D ;
 if(read == 0 && write == 0) {
          if ( DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr, //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr, //plan, rank, n,
                                     &xc,   1,  xc, // iembed, istride, idist,
                                     &xr,   1,  xr, // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     } else if(read == 0 && write == 1) { 
          if ( DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr, //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr, //plan, rank, n,
                                     &xc,   1,  xc, // iembed, istride, idist,
                                     &xr,   B,  1, // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     }else if(read == 1 && write == 0) {
          if ( DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr,  //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr,  //plan, rank, n,
                                     &xc,   B,  1,  // iembed, istride, idist,
                                     &xr,   1,  xr,  // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     }
     else {
          if ( DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
-        res = DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr,  //plan, rank, n,
+        res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr,  //plan, rank, n,
                                     &xc,   B,  1,  // iembed, istride, idist,
                                     &xr,   B,  1,  // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
@@ -390,34 +390,34 @@ if(read == 0 && write == 0) {
     #endif
 
     #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputHost2.data(), dY,
-                          outputHost2.size() * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
+        FFTX_DEVICE_MEM_COPY ( outputHost2.data(), dY,
+                          outputHost2.size() * sizeof(double), FFTX_MEM_COPY_DEVICE_TO_HOST );
         //  Run the roc fft plan on the same input data
         if ( check_buff ) {
-            DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECZ2D ( plan2,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) tempX,
-                                       (DEVICE_FFT_DOUBLEREAL *) dY);
-            if ( res != DEVICE_FFT_SUCCESS) {
-                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+            FFTX_DEVICE_EVENT_RECORD ( custart );
+            res = FFTX_DEVICE_FFT_EXECZ2D ( plan2,
+                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) tempX,
+                                       (FFTX_DEVICE_FFT_DOUBLEREAL *) dY);
+            if ( res != FFTX_DEVICE_FFT_SUCCESS) {
+                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
                                   << res << " ... skip buffer check" << std::endl;
                 check_buff = false;
                 // break;
             }
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outDevfft2.data(), dY,
-                              outDevfft2.size() * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
+            FFTX_DEVICE_MEM_COPY ( outDevfft2.data(), dY,
+                              outDevfft2.size() * sizeof(double), FFTX_MEM_COPY_DEVICE_TO_HOST );
             
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
                               << " Read = " << reads
                               << " Write = " << writes
                               << " \tReal Batch 1D FFT (Inverse)\t";
-            checkOutputBuffers_inv ( (DEVICE_FFT_DOUBLEREAL *) outputHost2.data(),
-                                 (DEVICE_FFT_DOUBLEREAL *) outDevfft2.data(),
+            checkOutputBuffers_inv ( (FFTX_DEVICE_FFT_DOUBLEREAL *) outputHost2.data(),
+                                 (FFTX_DEVICE_FFT_DOUBLEREAL *) outDevfft2.data(),
                                  (long) outDevfft2.size() );
         }
     #endif

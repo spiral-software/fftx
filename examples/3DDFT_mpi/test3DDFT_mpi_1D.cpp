@@ -196,8 +196,8 @@ int main(int argc, char* argv[]) {
     size_t out_size = sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO;
     host_out = (double *) malloc(out_size);
 
-    DEVICE_MALLOC(&dev_in , in_size);
-    DEVICE_MALLOC(&dev_out, out_size);
+    FFTX_DEVICE_MALLOC(&dev_in , in_size);
+    FFTX_DEVICE_MALLOC(&dev_out, out_size);
 
     // () is distributed
     // assume layout is [(pz), Z/pz, Y, X, b] (slowest to fastest).
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
+    FFTX_DEVICE_MEM_COPY(dev_in, host_in, in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
   } else { // is inverse
     /* Assumes inverse embedded keeps full doubled-embedded space.
     [(px), N*e, ceil(Mo/px), pz*ceil(K/pz)*e] (output of fwd)
@@ -260,7 +260,7 @@ int main(int argc, char* argv[]) {
     size_t Ki = K*e;
     size_t in_size = sizeof(double) * N*e * Mi0 * Ki * batch * CI;
     host_in  = (double *) malloc(in_size);
-    DEVICE_MALLOC(&dev_in ,      in_size);
+    FFTX_DEVICE_MALLOC(&dev_in ,      in_size);
 
     size_t Mo = M*e;
     size_t Mo0 = ceil_div(Mo, p);
@@ -268,7 +268,7 @@ int main(int argc, char* argv[]) {
     size_t Ko0 = ceil_div(Ko, p);
     size_t out_size = sizeof(double) * Ko0 * N*e * p*Mo0 * batch * CO;
     host_out = (double *) malloc(out_size);
-    DEVICE_MALLOC(&dev_out,      out_size);
+    FFTX_DEVICE_MALLOC(&dev_out,      out_size);
 
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
     // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
@@ -327,7 +327,7 @@ int main(int argc, char* argv[]) {
         }
       }
     }
-    DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
+    FFTX_DEVICE_MEM_COPY(dev_in, host_in, in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
   if (PRETTY_PRINT) {
@@ -347,7 +347,7 @@ int main(int argc, char* argv[]) {
 
     double start_time = MPI_Wtime();
 
-    fftx_execute_1d(plan, (double*)dev_out, (double*)dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
+    fftx_execute_1d(plan, (double*)dev_out, (double*)dev_in, (is_forward ? FFTX_DEVICE_FFT_FORWARD : FFTX_DEVICE_FFT_INVERSE));
 
     double end_time = MPI_Wtime();
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
@@ -384,7 +384,7 @@ int main(int argc, char* argv[]) {
       size_t Ki0 = ceil_div(K, p);
       size_t Ko0 = Ki0; // embeds after collection from A2A.
 
-      DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO, MEM_COPY_DEVICE_TO_HOST);
+      FFTX_DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO, FFTX_MEM_COPY_DEVICE_TO_HOST);
 
       double *first_elems = (double *) malloc(sizeof(double) * batch);
       for (size_t b = 0; b < batch; b++) {
@@ -433,7 +433,7 @@ int main(int argc, char* argv[]) {
       size_t Mo = M*e;
 
       size_t out_size = sizeof(double) * Ko0 * N*e * Mo * batch * CO;
-      DEVICE_MEM_COPY(host_out, dev_out, out_size, MEM_COPY_DEVICE_TO_HOST);
+      FFTX_DEVICE_MEM_COPY(host_out, dev_out, out_size, FFTX_MEM_COPY_DEVICE_TO_HOST);
 
       for (size_t k0 = 0; k0 < Ko0; k0++) {
         size_t k = rank * Ko0 + k0;
@@ -512,21 +512,21 @@ int main(int argc, char* argv[]) {
         size_t global_out_size = sizeof(double) * K*2 * N*2 * M*2 * batch * CO;
 
         href_in   = (double *) malloc(sizeof(double) * global_in_size );
-        DEVICE_MALLOC(&dref_in ,      sizeof(double) * global_out_size);
+        FFTX_DEVICE_MALLOC(&dref_in ,      sizeof(double) * global_out_size);
 
         href_in_modified = (double *) malloc(global_in_size);
         href_out = (double *) malloc(global_out_size);
         htest_out = (double *) malloc(global_out_size);
-        DEVICE_MALLOC(&dref_out, global_out_size);
+        FFTX_DEVICE_MALLOC(&dref_out, global_out_size);
       } else {
         href_in   = (double *) malloc(sizeof(double) * p * local_in_size);
-        DEVICE_MALLOC(&dref_in ,      sizeof(double) * p * local_in_size);
+        FFTX_DEVICE_MALLOC(&dref_in ,      sizeof(double) * p * local_in_size);
         if (!is_forward) {
         href_in_modified = (double *) malloc(sizeof(double) * p * local_in_size);
         }
         href_out  = (double *) malloc(sizeof(double) * p * local_out_size);
         htest_out = (double *) malloc(sizeof(double) * p * local_out_size);
-        DEVICE_MALLOC(&dref_out, sizeof(double) * p * local_out_size);
+        FFTX_DEVICE_MALLOC(&dref_out, sizeof(double) * p * local_out_size);
       }
     }
     // fwd [Z, Y, X, b] <= Gather pz on [(pz), Z/pz, Y, X, b]
@@ -535,7 +535,7 @@ int main(int argc, char* argv[]) {
     // TODO update count for embedded.
     // fwd [px, Y, X'/px, Z] <= Gather px on [(px), Y, X'/px, Z]
     // inv [Z, Y, X, b] Gather pz on [(pz), Z/pz, Y, X, b]
-    DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * local_out_size, MEM_COPY_DEVICE_TO_HOST);
+    FFTX_DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * local_out_size, FFTX_MEM_COPY_DEVICE_TO_HOST);
     MPI_Gather(host_out, local_out_size, MPI_DOUBLE, htest_out, local_out_size, MPI_DOUBLE, root, MPI_COMM_WORLD);
 
     if (rank == root) {
@@ -655,28 +655,28 @@ int main(int argc, char* argv[]) {
       // if inverse, permute data before calling cuFFT.
       if (is_embedded) {
         // TODO: fix for other sizes?
-        DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * K*2*N*2*Mi*batch*CI, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * K*2*N*2*Mi*batch*CI, FFTX_MEM_COPY_HOST_TO_DEVICE);
       } else {
-        DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * p * local_in_size, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * p * local_in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
       }
       // create cuFFT plan 3d
-      DEVICE_FFT_HANDLE plan;
+      FFTX_DEVICE_FFT_HANDLE plan;
       // slowest to fastest.
       if (C2C) {
-        DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, DEVICE_FFT_Z2Z);
-        DEVICE_FFT_EXECZ2Z(
-          plan, (DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out,
-          is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE
+        FFTX_DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, FFTX_DEVICE_FFT_Z2Z);
+        FFTX_DEVICE_FFT_EXECZ2Z(
+          plan, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_out,
+          is_forward ? FFTX_DEVICE_FFT_FORWARD : FFTX_DEVICE_FFT_INVERSE
         );
       } else if (C2R) {
-        DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, DEVICE_FFT_Z2D);
-        DEVICE_FFT_EXECZ2D(
-          plan, (DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (DEVICE_FFT_DOUBLEREAL *) dref_out
+        FFTX_DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, FFTX_DEVICE_FFT_Z2D);
+        FFTX_DEVICE_FFT_EXECZ2D(
+          plan, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (FFTX_DEVICE_FFT_DOUBLEREAL *) dref_out
         );
       } else if (R2C) {
-        DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, DEVICE_FFT_D2Z);
-        DEVICE_FFT_EXECD2Z(
-          plan, (DEVICE_FFT_DOUBLEREAL *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out
+        FFTX_DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, FFTX_DEVICE_FFT_D2Z);
+        FFTX_DEVICE_FFT_EXECD2Z(
+          plan, (FFTX_DEVICE_FFT_DOUBLEREAL *) dref_in, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_out
         );
       } else {
         fftx::OutStream() << "Error: unknown plan type." << std::endl;
@@ -684,9 +684,9 @@ int main(int argc, char* argv[]) {
       }
 
       {
-        DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-        if (device_status != DEVICE_SUCCESS) {
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code "
+        FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+        if (device_status != FFTX_DEVICE_SUCCESS) {
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code "
                             << device_status << " after 3DFFT!"
                             << std::endl;
         }
@@ -695,15 +695,15 @@ int main(int argc, char* argv[]) {
 
       if (is_embedded) {
         // TODO: update for Mo R2C. and others.
-        DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * K*2*N*2*M*2*batch*CO, MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * K*2*N*2*M*2*batch*CO, FFTX_MEM_COPY_DEVICE_TO_HOST);
       } else {
-        DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * p * local_out_size, MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * p * local_out_size, FFTX_MEM_COPY_DEVICE_TO_HOST);
       }
 
       {
-        DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-        if (device_status != DEVICE_SUCCESS) {
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code "
+        FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+        if (device_status != FFTX_DEVICE_SUCCESS) {
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code "
                             << device_status << " after 3DFFT!"
                             << std::endl;
         }
@@ -829,8 +829,8 @@ int main(int argc, char* argv[]) {
       free(href_in);
       free(href_out);
       free(htest_out);
-      DEVICE_FREE(dref_in);
-      DEVICE_FREE(dref_out);
+      FFTX_DEVICE_FREE(dref_in);
+      FFTX_DEVICE_FREE(dref_out);
     } // end root check.
   } else { // end check on correctness check
     // not checking.
@@ -846,8 +846,8 @@ int main(int argc, char* argv[]) {
 end:
   fftx_plan_destroy(plan);
 
-  DEVICE_FREE(dev_in);
-  DEVICE_FREE(dev_out);
+  FFTX_DEVICE_FREE(dev_in);
+  FFTX_DEVICE_FREE(dev_out);
 
   free(host_in);
   free(host_out);
