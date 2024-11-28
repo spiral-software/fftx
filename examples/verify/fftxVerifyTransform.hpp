@@ -1,5 +1,5 @@
-#ifndef VERIFY_TRANSFORM_HEADER
-#define VERIFY_TRANSFORM_HEADER
+#ifndef FFTX_VERIFY_TRANSFORM_HEADER
+#define FFTX_VERIFY_TRANSFORM_HEADER
 
 #include <cmath> // Without this, abs returns zero!
 #include <random>
@@ -10,24 +10,24 @@
 
 // Define {init|destroy|run}TransformFunc and transformTuple if undefined.
 
-#ifndef INITTRANSFORMFUNC
-#define INITTRANSFORMFUNC
+#ifndef FFTX_INITTRANSFORMFUNC
+#define FFTX_INITTRANSFORMFUNC
 typedef void ( * initTransformFunc ) ( void );
 #endif
 
-#ifndef DESTROYTRANSFORMFUNC
-#define DESTROYTRANSFORMFUNC
+#ifndef FFTX_DESTROYTRANSFORMFUNC
+#define FFTX_DESTROYTRANSFORMFUNC
 typedef void ( * destroyTransformFunc ) ( void );
 #endif
 
-#ifndef RUNTRANSFORMFUNC
-#define RUNTRANSFORMFUNC
+#ifndef FFTX_RUNTRANSFORMFUNC
+#define FFTX_RUNTRANSFORMFUNC
 typedef void ( * runTransformFunc )
 ( double *output, double *input, double *sym );
 #endif
 
-#ifndef TRANSFORMTUPLE_T
-#define TRANSFORMTUPLE_T
+#ifndef FFTX_TRANSFORMTUPLE_T
+#define FFTX_TRANSFORMTUPLE_T
 typedef struct transformTuple {
     initTransformFunc    initfp;
     destroyTransformFunc destroyfp;

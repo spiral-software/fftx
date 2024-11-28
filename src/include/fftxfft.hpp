@@ -29,10 +29,14 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
-  #define popen _popen
-  #define pclose _pclose
+  #define FFTX_POPEN _popen
+  #define FFTX_PCLOSE _pclose
+  // #define popen _popen
+  // #define pclose _pclose
 #else
   #include <unistd.h>    // dup2
+  #define FFTX_POPEN popen
+  #define FFTX_PCLOSE pclose
 #endif
 
 #include <sys/types.h> // rest for open/close
@@ -43,15 +47,15 @@
 #pragma once
 
 #if defined ( PRINTDEBUG )
-#define DEBUGOUT 1
+#define FFTX_DEBUGOUT 1
 #else
-#define DEBUGOUT 0
+#define FFTX_DEBUGOUT 0
 #endif
 
 namespace fftx_cuFFT {
 
-#define CUFFT_FORWARD -1
-#define CUFFT_INVERSE 1
+  // #define CUFFT_FORWARD -1
+  // #define CUFFT_INVERSE 1
 
 typedef struct {
     int x;
@@ -123,13 +127,13 @@ map_t stored_mdprdft_jit;
 
 #if defined FFTX_HIP
 void mddft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
-    if ( DEBUGOUT) fftx::OutStream() << "Entered mddft fftx hip api call" << std::endl;
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "Entered mddft fftx hip api call" << std::endl;
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mddft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mddft_jit.end()) {
-        if ( DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
+        if ( FFTX_DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mddft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -144,13 +148,13 @@ void mddft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
 }
 
 void mdprdft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) {
-    if ( DEBUGOUT) fftx::OutStream() << "Entered mdprdft fftx hip api call" << std::endl;
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "Entered mdprdft fftx hip api call" << std::endl;
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mdprdft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mdprdft_jit.end()) {
-        if ( DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
+        if ( FFTX_DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mdprdft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -166,13 +170,13 @@ void mdprdft(int x, int y, int z, int sign, hipDeviceptr_t Y, hipDeviceptr_t X) 
 
 #else
 void mddft(int x, int y, int z, int sign, double * Y, double * X) {
-    if ( DEBUGOUT) fftx::OutStream() << "Entered mddft fftx cpu api call" << std::endl;
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "Entered mddft fftx cpu api call" << std::endl;
     std::complex<double> * dsym = new std::complex<double>[1];
     // hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{(void*)Y,(void*)X,(void*)dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mddft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mddft_jit.end()) {
-        if ( DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
+        if ( FFTX_DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mddft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -186,13 +190,13 @@ void mddft(int x, int y, int z, int sign, double * Y, double * X) {
     }
 }
 void mdprdft(int x, int y, int z, int sign, double * Y, double * X) {
-    if ( DEBUGOUT) fftx::OutStream() << "Entered mddft fftx cpu api call" << std::endl;
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "Entered mddft fftx cpu api call" << std::endl;
     std::complex<double> * dsym = new std::complex<double>[1];
     // hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{(void*)Y,(void*)X,(void*)dsym};
     std::vector<int> sizes{x,y,z};
     if(stored_mdprdft_jit.find(std::make_tuple(x,y,z,sign)) != stored_mdprdft_jit.end()) {
-        if ( DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
+        if ( FFTX_DEBUGOUT) fftx::OutStream() << "running cached instance" << std::endl;
         Executor e;
         e.execute(stored_mdprdft_jit.at(std::make_tuple(x,y,z,sign)));
     }
@@ -239,13 +243,13 @@ cufftResult cufftPlanMany(cufftHandle *plan, int rank, int *n, int *inembed,
 //         cufftComplex *odata, int direction) {
 cufftResult cufftExecC2C(cufftHandle plan, hipDeviceptr_t Y,
          hipDeviceptr_t X, int sign) {
-    if ( DEBUGOUT) fftx::OutStream() << "Entered mddft cuapi call for hip" << std::endl;
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "Entered mddft cuapi call for hip" << std::endl;
     hipDeviceptr_t dsym;
     hipMalloc((void **)&dsym,  1* sizeof(std::complex<double>));
     std::vector<void*> args{Y,X,dsym};
     std::vector<int> sizes{plan.x,plan.y,plan.z};
     if(stored_jit.find(std::make_tuple(plan.x,plan.y,plan.z,sign)) != stored_jit.end()) {
-        if ( DEBUGOUT) fftx::OutStream() << "running cached instance cuapi call for hip" << std::endl;
+        if ( FFTX_DEBUGOUT) fftx::OutStream() << "running cached instance cuapi call for hip" << std::endl;
         Executor e;
         e.execute(stored_jit.at(std::make_tuple(plan.x,plan.y,plan.z,sign)));
     }

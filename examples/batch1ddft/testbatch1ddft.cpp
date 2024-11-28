@@ -19,7 +19,7 @@
 #include "fftxdevice_macros.h"
 #endif
 
-#define CH_CUDA_SAFE_CALL( call) {                                    \
+#define FFTX_CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
       fftx::ErrStream() << "Cuda error in file '" << __FILE__                \
@@ -30,7 +30,7 @@
     } \
 }
 
-#define CUDA_SAFE_CALL(call) CH_CUDA_SAFE_CALL(call)
+#define FFTX_CUDA_SAFE_CALL(call) FFTX_CH_CUDA_SAFE_CALL(call)
 
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
 //  Build a random input buffer for Spiral and rocfft
@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
     else
         writes = "Strided";
 
-     if ( DEBUGOUT ) fftx::OutStream() << N << " " << B << " " << reads << " " << writes << std::endl;
+     if ( FFTX_DEBUGOUT ) fftx::OutStream() << N << " " << B << " " << reads << " " << writes << std::endl;
     std::vector<int> sizes{N,B, read,write};
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
 
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-     if ( DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
+     if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
     FFTX_DEVICE_MALLOC((void**)&dX, inputHost.size() * sizeof(std::complex<double>));
     FFTX_DEVICE_MALLOC((void **)&dY, outputHost.size() * sizeof(std::complex<double>));
     FFTX_DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
@@ -221,26 +221,26 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     
     
     if(read == 0 && write == 0) {
-         if ( DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &N, //plan, rank, n,
                                     &N,   1,  N, // iembed, istride, idist,
                                     &N,   1,  N, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     } else if(read == 0 && write == 1) { 
-         if ( DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &N, //plan, rank, n,
                                     &N,   1,  N, // iembed, istride, idist,
                                     &N,   B,  1, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }else if(read == 1 && write == 0) {
-         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &N,  //plan, rank, n,
                                     &N,   B,  1,  // iembed, istride, idist,
                                     &N,   1,  N,  // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }
     else {
-         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &N,  //plan, rank, n,
                                     &N,   B,  1,  // iembed, istride, idist,
                                     &N,   B,  1,  // oembed, ostride, odist,
@@ -263,7 +263,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
         FFTX_DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(std::complex<double>),
                         FFTX_MEM_COPY_HOST_TO_DEVICE);
     #endif
-        if ( DEBUGOUT ) fftx::OutStream() << "copied X" << std::endl;
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied X" << std::endl;
         
         b1dft.transform();
         batch1ddft_gpu[itn] = b1dft.getTime();

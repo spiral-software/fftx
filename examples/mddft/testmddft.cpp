@@ -49,13 +49,13 @@ static void setInput ( double *inputPtr, std::vector<int> sizes )
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-#define DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
-#define REALPART(z) z.x
-#define IMAGPART(z) z.y
+#define FFTX_DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
+#define FFTX_REALPART(z) z.x
+#define FFTX_IMAGPART(z) z.y
 #elif defined (FFTX_SYCL)
-#define DOUBLECOMPLEX std::complex<double>
-#define REALPART(z) z.real()
-#define IMAGPART(z) z.imag()
+#define FFTX_DOUBLECOMPLEX std::complex<double>
+#define FFTX_REALPART(z) z.real()
+#define FFTX_IMAGPART(z) z.imag()
 #endif
 
 // Check that the buffer are identical (within roundoff)
@@ -64,8 +64,8 @@ static void setInput ( double *inputPtr, std::vector<int> sizes )
 // outputVendorPtr is the output buffer from the vendor transform
 // (result on GPU copied to host array outputVendorPtr).
 // arrsz is the size of each array
-static void checkOutputs ( DOUBLECOMPLEX *outputFFTXPtr,
-			   DOUBLECOMPLEX *outputVendorPtr,
+static void checkOutputs ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
+			   FFTX_DOUBLECOMPLEX *outputVendorPtr,
 			   long arrsz )
 {
     bool correct = true;
@@ -73,10 +73,10 @@ static void checkOutputs ( DOUBLECOMPLEX *outputFFTXPtr,
 
     for ( int ind = 0; ind < arrsz; ind++ )
       {
-        double sreal = REALPART(outputFFTXPtr[ind]);
-        double simag = IMAGPART(outputFFTXPtr[ind]);
-        double creal = REALPART(outputVendorPtr[ind]);
-        double cimag = IMAGPART(outputVendorPtr[ind]);
+        double sreal = FFTX_REALPART(outputFFTXPtr[ind]);
+        double simag = FFTX_IMAGPART(outputFFTXPtr[ind]);
+        double creal = FFTX_REALPART(outputVendorPtr[ind]);
+        double cimag = FFTX_IMAGPART(outputVendorPtr[ind]);
 
         double diffreal = sreal - creal;
         double diffimag = simag - cimag;
@@ -172,10 +172,10 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     FFTX_DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
     FFTX_DEVICE_MALLOC((void **)&inputTfmPtr, bytes);
-    if ( DEBUGOUT ) fftx::OutStream() << "allocated inputTfmPtr on device\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocated inputTfmPtr on device\n";
 
     FFTX_DEVICE_MALLOC((void **)&outputTfmPtr, bytes);
-    if ( DEBUGOUT ) fftx::OutStream() << "allocated outputTfmPtr on device\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocated outputTfmPtr on device\n";
 
     // FFTX_DEVICE_MALLOC((void **)&symbolTfmPtr, bytes);
     symbolTfmPtr = (FFTX_DEVICE_PTR) NULL;
@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
 	FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
                         bytes, FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
-	if ( DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
+	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
 
 	// Run transform: input inputTfmPtr, output outputTfmPtr.
 	mdp.transform();
@@ -383,8 +383,8 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "MDDFT (Forward) \t";
-	    checkOutputs ( (DOUBLECOMPLEX*) outputFFTXHostPtr,
-			   (DOUBLECOMPLEX*) outputVendorHostPtr,
+	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
+			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
 			   (long) npts );
 	  }
 #endif
@@ -403,7 +403,7 @@ int main(int argc, char* argv[])
         FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
                         bytes, FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
-        if ( DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
         
 	// Run transform: input inputTfmPtr, output outputTfmPtr.
         imdp.transform();
@@ -484,8 +484,8 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "IMDDFT (Inverse)\t";
-	    checkOutputs ( (DOUBLECOMPLEX*) outputFFTXHostPtr,
-			   (DOUBLECOMPLEX*) outputVendorHostPtr,
+	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
+			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
 			   (long) npts );
 	  }
 #endif

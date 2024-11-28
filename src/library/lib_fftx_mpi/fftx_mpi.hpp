@@ -22,9 +22,9 @@
 
 // using namespace std;
 
-#define CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
-#define CUDA_AWARE_MPI 0
-#define FORCE_VENDOR_LIB 0
+#define FFTX_CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
+#define FFTX_CUDA_AWARE_MPI 0
+#define FFTX_FORCE_VENDOR_LIB 0
 
 // implement on GPU.
 // [A, B, C] -> [B, A, C]

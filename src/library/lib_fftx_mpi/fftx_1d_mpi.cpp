@@ -28,7 +28,7 @@ void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
   size_t K1 = pp;
 
   size_t max_size = (((size_t)M0)*((size_t)M1)*((size_t)N)*((size_t)K0)*((size_t)K1)*((size_t)(plan->is_embed ? 8 : 1))/(plan->r)) * plan->b;
-#if CUDA_AWARE_MPI
+#if FFTX_CUDA_AWARE_MPI
   FFTX_DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(std::complex<double>));
   FFTX_DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(std::complex<double>));
 #else
@@ -39,7 +39,7 @@ void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
 
 void destroy_1d_comms(fftx_plan plan) {
   if (plan) {
-#if CUDA_AWARE_MPI
+#if FFTX_CUDA_AWARE_MPI
     FFTX_DEVICE_FREE(plan->send_buffer);
     FFTX_DEVICE_FREE(plan->recv_buffer);
 #else
@@ -53,7 +53,7 @@ fftx_plan fftx_plan_distributed_1d(
   MPI_Comm comm, int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex) {
   fftx_plan plan;
-#if FORCE_VENDOR_LIB
+#if FFTX_FORCE_VENDOR_LIB
   {
 #else
   if(is_complex || (!is_complex && batch == 1)) {
@@ -286,7 +286,7 @@ void fftx_execute_1d(
   double * out_buffer, double * in_buffer,
   int direction
 ) {
-#if FORCE_VENDOR_LIB
+#if FFTX_FORCE_VENDOR_LIB
   {
 #else
   if (plan->use_fftx) {

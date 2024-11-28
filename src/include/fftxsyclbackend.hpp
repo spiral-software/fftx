@@ -18,9 +18,9 @@
 #pragma once
 
 #if defined ( PRINTDEBUG )
-#define DEBUGOUT 1
+#define FFTX_DEBUGOUT 1
 #else
-#define DEBUGOUT 0
+#define FFTX_DEBUGOUT 0
 #endif
 
 class Executor {
@@ -221,7 +221,7 @@ inline void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-    if ( DEBUGOUT ) fftx::OutStream() << "parsed input\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "parsed input\n";
 
 }
 
@@ -244,19 +244,19 @@ inline void Executor::createProg() {
     sycl::property_list props{sycl::property::queue::enable_profiling()};
     q = sycl::queue(ctx, dev, props);
 
-    if ( DEBUGOUT ) fftx::OutStream() << "created program\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "created program\n";
 }
 
 inline void Executor::compileProg() {
     const char * kernelSource = kernels.c_str();
     ocl_program = clCreateProgramWithSource(ocl_ctx,1,&(kernelSource), nullptr, &err);
     clBuildProgram(ocl_program, 1, &ocl_dev, "-cl-std=CL3.0", nullptr, nullptr);
-    if ( DEBUGOUT ) fftx::OutStream() << "compiled program\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "compiled program\n";
 }
 
 inline void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
-        if ( DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) <<
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) <<
             " this is the size "<< std::get<1>(device_names.at(i)) << " this is the type " << std::get<2>(device_names[i]) <<
              " this is the region of memory " << std::get<3>(device_names[i]) << std::endl;
         int size = std::get<1>(device_names.at(i));
@@ -342,7 +342,7 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
     auto start = std::chrono::high_resolution_clock::now();
     uint64_t profile_nanosec = 0;
     for(int i = 0; i < kernel_names.size(); i++) {
-        if ( DEBUGOUT ) {
+        if ( FFTX_DEBUGOUT ) {
             fftx::OutStream() << kernel_names.at(i) << std::endl;
             fftx::OutStream() << kernel_params[i*6] << " " << kernel_params[i*6+1] << " " << kernel_params[i*6+2] << std::endl;
             fftx::OutStream() << kernel_params[i*6+3] << " " <<  kernel_params[i*6+4] << " " << kernel_params[i*6+5] << std::endl;
@@ -355,7 +355,7 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
         sycl::event e =
         q.submit([&](sycl::handler& h){
                   for(int j = 0; j < kernel_args[i].size(); j++) {
-                         if ( DEBUGOUT ) {
+                         if ( FFTX_DEBUGOUT ) {
                             fftx::OutStream() << "This is the kernel arg name " << kernel_args.at(i).at(j) << std::endl;
                          }
                          if(sig_types.find(kernel_args.at(i).at(j)) != sig_types.end()) {
@@ -424,11 +424,11 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
 }
 
 inline void Executor::execute(std::string input) {
-    if ( DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
     
     parseDataStructure(input);
     
-    if ( DEBUGOUT ) {
+    if ( FFTX_DEBUGOUT ) {
         fftx::OutStream() << "finished parsing\n";
         for(auto it = device_names_map.cbegin(); it != device_names_map.cend(); it++) {
             fftx::OutStream() << (*it).first << std::endl;

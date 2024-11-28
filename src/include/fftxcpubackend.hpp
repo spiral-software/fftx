@@ -15,15 +15,25 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
-  #define pipe _pipe
-  #define popen _popen
-  #define pclose _pclose
+//  #define pipe _pipe
+//  #define popen _popen
+//  #define pclose _pclose
+  #define FFTX_PIPE _pipe
+  #define FFTX_POPEN _popen
+  #define FFTX_PCLOSE _pclose
 
   #include <direct.h>
-  #define getcwd _getcwd
-  #define chdir _chdir
+//  #define getcwd _getcwd
+//  #define chdir _chdir
+  #define FFTX_GETCWD _getcwd
+  #define FFTX_CHDIR _chdir
 #else
   #include <unistd.h>    // dup2
+  #define FFTX_PIPE pipe
+  #define FFTX_POPEN popen
+  #define FFTX_PCLOSE pclose
+  #define FFTX_GETCWD getcwd
+  #define FFTX_CHDIR chdir
 #endif
 
 #include <sys/types.h> // rest for open/close
@@ -49,9 +59,9 @@
 #pragma once
 
 #if defined ( PRINTDEBUG )
-#define DEBUGOUT 1
+#define FFTX_DEBUGOUT 1
 #else
-#define DEBUGOUT 0
+#define FFTX_DEBUGOUT 0
 #endif
 
 static constexpr auto cmake_script{
@@ -102,7 +112,7 @@ class Executor {
 };
 
 float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
-    if ( DEBUGOUT) fftx::OutStream() << "Loading shared library\n";
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "Loading shared library\n";
 
     #if defined (_WIN32) || defined (_WIN64)
         shared_lib = (void *)LoadLibrary("temp/Release/tmp.dll");
@@ -180,11 +190,11 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
 
 
 void Executor::execute(std::string result) {
-    if ( DEBUGOUT) fftx::OutStream() << "entered CPU backend execute\n";
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "entered CPU backend execute\n";
     std::string compile;
     
     char buff[FILENAME_MAX]; //create string buffer to hold path
-    char* getcwdret = getcwd( buff, FILENAME_MAX );
+    char* getcwdret = FFTX_GETCWD( buff, FILENAME_MAX );
     std::string current_working_dir(buff);
 
     struct stat sb;
@@ -193,7 +203,7 @@ void Executor::execute(std::string result) {
     if(stat((current_working_dir+"/temp").c_str(), &sb) == 0)
         systemret = system("rm -rf temp");
         
-    if ( DEBUGOUT) {
+    if ( FFTX_DEBUGOUT) {
         fftx::OutStream() << "created compile\n";
     }
 
@@ -211,15 +221,15 @@ void Executor::execute(std::string result) {
     out << result2;
     out.close();
     std::ofstream cmakelists("temp/CMakeLists.txt");
-    if(DEBUGOUT)
+    if(FFTX_DEBUGOUT)
         cmakelists << "set ( _addl_options -Wall )" << std::endl;       //  -Wextra
 
     cmakelists << cmake_script;
     cmakelists.close();
-    if ( DEBUGOUT )
+    if ( FFTX_DEBUGOUT )
         fftx::OutStream() << "compiling\n";
     
-    check = chdir("temp");
+    check = FFTX_CHDIR("temp");
     if(check != 0) {
         fftx::OutStream() << "failed to change to temp directory for runtime code\n";
         exit(-1);
@@ -239,13 +249,13 @@ void Executor::execute(std::string result) {
         systemret = system("cmake . && make"); 
     #endif
 
-    check = chdir(current_working_dir.c_str());
+    check = FFTX_CHDIR(current_working_dir.c_str());
     if(check != 0) {
         fftx::OutStream() << "failed to change to working directory for runtime code\n";
         exit(-1);
     }
     // systemret = system("cd ..;");
-    if ( DEBUGOUT )
+    if ( FFTX_DEBUGOUT )
         fftx::OutStream() << "finished compiling\n";
 }
 

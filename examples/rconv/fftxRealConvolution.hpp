@@ -1,5 +1,5 @@
-#ifndef REAL_CONVOLUTION_HEADER
-#define REAL_CONVOLUTION_HEADER
+#ifndef FFTX_REAL_CONVOLUTION_HEADER
+#define FFTX_REAL_CONVOLUTION_HEADER
 
 #include <cmath> // Without this, abs returns zero!
 #include <random>

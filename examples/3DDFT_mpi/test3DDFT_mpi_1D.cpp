@@ -8,10 +8,10 @@
 
 // using namespace std;
 
-#define DEBUG 0
-#define DEBUG_OUTPUT 0
-#define PRETTY_PRINT 1
-#define TOLERANCE 1e-8
+#define FFTX_DEBUG 0
+#define FFTX_DEBUG_OUTPUT 0
+#define FFTX_PRETTY_PRINT 1
+#define FFTX_TOLERANCE 1e-8
 
 inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
       for (size_t j = 0; j < N; j++) {
         for (size_t i = 0; i < M*e; i++) {
           for (size_t b = 0; b < batch; b++) {
-            if (DEBUG_OUTPUT && R2C)
+            if (FFTX_DEBUG_OUTPUT && R2C)
               { // CI == 1
                 // Note that we set host_in to zero if l >= K.
                 double v =
@@ -273,7 +273,7 @@ int main(int argc, char* argv[]) {
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
     // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
     //        C2R, N*e-1, p*Mi0-1, Ki-1);
-    // BEGIN DEBUG_OUTPUT
+    // BEGIN FFTX_DEBUG_OUTPUT
     if (C2R)
       {
         // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
@@ -284,7 +284,7 @@ int main(int argc, char* argv[]) {
                           << ", " << imin << ":" << imax
                           << ", " << 0 << ":" << (N*e-1) << ")" << std::endl;
       }
-    // END DEBUG_OUTPUT
+    // END FFTX_DEBUG_OUTPUT
     for (size_t j = 0; j < N*e; j++) {
       for (size_t i0 = 0; i0 < Mi0; i0++) {
         size_t i = rank * Mi0 + i0;
@@ -307,8 +307,8 @@ int main(int argc, char* argv[]) {
                   }
               }
             }
-            // BEGIN DEBUG_OUTPUT
-            if (DEBUG_OUTPUT && C2R)
+            // BEGIN FFTX_DEBUG_OUTPUT
+            if (FFTX_DEBUG_OUTPUT && C2R)
               { // CI == 2; c == 0 for real part, 1 for imaginary part.
                 double rval = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI];
                 double ival = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + 1];
@@ -322,7 +322,7 @@ int main(int argc, char* argv[]) {
                                   << std::setw(18) << rval
                                   << std::setw(18) << ival << std::endl;
               }
-            // END DEBUG_OUTPUT
+            // END FFTX_DEBUG_OUTPUT
           }
         }
       }
@@ -330,7 +330,7 @@ int main(int argc, char* argv[]) {
     FFTX_DEVICE_MEM_COPY(dev_in, host_in, in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
-  if (PRETTY_PRINT) {
+  if (FFTX_PRETTY_PRINT) {
     if (rank == 0) {
       fftx::OutStream() << "Problem size: " << M << " x " << N << " x " << K << std::endl;
       fftx::OutStream() << "Batch size  : " << batch << std::endl;
@@ -353,7 +353,7 @@ int main(int argc, char* argv[]) {
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
     if (rank == 0) {
-      if (PRETTY_PRINT) {
+      if (FFTX_PRETTY_PRINT) {
         fftx::OutStream() << "\tTrial " << t << ": " << max_time << " seconds" << std::endl;
       } else {
         fftx::OutStream()
@@ -413,7 +413,7 @@ int main(int argc, char* argv[]) {
       // distribution is [Y, X'/p, Z, b]
       if (rank == 0) {
         for (size_t b = 0; b < batch; b++) {
-          if (abs(host_out[b*CO + 0] - first_elems[b]) > TOLERANCE) {
+          if (abs(host_out[b*CO + 0] - first_elems[b]) > FFTX_TOLERANCE) {
             correct = false;
           }
         }
@@ -444,16 +444,16 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t tst_idx = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO + c;
                   if (c == 0) {
-                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > TOLERANCE) {
+                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > FFTX_TOLERANCE) {
                       correct = false;
                     }
                   } else if (c == 1) {
-                    if (abs(host_out[tst_idx] -                     0.0) > TOLERANCE) {
+                    if (abs(host_out[tst_idx] -                     0.0) > FFTX_TOLERANCE) {
                       correct = false;
                     }
                   }
                 }
-                if (DEBUG) {
+                if (FFTX_DEBUG) {
                   size_t test_idx2 = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO;
                   fftx::OutStream() << "(" << k << "," << j << "," << i << ")\t"
                                     << std::fixed << std::setw(12)
@@ -469,7 +469,7 @@ int main(int argc, char* argv[]) {
       MPI_Reduce(rank == 0 ? MPI_IN_PLACE : &correct, &correct, 1, MPI_C_BOOL, MPI_LAND, 0, MPI_COMM_WORLD);
     }
     if (rank == 0) {
-      if (PRETTY_PRINT) {
+      if (FFTX_PRETTY_PRINT) {
         fftx::OutStream() << "Correct     : " << (correct ? "Yes" : "No") << std::endl;
       } else {
         if (correct) {
@@ -714,7 +714,7 @@ int main(int argc, char* argv[]) {
       size_t m0 = ceil_div(m, p);
       size_t m1 = p;
 
-      if (DEBUG) {
+      if (FFTX_DEBUG) {
         fftx::OutStream() << std::endl;
       }
 
@@ -730,9 +730,9 @@ int main(int argc, char* argv[]) {
                   for (size_t b = 0; b < batch; b++) {
                       size_t test_idx2 = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO;
                       size_t ref_idx2  = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO;
-                      if (DEBUG) {
-                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < TOLERANCE;
-                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < TOLERANCE;
+                      if (FFTX_DEBUG) {
+                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < FFTX_TOLERANCE;
+                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < FFTX_TOLERANCE;
                         fftx::OutStream() << "(" << k << "," << j << "," << i << ")\t"
                                           << std::setw(12)
                                           << href_out [ ref_idx2 + 0] << " "
@@ -749,9 +749,9 @@ int main(int argc, char* argv[]) {
                       size_t tst_idx = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO + c;
                       size_t ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
 
-                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
-                        // BEGIN DEBUG_OUTPUT
-                        if (DEBUG_OUTPUT)
+                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > FFTX_TOLERANCE) {
+                        // BEGIN FFTX_DEBUG_OUTPUT
+                        if (FFTX_DEBUG_OUTPUT)
                           {
                             // printf("batch=%zu %zu %zu %zu part=%zu ref=%12.4e test=%12.4e\n",
                             // b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
@@ -765,7 +765,7 @@ int main(int argc, char* argv[]) {
                                               << " test=" << htest_out[tst_idx]
                                               << std::endl;
                           }
-                        // END DEBUG_OUTPUT
+                        // END FFTX_DEBUG_OUTPUT
                         correct = false;
                       }
                     }
@@ -781,7 +781,7 @@ int main(int argc, char* argv[]) {
             for (size_t i = 0; i < M*e; i++) {
               for (size_t b = 0; b < batch; b++) {
 
-                if (DEBUG) {
+                if (FFTX_DEBUG) {
                   size_t ref_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
                   size_t tst_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
                   // printf("%f\t%f\n", href_out[ref_idx2], htest_out[tst_idx2]);
@@ -792,8 +792,8 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
                   size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
-                  // BEGIN DEBUG_OUTPUT
-                  if (DEBUG_OUTPUT)
+                  // BEGIN FFTX_DEBUG_OUTPUT
+                  if (FFTX_DEBUG_OUTPUT)
                     {
                       // printf("DR out_array%4zu%4zu%4zu%18.8f%18.8f\n",
                       // i, j, k, htest_out[tst_idx], href_out[ref_idx]);
@@ -806,8 +806,8 @@ int main(int argc, char* argv[]) {
                                         << std::setw(18) << href_out[ref_idx]
                                         << std::endl;
                     }
-                  // END DEBUG_OUTPUT
-                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
+                  // END FFTX_DEBUG_OUTPUT
+                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > FFTX_TOLERANCE) {
                     correct = false;
                   }
                 }
@@ -816,7 +816,7 @@ int main(int argc, char* argv[]) {
           }
         }
       }
-      if (PRETTY_PRINT) {
+      if (FFTX_PRETTY_PRINT) {
         fftx::OutStream() << "Correct     : " << (correct ? "Yes" : "No") << std::endl;
       } else {
         if (correct) {

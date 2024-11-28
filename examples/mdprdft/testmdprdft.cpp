@@ -71,15 +71,15 @@ static void setInput_complex ( double *host_X, std::vector<int> sizes )
 // Functions to compare outputs of FFTX against vendor FFT.
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-#define DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
-#define DOUBLEREAL FFTX_DEVICE_FFT_DOUBLEREAL
-#define REALPART(z) z.x
-#define IMAGPART(z) z.y
+#define FFTX_DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
+#define FFTX_DOUBLEREAL FFTX_DEVICE_FFT_DOUBLEREAL
+#define FFTX_REALPART(z) z.x
+#define FFTX_IMAGPART(z) z.y
 #elif defined (FFTX_SYCL)
-#define DOUBLECOMPLEX std::complex<double>
-#define DOUBLEREAL double
-#define REALPART(z) z.real()
-#define IMAGPART(z) z.imag()
+#define FFTX_DOUBLECOMPLEX std::complex<double>
+#define FFTX_DOUBLEREAL double
+#define FFTX_REALPART(z) z.real()
+#define FFTX_IMAGPART(z) z.imag()
 #endif
 
 // Check that the buffer are identical (within roundoff)
@@ -89,8 +89,8 @@ static void setInput_complex ( double *host_X, std::vector<int> sizes )
 // (result on GPU copied to host array outputVendorPtr).
 // arrsz is the size of each array
 
-static void checkOutputs_R2C ( DOUBLECOMPLEX *outputFFTXPtr,
-                               DOUBLECOMPLEX *outputVendorPtr,
+static void checkOutputs_R2C ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
+                               FFTX_DOUBLECOMPLEX *outputVendorPtr,
                                long arrsz )
 {
     bool correct = true;
@@ -98,10 +98,10 @@ static void checkOutputs_R2C ( DOUBLECOMPLEX *outputFFTXPtr,
 
     for ( int ind = 0; ind < arrsz; ind++ )
       {
-        double sreal = REALPART(outputFFTXPtr[ind]);
-        double simag = IMAGPART(outputFFTXPtr[ind]);
-        double creal = REALPART(outputVendorPtr[ind]);
-        double cimag = IMAGPART(outputVendorPtr[ind]);
+        double sreal = FFTX_REALPART(outputFFTXPtr[ind]);
+        double simag = FFTX_IMAGPART(outputFFTXPtr[ind]);
+        double creal = FFTX_REALPART(outputVendorPtr[ind]);
+        double cimag = FFTX_IMAGPART(outputVendorPtr[ind]);
 
         double diffreal = sreal - creal;
         double diffimag = simag - cimag;
@@ -121,8 +121,8 @@ static void checkOutputs_R2C ( DOUBLECOMPLEX *outputFFTXPtr,
     return;
 }
 
-static void checkOutputs_C2R ( DOUBLEREAL *outputFFTXPtr,
-                               DOUBLEREAL *outputVendorPtr,
+static void checkOutputs_C2R ( FFTX_DOUBLEREAL *outputFFTXPtr,
+                               FFTX_DOUBLEREAL *outputVendorPtr,
                                long arrsz )
 {
     bool correct = true;
@@ -130,8 +130,8 @@ static void checkOutputs_C2R ( DOUBLEREAL *outputFFTXPtr,
 
     for ( int ind = 0; ind < arrsz; ind++ )
       {
-        DOUBLEREAL s = outputFFTXPtr[ind];
-        DOUBLEREAL c = outputVendorPtr[ind];
+        FFTX_DOUBLEREAL s = outputFFTXPtr[ind];
+        FFTX_DOUBLEREAL c = outputVendorPtr[ind];
 
         double deltar = s - c;
         bool   elem_correct = ( abs(deltar) < 1e-7 );
@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     FFTX_DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr, tempTfmPtr;
-    if ( DEBUGOUT )fftx::OutStream() << "allocating memory" << std::endl;
+    if ( FFTX_DEBUGOUT )fftx::OutStream() << "allocating memory" << std::endl;
     FFTX_DEVICE_MALLOC((void **)&inputTfmPtr, npts * sizeof(double));
     FFTX_DEVICE_MALLOC((void **)&outputTfmPtr, npts * sizeof(double));
     symbolTfmPtr = (FFTX_DEVICE_PTR) NULL;
@@ -241,7 +241,7 @@ int main(int argc, char* argv[])
     double* symbolTfmPtr = (double *) NULL;
     std::complex<double>* tempTfmPtr = new std::complex<double>[nptsTrunc];
 #endif
-    if ( DEBUGOUT ) fftx::OutStream() << "memory allocated" << std::endl;
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "memory allocated" << std::endl;
 
 #if defined FFTX_CUDA
     std::vector<void*> argsR2C{&tempTfmPtr, &inputTfmPtr, &symbolTfmPtr};
@@ -356,7 +356,7 @@ int main(int argc, char* argv[])
         FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
                         npts * sizeof(double),
                         FFTX_MEM_COPY_HOST_TO_DEVICE);
- 	if ( DEBUGOUT ) fftx::OutStream() << "copied MDPRDFT input from host to device\n";
+ 	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied MDPRDFT input from host to device\n";
 #endif
         
         // Run transform: input inputTfmPtr, output tempTfmPtr.
@@ -439,8 +439,8 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "MDPRDFT (Forward) \t";
-	    checkOutputs_R2C ( (DOUBLECOMPLEX *) outputComplexFFTXHostPtr,
-			       (DOUBLECOMPLEX *) outputComplexVendorHostPtr,
+	    checkOutputs_R2C ( (FFTX_DOUBLECOMPLEX *) outputComplexFFTXHostPtr,
+			       (FFTX_DOUBLECOMPLEX *) outputComplexVendorHostPtr,
 			       (long) nptsTrunc);
 	  }
 #endif
@@ -484,7 +484,7 @@ int main(int argc, char* argv[])
         FFTX_DEVICE_MEM_COPY ((void*)tempTfmPtr, outputComplexFFTXHostPtr,
                          nptsTrunc * sizeof(std::complex<double>),
                          FFTX_MEM_COPY_HOST_TO_DEVICE );
-        if ( DEBUGOUT ) fftx::OutStream() << "copied IMDPRDFT input from host to device" << std::endl;
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied IMDPRDFT input from host to device" << std::endl;
 #endif
 
         // Run transform: input tempTfmPtr, output outputTfmPtr.
@@ -566,8 +566,8 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "IMDPRDFT (Inverse)\t";
-	    checkOutputs_C2R ( (DOUBLEREAL*) outputRealFFTXHostPtr,
-			       (DOUBLEREAL*) outputRealVendorHostPtr,
+	    checkOutputs_C2R ( (FFTX_DOUBLEREAL*) outputRealFFTXHostPtr,
+			       (FFTX_DOUBLEREAL*) outputRealVendorHostPtr,
 			       (long) npts );
 	  }
 #endif

@@ -1,5 +1,5 @@
-#ifndef imddft_PRECOMPILE_H
-#define imddft_PRECOMPILE_H
+#ifndef FFTX_imddft_PRECOMPILE_H
+#define FFTX_imddft_PRECOMPILE_H
 
 #include "fftx3.hpp"
 #include "fftxtransformer.precompile.hpp"

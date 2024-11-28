@@ -19,7 +19,7 @@
 #include "fftxdevice_macros.h"
 #endif
 
-#define CH_CUDA_SAFE_CALL( call) {                                    \
+#define FFTX_CH_CUDA_SAFE_CALL( call) {                                    \
     cudaError err = call;                                                    \
     if( cudaSuccess != err) {                                                \
       fftx::ErrStream() << "Cuda error in file '" << __FILE__                \
@@ -30,7 +30,7 @@
     } \
 }
 
-#define CUDA_SAFE_CALL(call) CH_CUDA_SAFE_CALL(call)
+#define FFTX_CUDA_SAFE_CALL(call) FFTX_CH_CUDA_SAFE_CALL(call)
 
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
     else
         writes = "Strided";
 
-     if ( DEBUGOUT ) fftx::OutStream() << N << " " << B << " " << reads << " " << writes << std::endl;
+     if ( FFTX_DEBUGOUT ) fftx::OutStream() << N << " " << B << " " << reads << " " << writes << std::endl;
     std::vector<int> sizes{N,B, read,write};
     // fftx::box_t<1> domain ( point_t<1> ( { { N } } ));
 
@@ -188,7 +188,7 @@ int main(int argc, char* argv[])
 
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-     if ( DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
+     if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
     FFTX_DEVICE_MALLOC((void**)&dX, inputHost.size() * sizeof(double));
     FFTX_DEVICE_MALLOC((void **)&dY, outputHost2.size() * sizeof(double));
     FFTX_DEVICE_MALLOC((void **)&dsym,  outputHost.size() * sizeof(std::complex<double>));
@@ -243,26 +243,26 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     int xr = N;
     int xc = N/2 +1; 
     if(read == 0 && write == 0) {
-         if ( DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr, //plan, rank, n,
                                     &xr,   1,  xr, // iembed, istride, idist,
                                     &xc,   1,  xc, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     } else if(read == 0 && write == 1) { 
-         if ( DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr, //plan, rank, n,
                                     &xr,   1,  xr, // iembed, istride, idist,
                                     &xc,   B,  1, // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }else if(read == 1 && write == 0) {
-         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr,  //plan, rank, n,
                                     &xr,   B,  1,  // iembed, istride, idist,
                                     &xc,   1,  xc,  // oembed, ostride, odist,
                                     xfmtype, B); // type and batch
     }
     else {
-         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan, 1, &xr,  //plan, rank, n,
                                     &xr,   B,  1,  // iembed, istride, idist,
                                     &xc,   B,  1,  // oembed, ostride, odist,
@@ -284,7 +284,7 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     #if defined(FFTX_HIP) || defined(FFTX_CUDA)
         FFTX_DEVICE_MEM_COPY(dX, inputHost.data(),  inputHost.size() * sizeof(double),
                         FFTX_MEM_COPY_HOST_TO_DEVICE);
-        if ( DEBUGOUT ) fftx::OutStream() << "copied X" << std::endl;
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied X" << std::endl;
     #endif
         
         
@@ -348,26 +348,26 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
 FFTX_DEVICE_FFT_HANDLE plan2;
 FFTX_DEVICE_FFT_TYPE xfmtype2 = FFTX_DEVICE_FFT_Z2D ;
 if(read == 0 && write == 0) {
-         if ( DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "APAR, APAR" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr, //plan, rank, n,
                                     &xc,   1,  xc, // iembed, istride, idist,
                                     &xr,   1,  xr, // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     } else if(read == 0 && write == 1) { 
-         if ( DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "APAR, AVEC" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr, //plan, rank, n,
                                     &xc,   1,  xc, // iembed, istride, idist,
                                     &xr,   B,  1, // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     }else if(read == 1 && write == 0) {
-         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "AVEC, APAR" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr,  //plan, rank, n,
                                     &xc,   B,  1,  // iembed, istride, idist,
                                     &xr,   1,  xr,  // oembed, ostride, odist,
                                     xfmtype2, B); // type and batch
     }
     else {
-         if ( DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "AVEC, AVEC" << std::endl;
         res = FFTX_DEVICE_FFT_PLAN_MANY(&plan2, 1, &xr,  //plan, rank, n,
                                     &xc,   B,  1,  // iembed, istride, idist,
                                     &xr,   B,  1,  // oembed, ostride, odist,

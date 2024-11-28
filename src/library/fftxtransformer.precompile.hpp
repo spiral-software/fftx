@@ -1,5 +1,5 @@
-#ifndef transformer_PRECOMPILE_H
-#define transformer_PRECOMPILE_H
+#ifndef FFTX_transformer_PRECOMPILE_H
+#define FFTX_transformer_PRECOMPILE_H
 
 // This is included in fftxdevice_macros.h
 //#ifdef FFTX_HIP
@@ -159,9 +159,9 @@ namespace fftx {
     
     virtual std::string name()
     {
-#define BUFFERLEN 50
-      char buffer[BUFFERLEN];
-      snprintf(buffer, BUFFERLEN, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
+#define FFTX_TRANFORMER_BUFFERLEN 50
+      char buffer[FFTX_TRANFORMER_BUFFERLEN];
+      snprintf(buffer, FFTX_TRANFORMER_BUFFERLEN, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
                this->m_size[0], this->m_size[1], this->m_size[2]);
       std::string str(buffer);
       return str;
