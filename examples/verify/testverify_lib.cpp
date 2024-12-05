@@ -15,16 +15,16 @@
 // #include "fftx_rconv_cpu_public.h"
 #endif
 
-#include "mddft.fftx.precompile.hpp"
-#include "imddft.fftx.precompile.hpp"
-#include "mdprdft.fftx.precompile.hpp"
-#include "imdprdft.fftx.precompile.hpp"
-// #include "rconv.fftx.precompile.hpp"
+#include "fftxmddft.precompile.hpp"
+#include "fftximddft.precompile.hpp"
+#include "fftxmdprdft.precompile.hpp"
+#include "fftximdprdft.precompile.hpp"
+// #include "fftxrconv.precompile.hpp"
 
 #include "fftx3utilities.h"
 
-#include "device_macros.h"
-#include "VerifyTransform.hpp"
+#include "fftxdevice_macros.h"
+#include "fftxVerifyTransform.hpp"
 
 int main(int argc, char* argv[])
 {

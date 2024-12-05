@@ -1,33 +1,33 @@
-#ifndef VERIFY_TRANSFORM_HEADER
-#define VERIFY_TRANSFORM_HEADER
+#ifndef FFTX_VERIFY_TRANSFORM_HEADER
+#define FFTX_VERIFY_TRANSFORM_HEADER
 
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
 #include "fftx3.hpp"
-#include "interface.hpp"
+#include "fftxinterface.hpp"
 // #include "fftx3utilities.h"
 
 // Define {init|destroy|run}TransformFunc and transformTuple if undefined.
 
-#ifndef INITTRANSFORMFUNC
-#define INITTRANSFORMFUNC
+#ifndef FFTX_INITTRANSFORMFUNC
+#define FFTX_INITTRANSFORMFUNC
 typedef void ( * initTransformFunc ) ( void );
 #endif
 
-#ifndef DESTROYTRANSFORMFUNC
-#define DESTROYTRANSFORMFUNC
+#ifndef FFTX_DESTROYTRANSFORMFUNC
+#define FFTX_DESTROYTRANSFORMFUNC
 typedef void ( * destroyTransformFunc ) ( void );
 #endif
 
-#ifndef RUNTRANSFORMFUNC
-#define RUNTRANSFORMFUNC
+#ifndef FFTX_RUNTRANSFORMFUNC
+#define FFTX_RUNTRANSFORMFUNC
 typedef void ( * runTransformFunc )
 ( double *output, double *input, double *sym );
 #endif
 
-#ifndef TRANSFORMTUPLE_T
-#define TRANSFORMTUPLE_T
+#ifndef FFTX_TRANSFORMTUPLE_T
+#define FFTX_TRANSFORMTUPLE_T
 typedef struct transformTuple {
     initTransformFunc    initfp;
     destroyTransformFunc destroyfp;
@@ -35,8 +35,8 @@ typedef struct transformTuple {
 } transformTuple_t;
 #endif
 
-#include "device_macros.h"
-#include "transformer.fftx.precompile.hpp"
+#include "fftxdevice_macros.h"
+#include "fftxtransformer.precompile.hpp"
 
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).
@@ -94,14 +94,14 @@ struct deviceTransform3dType
 {
   deviceTransform3dType() { };
 
-  deviceTransform3dType(DEVICE_FFT_TYPE a_tp,
+  deviceTransform3dType(FFTX_DEVICE_FFT_TYPE a_tp,
                         int a_dir = 0)
   {
     m_tp = a_tp;
     m_dir = a_dir;
   }
                   
-  DEVICE_FFT_TYPE m_tp;
+  FFTX_DEVICE_FFT_TYPE m_tp;
 
   int m_dir;
 
@@ -111,47 +111,47 @@ struct deviceTransform3dType
                         fftx::box_t<3> a_outputDomain)
   {
     fftx::point_t<3> tfmSize = a_inputDomain.extents();
-    if (m_tp == DEVICE_FFT_Z2D)
+    if (m_tp == FFTX_DEVICE_FFT_Z2D)
       { // exception for complex-to-real
         tfmSize = a_outputDomain.extents();
       }
     return tfmSize;
   }
 
-  DEVICE_FFT_RESULT plan3d(DEVICE_FFT_HANDLE& a_plan,
+  FFTX_DEVICE_FFT_RESULT plan3d(FFTX_DEVICE_FFT_HANDLE& a_plan,
                            fftx::point_t<3> a_tfmSize)
   {
-    return DEVICE_FFT_PLAN3D(&a_plan,
+    return FFTX_DEVICE_FFT_PLAN3D(&a_plan,
                              a_tfmSize[0], a_tfmSize[1], a_tfmSize[2],
                              m_tp);
   }
 
-  DEVICE_FFT_RESULT exec(DEVICE_FFT_HANDLE a_plan,
+  FFTX_DEVICE_FFT_RESULT exec(FFTX_DEVICE_FFT_HANDLE a_plan,
                          T_IN* a_in,
                          T_OUT* a_out)
   {
-    if (m_tp == DEVICE_FFT_Z2Z)
+    if (m_tp == FFTX_DEVICE_FFT_Z2Z)
       {
-        return DEVICE_FFT_EXECZ2Z(a_plan,
-                                  (DEVICE_FFT_DOUBLECOMPLEX*) a_in,
-                                  (DEVICE_FFT_DOUBLECOMPLEX*) a_out,
+        return FFTX_DEVICE_FFT_EXECZ2Z(a_plan,
+                                  (FFTX_DEVICE_FFT_DOUBLECOMPLEX*) a_in,
+                                  (FFTX_DEVICE_FFT_DOUBLECOMPLEX*) a_out,
                                   m_dir);
       }
-    else if (m_tp == DEVICE_FFT_D2Z)
+    else if (m_tp == FFTX_DEVICE_FFT_D2Z)
       {
-        return DEVICE_FFT_EXECD2Z(a_plan,
-                                  (DEVICE_FFT_DOUBLEREAL*) a_in,
-                                  (DEVICE_FFT_DOUBLECOMPLEX*) a_out);
+        return FFTX_DEVICE_FFT_EXECD2Z(a_plan,
+                                  (FFTX_DEVICE_FFT_DOUBLEREAL*) a_in,
+                                  (FFTX_DEVICE_FFT_DOUBLECOMPLEX*) a_out);
       }
-    else if (m_tp == DEVICE_FFT_Z2D)
+    else if (m_tp == FFTX_DEVICE_FFT_Z2D)
       {
-        return DEVICE_FFT_EXECZ2D(a_plan,
-                                  (DEVICE_FFT_DOUBLECOMPLEX*) a_in,
-                                  (DEVICE_FFT_DOUBLEREAL*) a_out);
+        return FFTX_DEVICE_FFT_EXECZ2D(a_plan,
+                                  (FFTX_DEVICE_FFT_DOUBLECOMPLEX*) a_in,
+                                  (FFTX_DEVICE_FFT_DOUBLEREAL*) a_out);
       }
     else
       {
-        return (DEVICE_FFT_RESULT) -1;
+        return (FFTX_DEVICE_FFT_RESULT) -1;
       }
   }
 };
@@ -168,11 +168,11 @@ struct deviceTransform3d
     // m_inputDomain = a_inputDomain;
     // m_outputDomain = a_outputDomain;
     m_tfmSize = a_inputDomain.extents();
-    if (m_dtype.m_tp == DEVICE_FFT_Z2D)
+    if (m_dtype.m_tp == FFTX_DEVICE_FFT_Z2D)
       { // exception for complex-to-real
         m_tfmSize = a_outputDomain.extents();
       }
-    DEVICE_FFT_CHECK(DEVICE_FFT_PLAN3D(&m_plan,
+    FFTX_DEVICE_FFT_CHECK(FFTX_DEVICE_FFT_PLAN3D(&m_plan,
                                        m_tfmSize[0], m_tfmSize[1], m_tfmSize[2],
                                        m_dtype.m_tp),
                      "device FFT define plan");
@@ -180,7 +180,7 @@ struct deviceTransform3d
 
   ~deviceTransform3d()
   {
-    DEVICE_FFT_DESTROY(m_plan);
+    FFTX_DEVICE_FFT_DESTROY(m_plan);
   }
   
   deviceTransform3dType<T_IN, T_OUT> m_dtype;
@@ -190,9 +190,9 @@ struct deviceTransform3d
   
   fftx::point_t<3> m_tfmSize;
 
-  DEVICE_FFT_HANDLE m_plan;
+  FFTX_DEVICE_FFT_HANDLE m_plan;
 
-  DEVICE_FFT_RESULT exec(T_IN* a_in, T_OUT* a_out)
+  FFTX_DEVICE_FFT_RESULT exec(T_IN* a_in, T_OUT* a_out)
   {
     return m_dtype.exec(m_plan, a_in, a_out);
   }
@@ -200,16 +200,16 @@ struct deviceTransform3d
   
 
 deviceTransform3dType<std::complex<double>, std::complex<double> >
-mddft3dDevice(DEVICE_FFT_Z2Z, DEVICE_FFT_FORWARD);
+mddft3dDevice(FFTX_DEVICE_FFT_Z2Z, FFTX_DEVICE_FFT_FORWARD);
 
 deviceTransform3dType<std::complex<double>, std::complex<double> >
-imddft3dDevice(DEVICE_FFT_Z2Z, DEVICE_FFT_INVERSE);
+imddft3dDevice(FFTX_DEVICE_FFT_Z2Z, FFTX_DEVICE_FFT_INVERSE);
 
 deviceTransform3dType<double, std::complex<double> >
-mdprdft3dDevice(DEVICE_FFT_D2Z);
+mdprdft3dDevice(FFTX_DEVICE_FFT_D2Z);
 
 deviceTransform3dType<std::complex<double>, double>
-imdprdft3dDevice(DEVICE_FFT_Z2D);
+imdprdft3dDevice(FFTX_DEVICE_FFT_Z2D);
 
 #endif
 
@@ -287,14 +287,14 @@ public:
     m_deviceTfm3dPtr = new deviceTransform3d<T_IN, T_OUT>(a_deviceTfm3dType,
                                                           m_inDomain,
                                                           m_outDomain);
-    m_tp = DEVICE_LIB;
+    m_tp = FFTX_DEVICE_LIB;
   }
 #endif
   
   ~TransformFunction()
   {
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-    if (m_tp == DEVICE_LIB)
+    if (m_tp == FFTX_DEVICE_LIB)
       {
         // FIXME: This destructor gets called 3 times.
         // delete m_deviceTfm3dPtr;
@@ -333,7 +333,7 @@ public:
     else if (m_tp == FFTX_HANDLE ||
              m_tp == FFTX_LIB ||
              m_tp == FFTX_PROBLEM ||
-             m_tp == DEVICE_LIB)
+             m_tp == FFTX_DEVICE_LIB)
       {
         T_IN* inputHostPtr = a_inArray.m_data.local();
         T_OUT* outputHostPtr = a_outArray.m_data.local();
@@ -354,21 +354,21 @@ public:
         auto output_bytes = output_pts * sizeof(T_OUT);
 
 	// 1. Copy input from host to device.
-	DEVICE_PTR inputDevicePtr;
-	DEVICE_PTR outputDevicePtr;
-	DEVICE_PTR symDevicePtr;
+	FFTX_DEVICE_PTR inputDevicePtr;
+	FFTX_DEVICE_PTR outputDevicePtr;
+	FFTX_DEVICE_PTR symDevicePtr;
 
-        DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
-        DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
-        // DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
-        symDevicePtr = (DEVICE_PTR) NULL;
+        FFTX_DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
+        FFTX_DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
+        // FFTX_DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
+        symDevicePtr = (FFTX_DEVICE_PTR) NULL;
         
-        DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
-                        MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
+                        FFTX_MEM_COPY_HOST_TO_DEVICE);
 	// 2. Perform the transform.
-        if (m_tp == DEVICE_LIB)
+        if (m_tp == FFTX_DEVICE_LIB)
           {
-            DEVICE_FFT_CHECK(m_deviceTfm3dPtr->exec((T_IN*)inputDevicePtr,
+            FFTX_DEVICE_FFT_CHECK(m_deviceTfm3dPtr->exec((T_IN*)inputDevicePtr,
                                                     (T_OUT*)outputDevicePtr),
                              "device FFT exec launch");
           }
@@ -403,13 +403,13 @@ public:
               }
           }
 	// 3. Copy output from device to host.
-        DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
-                        MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
+                        FFTX_MEM_COPY_DEVICE_TO_HOST);
 
 	// 4. Clean up.
-        DEVICE_FREE((void*)inputDevicePtr);
-        DEVICE_FREE((void*)outputDevicePtr);
-        // DEVICE_FREE((void*)symDevicePtr);
+        FFTX_DEVICE_FREE((void*)inputDevicePtr);
+        FFTX_DEVICE_FREE((void*)outputDevicePtr);
+        // FFTX_DEVICE_FREE((void*)symDevicePtr);
 #elif defined(FFTX_SYCL)
         if (m_tp == FFTX_HANDLE)
           {          
@@ -474,7 +474,7 @@ public:
 
 protected:
 
-  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2, DEVICE_LIB = 3 , FFTX_PROBLEM = 4 };
+  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2, FFTX_DEVICE_LIB = 3 , FFTX_PROBLEM = 4 };
 
   TransformType m_tp;
   fftx::box_t<DIM> m_inDomain;
@@ -495,7 +495,7 @@ protected:
   FFTXProblem* m_transformProblemPtr;
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-  // case DEVICE_LIB
+  // case FFTX_DEVICE_LIB
   deviceTransform3d<T_IN, T_OUT>* m_deviceTfm3dPtr;
 #endif
 };

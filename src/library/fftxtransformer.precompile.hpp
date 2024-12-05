@@ -1,13 +1,13 @@
-#ifndef transformer_PRECOMPILE_H
-#define transformer_PRECOMPILE_H
+#ifndef FFTX_transformer_PRECOMPILE_H
+#define FFTX_transformer_PRECOMPILE_H
 
-// This is included in device_macros.h
+// This is included in fftxdevice_macros.h
 //#ifdef FFTX_HIP
 //#include <hip/hip_runtime.h>
 //#endif
 
 #include "fftx3.hpp"
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
 /*
  Real 3D convolution class for precompiled transforms
@@ -39,21 +39,21 @@ namespace fftx {
     }
 
 #if defined(__CUDACC__) || defined(FFTX_HIP)
-    DEVICE_EVENT_T m_start, m_stop;
+    FFTX_DEVICE_EVENT_T m_start, m_stop;
     void kernelStart()
     {
-      DEVICE_CHECK(DEVICE_EVENT_RECORD(m_start),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_RECORD(m_start),
                    "device event record in kernelStart");
     }
     void kernelStop()
     {
-      DEVICE_CHECK(DEVICE_EVENT_RECORD(m_stop),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_RECORD(m_stop),
                    "device event record in kernelStop");
-      DEVICE_CHECK(DEVICE_SYNCHRONIZE(),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_SYNCHRONIZE(),
                    "device synchronize in kernelStop");
-      DEVICE_CHECK(DEVICE_EVENT_SYNCHRONIZE(m_stop),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_SYNCHRONIZE(m_stop),
                    "device event synchronize in kernelStop");
-      DEVICE_CHECK(DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop),
+      FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_ELAPSED_TIME(&m_GPU_milliseconds, m_start, m_stop),
                    "device event elapsed time in kernelStop");
     }
 #else
@@ -159,9 +159,9 @@ namespace fftx {
     
     virtual std::string name()
     {
-#define BUFFERLEN 50
-      char buffer[BUFFERLEN];
-      snprintf(buffer, BUFFERLEN, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
+#define FFTX_TRANFORMER_BUFFERLEN 50
+      char buffer[FFTX_TRANFORMER_BUFFERLEN];
+      snprintf(buffer, FFTX_TRANFORMER_BUFFERLEN, "%s<%d>[%d,%d,%d]", shortname().c_str(), DIM,
                this->m_size[0], this->m_size[1], this->m_size[2]);
       std::string str(buffer);
       return str;
@@ -204,9 +204,9 @@ namespace fftx {
         {
           init_spiral();
 #if defined(__CUDACC__) || defined(FFTX_HIP)
-          DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_start),
+          FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_CREATE(&m_start),
                        "device event create start in setInit");
-          DEVICE_CHECK(DEVICE_EVENT_CREATE(&m_stop),
+          FFTX_DEVICE_CHECK(FFTX_DEVICE_EVENT_CREATE(&m_stop),
                        "device event create stop in setInit");
 #endif
           m_defined = true;

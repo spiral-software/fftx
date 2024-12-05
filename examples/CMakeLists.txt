@@ -33,3 +33,5 @@ if ( ${MPI_FOUND} AND NOT ${_codegen} STREQUAL "SYCL")
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()
+
+manage_add_subdir ( fortran       TRUE      TRUE )

@@ -262,9 +262,20 @@ void writeArray(fftx::array_t<DIM, T>& a_arr)
 inline void updateMax(double& a_max,
                       double a_here)
 {
-  if (a_here > a_max)
+  // If a_max is NaN then do nothing.
+  if (a_max == a_max)
     {
-      a_max = a_here;
+      if (a_here == a_here)
+        { // Case where neither a_max nor a_here is NaN.
+          if (a_here > a_max)
+            {
+              a_max = a_here;
+            }
+        }
+      else
+        { // Case where a_here is NaN.
+          a_max = a_here;
+        }
     }
 }
 
@@ -273,11 +284,7 @@ template<typename T>
 inline void updateMaxAbs(double& a_max,
                          const T& a_here)
 {
-  double absHere = std::abs(a_here);
-  if (absHere > a_max)
-    {
-      a_max = absHere;
-    }
+  updateMax(a_max, std::abs(a_here));
 }
 
 /** \relates fftx::array_t

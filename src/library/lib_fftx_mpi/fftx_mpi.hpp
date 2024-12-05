@@ -7,7 +7,7 @@
 #include <mpi.h>
 #include <iostream>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 #include "fftx_util.h"
 
@@ -22,9 +22,9 @@
 
 // using namespace std;
 
-#define CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
-#define CUDA_AWARE_MPI 0
-#define FORCE_VENDOR_LIB 0
+#define FFTX_CPU_PERMUTE 0     //Todo: Fix CPU PERMUTE to work with batch + embedded
+#define FFTX_CUDA_AWARE_MPI 0
+#define FFTX_FORCE_VENDOR_LIB 0
 
 // implement on GPU.
 // [A, B, C] -> [B, A, C]
@@ -43,8 +43,8 @@ struct fftx_plan_t {
   MPI_Comm all_comm, row_comm, col_comm;
   size_t shape[6]; // used for buffers for A2A.
   int M, N, K; // used for FFT sizes.
-  DEVICE_FFT_HANDLE stg3, stg2, stg1;
-  DEVICE_FFT_HANDLE stg2i, stg1i;
+  FFTX_DEVICE_FFT_HANDLE stg3, stg2, stg1;
+  FFTX_DEVICE_FFT_HANDLE stg2i, stg1i;
 };
 
 typedef fftx_plan_t* fftx_plan;

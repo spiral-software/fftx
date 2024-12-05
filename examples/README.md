@@ -14,7 +14,7 @@ At its most basic, an example consists of a test harness to exercise the transfo
 and a **cmake** file to build the example.
 
 Most examples are structured this way.  A header file (typically named
-*transform*Obj.hpp provides the **Spiral** specification such that **Spiral**
+fftx*transform*Obj.hpp provides the **Spiral** specification such that **Spiral**
 can generate the code for the transform.  The header files for defined
 transforms are maintained inthe directory: **$FFTX_HOME/src/include**
 
@@ -30,7 +30,7 @@ allowing different transforms to be tested.
 There will be at least one test harness program used to exercise the
 transform(s) defined.  The naming convention for the test harness is
 **test**_project_.**cpp**.  The suffix for programs is **.cpp**, in general the
-codes were developed using macros (see **device_macros.h**) that define the
+codes were developed using macros (see **fftxdevice_macros.h**) that define the
 appropiate code or API depending on whether one is building for CPU, CUDA, or
 HIP.  The CMakeLists.txt in each folder set appropriate properties on source
 files for the intended compiler (e.g., hipcc for HIP or nvcc for CUDA).

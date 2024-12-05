@@ -7,12 +7,12 @@
 #include "fftx_rconv_cpu_public.h"
 #endif
 
-// #include "rconv.fftx.precompile.hpp"
+// #include "fftxrconv.precompile.hpp"
 
 #include "fftx3utilities.h"
 
-#include "device_macros.h"
-#include "RealConvolution.hpp"
+#include "fftxdevice_macros.h"
+#include "fftxRealConvolution.hpp"
 
 template<int DIM>
 void rconvDimension(std::vector<int> sizes,
