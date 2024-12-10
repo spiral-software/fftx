@@ -98,6 +98,8 @@ contains
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 
     call lengthsAndOffsets(dims_global, split_dim, dims_rank, off_set_rank)
+    print 230, mpi_rank, dims_rank
+230 format ('  rank', i5, ' dimensions:', 3i5)
     nx_rank = dims_rank(1);
     ny_rank = dims_rank(2);
     nz_rank = dims_rank(3);
