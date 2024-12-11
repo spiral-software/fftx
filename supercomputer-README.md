@@ -16,8 +16,8 @@ module load python
 ```
 module purge
 module load rocm
-module load PrgEnv-cray
-module load cray-python
+module load PrgEnv-gnu
+module load python
 ```
 
 * #### On **sunspot** system at Argonne Leadership Computing Facility (ALCF):
