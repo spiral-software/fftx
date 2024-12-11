@@ -3,7 +3,11 @@ PROGRAM FFTX_CONVOLUTION
 !  use problem_dimensions_mod, only : initProblemDimensions
 !  use data_functions_mod
   use transform_tests_mod
-  use convolution_mod, only : singleRealConvolutionTest, singleComplexConvolutionTest, distRealConvolutionTest, distComplexConvolutionTest
+  use convolution_mod, only : singleRealConvolutionTest, singleComplexConvolutionTest
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+  use convolution_mod, only : distRealConvolutionTest, distComplexConvolutionTest
+#endif
+  
   implicit none
 
   DOUBLE PRECISION :: starttime, endtime, time, time_max

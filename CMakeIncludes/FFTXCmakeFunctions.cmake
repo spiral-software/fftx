@@ -194,6 +194,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_HIP} )
     elseif ( ${_codegen} STREQUAL "CUDA" )
+	target_link_directories    ( ${_target} PRIVATE ${CUDALINK_DIR} )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_CUDA} )
     elseif ( ${_codegen} STREQUAL "SYCL" )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_SYCL} )
@@ -225,6 +226,24 @@ function ( add_mpi_decorations_to_target _target )
 	##  target_link_options        ( ${_target} PRIVATE ${MPI_CXX_LINK_FLAGS} )
 	##  link flags are wrong on thom
 	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX ${ADDL_MPI_LIBS} )
+        if ( NOT "X{_library_names}" STREQUAL "X" )
+            target_link_libraries      ( ${_target} PRIVATE ${_library_names} )
+        endif ()
+    else ()
+	message ( STATUS "MPI was not found -- cannot add decorations for target = ${_target}" )
+    endif ()
+endfunction ()
+
+
+##  fort_add_mpi_decorations_to_target() -- Add MPI include directories, compile flags,
+##  link options, and libraries to target to a Fortran target
+
+function ( fort_add_mpi_decorations_to_target _target )
+    if (${MPI_FOUND} )
+	##  MPI installation found -- add the libraries and include for this target
+##        target_include_directories ( ${_target} PRIVATE ${MPI_Fortran_INCLUDE_PATH} )
+        target_include_directories ( ${_target} PRIVATE ${MPI_CXX_INCLUDE_DIRS} )  ## new
+	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_Fortran )
         if ( NOT "X{_library_names}" STREQUAL "X" )
             target_link_libraries      ( ${_target} PRIVATE ${_library_names} )
         endif ()
@@ -361,6 +380,14 @@ function ( setup_mpi_variables )
     ##  message ( STATUS "MPI_CXX_LINK_FLAGS = ${MPI_CXX_LINK_FLAGS}" )
     ##  message ( STATUS "MPI_CXX_LIBRARIES = ${MPI_CXX_LIBRARIES}" )
 
+    ##  Show MPI version and found components
+    ##  message(STATUS "MPI version: ${MPI_VERSION}")
+    ##  message(STATUS "MPI Fortran Found: ${MPI_Fortran_FOUND}")
+    ##  message(STATUS "MPI Fortran Libraries: ${MPI_Fortran_LIBRARIES}")
+    ##  message(STATUS "MPI Libraries: ${MPI_LIBRARIES}")
+    ##  message(STATUS "MPI Fortran Link Flags: ${MPI_Fortran_LINK_FLAGS}")
+    ##  message(STATUS "MPI Fortran Include Path: ${MPI_Fortran_INCLUDE_PATH}")
+
     set ( _index 0 )
     foreach ( _mpilib ${MPI_CXX_LIBRARIES} )
 	set ( MPI_CXX_LIB${_index} ${_mpilib} PARENT_SCOPE )
@@ -378,7 +405,27 @@ function ( setup_mpi_variables )
     endforeach ()
     set ( _num_MPI_incls ${_index} )
     message ( STATUS "Number of MPI Include Dirs = ${_num_MPI_incls}" )
+
+    ##  set values for Fortran ...
+    set ( _index 0 )
+    foreach ( _mpilib ${MPI_Fortran_LIBRARIES} )
+	set ( MPI_FORT_LIB${_index} ${_mpilib} PARENT_SCOPE )
+        message ( STATUS "MPI_FORT_LIB${_index} = ${_mpilib}" )
+	math ( EXPR _index "${_index} + 1" )
+    endforeach ()
+    set ( _num_MPI_libs ${_index} )
+    message ( STATUS "Number of Fortran MPI Libraries = ${_num_MPI_libs}" )
+
+    set ( _index 0 )
+    foreach ( _mpiinc ${MPI_Fortran_INCLUDE_PATH} )
+	set ( MPI_FORT_INCL${_index} ${_mpiinc} PARENT_SCOPE )
+        message ( STATUS "MPI_FORT_INCL${_index} = ${_mpiinc}" )
+	math ( EXPR _index "${_index} + 1" )
+    endforeach ()
+    set ( _num_MPI_incls ${_index} )
+    message ( STATUS "Number of Fortran MPI Include Dirs = ${_num_MPI_incls}" )
     
+
 endfunction ()
 
 
