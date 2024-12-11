@@ -22,7 +22,7 @@ set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, Min
 project (FFTX_PROJECT
          VERSION 1.0.3
                 DESCRIPTION "FFTX Project"
-                LANGUAGES C CXX )
+                LANGUAGES C CXX Fortran )
 
 ##  Prevent building directly into the source tree
 string (COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" DISALLOW_COMPILE_INPLACE)
@@ -76,7 +76,7 @@ message ( STATUS "Defined: INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}, INSTALL_RPA
 
 ##  MPI library and example depend on MPI being installed & accessable
 
-find_package ( MPI COMPONENTS MPICXX )
+find_package ( MPI  )
 if ( ${MPI_FOUND} )
     ##  MPI installation found
     setup_mpi_variables ()
