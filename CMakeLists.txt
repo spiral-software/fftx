@@ -22,7 +22,17 @@ set (CMAKE_BUILD_TYPE Release  CACHE STRING "Debug, Release, RelWithDebInfo, Min
 project (FFTX_PROJECT
          VERSION 1.0.3
                 DESCRIPTION "FFTX Project"
-                LANGUAGES C CXX Fortran )
+                LANGUAGES C CXX )
+
+##  Look for Fortran compiler support
+set ( Fortran_ENABLED FALSE )
+enable_language ( Fortran OPTIONAL )
+if ( CMAKE_Fortran_COMPILER_WORKS )
+    message ( STATUS "Working Fortran compiler found: ${CMAKE_Fortran_COMPILER}." )
+    set ( Fortran_ENABLED TRUE )
+else ()
+    message ( STATUS "No functional Fortran compiler found." )
+endif ()
 
 ##  Prevent building directly into the source tree
 string (COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" DISALLOW_COMPILE_INPLACE)
