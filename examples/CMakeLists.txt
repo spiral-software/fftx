@@ -34,4 +34,12 @@ else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
 endif ()
 
-manage_add_subdir ( fortran       TRUE      TRUE )
+##  Check if a Fortran compiler is available
+if ( CMAKE_Fortran_COMPILER )
+    message ( STATUS "Fortran compiler found: ${CMAKE_Fortran_COMPILER}; will build Fortran example" )
+
+    ##  Build the Fortran example
+    manage_add_subdir ( fortran       TRUE      TRUE )
+else ()
+    message ( WARNING "No Fortran compiler found.  Skipping Fortran example build." )
+endif ()
