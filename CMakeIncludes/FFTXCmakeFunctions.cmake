@@ -241,7 +241,9 @@ endfunction ()
 function ( fort_add_mpi_decorations_to_target _target )
     if (${MPI_FOUND} )
 	##  MPI installation found -- add the libraries and include for this target
-##        target_include_directories ( ${_target} PRIVATE ${MPI_Fortran_INCLUDE_PATH} )
+        ##        target_include_directories ( ${_target} PRIVATE ${MPI_Fortran_INCLUDE_PATH} )
+        ##  In some cases Fortran include dirs not returned correctly; add the C++ ones as a fallback
+        target_include_directories ( ${_target} PRIVATE ${MPI_CXX_INCLUDE_DIRS} )
 	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_Fortran )
         if ( NOT "X{_library_names}" STREQUAL "X" )
             target_link_libraries      ( ${_target} PRIVATE ${_library_names} )

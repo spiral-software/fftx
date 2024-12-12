@@ -142,10 +142,10 @@ module mpi_utils_mod
       ! the lower bound gets changed to 1!
       real(C_DOUBLE), dimension(:,:,:), intent(inout) :: expanded
       real(C_DOUBLE), dimension(:,:,:), intent(in) :: arr
-      real(C_DOUBLE), dimension(:,:), allocatable :: slab
+      real(C_DOUBLE), dimension(:,:), allocatable :: slabShiftLeft, slabShiftRight
       integer :: minx, miny, minz, maxx, maxy, maxz, lx, ly, lz
       integer :: ix, iy, iz, jx, jy, jz, npts, inext, iprev
-      integer :: sendtag, recvtag
+      integer :: tagShiftLeft, tagShiftRight
       integer, dimension(mpi_size) :: mpistatus
       
       minx = lbound(arr, 1)
@@ -156,9 +156,9 @@ module mpi_utils_mod
       maxy = ubound(arr, 2)
       maxz = ubound(arr, 3)
       
-      lx = UBOUND(expanded, 1)
-      ly = UBOUND(expanded, 2)
-      lz = UBOUND(expanded, 3)
+      lx = size(expanded, 1)
+      ly = size(expanded, 2)
+      lz = size(expanded, 3)
       
       ! allocate(expanded(minx-1:maxx+1, miny-1:maxy+1, minz-1:maxz+1))
       ! First set expanded = arr with local wraparound.
@@ -177,29 +177,29 @@ module mpi_utils_mod
       if (mpi_size .gt. 1) then
          ! Assume that array is distributed along split_dim = 3.
          ! allocate(slab(minx-1:maxx+1, miny-1:maxy+1))
-         allocate(slab(lx, ly))
          npts = lx * ly
          inext = MODULO(mpi_rank - 1, mpi_size)
          iprev = MODULO(mpi_rank + 1, mpi_size)
       
          ! Send leftmost slab with original data from this rank to previous rank.
-         slab = expanded(:, :, 2)
-         sendtag = 0
-         recvtag = 0
-         call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE, &
-              inext, sendtag, iprev, recvtag, &
-              MPI_COMM_WORLD, mpistatus, my_mpi_err)
-         expanded(:, :, lz) = slab
-      
+         allocate(slabShiftLeft(lx, ly))
+         slabShiftLeft = expanded(:, :, 2)
          ! Send rightmost slab with original data from this rank to next rank.
-         slab = expanded(:, :, lz - 1)
-         ! Send slab from here to idest; receive slab here from isource.
-         sendtag = 1
-         recvtag = 1
-         call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE, &
-              iprev, sendtag, inext, recvtag, &
+         allocate(slabShiftRight(lx, ly))
+         slabShiftRight = expanded(:, :, lz - 1)
+
+         tagShiftLeft = 0
+         call MPI_SendRecv_replace(slabShiftLeft, npts, MPI_DOUBLE, &
+              inext, tagShiftLeft, iprev, tagShiftLeft, &
               MPI_COMM_WORLD, mpistatus, my_mpi_err)
-         expanded(:, :, 1) = slab
+
+         tagShiftRight = 1
+         call MPI_SendRecv_replace(slabShiftRight, npts, MPI_DOUBLE, &
+              iprev, tagShiftRight, inext, tagShiftRight, &
+              MPI_COMM_WORLD, mpistatus, my_mpi_err)
+
+         expanded(:, :, lz) = slabShiftLeft
+         expanded(:, :, 1) = slabShiftRight
       endif
     end subroutine MPIExchange3dReal
     
@@ -210,10 +210,10 @@ module mpi_utils_mod
       ! the lower bound gets changed to 1!
       complex(C_DOUBLE_COMPLEX), dimension(:,:,:), intent(inout) :: expanded
       complex(C_DOUBLE_COMPLEX), dimension(:,:,:), intent(in) :: arr
-      complex(C_DOUBLE_COMPLEX), dimension(:,:), allocatable :: slab
+      complex(C_DOUBLE_COMPLEX), dimension(:,:), allocatable :: slabShiftLeft, slabShiftRight
       integer :: minx, miny, minz, maxx, maxy, maxz, lx, ly, lz
       integer :: ix, iy, iz, jx, jy, jz, npts, inext, iprev
-      integer :: sendtag, recvtag
+      integer :: tagShiftLeft, tagShiftRight
       integer, dimension(mpi_size) :: mpistatus
       
       minx = lbound(arr, 1)
@@ -224,9 +224,9 @@ module mpi_utils_mod
       maxy = ubound(arr, 2)
       maxz = ubound(arr, 3)
       
-      lx = UBOUND(expanded, 1)
-      ly = UBOUND(expanded, 2)
-      lz = UBOUND(expanded, 3)
+      lx = size(expanded, 1)
+      ly = size(expanded, 2)
+      lz = size(expanded, 3)
       
       ! allocate(expanded(minx-1:maxx+1, miny-1:maxy+1, minz-1:maxz+1))
       ! First set expanded = arr with local wraparound.
@@ -242,32 +242,33 @@ module mpi_utils_mod
          enddo
       enddo
       
-      ! Assume that array is distributed along split_dim = 3.
-      ! allocate(slab(minx-1:maxx+1, miny-1:maxy+1))
-      allocate(slab(lx, ly))
-      npts = lx * ly
-      inext = MODULO(mpi_rank - 1, mpi_size)
-      iprev = MODULO(mpi_rank + 1, mpi_size)
-      
-      ! Send leftmost slab with original data from this rank to previous rank.
-      slab = expanded(:, :, 2)
-      sendtag = 0
-      recvtag = 0
-      call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE_COMPLEX, &
-           inext, sendtag, iprev, recvtag, &
-           MPI_COMM_WORLD, mpistatus, my_mpi_err)
-      expanded(:, :, lz) = slab
-      
-      ! Send rightmost slab with original data from this rank to next rank.
-      slab = expanded(:, :, lz - 1)
-      ! Send slab from here to idest; receive slab here from isource.
-      sendtag = 1
-      recvtag = 1
-      call MPI_SendRecv_replace(slab, npts, MPI_DOUBLE_COMPLEX, &
-           iprev, sendtag, inext, recvtag, &
-           MPI_COMM_WORLD, mpistatus, my_mpi_err)
-      expanded(:, :, 1) = slab
-      
+      if (mpi_size .gt. 1) then
+         ! Assume that array is distributed along split_dim = 3.
+         ! allocate(slab(minx-1:maxx+1, miny-1:maxy+1))
+         npts = lx * ly
+         inext = MODULO(mpi_rank - 1, mpi_size)
+         iprev = MODULO(mpi_rank + 1, mpi_size)
+
+         ! Send leftmost slab with original data from this rank to previous rank.
+         allocate(slabShiftLeft(lx, ly))
+         slabShiftLeft = expanded(:, :, 2)
+         ! Send rightmost slab with original data from this rank to next rank.
+         allocate(slabShiftRight(lx, ly))
+         slabShiftRight = expanded(:, :, lz - 1)
+         
+         tagShiftLeft = 0
+         call MPI_SendRecv_replace(slabShiftLeft, npts, MPI_DOUBLE_COMPLEX, &
+              inext, tagShiftLeft, iprev, tagShiftLeft, &
+              MPI_COMM_WORLD, mpistatus, my_mpi_err)
+
+         tagShiftRight = 1
+         call MPI_SendRecv_replace(slabShiftRight, npts, MPI_DOUBLE_COMPLEX, &
+              iprev, tagShiftRight, inext, tagShiftRight, &
+              MPI_COMM_WORLD, mpistatus, my_mpi_err)
+
+         expanded(:, :, lz) = slabShiftLeft
+         expanded(:, :, 1) = slabShiftRight
+      endif
     end subroutine MPIExchange3dComplex
     
     integer function partition_length(n)
