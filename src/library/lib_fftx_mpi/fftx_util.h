@@ -1,5 +1,5 @@
-#ifndef COMMON_UTIL_H
-#define COMMON_UTIL_H
+#ifndef FFTX_COMMON_UTIL_H
+#define FFTX_COMMON_UTIL_H
 
 #include <mpi.h>
 

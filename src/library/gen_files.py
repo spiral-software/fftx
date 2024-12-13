@@ -93,18 +93,18 @@ def start_header_file ( type, script ):
 
     str.append ( '#include "fftx3.hpp"\n\n' )
 
-    str.append ( '#ifndef INITTRANSFORMFUNC\n' )
-    str.append ( '#define INITTRANSFORMFUNC\n' )
+    str.append ( '#ifndef FFTX_INITTRANSFORMFUNC\n' )
+    str.append ( '#define FFTX_INITTRANSFORMFUNC\n' )
     str.append ( 'typedef void ( * initTransformFunc ) ( void );\n' )
     str.append ( '#endif\n\n' )
 
-    str.append ( '#ifndef DESTROYTRANSFORMFUNC\n' )
-    str.append ( '#define DESTROYTRANSFORMFUNC\n' )
+    str.append ( '#ifndef FFTX_DESTROYTRANSFORMFUNC\n' )
+    str.append ( '#define FFTX_DESTROYTRANSFORMFUNC\n' )
     str.append ( 'typedef void ( * destroyTransformFunc ) ( void );\n' )
     str.append ( '#endif\n\n' )
 
-    str.append ( '#ifndef RUNTRANSFORMFUNC\n' )
-    str.append ( '#define RUNTRANSFORMFUNC\n' )
+    str.append ( '#ifndef FFTX_RUNTRANSFORMFUNC\n' )
+    str.append ( '#define FFTX_RUNTRANSFORMFUNC\n' )
 
     str.append ( 'typedef void ( * runTransformFunc ) ' )
     if script.xform_name == 'psatd':
@@ -113,8 +113,8 @@ def start_header_file ( type, script ):
         str.append ( '( double *output, double *input, double *sym );\n' )
     str.append ( '#endif\n\n' )
 
-    str.append ( '#ifndef TRANSFORMTUPLE_T\n' )
-    str.append ( '#define TRANSFORMTUPLE_T\n' )
+    str.append ( '#ifndef FFTX_TRANSFORMTUPLE_T\n' )
+    str.append ( '#define FFTX_TRANSFORMTUPLE_T\n' )
     str.append ( 'typedef struct transformTuple {\n' )
     str.append ( '    initTransformFunc    initfp;\n' )
     str.append ( '    destroyTransformFunc destroyfp;\n' )
@@ -199,12 +199,12 @@ def library_api ( script ):
         str.append ( '#include <helper_cuda.h>\n\n' )
     elif script.args.platform == 'HIP':
         str.append ( '#include <hip/hip_runtime.h>\n\n' )
-        str.append ( '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
+        str.append ( '#define FFTX_checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
         # str.append ( 'if (err != hipSuccess) {  printf("%s: %s\\n", (str), hipGetErrorString(err) );  ' )
         str.append ( 'if (err != hipSuccess) {  fftx::ErrStream() << str << ": " << hipGetErrorString(err) << std::endl;  ' )
         str.append ( 'exit(-1); } }\n\n' )
     elif script.args.platform == 'SYCL':
-        str.append ( '#include <CL/sycl.hpp>\n\n' )
+        str.append ( '#include <sycl/sycl.hpp>\n\n' )
 
     str.append ( '//  Query the list of sizes available from the library; returns a pointer to an\n' )
     str.append ( '//  array of size <N+1>, each element is a struct of type fftx::point_t<3> specifying the X,\n' )
@@ -318,7 +318,7 @@ def python_cuda_api ( script ):
         _memfree = 'cudaFree'
     elif script.args.platform == 'HIP' or script.args.platform == 'SYCL':
         _mmalloc = 'hipMalloc'
-        _errchk  = 'checkLastHipError ( "Error: " );'
+        _errchk  = 'FFTX_checkLastHipError ( "Error: " );'
         _mmemcpy = 'hipMemcpy'
         _cph2dev = 'hipMemcpyHostToDevice'
         _cpdev2h = 'hipMemcpyDeviceToHost'

@@ -88,6 +88,26 @@ endif ()
 ##  Default setting is false; only running on 64 bit machines.
 
 if ( ${_codegen} STREQUAL "CUDA" )
+    ##  Try finding CUDAToolkit and use the directory it reports for target building
+    ##  Provide a means to set/override the CUDA root (if not automatically found)
+    set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
+    find_package ( CUDAToolkit REQUIRED )
+    ##  Find the libraries: cufft culibos nvrtc
+    find_library ( CUDALIBS_DIR 
+        NAMES cufft culibos nvrtc
+        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
+              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
+              /usr/local/cuda                   ##  Another [legacy] fallback
+    )
+
+    if ( CUDALIBS_DIR )
+        ##  Extract the directory name from the full path
+        get_filename_component ( CUDALINK_DIR ${CUDALIBS_DIR} DIRECTORY )
+        message ( STATUS "CUDA libraries exist in folder: ${CUDALINK_DIR}" )
+    else ()
+        message ( FATAL_ERROR "CUDA library folder not found!" )
+    endif ()
+
     if (WIN32)
 	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
@@ -106,15 +126,12 @@ endif ()
 
 if ( ${_codegen} STREQUAL "SYCL" )
     ##  Setup what we need to build for SYCL
-    list ( APPEND LIBS_FOR_SYCL OpenCL )
+    list ( APPEND LIBS_FOR_SYCL OpenCL mkl_core mkl_cdft_core mkl_sequential mkl_rt mkl_intel_lp64 mkl_sycl )
     list ( APPEND ADDL_COMPILE_FLAGS -fsycl -DFFTX_SYCL )
 endif ()
 
-if ( "x${DIM_X}" STREQUAL "x" )
-    ##  DIM_X is not defined (on command line).  Assume building with default sizes only
-    message ( STATUS "Building for default size example only" )
-else ()
-    ## DIM_X is defined (presumably DIM_Y & DIM_Z also since they come form a script)
+if ( NOT "x${DIM_X}" STREQUAL "x" )
+    ##  DIM_X is defined (on command line; presumably DIM_Y & DIM_Z also since they come form a script)
     list ( APPEND ADDL_COMPILE_FLAGS -Dfftx_nx=${DIM_X} -Dfftx_ny=${DIM_Y} -Dfftx_nz=${DIM_Z} )
     message ( STATUS "Building for size [ ${DIM_X}, ${DIM_Y}, ${DIM_Z} ]" )
 endif ()

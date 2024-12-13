@@ -24,6 +24,16 @@ project (FFTX_PROJECT
                 DESCRIPTION "FFTX Project"
                 LANGUAGES C CXX )
 
+##  Look for Fortran compiler support
+set ( Fortran_ENABLED FALSE )
+enable_language ( Fortran OPTIONAL )
+if ( CMAKE_Fortran_COMPILER_WORKS )
+    message ( STATUS "Working Fortran compiler found: ${CMAKE_Fortran_COMPILER}." )
+    set ( Fortran_ENABLED TRUE )
+else ()
+    message ( STATUS "No functional Fortran compiler found." )
+endif ()
+
 ##  Prevent building directly into the source tree
 string (COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" DISALLOW_COMPILE_INPLACE)
 if ( DISALLOW_COMPILE_INPLACE )
@@ -76,7 +86,7 @@ message ( STATUS "Defined: INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}, INSTALL_RPA
 
 ##  MPI library and example depend on MPI being installed & accessable
 
-find_package ( MPI COMPONENTS MPICXX )
+find_package ( MPI  )
 if ( ${MPI_FOUND} )
     ##  MPI installation found
     setup_mpi_variables ()

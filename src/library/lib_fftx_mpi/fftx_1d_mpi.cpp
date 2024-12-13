@@ -4,7 +4,7 @@
 #include <mpi.h>
 #include <iostream>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 #include "fftx_1d_gpu.h"
 #include "fftx_util.h"
@@ -28,9 +28,9 @@ void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
   size_t K1 = pp;
 
   size_t max_size = (((size_t)M0)*((size_t)M1)*((size_t)N)*((size_t)K0)*((size_t)K1)*((size_t)(plan->is_embed ? 8 : 1))/(plan->r)) * plan->b;
-#if CUDA_AWARE_MPI
-  DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(std::complex<double>));
-  DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(std::complex<double>));
+#if FFTX_CUDA_AWARE_MPI
+  FFTX_DEVICE_MALLOC(&(plan->send_buffer), max_size * sizeof(std::complex<double>));
+  FFTX_DEVICE_MALLOC(&(plan->recv_buffer), max_size * sizeof(std::complex<double>));
 #else
   plan->send_buffer = (std::complex<double> *) malloc(max_size * sizeof(std::complex<double>));
   plan->recv_buffer = (std::complex<double> *) malloc(max_size * sizeof(std::complex<double>));
@@ -39,9 +39,9 @@ void init_1d_comms(fftx_plan plan, int pp, int M, int N, int K) {
 
 void destroy_1d_comms(fftx_plan plan) {
   if (plan) {
-#if CUDA_AWARE_MPI
-    DEVICE_FREE(plan->send_buffer);
-    DEVICE_FREE(plan->recv_buffer);
+#if FFTX_CUDA_AWARE_MPI
+    FFTX_DEVICE_FREE(plan->send_buffer);
+    FFTX_DEVICE_FREE(plan->recv_buffer);
 #else
     free(plan->send_buffer);
     free(plan->recv_buffer);
@@ -53,7 +53,7 @@ fftx_plan fftx_plan_distributed_1d(
   MPI_Comm comm, int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex) {
   fftx_plan plan;
-#if FORCE_VENDOR_LIB
+#if FFTX_FORCE_VENDOR_LIB
   {
 #else
   if(is_complex || (!is_complex && batch == 1)) {
@@ -92,10 +92,10 @@ void fftx_mpi_rcperm_1d(
           size_t sendSize    =                  plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
           size_t recvSize    = sendSize;
 
-          DEVICE_MEM_COPY(
+          FFTX_DEVICE_MEM_COPY(
             plan->send_buffer, X,
             buffer_size * sizeof(std::complex<double>),
-            MEM_COPY_DEVICE_TO_HOST
+            FFTX_MEM_COPY_DEVICE_TO_HOST
           );
           // TODO: make sure buffer is padded out before send?
 
@@ -110,10 +110,10 @@ void fftx_mpi_rcperm_1d(
           //      [ceil(X'/px), pz, Z/pz, Y] <= [pz, ceil(X'/px), Z/pz, Y]
           // i.e. [ceil(X'/px),        Z, Y]
           if (is_embedded) {
-            DEVICE_MEM_COPY(
+            FFTX_DEVICE_MEM_COPY(
               Y, plan->recv_buffer,
               sizeof(std::complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
-              MEM_COPY_HOST_TO_DEVICE
+              FFTX_MEM_COPY_HOST_TO_DEVICE
             );
             pack_embed(
               plan,
@@ -131,10 +131,10 @@ void fftx_mpi_rcperm_1d(
               plan->b // copy size
             );
           } else {
-            DEVICE_MEM_COPY(
+            FFTX_DEVICE_MEM_COPY(
               X, plan->recv_buffer,
               sizeof(std::complex<double>) * plan->shape[5] * plan->shape[0] * plan->shape[4] * plan->shape[2] * plan->b,
-              MEM_COPY_HOST_TO_DEVICE
+              FFTX_MEM_COPY_HOST_TO_DEVICE
             );
             pack_embed(
               plan,
@@ -216,10 +216,10 @@ void fftx_mpi_rcperm_1d(
           // size_t sendSize = plan->shape[0] * plan->shape[4]*e * plan->N*e * plan->b;
           size_t sendSize = plan->shape[0] * K0 * plan->N*e * plan->b;
           size_t recvSize = sendSize;
-          DEVICE_MEM_COPY(
+          FFTX_DEVICE_MEM_COPY(
             plan->send_buffer, Y,
             sizeof(std::complex<double>) * K1 * sendSize,
-            MEM_COPY_DEVICE_TO_HOST
+            FFTX_MEM_COPY_DEVICE_TO_HOST
           );
 
           // [px, ceil(X'/px), Z/pz, Y] <= [pz, ceil(X'/px), Z/pz, Y] (all2all)
@@ -234,10 +234,10 @@ void fftx_mpi_rcperm_1d(
             plan->all_comm
           );
 
-          DEVICE_MEM_COPY(
+          FFTX_DEVICE_MEM_COPY(
             Y, plan->recv_buffer,
             sizeof(std::complex<double>) * plan->shape[1] * recvSize,
-            MEM_COPY_HOST_TO_DEVICE
+            FFTX_MEM_COPY_HOST_TO_DEVICE
           );
         } else {
           {
@@ -254,10 +254,10 @@ void fftx_mpi_rcperm_1d(
 
           size_t sendSize = plan->shape[0] * plan->shape[4] * plan->shape[3] * plan->shape[2] * plan->b;
           size_t recvSize = sendSize;
-          DEVICE_MEM_COPY(
+          FFTX_DEVICE_MEM_COPY(
             plan->send_buffer, Y,
             sizeof(std::complex<double>) * plan->shape[5] * sendSize,
-            MEM_COPY_DEVICE_TO_HOST
+            FFTX_MEM_COPY_DEVICE_TO_HOST
           );
 
           // [px, X'/px, Z/pz, Y] <= [pz, X'/px, Z/pz, Y] (all2all)
@@ -270,10 +270,10 @@ void fftx_mpi_rcperm_1d(
             plan->all_comm
           );
 
-          DEVICE_MEM_COPY(
+          FFTX_DEVICE_MEM_COPY(
             Y, plan->recv_buffer,
             sizeof(std::complex<double>) * plan->shape[5] * recvSize,
-            MEM_COPY_HOST_TO_DEVICE
+            FFTX_MEM_COPY_HOST_TO_DEVICE
           );
         }
       } // end FFTX_MPI_EMBED_4
@@ -286,7 +286,7 @@ void fftx_execute_1d(
   double * out_buffer, double * in_buffer,
   int direction
 ) {
-#if FORCE_VENDOR_LIB
+#if FFTX_FORCE_VENDOR_LIB
   {
 #else
   if (plan->use_fftx) {

@@ -3,7 +3,7 @@
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
 
-#include "VerifyTransform.hpp"
+#include "fftxVerifyTransform.hpp"
 
 void verify3d(fftx::point_t<3> a_fullExtents,
               int a_rounds,
