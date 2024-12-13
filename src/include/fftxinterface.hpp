@@ -21,6 +21,7 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
+  #include <direct.h>
   #define FFTX_POPEN _popen
   #define FFTX_PCLOSE _pclose
   // #define popen _popen
