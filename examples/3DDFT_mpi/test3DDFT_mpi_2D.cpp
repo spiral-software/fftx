@@ -85,15 +85,15 @@ int main(int argc, char* argv[]) {
   }
 
   //allocate buffers
-  DEVICE_ERROR_T err = DEVICE_MALLOC(&in_buffer, (Ko*Mi*Ni)/p * (is_complex ? sizeof(cx): sizeof(double))  * batch);
-  if (err != DEVICE_SUCCESS) {
-    fftx::OutStream() << "DEVICE_MALLOC failed\n" << std::endl;
+  FFTX_DEVICE_ERROR_T err = FFTX_DEVICE_MALLOC(&in_buffer, (Ko*Mi*Ni)/p * (is_complex ? sizeof(cx): sizeof(double))  * batch);
+  if (err != FFTX_DEVICE_SUCCESS) {
+    fftx::OutStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
     exit(-1);
   }
 
-  err = DEVICE_MALLOC(&out_buffer, (Mo*No*Ko)/p * sizeof(cx) * batch);
-  if (err != DEVICE_SUCCESS) {
-    fftx::OutStream() << "DEVICE_MALLOC failed\n" << std::endl;
+  err = FFTX_DEVICE_MALLOC(&out_buffer, (Mo*No*Ko)/p * sizeof(cx) * batch);
+  if (err != FFTX_DEVICE_SUCCESS) {
+    fftx::OutStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
     exit(-1);
   }
 
@@ -146,15 +146,15 @@ int main(int argc, char* argv[]) {
   }
   //end init
 
-  err = DEVICE_MEM_COPY( in_buffer, fftx_in, (Ko*Mi*Ni)/p *  (is_complex ? sizeof(cx): sizeof(double)) * batch, MEM_COPY_HOST_TO_DEVICE );
-  if (err != DEVICE_SUCCESS) {
-    fftx::OutStream() << "DEVICE_MEM_COPY failed\n" << std::endl;
+  err = FFTX_DEVICE_MEM_COPY( in_buffer, fftx_in, (Ko*Mi*Ni)/p *  (is_complex ? sizeof(cx): sizeof(double)) * batch, FFTX_MEM_COPY_HOST_TO_DEVICE );
+  if (err != FFTX_DEVICE_SUCCESS) {
+    fftx::OutStream() << "FFTX_DEVICE_MEM_COPY failed\n" << std::endl;
     exit(-1);
   }
 
   fftx_plan  plan = fftx_plan_distributed(MPI_COMM_WORLD, r, c, M, N, K, batch, is_embedded, is_complex);
 
-  DEVICE_SYNCHRONIZE();
+  FFTX_DEVICE_SYNCHRONIZE();
   MPI_Barrier(MPI_COMM_WORLD);
 
   if (commRank == 0) {
@@ -171,15 +171,15 @@ int main(int argc, char* argv[]) {
 
     double start_time = MPI_Wtime();
 
-    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer, (is_forward ? DEVICE_FFT_FORWARD: DEVICE_FFT_INVERSE));
+    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer, (is_forward ? FFTX_DEVICE_FFT_FORWARD: FFTX_DEVICE_FFT_INVERSE));
 
     double end_time = MPI_Wtime();
 
     // double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
-    DEVICE_MEM_COPY(fftx_out, out_buffer, ((Mo*No*Ko)/p) * sizeof(cx)*batch, MEM_COPY_DEVICE_TO_HOST);
-    DEVICE_SYNCHRONIZE();
+    FFTX_DEVICE_MEM_COPY(fftx_out, out_buffer, ((Mo*No*Ko)/p) * sizeof(cx)*batch, FFTX_MEM_COPY_DEVICE_TO_HOST);
+    FFTX_DEVICE_SYNCHRONIZE();
 
     if (commRank == 0) {
       // fftx::OutStream()<<std::endl<<"end_to_end," << max_time<<std::endl;
@@ -211,8 +211,8 @@ int main(int argc, char* argv[]) {
 
  MPI_Finalize();
 
- DEVICE_FREE(in_buffer);
- DEVICE_FREE(out_buffer);
+ FFTX_DEVICE_FREE(in_buffer);
+ FFTX_DEVICE_FREE(out_buffer);
  delete[] fftx_in;
  delete[] fftx_out;
  return 0;

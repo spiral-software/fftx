@@ -15,13 +15,13 @@
 #include <iomanip>
 #include <fcntl.h>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #pragma once
 
 #if defined ( PRINTDEBUG )
-#define DEBUGOUT 1
+#define FFTX_DEBUGOUT 1
 #else
-#define DEBUGOUT 0
+#define FFTX_DEBUGOUT 0
 #endif
 
 class Executor {
@@ -196,18 +196,18 @@ inline void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-    if ( DEBUGOUT ) fftx::OutStream() << "parsed input\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "parsed input\n";
 
 }
 
 inline void Executor::createProg() {
-    DEVICE_RTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     "test.cu", // name
     0, // numHeaders
     nullptr, // headers
     nullptr)); 
-    if ( DEBUGOUT ) fftx::OutStream() << "created program\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "created program\n";
 }
 
 inline void Executor::getVarsAndKernels() {
@@ -215,10 +215,10 @@ inline void Executor::getVarsAndKernels() {
     for(int i = 0; i < device_names.size(); i++) {
         new_names.push_back(std::get<0>(device_names[i]));
     }
-    if ( DEBUGOUT ) fftx::OutStream() << "added new names\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "added new names\n";
     for (auto&& x : kernel_names) hiprtcAddNameExpression(prog, x.c_str());
     for(auto&& x: new_names) {hiprtcAddNameExpression(prog, x.c_str());}
-    if ( DEBUGOUT ) fftx::OutStream() << "added kernels and variables\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "added kernels and variables\n";
 }
 
 inline void Executor::compileProg() {
@@ -236,14 +236,14 @@ inline void Executor::compileProg() {
     compileResult = hiprtcCompileProgram(prog, 
     1, 
     opts); 
-    if ( DEBUGOUT ) fftx::OutStream() << "compiled program\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "compiled program\n";
 }
 
 inline void Executor::getLogsAndPTX() {
-    DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLogSize(prog, &logSize));
     //fftx::OutStream() << "this is the log size" << logSize << "\n";
     log = new char[logSize];
-    DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLog(prog, log));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetProgramLog(prog, log));
     if (compileResult != HIPRTC_SUCCESS) {
         fftx::OutStream() << "compile failure with code "<< hiprtcGetErrorString (compileResult) << std::endl;
         for(int i = 0; i < logSize; i++) {
@@ -253,46 +253,46 @@ inline void Executor::getLogsAndPTX() {
         exit(1);
     }
     delete[] log;
-    DEVICE_RTC_SAFE_CALL(hiprtcGetCodeSize(prog, &ptxSize));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetCodeSize(prog, &ptxSize));
     //fftx::OutStream() << "this is the program size" << ptxSize << "\n";
     ptx = new char[ptxSize];
-    DEVICE_RTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
-    DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
-    if ( DEBUGOUT ) fftx::OutStream() << "created module\n";
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetCode(prog, ptx));
+    FFTX_DEVICE_SAFE_CALL(hipModuleLoadData(&module, ptx));
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "created module\n";
 }
 
 inline void Executor::initializeVars() {
     for(decltype(device_names.size()) i = 0; i < device_names.size(); i++) {
-        if ( DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
-        DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(
+        FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(
         prog, 
         std::get<0>(device_names[i]).c_str(), // name expression
         &name                         // lowered name
         ));
-        if ( DEBUGOUT ) fftx::OutStream() << "it got past lower name\n";
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "it got past lower name\n";
         hipDeviceptr_t variable_addr;
         size_t bytes{};
-        DEVICE_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
-        if ( DEBUGOUT ) fftx::OutStream() << "it got past get global\n";
+        FFTX_DEVICE_SAFE_CALL(hipModuleGetGlobal(&variable_addr, &bytes, module, name));
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
             {
                 int * value = (int*)(data.at(i));
-                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
                 break;
             }
             case one:
             {
                 float * value = (float*)(data.at(i));
-                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
                 break;
             }
             case two:
             {   
                 double * value = (double*)(data.at(i));
-                DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
                 break;
             }
             case constant:
@@ -302,27 +302,27 @@ inline void Executor::initializeVars() {
             case pointer_int:
             {
                 int * h1;
-                if ( DEBUGOUT ) fftx::OutStream() << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
-                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "got a int pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                FFTX_DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(int)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(int*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
             case pointer_float:
             {
                 float * h1;
-                if ( DEBUGOUT ) fftx::OutStream() << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
-                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "got a float pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                FFTX_DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(float)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(float*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
             case pointer_double:
             {
                 double * h1;
-                if ( DEBUGOUT ) fftx::OutStream() << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
-                DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
-                DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "got a double pointer " << std::get<0>(device_names.at(i)).substr(1) << " with size " << std::get<1>(device_names.at(i)) << "\n";
+                FFTX_DEVICE_SAFE_CALL(hipMalloc(&h1, std::get<1>(device_names.at(i)) * sizeof(double)));
+                FFTX_DEVICE_SAFE_CALL(hipMemcpy(variable_addr, &h1,  sizeof(double*), hipMemcpyHostToDevice));
                 // hipFree(h1);
                 break;
             }
@@ -333,8 +333,8 @@ inline void Executor::initializeVars() {
 }
 
 inline void Executor::destoryProg() {
-    //DEVICE_RTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
-    DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
+    //FFTX_DEVICE_RTC_SAFE_CALL(hiprtcLinkDestroy(linkState));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcDestroyProgram(&prog));
 }
 
 
@@ -347,40 +347,40 @@ inline float Executor::initAndLaunch(std::vector<void*>& args) {
     
     for(int i = 0; i < kernel_names.size(); i++) {
     const char* name;
-    DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
-    DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
+    FFTX_DEVICE_RTC_SAFE_CALL(hiprtcGetLoweredName(prog, kernel_names[i].c_str(), &name));    
+    FFTX_DEVICE_SAFE_CALL(hipModuleGetFunction(&kernel, module, name));
 
     // // // Execute parent kernel.
-    if ( DEBUGOUT ) fftx::OutStream() << "launched kernel\n";
-    if ( DEBUGOUT )
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "launched kernel\n";
+    if ( FFTX_DEBUGOUT )
         fftx::OutStream() << kernel_params[i*6] << "\t" << kernel_params[i*6+1] <<
             "\t" << kernel_params[i*6+2] << "\t" << kernel_params[i*6+3] << 
             "\t" << kernel_params[i*6+4] << "\t" << kernel_params[i*6+5] << "\n";
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
-    DEVICE_SAFE_CALL(hipEventRecord(start,0));
-    DEVICE_SAFE_CALL(
+    FFTX_DEVICE_SAFE_CALL(hipEventCreateWithFlags(&start,  hipEventDefault));
+    FFTX_DEVICE_SAFE_CALL(hipEventCreateWithFlags(&stop,  hipEventDefault));
+    FFTX_DEVICE_SAFE_CALL(hipEventRecord(start,0));
+    FFTX_DEVICE_SAFE_CALL(
     hipModuleLaunchKernel(kernel,
                           kernel_params[i*6], kernel_params[i*6+1], kernel_params[i*6+2], // grid dim
                           kernel_params[i*6+3], kernel_params[i*6+4], kernel_params[i*6+5], // block dim
                           0, nullptr, nullptr, // shared mem and stream
                           (void**)&config));
-    DEVICE_SAFE_CALL(hipEventRecord(stop,0));
-    DEVICE_SAFE_CALL(hipEventSynchronize(stop));
+    FFTX_DEVICE_SAFE_CALL(hipEventRecord(stop,0));
+    FFTX_DEVICE_SAFE_CALL(hipEventSynchronize(stop));
     float localtime;
-    DEVICE_SAFE_CALL(hipEventElapsedTime(&localtime, start, stop)); 
+    FFTX_DEVICE_SAFE_CALL(hipEventElapsedTime(&localtime, start, stop)); 
     GPUtime += localtime;
-    // DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
+    // FFTX_DEVICE_SAFE_CALL(hipEventElapsedTime(&GPUtime, start, stop)); 
     }
     return getKernelTime();
 }
 
 inline void Executor::execute(std::string input) {
-    if ( DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
     
     parseDataStructure(input);
     
-    if ( DEBUGOUT ) {
+    if ( FFTX_DEBUGOUT ) {
         fftx::OutStream() << "finished parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
             fftx::OutStream() << std::get<0>(device_names[i]) << std::endl;
@@ -399,14 +399,14 @@ inline void Executor::execute(std::string input) {
 
 inline void Executor::execute(char *file_name, std::vector<void*>& args)
 {
-    if ( DEBUGOUT) fftx::OutStream() << "begin executing code\n";
+    if ( FFTX_DEBUGOUT) fftx::OutStream() << "begin executing code\n";
 
     std::ifstream ifs ( file_name );
     std::string   fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
                              ( std::istreambuf_iterator<char>()    ) );
 
     parseDataStructure ( fcontent );
-    if ( DEBUGOUT) {
+    if ( FFTX_DEBUGOUT) {
         fftx::OutStream() << "finsihed parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
             fftx::OutStream() << std::get<0>(device_names[i]) << std::endl;

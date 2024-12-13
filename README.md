@@ -305,7 +305,7 @@ for clarity and brevity:
 
 ```
 #include "fftx3.hpp"
-#include "transformlib.hpp"
+#include "fftxtransformlib.hpp"
 
     std::vector<int> sizes{ mm, nn, kk };         // 'cube' dimensions
     std::vector<void *> args{ dY, dX, dsym };     // pointers to the Output, Input, and symbol arrays

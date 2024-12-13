@@ -4,7 +4,7 @@
 #include <mpi.h>
 #include <iostream>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"

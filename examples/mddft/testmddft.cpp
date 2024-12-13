@@ -1,25 +1,25 @@
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-#include "interface.hpp"
-#include "mddftObj.hpp"
-#include "imddftObj.hpp"
+#include "fftxinterface.hpp"
+#include "fftxmddftObj.hpp"
+#include "fftximddftObj.hpp"
 #include <string>
 #include <fstream>
 
 #if defined FFTX_CUDA
-#include "cudabackend.hpp"
+#include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #elif defined FFTX_SYCL
-#include "syclbackend.hpp"
+#include "fftxsyclbackend.hpp"
 #else  
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
 // #include "mkl_dfti.h"
-// #include <CL/sycl.hpp>
+// #include <sycl/sycl.hpp>
 #include <oneapi/mkl/dfti.hpp>
 // #include <oneapi/mkl/vm.hpp>
 #endif
@@ -49,13 +49,13 @@ static void setInput ( double *inputPtr, std::vector<int> sizes )
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-#define DOUBLECOMPLEX DEVICE_FFT_DOUBLECOMPLEX
-#define REALPART(z) z.x
-#define IMAGPART(z) z.y
+#define FFTX_DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
+#define FFTX_REALPART(z) z.x
+#define FFTX_IMAGPART(z) z.y
 #elif defined (FFTX_SYCL)
-#define DOUBLECOMPLEX std::complex<double>
-#define REALPART(z) z.real()
-#define IMAGPART(z) z.imag()
+#define FFTX_DOUBLECOMPLEX std::complex<double>
+#define FFTX_REALPART(z) z.real()
+#define FFTX_IMAGPART(z) z.imag()
 #endif
 
 // Check that the buffer are identical (within roundoff)
@@ -64,8 +64,8 @@ static void setInput ( double *inputPtr, std::vector<int> sizes )
 // outputVendorPtr is the output buffer from the vendor transform
 // (result on GPU copied to host array outputVendorPtr).
 // arrsz is the size of each array
-static void checkOutputs ( DOUBLECOMPLEX *outputFFTXPtr,
-			   DOUBLECOMPLEX *outputVendorPtr,
+static void checkOutputs ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
+			   FFTX_DOUBLECOMPLEX *outputVendorPtr,
 			   long arrsz )
 {
     bool correct = true;
@@ -73,10 +73,10 @@ static void checkOutputs ( DOUBLECOMPLEX *outputFFTXPtr,
 
     for ( int ind = 0; ind < arrsz; ind++ )
       {
-        double sreal = REALPART(outputFFTXPtr[ind]);
-        double simag = IMAGPART(outputFFTXPtr[ind]);
-        double creal = REALPART(outputVendorPtr[ind]);
-        double cimag = IMAGPART(outputVendorPtr[ind]);
+        double sreal = FFTX_REALPART(outputFFTXPtr[ind]);
+        double simag = FFTX_IMAGPART(outputFFTXPtr[ind]);
+        double creal = FFTX_REALPART(outputVendorPtr[ind]);
+        double cimag = FFTX_IMAGPART(outputVendorPtr[ind]);
 
         double diffreal = sreal - creal;
         double diffimag = simag - cimag;
@@ -170,15 +170,15 @@ int main(int argc, char* argv[])
     auto outputVendorHostPtr = outputVendorHostArray.m_data.local();
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
-    DEVICE_MALLOC((void **)&inputTfmPtr, bytes);
-    if ( DEBUGOUT ) fftx::OutStream() << "allocated inputTfmPtr on device\n";
+    FFTX_DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
+    FFTX_DEVICE_MALLOC((void **)&inputTfmPtr, bytes);
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocated inputTfmPtr on device\n";
 
-    DEVICE_MALLOC((void **)&outputTfmPtr, bytes);
-    if ( DEBUGOUT ) fftx::OutStream() << "allocated outputTfmPtr on device\n";
+    FFTX_DEVICE_MALLOC((void **)&outputTfmPtr, bytes);
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocated outputTfmPtr on device\n";
 
-    // DEVICE_MALLOC((void **)&symbolTfmPtr, bytes);
-    symbolTfmPtr = (DEVICE_PTR) NULL;
+    // FFTX_DEVICE_MALLOC((void **)&symbolTfmPtr, bytes);
+    symbolTfmPtr = (FFTX_DEVICE_PTR) NULL;
 #elif defined (FFTX_SYCL)
     // If you do sycl::buffer<std::complex<double>> then you need npts * 2.
     sycl::buffer<double> inputTfmPtr((double*) inputHostPtr, npts * 2);
@@ -229,17 +229,17 @@ int main(int argc, char* argv[])
 
     //  Set up a plan to run the transform using vendor FFT.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    DEVICE_FFT_HANDLE plan;
-    DEVICE_FFT_RESULT res;
-    DEVICE_FFT_TYPE   xfmtype = DEVICE_FFT_Z2Z ;
-    DEVICE_EVENT_T custart, custop;
-    DEVICE_EVENT_CREATE ( &custart );
-    DEVICE_EVENT_CREATE ( &custop );
+    FFTX_DEVICE_FFT_HANDLE plan;
+    FFTX_DEVICE_FFT_RESULT res;
+    FFTX_DEVICE_FFT_TYPE   xfmtype = FFTX_DEVICE_FFT_Z2Z ;
+    FFTX_DEVICE_EVENT_T custart, custop;
+    FFTX_DEVICE_EVENT_CREATE ( &custart );
+    FFTX_DEVICE_EVENT_CREATE ( &custop );
     
-    res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
-    if ( res != DEVICE_FFT_SUCCESS )
+    res = FFTX_DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
+    if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
-        fftx::OutStream() << "Create DEVICE_FFT_PLAN3D failed with error code "
+        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
       }
@@ -300,10 +300,10 @@ int main(int argc, char* argv[])
 	// setInput ( hostinp, sizes );
 	setInput ( (double*) inputHostPtr, sizes );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-	DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
-                        bytes, MEM_COPY_HOST_TO_DEVICE);
+	FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
+                        bytes, FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
-	if ( DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
+	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
 
 	// Run transform: input inputTfmPtr, output outputTfmPtr.
 	mdp.transform();
@@ -316,28 +316,28 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 	    // Copy output of FFTX transform from device to host
 	    // in order to check it against cuFFT or rocFFT.
-	    DEVICE_MEM_COPY ( outputFFTXHostPtr, (void*)outputTfmPtr,
-			      bytes, MEM_COPY_DEVICE_TO_HOST );
+	    FFTX_DEVICE_MEM_COPY ( outputFFTXHostPtr, (void*)outputTfmPtr,
+			      bytes, FFTX_MEM_COPY_DEVICE_TO_HOST );
 
 	    // Run cuFFT or rocFFT.
-	    DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECZ2Z ( plan,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) outputTfmPtr,
-                                       DEVICE_FFT_FORWARD );
-            if ( res != DEVICE_FFT_SUCCESS)
+	    FFTX_DEVICE_EVENT_RECORD ( custart );
+            res = FFTX_DEVICE_FFT_EXECZ2Z ( plan,
+                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
+                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) outputTfmPtr,
+                                       FFTX_DEVICE_FFT_FORWARD );
+            if ( res != FFTX_DEVICE_FFT_SUCCESS)
 	      {
-                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
                                   << res << " ... skip buffer check" << std::endl;
 		check_output = false;
 		//  break;
 	      }
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &mddft_vendor_millisec[itn], custart, custop );
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &mddft_vendor_millisec[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outputVendorHostPtr, (void*)outputTfmPtr,
-                              bytes, MEM_COPY_DEVICE_TO_HOST );
+            FFTX_DEVICE_MEM_COPY ( outputVendorHostPtr, (void*)outputTfmPtr,
+                              bytes, FFTX_MEM_COPY_DEVICE_TO_HOST );
 #elif defined (FFTX_SYCL)
 	    // Copy output of FFTX transform from device to host
 	    // in order to check it against MKL FFT.
@@ -383,8 +383,8 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "MDDFT (Forward) \t";
-	    checkOutputs ( (DOUBLECOMPLEX*) outputFFTXHostPtr,
-			   (DOUBLECOMPLEX*) outputVendorHostPtr,
+	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
+			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
 			   (long) npts );
 	  }
 #endif
@@ -400,10 +400,10 @@ int main(int argc, char* argv[])
 
 	setInput ( (double*) inputHostPtr, sizes );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
-                        bytes, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
+                        bytes, FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
-        if ( DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
         
 	// Run transform: input inputTfmPtr, output outputTfmPtr.
         imdp.transform();
@@ -416,29 +416,29 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 	    // Copy output of FFTX transform from device to host
 	    // in order to check it against cuFFT or rocFFT.
-	    DEVICE_MEM_COPY ( outputFFTXHostPtr, (void*)outputTfmPtr,
-			      bytes, MEM_COPY_DEVICE_TO_HOST );
+	    FFTX_DEVICE_MEM_COPY ( outputFFTXHostPtr, (void*)outputTfmPtr,
+			      bytes, FFTX_MEM_COPY_DEVICE_TO_HOST );
 
 	    // Run cuFFT or rocFFT.	    
-	    DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECZ2Z ( plan,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) outputTfmPtr,
-                                       DEVICE_FFT_INVERSE );
-            if ( res != DEVICE_FFT_SUCCESS)
+	    FFTX_DEVICE_EVENT_RECORD ( custart );
+            res = FFTX_DEVICE_FFT_EXECZ2Z ( plan,
+                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) inputTfmPtr,
+                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) outputTfmPtr,
+                                       FFTX_DEVICE_FFT_INVERSE );
+            if ( res != FFTX_DEVICE_FFT_SUCCESS)
 	      {
-                fftx::OutStream() << "Launch DEVICE_FFT_EXEC failed with error code "
+                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
                                   << res << " ... skip buffer check" << std::endl;
                 check_output = false;
                 //  break;
 	      }
 
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &imddft_vendor_millisec[itn], custart, custop );
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &imddft_vendor_millisec[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outputVendorHostPtr, (void*)outputTfmPtr,
-                              bytes, MEM_COPY_DEVICE_TO_HOST );
+            FFTX_DEVICE_MEM_COPY ( outputVendorHostPtr, (void*)outputTfmPtr,
+                              bytes, FFTX_MEM_COPY_DEVICE_TO_HOST );
 #elif defined (FFTX_SYCL)
 	    // Copy output of FFTX transform from device to host
 	    // in order to check it against MKL FFT.
@@ -484,8 +484,8 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "IMDDFT (Inverse)\t";
-	    checkOutputs ( (DOUBLECOMPLEX*) outputFFTXHostPtr,
-			   (DOUBLECOMPLEX*) outputVendorHostPtr,
+	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
+			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
 			   (long) npts );
 	  }
 #endif
@@ -493,9 +493,9 @@ int main(int argc, char* argv[])
 
     // Clean up.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    DEVICE_FREE((void*)inputTfmPtr);
-    DEVICE_FREE((void*)outputTfmPtr);
-    DEVICE_FREE((void*)symbolTfmPtr);
+    FFTX_DEVICE_FREE((void*)inputTfmPtr);
+    FFTX_DEVICE_FREE((void*)outputTfmPtr);
+    FFTX_DEVICE_FREE((void*)symbolTfmPtr);
 #elif defined(FFTX_SYCL)
     sycl::free(inputVendorPtr, sycl_context);
     sycl::free(outputVendorPtr, sycl_context);

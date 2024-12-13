@@ -625,8 +625,8 @@ namespace fftx
   {
     static const char* header_template = R"(
 
-    #ifndef PLAN_CODEGEN_H
-    #define PLAN_CODEGEN_H
+    #ifndef FFTX_PLAN_CODEGEN_H
+    #define FFTX_PLAN_CODEGEN_H
 
     #include "fftx3.hpp"
 
@@ -730,8 +730,8 @@ template<int DIM>
   {
     static const char* header_template = R"(
 
-    #ifndef PLAN_CODEGEN_H
-    #define PLAN_CODEGEN_H
+    #ifndef FFTX_PLAN_CODEGEN_H
+    #define FFTX_PLAN_CODEGEN_H
 
     #include "fftx3.hpp"
 

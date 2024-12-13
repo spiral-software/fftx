@@ -21,10 +21,15 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
-  #define popen _popen
-  #define pclose _pclose
+  #include <direct.h>
+  #define FFTX_POPEN _popen
+  #define FFTX_PCLOSE _pclose
+  // #define popen _popen
+  // #define pclose _pclose
 #else
   #include <unistd.h>    // dup2
+  #define FFTX_POPEN popen
+  #define FFTX_PCLOSE pclose
 #endif
 
 #include <sys/types.h> // rest for open/close
@@ -35,13 +40,13 @@
 #include <array>
 #include <chrono>
 #if defined FFTX_CUDA
-#include "cudabackend.hpp"
+#include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #elif defined FFTX_SYCL
-#include "syclbackend.hpp"
+#include "fftxsyclbackend.hpp"
 #else
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
 #include "fftx_mddft_gpu_public.h"
@@ -67,15 +72,15 @@
 #pragma once
 
 #if defined ( PRINTDEBUG )
-#define DEBUGOUT 1
+#define FFTX_DEBUGOUT 1
 #else
-#define DEBUGOUT 0
+#define FFTX_DEBUGOUT 0
 #endif
 
-#if defined ( PRINTSCRIPT )
-#define PRINTSCRIPT 1
+#if defined ( FFTX_PRINTSCRIPT )
+#define FFTX_PRINTSCRIPT 1
 #else
-#define PRINTSCRIPT 0
+#define FFTX_PRINTSCRIPT 0
 #endif
 
 class Executor;
@@ -84,7 +89,7 @@ class FFTXProblem;
 inline std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    std::unique_ptr<FILE, decltype(&FFTX_PCLOSE)> pipe(FFTX_POPEN(cmd, "r"), FFTX_PCLOSE);
     if (!pipe) {
         throw std::runtime_error("popen() failed!");
     }
@@ -149,7 +154,7 @@ inline transformTuple_t * getLibTransform(std::string name, std::vector<int> siz
         return fftx_iprdftbat_Tuple(fftx::point_t<4>({{sizes.at(0), sizes.at(1), sizes.at(2), sizes.at(3)}}));
     }
     else {
-        if(DEBUGOUT)
+        if(FFTX_DEBUGOUT)
             fftx::OutStream() << "non-supported fixed library transform" << std::endl; 
         return nullptr;
     }
@@ -238,6 +243,28 @@ inline void printToCache(std::string spiral_out, std::string name, std::vector<i
 
 }
 
+inline void printSpiralScript(std::string spiral_script, std::string name, std::vector<int> sizes) {
+    std::ofstream output_file;
+    std::string file_name;
+    file_name.append(getFFTX()+"script_"+name+"_"+std::to_string(sizes.at(0)));
+    for(int i = 1; i< sizes.size(); i++) {
+        file_name.append("x"+std::to_string(sizes.at(i)));
+    }
+#if defined FFTX_HIP
+    file_name.append("_HIP.g");
+#elif defined FFTX_CUDA 
+    file_name.append("_CUDA.g");
+#elif defined FFTX_SYCL
+    file_name.append("_SYCL.g");
+#else
+    file_name.append("_CPU.g");
+#endif
+    fftx::OutStream() << "Writing SPIRAL script to " << file_name << std::endl;
+    output_file.open(file_name);
+    output_file << spiral_script;
+    output_file.close();
+}
+
 inline void getImportAndConf() {
     fftx::OutStream() << "Load(fftx);\nImportAll(fftx);\n";
     #if (defined FFTX_HIP || FFTX_CUDA || FFTX_SYCL)
@@ -286,8 +313,8 @@ public:
       - <tt>args[2]</tt>:  pointer to symbol array (not used by all transforms). If not used, then can be set to NULL.
 
       The manner of specifying the pointer in each element of <tt>args</tt> depends on the backend:
-      - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "device_macros.h"</tt>).
-      - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>DEVICE_PTR ptr</tt> if you have <tt>#include "device_macros.h"</tt>).
+      - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>FFTX_DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
+      - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>FFTX_DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
       - for SYCL, specify <tt>(void*) ptr</tt> with <tt>sycl::buffer<double> ptr</tt>.
       - for CPU, specify <tt>(void*) ptr</tt> with <tt>double* ptr</tt>.
   */
@@ -416,10 +443,10 @@ inline std::string FFTXProblem::semantics2() {
 
 #if defined(_WIN32) || defined (_WIN64)
     if ( _pipe ( p, 4096, _O_BINARY ) == -1 )
-#define WRSIZECAST (unsigned int)
+#define FFTX_WRSIZECAST (unsigned int)
 #else
     if(pipe(p) < 0)
-#define WRSIZECAST
+#define FFTX_WRSIZECAST
 #endif
     fftx::OutStream() << "pipe failed\n";
     std::stringstream out; 
@@ -429,7 +456,7 @@ inline std::string FFTXProblem::semantics2() {
     printJITBackend(name, sizes);
     fftx::OutStream().rdbuf(coutbuf);
     std::string script = out.str();
-    int res = write(p[1], script.c_str(), WRSIZECAST script.size() );
+    int res = write(p[1], script.c_str(), FFTX_WRSIZECAST script.size() );
     close(p[1]);
     int save_stdin = redirect_input(p[0]);
     std::string result = exec(tmp.c_str());
@@ -439,17 +466,18 @@ inline std::string FFTXProblem::semantics2() {
     #else
         close(p[0]);
     #endif
-    if(PRINTSCRIPT) fftx::OutStream() << script << std::endl;
+    if (FFTX_PRINTSCRIPT) printSpiralScript(script, name, sizes);
+
     #if defined(FFTX_HIP) || defined(FFTX_CUDA) || defined(FFTX_SYCL)
     if(result.find("spiral> JIT BEGIN") == std::string::npos) {
-      //  if(DEBUGOUT) fftx::OutStream() << script << std::endl;
+      //  if(FFTX_DEBUGOUT) fftx::OutStream() << script << std::endl;
       fftx::OutStream() << script << std::endl;
       fftx::OutStream() << "\nSPIRAL Code Generation has encountered an error.\nPlease raise an issue with the development team, enclosing a copy of the above script.\nProgram Terminating..." << std::endl;
       exit(-1);
     }
     #else
     if(result.find("This code was generated by") == std::string::npos) {
-      //  if(DEBUGOUT) fftx::OutStream() << script << std::endl;
+      //  if(FFTX_DEBUGOUT) fftx::OutStream() << script << std::endl;
       fftx::OutStream() << script << std::endl;
       fftx::OutStream() << "\nSPIRAL Code Generation has encountered an error.\nPlease raise an issue with the development team, enclosing a copy of the above script.\nProgram Terminating..." << std::endl;
       exit(-1);
@@ -467,13 +495,13 @@ inline void FFTXProblem::transform(){
     
     transformTuple_t *tupl = getLibTransform(name, sizes);
     if(tupl != nullptr) { //check if fixed library has transform
-        if ( DEBUGOUT) fftx::OutStream() << "found size in fixed library\n";
+        if ( FFTX_DEBUGOUT) fftx::OutStream() << "found size in fixed library\n";
         ( * tupl->initfp )();
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
-            DEVICE_EVENT_T custart, custop;
-            DEVICE_EVENT_CREATE ( &custart );
-            DEVICE_EVENT_CREATE ( &custop );
-            DEVICE_EVENT_RECORD ( custart );
+            FFTX_DEVICE_EVENT_T custart, custop;
+            FFTX_DEVICE_EVENT_CREATE ( &custart );
+            FFTX_DEVICE_EVENT_CREATE ( &custop );
+            FFTX_DEVICE_EVENT_RECORD ( custart );
         #else
             auto start = std::chrono::high_resolution_clock::now();
         #endif
@@ -491,9 +519,9 @@ inline void FFTXProblem::transform(){
                 ( * tupl->runfp ) ( (double*)args.at(0), (double*)args.at(1), (double*)args.at(1) );
             #endif
         #if defined (FFTX_CUDA) ||  (FFTX_HIP)
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &gpuTime, custart, custop );
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &gpuTime, custart, custop );
         #else
             auto stop = std::chrono::high_resolution_clock::now();
             std::chrono::duration<float, std::milli> duration = stop - start;
@@ -504,14 +532,14 @@ inline void FFTXProblem::transform(){
     }
     else { // use RTC
         if(executors.find(sizes) != executors.end()) { //check in memory cache
-            if ( DEBUGOUT) fftx::OutStream() << "cached size found, running cached instance\n";
+            if ( FFTX_DEBUGOUT) fftx::OutStream() << "cached size found, running cached instance\n";
             run(executors.at(sizes));
         }
         else { //check filesystem cache
             std::string file_name = getFromCache(name, sizes);
             std::ifstream ifs ( file_name );
             if(ifs) {
-                if ( DEBUGOUT) fftx::OutStream() << "found cached file on disk\n";
+                if ( FFTX_DEBUGOUT) fftx::OutStream() << "found cached file on disk\n";
                 std::string fcontent ( ( std::istreambuf_iterator<char>(ifs) ),
                                        ( std::istreambuf_iterator<char>()    ) );
                 res = fcontent;
@@ -521,7 +549,7 @@ inline void FFTXProblem::transform(){
                 run(e);
             } 
             else { //generate code at runtime
-                if ( DEBUGOUT) fftx::OutStream() << "haven't seen size, generating\n";
+                if ( FFTX_DEBUGOUT) fftx::OutStream() << "haven't seen size, generating\n";
                 res = semantics2();
                 Executor e;
                 e.execute(res);

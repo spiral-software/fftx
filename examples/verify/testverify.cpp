@@ -2,13 +2,13 @@
 #include <random>
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
-#include "VerifyTransform.hpp"
-#include "mddftObj.hpp"
-#include "imddftObj.hpp"
-#include "mdprdftObj.hpp"
-#include "imdprdftObj.hpp"
+#include "fftxVerifyTransform.hpp"
+#include "fftxmddftObj.hpp"
+#include "fftximddftObj.hpp"
+#include "fftxmdprdftObj.hpp"
+#include "fftximdprdftObj.hpp"
 
 template<int DIM>
 void verifyDimension(fftx::box_t<DIM> a_domain,

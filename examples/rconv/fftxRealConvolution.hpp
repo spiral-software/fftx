@@ -1,13 +1,13 @@
-#ifndef REAL_CONVOLUTION_HEADER
-#define REAL_CONVOLUTION_HEADER
+#ifndef FFTX_REAL_CONVOLUTION_HEADER
+#define FFTX_REAL_CONVOLUTION_HEADER
 
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
 #include "fftx3.hpp"
 #include "fftx3utilities.h"
-#include "interface.hpp"
-#include "rconvObj.hpp"
+#include "fftxinterface.hpp"
+#include "fftxrconvObj.hpp"
 
 // #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 // #include "fftx_rconv_gpu_public.h"
@@ -15,8 +15,8 @@
 // #include "fftx_rconv_cpu_public.h"
 // #endif
 
-#include "device_macros.h"
-// #include "rconv.fftx.precompile.hpp"
+#include "fftxdevice_macros.h"
+// #include "fftxrconv.precompile.hpp"
 
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).
@@ -109,24 +109,24 @@ public:
         auto symbol_bytes = symbol_pts * sizeof(double);
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_PTR inputDevicePtr;
-        DEVICE_PTR outputDevicePtr;
-        DEVICE_PTR symbolDevicePtr;
+        FFTX_DEVICE_PTR inputDevicePtr;
+        FFTX_DEVICE_PTR outputDevicePtr;
+        FFTX_DEVICE_PTR symbolDevicePtr;
 
-        DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
-        DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
-        DEVICE_MALLOC((void **)&symbolDevicePtr, symbol_bytes);
+        FFTX_DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
+        FFTX_DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
+        FFTX_DEVICE_MALLOC((void **)&symbolDevicePtr, symbol_bytes);
 
-        DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
-                        MEM_COPY_HOST_TO_DEVICE);
-        DEVICE_MEM_COPY((void*)symbolDevicePtr, symbolHostPtr, symbol_bytes,
-                        MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
+                        FFTX_MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY((void*)symbolDevicePtr, symbolHostPtr, symbol_bytes,
+                        FFTX_MEM_COPY_HOST_TO_DEVICE);
 	
-        fftx::array_t<DIM, DEVICE_PTR> inputDevice(fftx::global_ptr<DEVICE_PTR>
+        fftx::array_t<DIM, FFTX_DEVICE_PTR> inputDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
 						   (&inputDevicePtr, 0, 1), m_domain);
-        fftx::array_t<DIM, DEVICE_PTR> outputDevice(fftx::global_ptr<DEVICE_PTR>
+        fftx::array_t<DIM, FFTX_DEVICE_PTR> outputDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
 						    (&outputDevicePtr, 0, 1), m_domain);
-        fftx::array_t<DIM, DEVICE_PTR> symbolDevice(fftx::global_ptr<DEVICE_PTR>
+        fftx::array_t<DIM, FFTX_DEVICE_PTR> symbolDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
 						    (&symbolDevicePtr, 0, 1), m_fdomain);
 
 #if defined(FFTX_CUDA)
@@ -158,10 +158,10 @@ public:
         //     m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
         //   }
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-	DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
-                        MEM_COPY_DEVICE_TO_HOST);
-        DEVICE_FREE((void*)inputDevicePtr);
-        DEVICE_FREE((void*)outputDevicePtr);
+	FFTX_DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
+                        FFTX_MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_FREE((void*)inputDevicePtr);
+        FFTX_DEVICE_FREE((void*)outputDevicePtr);
 #endif
       }
   }

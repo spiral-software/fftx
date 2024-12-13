@@ -17,22 +17,26 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
-  #define popen _popen
-  #define pclose _pclose
+  #define FFTX_POPEN _popen
+  #define FFTX_PCLOSE _pclose
+  // #define popen _popen
+  // #define pclose _pclose
 #else
   #include <unistd.h>    // dup2
+  #define FFTX_POPEN popen
+  #define FFTX_PCLOSE pclose
 #endif
 
 #include <sys/types.h> // rest for open/close
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #pragma once
 #if defined ( PRINTDEBUG )
-#define DEBUGOUT 1
+#define FFTX_DEBUGOUT 1
 #else
-#define DEBUGOUT 0
+#define FFTX_DEBUGOUT 0
 #endif
 
 
@@ -158,7 +162,7 @@ inline void Executor::parseDataStructure(std::string input) {
                 in_params.push_back(std::make_tuple("&"+words.at(1), atoi(words.at(2).c_str()), words.at(3)));
                 break;
             case 2:
-                if ( DEBUGOUT ) fftx::OutStream() << "the kernel name is " << words.at(1) << "\n";
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "the kernel name is " << words.at(1) << "\n";
                 kernel_name = words.at(1);
                 break;
             case 3:
@@ -233,25 +237,25 @@ inline void Executor::parseDataStructure(std::string input) {
         kernels += line;
         kernels += "\n";
     }
-    if( DEBUGOUT ) fftx::OutStream() << kernels << std::endl;
-    if ( DEBUGOUT ) fftx::OutStream() << "parsed input\n";
+    if( FFTX_DEBUGOUT ) fftx::OutStream() << kernels << std::endl;
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "parsed input\n";
 }
 
 inline void Executor::createProg() {
-    DEVICE_RTC_SAFE_CALL(nvrtcCreateProgram(&prog, // prog
+    FFTX_DEVICE_RTC_SAFE_CALL(nvrtcCreateProgram(&prog, // prog
     kernels.c_str(), // buffer
     NULL, // name
     0, // numHeaders
     NULL, // headers
     NULL)); 
-    if ( DEBUGOUT ) fftx::OutStream() << "created program\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "created program\n";
 }
 
 inline void Executor::getVars() {
     for(int i = 0; i < device_names.size(); i++) {
-        DEVICE_RTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
+        FFTX_DEVICE_RTC_SAFE_CALL(nvrtcAddNameExpression(prog, std::get<0>(device_names[i]).c_str()));
     }
-    if ( DEBUGOUT ) fftx::OutStream() << "added variables\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "added variables\n";
 }
 
 inline void Executor::compileProg() {
@@ -259,13 +263,13 @@ inline void Executor::compileProg() {
     compileResult = nvrtcCompileProgram(prog, 
     2, 
     opts); 
-    if ( DEBUGOUT ) fftx::OutStream() << "compiled program\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "compiled program\n";
 }
 
 inline void Executor::getLogsAndPTX() {
-    DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
+    FFTX_DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLogSize(prog, &logSize));
     log = new char[logSize];
-    DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
+    FFTX_DEVICE_RTC_SAFE_CALL(nvrtcGetProgramLog(prog, log));
     if (compileResult != NVRTC_SUCCESS) {
         fftx::OutStream() << "compile failure with code "<< nvrtcGetErrorString(compileResult) << std::endl;
         for(int i = 0; i < logSize; i++) {
@@ -275,54 +279,54 @@ inline void Executor::getLogsAndPTX() {
         exit(1);
     }
     delete[] log;
-    DEVICE_RTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
+    FFTX_DEVICE_RTC_SAFE_CALL(nvrtcGetPTXSize(prog, &ptxSize));
     ptx = new char[ptxSize];
-    DEVICE_RTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
-    DEVICE_SAFE_CALL(cuInit(0));
-    // DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
-    // DEVICE_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
-    DEVICE_SAFE_CALL(cuLinkCreate(0, 0, 0, &linkState));
-    DEVICE_SAFE_CALL(cuLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getCUDARuntime().c_str(), 
+    FFTX_DEVICE_RTC_SAFE_CALL(nvrtcGetPTX(prog, ptx));
+    FFTX_DEVICE_SAFE_CALL(cuInit(0));
+    // FFTX_DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
+    // FFTX_DEVICE_SAFE_CALL(cuCtxCreate(&context, 0, cuDevice));
+    FFTX_DEVICE_SAFE_CALL(cuLinkCreate(0, 0, 0, &linkState));
+    FFTX_DEVICE_SAFE_CALL(cuLinkAddFile(linkState, CU_JIT_INPUT_LIBRARY, getCUDARuntime().c_str(), 
     0, 0, 0));
-    DEVICE_SAFE_CALL(cuLinkAddData(linkState, CU_JIT_INPUT_PTX,
+    FFTX_DEVICE_SAFE_CALL(cuLinkAddData(linkState, CU_JIT_INPUT_PTX,
     (void *)ptx, ptxSize, "dft_jit.ptx",
     0, 0, 0));
-    DEVICE_SAFE_CALL(cuLinkComplete(linkState, &cubin, &cubinSize));
-    DEVICE_SAFE_CALL(cuModuleLoadData(&module, cubin));
-    if ( DEBUGOUT ) fftx::OutStream() << "created module\n";
+    FFTX_DEVICE_SAFE_CALL(cuLinkComplete(linkState, &cubin, &cubinSize));
+    FFTX_DEVICE_SAFE_CALL(cuModuleLoadData(&module, cubin));
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "created module\n";
 }
 
 inline void Executor::initializeVars() {
     for(int i = 0; i < device_names.size(); i++) {
-        if ( DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "this is i " << i << " this is the name " << std::get<0>(device_names[i]) << std::endl;
         const char * name;
-        DEVICE_RTC_SAFE_CALL(nvrtcGetLoweredName(
+        FFTX_DEVICE_RTC_SAFE_CALL(nvrtcGetLoweredName(
                                  prog, 
                                  std::get<0>(device_names[i]).c_str(), // name expression
                                  &name                         // lowered name
                                  ));
-        if ( DEBUGOUT ) fftx::OutStream() << "it got past lower name\n";
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "it got past lower name\n";
         CUdeviceptr variable_addr;
-        DEVICE_SAFE_CALL(cuModuleGetGlobal(&variable_addr, NULL, module, name));
-         if ( DEBUGOUT ) fftx::OutStream() << "it got past get global\n";
+        FFTX_DEVICE_SAFE_CALL(cuModuleGetGlobal(&variable_addr, NULL, module, name));
+         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "it got past get global\n";
         std::string test = std::get<2>(device_names[i]);
         switch(hashit(test)) {
             case zero:
             {
                 int * value = (int*)(data.at(i));
-                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
+                FFTX_DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(int)));
                 break;
             }
             case one:
             {
                 float * value = (float*)(data.at(i));
-                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
+                FFTX_DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(float)));
                 break;
             }
             case two:
             {   
                 double * value = (double*)(data.at(i));
-                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
+                FFTX_DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, value, std::get<1>(device_names.at(i))*sizeof(double)));
                 break;
             }
             case constant:
@@ -331,28 +335,28 @@ inline void Executor::initializeVars() {
             }
             case pointer_int:
             {
-                if ( DEBUGOUT ) fftx::OutStream() << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "i have a pointer int\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
-                DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
-                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
+                FFTX_DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(int)));
+                FFTX_DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(int*)));
                 // cuMemFree(h);      
                 break;
             }
             case pointer_float:
             {
-                if ( DEBUGOUT ) fftx::OutStream() << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "i have a pointer float\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
-                DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
-                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
+                FFTX_DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(float)));
+                FFTX_DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(float*)));
                 // cuMemFree(h);                
                 break;
             }
             case pointer_double:
             {
-                if ( DEBUGOUT ) fftx::OutStream() << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
+                if ( FFTX_DEBUGOUT ) fftx::OutStream() << "i have a pointer double\n" << std::get<1>(device_names.at(i)) << "\n";
                 CUdeviceptr h;
-                DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
-                DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
+                FFTX_DEVICE_SAFE_CALL(cuMemAlloc(&h, std::get<1>(device_names.at(i)) * sizeof(double)));
+                FFTX_DEVICE_SAFE_CALL(cuMemcpyHtoD(variable_addr, &h, sizeof(double*)));
                 // cuMemFree(h);
                 break;
             }
@@ -361,35 +365,35 @@ inline void Executor::initializeVars() {
 }
 
 inline void Executor::destoryProg() {
-    if ( DEBUGOUT ) fftx::OutStream() << "destoryed program call\n";
-    DEVICE_RTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "destoryed program call\n";
+    FFTX_DEVICE_RTC_SAFE_CALL(nvrtcDestroyProgram(&prog));
 }
 
 inline float Executor::initAndLaunch(std::vector<void*>& args) {
-    if ( DEBUGOUT ) fftx::OutStream() << "the kernel name is " << kernel_name << std::endl;
-    DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "the kernel name is " << kernel_name << std::endl;
+    FFTX_DEVICE_SAFE_CALL(cuModuleGetFunction(&kernel, module, kernel_name.c_str()));
 
-    if ( DEBUGOUT ) fftx::OutStream() << "configuring device execution environment " << std::endl;
-    DEVICE_SAFE_CALL(cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 1073741824));
-    DEVICE_SAFE_CALL(cuFuncSetCacheConfig(kernel, CU_FUNC_CACHE_PREFER_L1));
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "configuring device execution environment " << std::endl;
+    FFTX_DEVICE_SAFE_CALL(cuCtxSetLimit(CU_LIMIT_MALLOC_HEAP_SIZE, 1073741824));
+    FFTX_DEVICE_SAFE_CALL(cuFuncSetCacheConfig(kernel, CU_FUNC_CACHE_PREFER_L1));
      
 
-    if ( DEBUGOUT ) fftx::OutStream() << "launched kernel\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "launched kernel\n";
     CUevent start, stop;
-    DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
-    DEVICE_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
-    DEVICE_SAFE_CALL(cuEventRecord(start,0));
-    DEVICE_SAFE_CALL(
+    FFTX_DEVICE_SAFE_CALL(cuEventCreate(&start, CU_EVENT_DEFAULT));
+    FFTX_DEVICE_SAFE_CALL(cuEventCreate(&stop, CU_EVENT_DEFAULT));
+    FFTX_DEVICE_SAFE_CALL(cuEventRecord(start,0));
+    FFTX_DEVICE_SAFE_CALL(
         cuLaunchKernel(kernel,
                        1, 1, 1, // grid dim
                        1, 1, 1, // block dim
                        0, NULL, // shared mem and stream
                        //kernelargs.data(), 0)); // arguments
                        args.data(), 0));
-    DEVICE_SAFE_CALL(cuEventRecord(stop,0));
-    DEVICE_SAFE_CALL(cuCtxSynchronize());
-    DEVICE_SAFE_CALL(cuEventSynchronize(stop));
-    DEVICE_SAFE_CALL(cuEventElapsedTime(&GPUtime, start, stop));
+    FFTX_DEVICE_SAFE_CALL(cuEventRecord(stop,0));
+    FFTX_DEVICE_SAFE_CALL(cuCtxSynchronize());
+    FFTX_DEVICE_SAFE_CALL(cuEventSynchronize(stop));
+    FFTX_DEVICE_SAFE_CALL(cuEventElapsedTime(&GPUtime, start, stop));
     return getKernelTime();
 }
 
@@ -399,9 +403,9 @@ inline void Executor::execute(std::string file_name) {
     // fftx::OutStream() << (char*)inputargs.at(inputargs.size()-1) << std::endl;
     // fftx::OutStream() << (inputargs.at(inputargs.size()-2))[counts-1] << std::endl;
     //fftx::OutStream() << in.at(0).m_domain.size() << std::endl;
-    if ( DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "begin parsing\n";
     parseDataStructure(file_name);
-    if ( DEBUGOUT ) {
+    if ( FFTX_DEBUGOUT ) {
         fftx::OutStream() << "finished parsing\n";
         for(int i = 0; i < device_names.size(); i++) {
             fftx::OutStream() << std::get<0>(device_names[i]) << std::endl;

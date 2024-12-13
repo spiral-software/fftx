@@ -2,16 +2,16 @@
 #include <complex>
 #include <iostream>
 #include <stdlib.h>     /* srand, rand */
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
 #include "fftx_mpi.hpp"
 
 // using namespace std;
 
-#define DEBUG 0
-#define DEBUG_OUTPUT 0
-#define PRETTY_PRINT 1
-#define TOLERANCE 1e-8
+#define FFTX_DEBUG 0
+#define FFTX_DEBUG_OUTPUT 0
+#define FFTX_PRETTY_PRINT 1
+#define FFTX_TOLERANCE 1e-8
 
 inline size_t ceil_div(size_t a, size_t b) {
   return (a + b - 1) / b;
@@ -196,8 +196,8 @@ int main(int argc, char* argv[]) {
     size_t out_size = sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO;
     host_out = (double *) malloc(out_size);
 
-    DEVICE_MALLOC(&dev_in , in_size);
-    DEVICE_MALLOC(&dev_out, out_size);
+    FFTX_DEVICE_MALLOC(&dev_in , in_size);
+    FFTX_DEVICE_MALLOC(&dev_out, out_size);
 
     // () is distributed
     // assume layout is [(pz), Z/pz, Y, X, b] (slowest to fastest).
@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
       for (size_t j = 0; j < N; j++) {
         for (size_t i = 0; i < M*e; i++) {
           for (size_t b = 0; b < batch; b++) {
-            if (DEBUG_OUTPUT && R2C)
+            if (FFTX_DEBUG_OUTPUT && R2C)
               { // CI == 1
                 // Note that we set host_in to zero if l >= K.
                 double v =
@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
+    FFTX_DEVICE_MEM_COPY(dev_in, host_in, in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
   } else { // is inverse
     /* Assumes inverse embedded keeps full doubled-embedded space.
     [(px), N*e, ceil(Mo/px), pz*ceil(K/pz)*e] (output of fwd)
@@ -260,7 +260,7 @@ int main(int argc, char* argv[]) {
     size_t Ki = K*e;
     size_t in_size = sizeof(double) * N*e * Mi0 * Ki * batch * CI;
     host_in  = (double *) malloc(in_size);
-    DEVICE_MALLOC(&dev_in ,      in_size);
+    FFTX_DEVICE_MALLOC(&dev_in ,      in_size);
 
     size_t Mo = M*e;
     size_t Mo0 = ceil_div(Mo, p);
@@ -268,12 +268,12 @@ int main(int argc, char* argv[]) {
     size_t Ko0 = ceil_div(Ko, p);
     size_t out_size = sizeof(double) * Ko0 * N*e * p*Mo0 * batch * CO;
     host_out = (double *) malloc(out_size);
-    DEVICE_MALLOC(&dev_out,      out_size);
+    FFTX_DEVICE_MALLOC(&dev_out,      out_size);
 
     // assume layout is [(px), Y, X'/px, Z] (slowest to fastest)
     // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
     //        C2R, N*e-1, p*Mi0-1, Ki-1);
-    // BEGIN DEBUG_OUTPUT
+    // BEGIN FFTX_DEBUG_OUTPUT
     if (C2R)
       {
         // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
@@ -284,7 +284,7 @@ int main(int argc, char* argv[]) {
                           << ", " << imin << ":" << imax
                           << ", " << 0 << ":" << (N*e-1) << ")" << std::endl;
       }
-    // END DEBUG_OUTPUT
+    // END FFTX_DEBUG_OUTPUT
     for (size_t j = 0; j < N*e; j++) {
       for (size_t i0 = 0; i0 < Mi0; i0++) {
         size_t i = rank * Mi0 + i0;
@@ -307,8 +307,8 @@ int main(int argc, char* argv[]) {
                   }
               }
             }
-            // BEGIN DEBUG_OUTPUT
-            if (DEBUG_OUTPUT && C2R)
+            // BEGIN FFTX_DEBUG_OUTPUT
+            if (FFTX_DEBUG_OUTPUT && C2R)
               { // CI == 2; c == 0 for real part, 1 for imaginary part.
                 double rval = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI];
                 double ival = host_in[((j * Mi0*Ki + i0 * Ki + l)*batch + b) * CI + 1];
@@ -322,15 +322,15 @@ int main(int argc, char* argv[]) {
                                   << std::setw(18) << rval
                                   << std::setw(18) << ival << std::endl;
               }
-            // END DEBUG_OUTPUT
+            // END FFTX_DEBUG_OUTPUT
           }
         }
       }
     }
-    DEVICE_MEM_COPY(dev_in, host_in, in_size, MEM_COPY_HOST_TO_DEVICE);
+    FFTX_DEVICE_MEM_COPY(dev_in, host_in, in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
   } // end forward/inverse check.
 
-  if (PRETTY_PRINT) {
+  if (FFTX_PRETTY_PRINT) {
     if (rank == 0) {
       fftx::OutStream() << "Problem size: " << M << " x " << N << " x " << K << std::endl;
       fftx::OutStream() << "Batch size  : " << batch << std::endl;
@@ -347,13 +347,13 @@ int main(int argc, char* argv[]) {
 
     double start_time = MPI_Wtime();
 
-    fftx_execute_1d(plan, (double*)dev_out, (double*)dev_in, (is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE));
+    fftx_execute_1d(plan, (double*)dev_out, (double*)dev_in, (is_forward ? FFTX_DEVICE_FFT_FORWARD : FFTX_DEVICE_FFT_INVERSE));
 
     double end_time = MPI_Wtime();
     double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
 
     if (rank == 0) {
-      if (PRETTY_PRINT) {
+      if (FFTX_PRETTY_PRINT) {
         fftx::OutStream() << "\tTrial " << t << ": " << max_time << " seconds" << std::endl;
       } else {
         fftx::OutStream()
@@ -384,7 +384,7 @@ int main(int argc, char* argv[]) {
       size_t Ki0 = ceil_div(K, p);
       size_t Ko0 = Ki0; // embeds after collection from A2A.
 
-      DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO, MEM_COPY_DEVICE_TO_HOST);
+      FFTX_DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * N*e * Mo0 * p*Ko0*e * batch * CO, FFTX_MEM_COPY_DEVICE_TO_HOST);
 
       double *first_elems = (double *) malloc(sizeof(double) * batch);
       for (size_t b = 0; b < batch; b++) {
@@ -413,7 +413,7 @@ int main(int argc, char* argv[]) {
       // distribution is [Y, X'/p, Z, b]
       if (rank == 0) {
         for (size_t b = 0; b < batch; b++) {
-          if (abs(host_out[b*CO + 0] - first_elems[b]) > TOLERANCE) {
+          if (abs(host_out[b*CO + 0] - first_elems[b]) > FFTX_TOLERANCE) {
             correct = false;
           }
         }
@@ -433,7 +433,7 @@ int main(int argc, char* argv[]) {
       size_t Mo = M*e;
 
       size_t out_size = sizeof(double) * Ko0 * N*e * Mo * batch * CO;
-      DEVICE_MEM_COPY(host_out, dev_out, out_size, MEM_COPY_DEVICE_TO_HOST);
+      FFTX_DEVICE_MEM_COPY(host_out, dev_out, out_size, FFTX_MEM_COPY_DEVICE_TO_HOST);
 
       for (size_t k0 = 0; k0 < Ko0; k0++) {
         size_t k = rank * Ko0 + k0;
@@ -444,16 +444,16 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t tst_idx = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO + c;
                   if (c == 0) {
-                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > TOLERANCE) {
+                    if (abs(host_out[tst_idx] - 1.0 * M*e * N*e * K*e * (b+1)) > FFTX_TOLERANCE) {
                       correct = false;
                     }
                   } else if (c == 1) {
-                    if (abs(host_out[tst_idx] -                     0.0) > TOLERANCE) {
+                    if (abs(host_out[tst_idx] -                     0.0) > FFTX_TOLERANCE) {
                       correct = false;
                     }
                   }
                 }
-                if (DEBUG) {
+                if (FFTX_DEBUG) {
                   size_t test_idx2 = ((k0 * N*e*Mo + j * Mo + i)*batch + b) * CO;
                   fftx::OutStream() << "(" << k << "," << j << "," << i << ")\t"
                                     << std::fixed << std::setw(12)
@@ -469,7 +469,7 @@ int main(int argc, char* argv[]) {
       MPI_Reduce(rank == 0 ? MPI_IN_PLACE : &correct, &correct, 1, MPI_C_BOOL, MPI_LAND, 0, MPI_COMM_WORLD);
     }
     if (rank == 0) {
-      if (PRETTY_PRINT) {
+      if (FFTX_PRETTY_PRINT) {
         fftx::OutStream() << "Correct     : " << (correct ? "Yes" : "No") << std::endl;
       } else {
         if (correct) {
@@ -512,21 +512,21 @@ int main(int argc, char* argv[]) {
         size_t global_out_size = sizeof(double) * K*2 * N*2 * M*2 * batch * CO;
 
         href_in   = (double *) malloc(sizeof(double) * global_in_size );
-        DEVICE_MALLOC(&dref_in ,      sizeof(double) * global_out_size);
+        FFTX_DEVICE_MALLOC(&dref_in ,      sizeof(double) * global_out_size);
 
         href_in_modified = (double *) malloc(global_in_size);
         href_out = (double *) malloc(global_out_size);
         htest_out = (double *) malloc(global_out_size);
-        DEVICE_MALLOC(&dref_out, global_out_size);
+        FFTX_DEVICE_MALLOC(&dref_out, global_out_size);
       } else {
         href_in   = (double *) malloc(sizeof(double) * p * local_in_size);
-        DEVICE_MALLOC(&dref_in ,      sizeof(double) * p * local_in_size);
+        FFTX_DEVICE_MALLOC(&dref_in ,      sizeof(double) * p * local_in_size);
         if (!is_forward) {
         href_in_modified = (double *) malloc(sizeof(double) * p * local_in_size);
         }
         href_out  = (double *) malloc(sizeof(double) * p * local_out_size);
         htest_out = (double *) malloc(sizeof(double) * p * local_out_size);
-        DEVICE_MALLOC(&dref_out, sizeof(double) * p * local_out_size);
+        FFTX_DEVICE_MALLOC(&dref_out, sizeof(double) * p * local_out_size);
       }
     }
     // fwd [Z, Y, X, b] <= Gather pz on [(pz), Z/pz, Y, X, b]
@@ -535,7 +535,7 @@ int main(int argc, char* argv[]) {
     // TODO update count for embedded.
     // fwd [px, Y, X'/px, Z] <= Gather px on [(px), Y, X'/px, Z]
     // inv [Z, Y, X, b] Gather pz on [(pz), Z/pz, Y, X, b]
-    DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * local_out_size, MEM_COPY_DEVICE_TO_HOST);
+    FFTX_DEVICE_MEM_COPY(host_out, dev_out, sizeof(double) * local_out_size, FFTX_MEM_COPY_DEVICE_TO_HOST);
     MPI_Gather(host_out, local_out_size, MPI_DOUBLE, htest_out, local_out_size, MPI_DOUBLE, root, MPI_COMM_WORLD);
 
     if (rank == root) {
@@ -655,28 +655,28 @@ int main(int argc, char* argv[]) {
       // if inverse, permute data before calling cuFFT.
       if (is_embedded) {
         // TODO: fix for other sizes?
-        DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * K*2*N*2*Mi*batch*CI, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * K*2*N*2*Mi*batch*CI, FFTX_MEM_COPY_HOST_TO_DEVICE);
       } else {
-        DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * p * local_in_size, MEM_COPY_HOST_TO_DEVICE);
+        FFTX_DEVICE_MEM_COPY(dref_in, href_in, sizeof(double) * p * local_in_size, FFTX_MEM_COPY_HOST_TO_DEVICE);
       }
       // create cuFFT plan 3d
-      DEVICE_FFT_HANDLE plan;
+      FFTX_DEVICE_FFT_HANDLE plan;
       // slowest to fastest.
       if (C2C) {
-        DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, DEVICE_FFT_Z2Z);
-        DEVICE_FFT_EXECZ2Z(
-          plan, (DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out,
-          is_forward ? DEVICE_FFT_FORWARD : DEVICE_FFT_INVERSE
+        FFTX_DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, FFTX_DEVICE_FFT_Z2Z);
+        FFTX_DEVICE_FFT_EXECZ2Z(
+          plan, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_out,
+          is_forward ? FFTX_DEVICE_FFT_FORWARD : FFTX_DEVICE_FFT_INVERSE
         );
       } else if (C2R) {
-        DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, DEVICE_FFT_Z2D);
-        DEVICE_FFT_EXECZ2D(
-          plan, (DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (DEVICE_FFT_DOUBLEREAL *) dref_out
+        FFTX_DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, FFTX_DEVICE_FFT_Z2D);
+        FFTX_DEVICE_FFT_EXECZ2D(
+          plan, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_in, (FFTX_DEVICE_FFT_DOUBLEREAL *) dref_out
         );
       } else if (R2C) {
-        DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, DEVICE_FFT_D2Z);
-        DEVICE_FFT_EXECD2Z(
-          plan, (DEVICE_FFT_DOUBLEREAL *) dref_in, (DEVICE_FFT_DOUBLECOMPLEX *) dref_out
+        FFTX_DEVICE_FFT_PLAN3D(&plan, K*e, N*e, M*e, FFTX_DEVICE_FFT_D2Z);
+        FFTX_DEVICE_FFT_EXECD2Z(
+          plan, (FFTX_DEVICE_FFT_DOUBLEREAL *) dref_in, (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dref_out
         );
       } else {
         fftx::OutStream() << "Error: unknown plan type." << std::endl;
@@ -684,9 +684,9 @@ int main(int argc, char* argv[]) {
       }
 
       {
-        DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-        if (device_status != DEVICE_SUCCESS) {
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code "
+        FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+        if (device_status != FFTX_DEVICE_SUCCESS) {
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code "
                             << device_status << " after 3DFFT!"
                             << std::endl;
         }
@@ -695,15 +695,15 @@ int main(int argc, char* argv[]) {
 
       if (is_embedded) {
         // TODO: update for Mo R2C. and others.
-        DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * K*2*N*2*M*2*batch*CO, MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * K*2*N*2*M*2*batch*CO, FFTX_MEM_COPY_DEVICE_TO_HOST);
       } else {
-        DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * p * local_out_size, MEM_COPY_DEVICE_TO_HOST);
+        FFTX_DEVICE_MEM_COPY(href_out, dref_out, sizeof(double) * p * local_out_size, FFTX_MEM_COPY_DEVICE_TO_HOST);
       }
 
       {
-        DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-        if (device_status != DEVICE_SUCCESS) {
-          fftx::ErrStream() << "DEVICE_SYNCHRONIZE returned error code "
+        FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+        if (device_status != FFTX_DEVICE_SUCCESS) {
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code "
                             << device_status << " after 3DFFT!"
                             << std::endl;
         }
@@ -714,7 +714,7 @@ int main(int argc, char* argv[]) {
       size_t m0 = ceil_div(m, p);
       size_t m1 = p;
 
-      if (DEBUG) {
+      if (FFTX_DEBUG) {
         fftx::OutStream() << std::endl;
       }
 
@@ -730,9 +730,9 @@ int main(int argc, char* argv[]) {
                   for (size_t b = 0; b < batch; b++) {
                       size_t test_idx2 = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO;
                       size_t ref_idx2  = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO;
-                      if (DEBUG) {
-                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < TOLERANCE;
-                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < TOLERANCE;
+                      if (FFTX_DEBUG) {
+                        bool same = abs(href_out[ref_idx2] - htest_out[test_idx2]) < FFTX_TOLERANCE;
+                        same     &= abs(href_out[ref_idx2+1] - htest_out[test_idx2+1]) < FFTX_TOLERANCE;
                         fftx::OutStream() << "(" << k << "," << j << "," << i << ")\t"
                                           << std::setw(12)
                                           << href_out [ ref_idx2 + 0] << " "
@@ -749,9 +749,9 @@ int main(int argc, char* argv[]) {
                       size_t tst_idx = ((i1 * N*e*m0*K*e + j * m0*K*e + i0 * K*e + k)*batch + b) * CO + c;
                       size_t ref_idx = ((k  * N*e*m      + j * m      +            i)*batch + b) * CO + c;
 
-                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
-                        // BEGIN DEBUG_OUTPUT
-                        if (DEBUG_OUTPUT)
+                      if (abs(href_out[ref_idx] - htest_out[tst_idx]) > FFTX_TOLERANCE) {
+                        // BEGIN FFTX_DEBUG_OUTPUT
+                        if (FFTX_DEBUG_OUTPUT)
                           {
                             // printf("batch=%zu %zu %zu %zu part=%zu ref=%12.4e test=%12.4e\n",
                             // b, k, j, i, c, href_out[ref_idx], htest_out[tst_idx]);
@@ -765,7 +765,7 @@ int main(int argc, char* argv[]) {
                                               << " test=" << htest_out[tst_idx]
                                               << std::endl;
                           }
-                        // END DEBUG_OUTPUT
+                        // END FFTX_DEBUG_OUTPUT
                         correct = false;
                       }
                     }
@@ -781,7 +781,7 @@ int main(int argc, char* argv[]) {
             for (size_t i = 0; i < M*e; i++) {
               for (size_t b = 0; b < batch; b++) {
 
-                if (DEBUG) {
+                if (FFTX_DEBUG) {
                   size_t ref_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
                   size_t tst_idx2 = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO;
                   // printf("%f\t%f\n", href_out[ref_idx2], htest_out[tst_idx2]);
@@ -792,8 +792,8 @@ int main(int argc, char* argv[]) {
                 for (size_t c = 0; c < CO; c++) {
                   size_t ref_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
                   size_t tst_idx = ((k * N*e*M*e + j * M*e + i)*batch + b) * CO + c;
-                  // BEGIN DEBUG_OUTPUT
-                  if (DEBUG_OUTPUT)
+                  // BEGIN FFTX_DEBUG_OUTPUT
+                  if (FFTX_DEBUG_OUTPUT)
                     {
                       // printf("DR out_array%4zu%4zu%4zu%18.8f%18.8f\n",
                       // i, j, k, htest_out[tst_idx], href_out[ref_idx]);
@@ -806,8 +806,8 @@ int main(int argc, char* argv[]) {
                                         << std::setw(18) << href_out[ref_idx]
                                         << std::endl;
                     }
-                  // END DEBUG_OUTPUT
-                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > TOLERANCE) {
+                  // END FFTX_DEBUG_OUTPUT
+                  if (abs(href_out[ref_idx] - htest_out[tst_idx]) > FFTX_TOLERANCE) {
                     correct = false;
                   }
                 }
@@ -816,7 +816,7 @@ int main(int argc, char* argv[]) {
           }
         }
       }
-      if (PRETTY_PRINT) {
+      if (FFTX_PRETTY_PRINT) {
         fftx::OutStream() << "Correct     : " << (correct ? "Yes" : "No") << std::endl;
       } else {
         if (correct) {
@@ -829,8 +829,8 @@ int main(int argc, char* argv[]) {
       free(href_in);
       free(href_out);
       free(htest_out);
-      DEVICE_FREE(dref_in);
-      DEVICE_FREE(dref_out);
+      FFTX_DEVICE_FREE(dref_in);
+      FFTX_DEVICE_FREE(dref_out);
     } // end root check.
   } else { // end check on correctness check
     // not checking.
@@ -846,8 +846,8 @@ int main(int argc, char* argv[]) {
 end:
   fftx_plan_destroy(plan);
 
-  DEVICE_FREE(dev_in);
-  DEVICE_FREE(dev_out);
+  FFTX_DEVICE_FREE(dev_in);
+  FFTX_DEVICE_FREE(dev_out);
 
   free(host_in);
   free(host_out);
