@@ -269,15 +269,15 @@ void Executor::execute(std::string result) {
 
     std::stringstream cmakecmd;
     #if defined(_WIN32) || defined (_WIN64)
-        cmakecmd = "cmake . " << FFTX_CMAKE_REDIRECT << " && cmake --build . --config Release" << FFTX_CMAKE_REDIRECT;      //  --target install
+        cmakecmd << "cmake . " << FFTX_CMAKE_REDIRECT << " && cmake --build . --config Release" << FFTX_CMAKE_REDIRECT;      //  --target install
     #elif defined(__APPLE__)
         struct utsname unameData;
         uname(&unameData);
         std::string machine_name(unameData.machine);
         if(machine_name == "arm64")
-          cmakecmd = "cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
+          cmakecmd << "cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
         else
-          cmakecmd = "cmake . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
+          cmakecmd << "cmake . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
     #else
         cmakecmd << "cmake . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
     #endif
