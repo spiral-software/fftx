@@ -29,7 +29,7 @@ where:
 
     ``complex`` - 1 for a complex-to-complex transform, or 0 if the input or output is real (e.g. R2C or C2R). 
 
-    ``check`` - 1 to check the distributed computation with an equivalent 3D transform using vendor libraries only on rank 0. This should be 0 for problem sizes that would be too large to fit in device memory.
+    ``check`` - 2 to check the distributed computation on all elements of an equivalent 3D transform using vendor libraries only on rank 0; 1 to check only first element; 0 for no check. This should be 0 for problem sizes that would be too large to fit in device memory. No check is done if any dimension has length greater than 64 or if there are more than 4 MPI ranks.
 
 For a forward transform, the input data is laid out as ``[(Z0), Z1, Y, X]``, where ``Z0`` and ``Z1`` are derived from tiling the ``Z`` dimension and distributing a block to each of the ``p`` MPI ranks.
 Therefore, ``Z0`` is distributed over the ranks, ``Z1`` is the slowest local dimension and ``X`` is the fastest dimension.
