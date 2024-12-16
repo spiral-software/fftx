@@ -11,7 +11,6 @@
 #include <sstream>
 #include <cstdio>
 #include <string>
-#include <cstdio>      // perror
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
@@ -58,10 +57,33 @@
 #include <regex>
 #pragma once
 
-#if defined ( PRINTDEBUG )
+// Flags to show cmake output, make output.
+#define FFTX_CMAKE_OUT 0
+#define FFTX_MAKE_OUT 0
+
+#if defined ( FFTX_PRINTDEBUG )
 #define FFTX_DEBUGOUT 1
 #else
 #define FFTX_DEBUGOUT 0
+#endif
+
+// Where to direct null output.
+#if defined(_WIN32) || defined (_WIN64)
+#define FFTX_NULL_OUT " > NUL"
+#else
+#define FFTX_NULL_OUT " > /dev/null"
+#endif
+
+#if FFTX_CMAKE_OUT
+#define FFTX_CMAKE_REDIRECT ""
+#else
+#define FFTX_CMAKE_REDIRECT FFTX_NULL_OUT
+#endif
+
+#if FFTX_MAKE_OUT
+#define FFTX_MAKE_REDIRECT ""
+#else
+#define FFTX_MAKE_REDIRECT FFTX_NULL_OUT
 #endif
 
 static constexpr auto cmake_script{
@@ -152,7 +174,12 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
         void (*fn3) ()= (void (*)()) GetProcAddress ( (HMODULE) shared_lib, destroy.c_str() );
     #else
         void (*fn1) ()= (void (*)())dlsym(shared_lib, init.c_str());
+#if defined(__APPLE__)
+        // Fix 3 args because of unresolved problem with variadic functions on Apple.
+        void (*fn2)(double *, double *, double *) = (void (*)(double *, double *, double *))dlsym(shared_lib, transform.c_str());
+#else
         void (*fn2)(double *, double *, ...) = (void (*)(double *, double *, ...))dlsym(shared_lib, transform.c_str());
+#endif
         void (*fn3) ()= (void (*)())dlsym(shared_lib, destroy.c_str());
     #endif
 
@@ -164,7 +191,12 @@ float Executor::initAndLaunch(std::vector<void*>& args, std::string name) {
     }
     if(fn2) {
       if(args.size() < 3)
+#if defined(__APPLE__)
+        // Fix 3 args because of unresolved problem with variadic functions on Apple.
+        fn2((double*)args.at(0),(double*)args.at(1), nullptr);
+#else
         fn2((double*)args.at(0),(double*)args.at(1));
+#endif
       else
         fn2((double*)args.at(0),(double*)args.at(1), (double*)args.at(2));
     }else {
@@ -235,19 +267,21 @@ void Executor::execute(std::string result) {
         exit(-1);
     }
 
+    std::stringstream cmakecmd;
     #if defined(_WIN32) || defined (_WIN64)
-        systemret = system("cmake . && cmake --build . --config Release");      //  --target install
+        cmakecmd = "cmake . " << FFTX_CMAKE_REDIRECT << " && cmake --build . --config Release" << FFTX_CMAKE_REDIRECT;      //  --target install
     #elif defined(__APPLE__)
         struct utsname unameData;
         uname(&unameData);
         std::string machine_name(unameData.machine);
         if(machine_name == "arm64")
-            systemret = system("cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . && make");
+          cmakecmd = "cmake -DCMAKE_APPLE_SILICON_PROCESSOR=arm64 . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
         else
-            systemret = system("cmake . && make");
+          cmakecmd = "cmake . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
     #else
-        systemret = system("cmake . && make"); 
+        cmakecmd << "cmake . " << FFTX_CMAKE_REDIRECT << " && make" << FFTX_MAKE_REDIRECT;
     #endif
+        systemret = system(cmakecmd.str().c_str());
 
     check = FFTX_CHDIR(current_working_dir.c_str());
     if(check != 0) {
