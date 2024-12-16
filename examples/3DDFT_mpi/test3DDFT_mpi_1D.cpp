@@ -163,11 +163,21 @@ int main(int argc, char* argv[]) {
   size_t Mi0 = ceil_div(Mi, p);
   size_t Mi1 = p;
 
-  double *host_in, *dev_in;
-  double *host_out, *dev_out;
-  size_t CI = C2C || C2R ? 2 : 1; // complex input.
-  size_t CO = C2C || R2C ? 2 : 1; // complex output.
+  double *host_in, *dev_in; // input to FFTX transform
+  double *host_out, *dev_out; // output of FFTX transform
+  size_t CI = C2C || C2R ? 2 : 1; // 2 if input complex, 1 if input real.
+  size_t CO = C2C || R2C ? 2 : 1; // 2 if output complex, 1 if output real.
 
+  /*
+    Set the input:  host_in on host, and dev_in on device.
+
+    If forward transform, set input to random numbers, unless
+    FFTX_DEBUG_OUTPUT && R2C, in which case set to inputRealSymmetric function.
+
+    If inverse transform, if check == 1 set input to 0 except one element;
+    otherwise, if C2R then set to testfunhermitian function,
+    and if C2C then set to random numbers.
+   */
   if (is_forward) {
     /*
     [(pz), ceil(K/pz), N, M]
@@ -207,6 +217,7 @@ int main(int argc, char* argv[]) {
       for (size_t j = 0; j < N; j++) {
         for (size_t i = 0; i < M*e; i++) {
           for (size_t b = 0; b < batch; b++) {
+            // BEGIN FFTX_DEBUG_OUTPUT
             if (FFTX_DEBUG_OUTPUT && R2C)
               { // CI == 1
                 // Note that we set host_in to zero if l >= K.
@@ -225,6 +236,7 @@ int main(int argc, char* argv[]) {
                 // printf("INPUT %3d %3d %3d : %18.8f\n", l+1, j+1, i+1, v);
                 host_in[((l0*N + j) * M*e + i)*batch + b] = v;
               }
+            // END FFTX_DEBUG_OUTPUT
             else
               {
             for (size_t c = 0; c < CI; c++) {
@@ -274,7 +286,7 @@ int main(int argc, char* argv[]) {
     // printf("C2R=%d RANGES for inverse: j in 0:%lu, i in 0:%lu, l in 0:%lu\n",
     //        C2R, N*e-1, p*Mi0-1, Ki-1);
     // BEGIN FFTX_DEBUG_OUTPUT
-    if (C2R)
+    if (FFTX_DEBUG_OUTPUT && C2R)
       {
         // printf("IMDPRDFT dimensions %d (for fun0), %d (for fun1), %d (for fun2)\n", Mo, N*e, Ki);
         int imin = rank * Mi0;
@@ -342,7 +354,14 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  /*
+    Get plan for the distributed FFTX transform.
+   */
   fftx_plan plan = fftx_plan_distributed_1d(MPI_COMM_WORLD, p, M, N, K, batch, is_embedded, is_complex);
+
+  /*
+    Run trials of the distributed FFTX transform, and report timings.
+  */
   for (int t = 0; t < trials; t++) {
 
     double start_time = MPI_Wtime();
@@ -374,6 +393,16 @@ int main(int argc, char* argv[]) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
+  /*
+    Check the transform output, if check > 0:
+
+    If check == 1 then verify only that first element of transform output
+    is correct within FFTX_TOLERANCE.
+
+    If check == 2 then run the vendor transform on the same input as
+    the FFTX transform, and verify that their outputs differ by
+    at most FFTX_TOLERANCE at each element.
+   */
   if (check == 1) { // simple check, only check first element.
     bool correct = true;
     if (is_forward) {
@@ -488,7 +517,7 @@ int main(int argc, char* argv[]) {
       goto end;
     }
     double *href_in, *href_in_modified, *href_out, *htest_out;
-    double *dref_in, *dref_out;
+    double *dref_in, *dref_out; // on-device input and output of vendor transform
     size_t root = 0;
     size_t local_in_size, local_out_size;
     if (is_forward) { // fwd, initially Z distributed
