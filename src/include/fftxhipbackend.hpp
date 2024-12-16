@@ -18,7 +18,7 @@
 #include "fftxdevice_macros.h"
 #pragma once
 
-#if defined ( PRINTDEBUG )
+#if defined ( FFTX_PRINTDEBUG )
 #define FFTX_DEBUGOUT 1
 #else
 #define FFTX_DEBUGOUT 0
