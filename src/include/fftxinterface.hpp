@@ -10,7 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include <array>
 #include <cstdio>
 #include <cassert>

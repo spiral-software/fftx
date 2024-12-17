@@ -91,7 +91,7 @@ def start_header_file ( type, script ):
     str.append ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
     str.append ( '//  See LICENSE for details\n\n' )
 
-    str.append ( '#include "fftx3.hpp"\n\n' )
+    str.append ( '#include "fftx.hpp"\n\n' )
 
     str.append ( '#ifndef FFTX_INITTRANSFORMFUNC\n' )
     str.append ( '#define FFTX_INITTRANSFORMFUNC\n' )

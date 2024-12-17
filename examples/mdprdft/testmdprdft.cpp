@@ -1,4 +1,4 @@
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
 #include "fftxmdprdftObj.hpp"

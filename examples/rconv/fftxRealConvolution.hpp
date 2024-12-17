@@ -4,7 +4,7 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
 #include "fftxrconvObj.hpp"

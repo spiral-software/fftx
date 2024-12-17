@@ -1,4 +1,4 @@
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include "fftxinterface.hpp"
 #include "fftxbatch1dprdftObj.hpp"
 #include <math.h>  

@@ -1,3 +1,54 @@
+## Release Notes for FFTX Version 1.1
+
+### Introduction
+
+This is a release for FFTX with several new features.
+
+### Supported Platforms
+
+FFTX is supported on Windows, Linux, and MacOS with CPU backend, and on AMD HIP, NVIDIA CUDA, and Intel SYCL with GPU backend.
+
+FFTX is configured using **cmake** and is expected to run on most UNIX-like systems.
+
+See the [**README**](./README.md) file for more information on how to build for a specific platform.
+
+### Get FFTX Version 1.1
+
+You can download the lastest release from:
+
+https://github.com/spiral-software/fftx.git
+
+## Change Summary
+
+* FFTX now supports a SYCL backend, in addition to HIP and CUDA.
+* A new example in Fortran has been added.
+
+### New Features
+
+* Add support for SYCL.
+
+#### General Cleanup:
+
+* File name changes:  fftx3.hpp now fftx.hpp, fftx3utilities.h now fftxutilities.hpp
+
+#### Examples:
+
+* New fortran example in examples/fortran directory.
+
+### Bug Fixes
+
+* The rconv example on Apple CPU has been corrected.
+
+### Known Issues
+
+N/A
+
+## License
+
+FFTX is open source software licensed under the terms of the Simplified BSD
+License (see the [**LICENSE**](./LICENSE) file for the full text).
+
+----------------------------------------------------------------------------------------------------
 ## Release Notes for FFTX Version 1.0.3
 
 ### Introduction

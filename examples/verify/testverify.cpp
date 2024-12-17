@@ -1,6 +1,5 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
-#include "fftx3.hpp"
 #include "fftxdevice_macros.h"
 
 #include "fftxVerifyTransform.hpp"

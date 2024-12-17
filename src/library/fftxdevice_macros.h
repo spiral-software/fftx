@@ -2,7 +2,7 @@
 #define FFTX_DEVICE_MACROS_HEADER
 
 // Need this for ErrStream().
-#include "fftx3.hpp"
+#include "fftx.hpp"
 
 #if defined(FFTX_HIP)
 #include <hip/hiprtc.h>

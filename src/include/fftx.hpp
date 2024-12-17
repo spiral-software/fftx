@@ -42,7 +42,7 @@
 #define FFTX_XSTR(s) FFTX_STR(s)
 #define FFTX_STR(s) #s
 
-#define FFTX_VERSION 1.0
+#define FFTX_VERSION 1.1
 
 // Set this to 1 for row-major order, 0 for column-major order.
 #define FFTX_ROW_MAJOR_ORDER 1
@@ -635,7 +635,7 @@ namespace fftx
     #ifndef FFTX_PLAN_CODEGEN_H
     #define FFTX_PLAN_CODEGEN_H
 
-    #include "fftx3.hpp"
+    #include "fftx.hpp"
 
     extern void init_PLAN_spiral(); 
     extern void PLAN_spiral(double** Y, double** X, double** symvar); 
@@ -740,7 +740,7 @@ template<int DIM>
     #ifndef FFTX_PLAN_CODEGEN_H
     #define FFTX_PLAN_CODEGEN_H
 
-    #include "fftx3.hpp"
+    #include "fftx.hpp"
 
     extern void init_PLAN_spiral(); 
     extern void PLAN_spiral(double* Y, double* X, double* symvar); 
