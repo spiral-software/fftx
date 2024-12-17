@@ -18,7 +18,6 @@
 #else
 #include "fftxcpubackend.hpp"
 #endif
-#include "fftx3.hpp"
 #include <array>
 #include <cstdio>
 #include <cassert>
