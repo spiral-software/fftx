@@ -52,7 +52,7 @@
 
 namespace fftx
 {
-  std::string version() { return std::string(FFTX_XSTR(FFTX_VERSION)); }
+  inline std::string version() { return std::string(FFTX_XSTR(FFTX_VERSION)); }
   
   /**
      Is this a FFTX codegen program, or is this application code using a generated transform.
