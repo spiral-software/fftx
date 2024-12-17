@@ -20,24 +20,30 @@ https://github.com/spiral-software/fftx.git
 
 ## Change Summary
 
+* This version includes run-time compilation for sizes that are not in the library.
 * FFTX now supports a SYCL backend, in addition to HIP and CUDA.
-* A new example in Fortran has been added.
+* A Fortran example has been added.
+* Version number is accessible with the macro `FFTX_VERSION` and with the function `fftx::version()`.
 
 ### New Features
 
 * Add support for SYCL.
+* New output streams `fftx::OutStream()` replacing `stdout`, which is its default setting, and likewise `fftx::ErrStream()` replacing `stdin`, which is its default setting.
 
 #### General Cleanup:
 
-* File name changes:  fftx3.hpp now fftx.hpp, fftx3utilities.h now fftxutilities.hpp
+* Macros now have names beginning with FFTX_.
+* Files that are `#include`d anywhere now all have names that begin with `fftx`.
+* Updated module lists in `supercomputer-README.md`.
+* `fftx3.hpp` is now named `fftx.hpp`, and `fftx3utilities.h` is now `fftxutilities.hpp`.
 
 #### Examples:
 
-* New fortran example in examples/fortran directory.
+* New fortran example in `examples/fortran` directory.
 
 ### Bug Fixes
 
-* The rconv example on Apple CPU has been corrected.
+* The `rconv` example that was failing on Apple CPU has been corrected on that platform.
 
 ### Known Issues
 
