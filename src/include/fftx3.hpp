@@ -38,6 +38,12 @@
    \endlink
 */
 
+// Macros for stringizing:  do std::string(FFTX_XSTR(macroname)).
+#define FFTX_XSTR(s) FFTX_STR(s)
+#define FFTX_STR(s) #s
+
+#define FFTX_VERSION 1.0
+
 // Set this to 1 for row-major order, 0 for column-major order.
 #define FFTX_ROW_MAJOR_ORDER 1
 
@@ -46,7 +52,8 @@
 
 namespace fftx
 {
-
+  std::string version() { return std::string(FFTX_XSTR(FFTX_VERSION)); }
+  
   /**
      Is this a FFTX codegen program, or is this application code using a generated transform.
   */
