@@ -449,12 +449,14 @@ def create_metadata ( script, metadata ):
     str.append ( '//  without having to load the library).\n' )
     str.append ( '//  Add a simple function to get the metadata (for debug purposes).\n\n' )
 
+    str.append ( '\n\nextern "C" {\n\n' )
     str.append ( f'char * {script.file_stem}{script.decor_platform}GetMetaData ()' + '\n{\n' )
     str.append ( f'    char * wp = (char *) malloc ( strlen ( {script.file_stem}MetaData ) + 1 );' + '\n' )
     str.append ( '    if ( wp != NULL )\n' )
     str.append ( f'        strcpy ( wp, {script.file_stem}MetaData );' + '\n\n' )
     str.append ( '    return wp;\n' )
     str.append ( '}\n\n' )
+    str.append ( '}\n\n' )              ## Close the opening 'extern "C"'
 
     return str.get();
 
