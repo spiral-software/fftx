@@ -5,7 +5,7 @@
 #include <random>
 
 #include "fftx3.hpp"
-#include "fftx3utilities.h"
+#include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
 #include "fftxrconvObj.hpp"
 

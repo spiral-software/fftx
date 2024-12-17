@@ -2,7 +2,6 @@
 #include <random>
 
 #include "fftxRealConvolution.hpp"
-#include "fftx3utilities.h"
 
 // using namespace fftx;
 // fftx::handle_t (a_transform)

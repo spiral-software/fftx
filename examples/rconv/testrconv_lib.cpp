@@ -9,9 +9,6 @@
 
 // #include "fftxrconv.precompile.hpp"
 
-#include "fftx3utilities.h"
-
-#include "fftxdevice_macros.h"
 #include "fftxRealConvolution.hpp"
 
 template<int DIM>

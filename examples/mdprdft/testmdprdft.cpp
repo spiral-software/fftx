@@ -1,5 +1,5 @@
 #include "fftx3.hpp"
-#include "fftx3utilities.h"
+#include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
 #include "fftxmdprdftObj.hpp"
 #include "fftximdprdftObj.hpp"

@@ -7,7 +7,7 @@
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
-set ( _incl_files fftx3.hpp fftx3utilities.h doxygen.config )
+set ( _incl_files fftx3.hpp fftxutilities.hpp doxygen.config )
 list ( APPEND _incl_files fftxcpubackend.hpp fftxcudabackend.hpp fftxdftbatlib.hpp fftxfft.hpp
                           fftxhipbackend.hpp fftxinterface.hpp fftxmddftlib.hpp fftxmdprdftlib.hpp
                           fftxtransformlib.hpp fftxsyclbackend.hpp )
