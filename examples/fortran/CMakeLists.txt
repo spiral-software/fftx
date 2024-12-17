@@ -36,16 +36,16 @@ set ( FORTRAN_SOURCES
 ##  The C++ file that needs to be compiled as part of the example
 set ( CPP_SOURCES test.cpp )
 
-## Get around problem with MPI calls on different types.
-include(CheckFortranCompilerFlag)
-check_fortran_compiler_flag("-fallow-argument-mismatch" _fallow-argument-mismatch)
-if (_fallow-argument-mismatch)
-   set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch" )
-endif()
+##  Get around problem with MPI calls on different types.
+include ( CheckFortranCompilerFlag )
+check_fortran_compiler_flag ( "-fallow-argument-mismatch" _fallow-argument-mismatch )
+if ( _fallow-argument-mismatch )
+    set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch" )
+endif ()
 
-## Get around SYCL link problem.
+##  Get around SYCL problem linking C++ and Fortran code.
 if ( ${_codegen} STREQUAL "SYCL" )
-   string( REPLACE "CMAKE_CXX_COMPILER" "CMAKE_Fortran_COMPILER" _new_link_executable ${CMAKE_CXX_LINK_EXECUTABLE} )
+   string ( REPLACE "CMAKE_CXX_COMPILER" "CMAKE_Fortran_COMPILER" _new_link_executable ${CMAKE_CXX_LINK_EXECUTABLE} )
    set ( CMAKE_CXX_LINK_EXECUTABLE "${_new_link_executable}" )
 endif ()
 
