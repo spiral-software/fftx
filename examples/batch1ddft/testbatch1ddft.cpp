@@ -33,9 +33,9 @@
 #define FFTX_CUDA_SAFE_CALL(call) FFTX_CH_CUDA_SAFE_CALL(call)
 
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-//  Build a random input buffer for Spiral and rocfft
-//  host_X is the host buffer to setup -- it'll be copied to the device later
-//  sizes is a vector with the X, Y, & Z dimensions
+//  Build a random input buffer for Spiral and rocfft/cufft.
+//  host_X is the host buffer to setup -- it'll be copied to the device later.
+//  sizes is a vector with the X, Y, & Z dimensions.
 static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> sizes )
 {
     for ( int imm = 0; imm < sizes.at(0)*sizes.at(1); imm++ ) {
@@ -317,10 +317,9 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
 #elif defined FFTX_HIP
     std::vector<void*> args2{dY,tempX};
 #elif defined FFTX_SYCL
-	std::vector<void*> args2{(void*)&(buf_Y), (void*)&(buf_tempX)};
+    std::vector<void*> args2{(void*)&(buf_Y), (void*)&(buf_tempX)};
 #else
     std::vector<void*> args2{(void*)dY,(void*)tempX};
-    //std::string devfft  = "rocfft";
 #endif
 
 
@@ -383,7 +382,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
                       << " trials of size " << sizes.at(0)
                       << " and batch " << sizes.at(1) << ":"
                       << std::endl;
-    fftx::OutStream() << "Trial #\tSpiral\trocfft" << std::endl;
+    fftx::OutStream() << "Trial #\tSpiral\t\t" << devfft << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
       fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
                         << batch1ddft_gpu[itn] << "\t"
@@ -395,7 +394,7 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
                       << " trials of size " << sizes.at(0)
                       << " and batch " << sizes.at(1) << ":"
                       << std::endl;
-    fftx::OutStream() << "Trial #\tSpiral\trocfft" << std::endl;
+    fftx::OutStream() << "Trial #\tSpiral\t\t" << devfft << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
       fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
                         << ibatch1ddft_gpu[itn] << "\t"

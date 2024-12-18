@@ -32,7 +32,7 @@
 
 #define FFTX_CUDA_SAFE_CALL(call) FFTX_CH_CUDA_SAFE_CALL(call)
 
-//  Build a random input buffer for Spiral and rocfft
+//  Build a random input buffer for Spiral and rocfft/cufft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
 
@@ -341,7 +341,6 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
 	std::vector<void*> args2{(void*)&(buf_Y), (void*)&(buf_tempX)};
 #else
     std::vector<void*> args2{(void*)dY,(void*)tempX};
-    //std::string devfft  = "rocfft";
 #endif
 
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
@@ -430,7 +429,7 @@ if(read == 0 && write == 0) {
                       << " trials of size " << sizes.at(0)
                       << " and batch " << sizes.at(1) << ":"
                       << std::endl;
-    fftx::OutStream() << "Trial #\tSpiral\trocfft" << std::endl;
+    fftx::OutStream() << "Trial #\tSpiral\t\t" << devfft << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
       fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
                         << batch1dprdft_gpu[itn] << "\t"
@@ -442,7 +441,7 @@ if(read == 0 && write == 0) {
                       << " trials of size " << sizes.at(0)
                       << " and batch " << sizes.at(1) << ":"
                       << std::endl;
-    fftx::OutStream() << "Trial #\tSpiral\trocfft" << std::endl;
+    fftx::OutStream() << "Trial #\tSpiral\t\t" << devfft << std::endl;
     for (int itn = 0; itn < iterations; itn++) {
       fftx::OutStream() << itn << "\t" << std::scientific << std::setprecision(7)
                         << ibatch1dprdft_gpu[itn] << "\t"
