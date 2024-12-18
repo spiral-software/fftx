@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
       argv++, argc--;
   }
 
-  std::cout << "input cube size: " << mm << " padded cube size: " << nn << " output cube size: " << kk << std::endl;
+  std::cout << "input cube size: " << mm << "x" << nn << "x" << kk << std::endl;
   std::vector<int> sizes{mm, nn, kk};
   fftx::box_t<3> domain ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
                           fftx::point_t<3> ( { { mm, mm, mm } } ));
