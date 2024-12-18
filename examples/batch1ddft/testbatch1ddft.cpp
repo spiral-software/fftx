@@ -270,9 +270,9 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     
     #if defined(FFTX_SYCL)		
 	{
-          fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
-          sycl::host_accessor h_acc(buf_tempX);
-          fftx::OutStream() << h_acc[0] << std::endl;
+          // fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+          // sycl::host_accessor h_acc(buf_tempX);
+          // fftx::OutStream() << h_acc[0] << std::endl;
 	}
 	#endif
 
@@ -332,9 +332,9 @@ BATCH1DDFTProblem b1dft(args, sizes, "b1dft");
     	
 	#if defined (FFTX_SYCL)
 	{
-          fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
-          sycl::host_accessor h_acc(buf_Y);
-          fftx::OutStream() << h_acc[0] << std::endl;
+          // fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+          // sycl::host_accessor h_acc(buf_Y);
+          // fftx::OutStream() << h_acc[0] << std::endl;
 	}
     #endif
 

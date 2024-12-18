@@ -293,9 +293,9 @@ BATCH1DPRDFTProblem b1prdft(args, sizes, "b1prdft");
     
     #if defined(FFTX_SYCL)		
 	  {
-            fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
-            sycl::host_accessor h_acc(buf_tempX);
-            fftx::OutStream() << h_acc[0] << std::endl;
+            // fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+            // sycl::host_accessor h_acc(buf_tempX);
+            // fftx::OutStream() << h_acc[0] << std::endl;
 	  }
 	  #endif
     
@@ -382,9 +382,9 @@ if(read == 0 && write == 0) {
     
     #if defined (FFTX_SYCL)
 	  {
-            fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
-            sycl::host_accessor h_acc(buf_Y);
-            fftx::OutStream() << h_acc[0] << std::endl;
+            // fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+            // sycl::host_accessor h_acc(buf_Y);
+            // fftx::OutStream() << h_acc[0] << std::endl;
 	  }
     #endif
 
