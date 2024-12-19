@@ -18,10 +18,11 @@
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
-// #include "mkl_dfti.h"
-// #include <sycl/sycl.hpp>
+// Set to 1 to call MKLFFT and compare with FFTX; not working properly now.
+#define FFTX_CALL_MKLFFT 0
+#if FFTX_CALL_MKLFFT
 #include <oneapi/mkl/dfti.hpp>
-// #include <oneapi/mkl/vm.hpp>
+#endif
 #endif
 
 //  Build a random input buffer for Spiral and rocfft
@@ -263,7 +264,7 @@ int main(int argc, char* argv[])
 
     float *mdprdft_gpu = new float[iterations];
     float *imdprdft_gpu = new float[iterations];
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || (defined(FFTX_SYCL) && FFTX_CALL_MKLFFT)
     float *mdprdft_vendor_millisec = new float[iterations];
     float *imdprdft_vendor_millisec = new float[iterations];
     bool check_output = true; // compare results of Spiral-RTC with vendor FFT
@@ -287,7 +288,7 @@ int main(int argc, char* argv[])
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
       }
-#elif defined (FFTX_SYCL)
+#elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
     sycl::device dev;
     try
       {
@@ -329,7 +330,7 @@ int main(int argc, char* argv[])
     // Initialize 3D FFT descriptor
     std::vector<std::int64_t> Nvec{mm, nn, kk};
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
-				 oneapi::mkl::dft::domain::REAL>
+                                 oneapi::mkl::dft::domain::REAL>
       transform_plan_3d(Nvec);
     // The default setting for DFTI_REAL forward domain is
     // DFTI_CONJUGATE_EVEN_STORAGE = DFTI_COMPLEX_REAL, but
@@ -368,7 +369,7 @@ int main(int argc, char* argv[])
                           FFTX_MEM_COPY_DEVICE_TO_HOST );
 #endif
 
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || (defined(FFTX_SYCL) && FFTX_CALL_MKLFFT)
 
         if ( check_output )
           { //  Run the vendor FFT plan on the same input data.
@@ -392,7 +393,7 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_MEM_COPY ( outputComplexVendorHostPtr, (void*)tempTfmPtr,
                               nptsTrunc * sizeof(std::complex<double>),
                               FFTX_MEM_COPY_DEVICE_TO_HOST );
-#elif defined ( FFTX_SYCL)
+#elif (defined ( FFTX_SYCL) && FFTX_CALL_MKLFFT)
 	    // If this is absent then iterations after the first aren't correct.
 	    sycl::host_accessor inputHostAcc(inputTfmPtr);
 	    // N.B. tempHostAcc is double* because tempTfmPtr is sycl::buffer<double>.
@@ -491,7 +492,7 @@ int main(int argc, char* argv[])
         imdp.transform();
         imdprdft_gpu[itn] = imdp.getTime();
 
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || (defined(FFTX_SYCL) && FFTX_CALL_MKLFFT)
         //  Run the vendor FFT plan on the same input data.
         if ( check_output )
           {
@@ -519,7 +520,7 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_MEM_COPY ( outputRealVendorHostPtr, (void*)outputTfmPtr,
                               npts * sizeof(double),
                               FFTX_MEM_COPY_DEVICE_TO_HOST );
-#elif defined (FFTX_SYCL)
+#elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
 	    // If this is absent then iterations after the first aren't correct.
 	    // N.B. tempHostAcc is double* because tempTfmPtr is sycl::buffer<double>.
 	    sycl::host_accessor tempHostAcc(tempTfmPtr);
@@ -580,14 +581,16 @@ int main(int argc, char* argv[])
     // FFTX_DEVICE_FREE((void*)symbolTfmPtr);
     FFTX_DEVICE_FREE((void*)tempTfmPtr);
 #elif defined(FFTX_SYCL)
+#if FFTX_CALL_MKLFFT
     sycl::free(sharedRealPtr, sycl_context);
     sycl::free(sharedComplexPtr, sycl_context);
+#endif
 #else
     // delete[] symbolTfmPtr;
     delete[] tempTfmPtr;
 #endif
 
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || (defined(FFTX_SYCL) && FFTX_CALL_MKLFFT)
     fftx::OutStream() << "Times in milliseconds for " << descrip
                       << " on MDPRDFT (forward) for " << iterations
                       << " trials of size "
