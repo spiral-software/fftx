@@ -21,7 +21,7 @@ manage_add_subdir ( batch1ddft    TRUE      TRUE )
 manage_add_subdir ( batch1dprdft  TRUE      TRUE )
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( mdprdft       TRUE      TRUE )
-
+manage_add_subdir ( hockneyconv   TRUE      TRUE )
 manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
 
