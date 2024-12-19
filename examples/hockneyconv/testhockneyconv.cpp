@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
           kk = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i iterations ] [ -s <input cube length>x<padded cub length>x<output cube length> ] [ -h (print help message) ]\n", argv[0] );
+          printf ( "Usage: %s: [ -i iterations ] [ -s <input cube length>x<padded cube length>x<output cube length> ] [ -h (print help message) ]\n", argv[0] );
           exit (0);
       default:
           printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
@@ -241,9 +241,9 @@ for(int itn = 0; itn < iterations; itn++)
   buildInputBuffer_complex((double*)symbp, symrange);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
   FFTX_DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(double),
-                  MEM_COPY_HOST_TO_DEVICE);
+                  FFTX_MEM_COPY_HOST_TO_DEVICE);
   FFTX_DEVICE_MEM_COPY(dsym, symbolHost.m_data.local(),  symbolHost.m_domain.size() * sizeof(std::complex<double>),
-                  MEM_COPY_HOST_TO_DEVICE);
+                  FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
   if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied inputs\n";
 
