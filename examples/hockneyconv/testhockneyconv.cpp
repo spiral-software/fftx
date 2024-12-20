@@ -131,7 +131,7 @@ static void checkOutputBuffers ( FFTX_DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, FFTX_D
 int main(int argc, char* argv[])
 {
   int iterations = 2;
-  int mm = 33, nn = 130, kk = 96; // default cube dimensions
+  int mm = 32, nn = 32, kk = 128; // default cube dimensions
   char *prog = argv[0];
   int baz = 0;
 
@@ -162,60 +162,55 @@ int main(int argc, char* argv[])
           kk = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i iterations ] [ -s <input cube length>x<padded cube length>x<output cube length> ] [ -h (print help message) ]\n", argv[0] );
+          printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
           exit (0);
       default:
           printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
       }
       argv++, argc--;
   }
-
-  fftx::OutStream() << "cube lengths:"
-                    << " input " << mm
-                    << ", padded " << nn
-                    << ", output " << kk
-                    << std::endl;
+  fftx::OutStream() << mm << " " << nn << " " << kk << std::endl;
   std::vector<int> sizes{mm, nn, kk};
-  fftx::box_t<3> domain ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
-                          fftx::point_t<3> ( { { mm, mm, mm } } ));
+  fftx::box_t<3> inputd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
+                          fftx::point_t<3> ( { { mm, nn, kk } } ));
   fftx::box_t<3> padd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
-                          fftx::point_t<3> ( { { nn, nn, nn } } ));                        
+                        fftx::point_t<3> ( { { 2*mm, 2*nn, 2*kk } } ));                        
   fftx::box_t<3> outputd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
-                          fftx::point_t<3> ( { { kk, kk, kk } } ));
+                          fftx::point_t<3> ( { { mm, nn, kk } } ));
 
-  fftx::array_t<3,double> inputHost(domain);
+  fftx::array_t<3,double> inputHost(inputd);
   fftx::array_t<3,double> outputHost(outputd);
   fftx::array_t<3,std::complex<double>> symbolHost(padd);
 
-  double *dX, *dY;
-  std::complex<double> *dsym;
+  double *inputTfmPtr, *outputTfmPtr;
+  std::complex<double> *symbolTfmPtr;
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  FFTX_DEVICE_MALLOC(&dX, inputHost.m_domain.size() * sizeof(double));
+  FFTX_DEVICE_MALLOC(&inputTfmPtr, inputHost.m_domain.size() * sizeof(double));
 
-  FFTX_DEVICE_MALLOC(&dY, outputHost.m_domain.size() * sizeof(double));
+  FFTX_DEVICE_MALLOC(&outputTfmPtr, outputHost.m_domain.size() * sizeof(double));
 
-  FFTX_DEVICE_MALLOC(&dsym,  symbolHost.m_domain.size() * sizeof(std::complex<double>));
+  FFTX_DEVICE_MALLOC(&symbolTfmPtr,  symbolHost.m_domain.size() * sizeof(std::complex<double>));
 
 #elif defined(FFTX_SYCL)
   sycl::buffer<double> buf_Y(outputHost.m_data.local(), outputHost.m_domain.size());
   sycl::buffer<double> buf_X(inputHost.m_data.local(), inputHost.m_domain.size());
   sycl::buffer<std::complex<double>> buf_sym(symbolHost.m_data.local(), symbolHost.m_domain.size());
 #else
-  dX = (double *) inputHost.m_data.local();
-  dY = (double *) outputHost.m_data.local();
-  dsym = (std::complex<double> *) symbolHost.m_data.local();
+  inputTfmPtr = (double *) inputHost.m_data.local();
+  outputTfmPtr = (double *) outputHost.m_data.local();
+  symbolTfmPtr = (std::complex<double> *) symbolHost.m_data.local();
 #endif
   if ( FFTX_DEBUGOUT ) fftx::OutStream() << "memory allocated" << std::endl;  
 
   float *hockneyconv_gpu = new float[iterations];
 
 #if defined FFTX_CUDA
-  std::vector<void*> args{&dY,&dX,&dsym};
+  std::vector<void*> args{&outputTfmPtr,&inputTfmPtr,&symbolTfmPtr};
   std::string descrip = "NVIDIA GPU";                //  "CPU and GPU";
   std::string devfft  = "cufft";
 #elif defined FFTX_HIP
-  std::vector<void*> args{dY,dX,dsym};
+  std::vector<void*> args{outputTfmPtr,inputTfmPtr,symbolTfmPtr};
   std::string descrip = "AMD GPU";                //  "CPU and GPU";
   std::string devfft  = "rocfft";
 #elif defined FFTX_SYCL
@@ -223,53 +218,56 @@ int main(int argc, char* argv[])
   std::string descrip = "Intel GPU";                //  "CPU and GPU";
   std::string devfft  = "mklfft";
 #else
-  std::vector<void*> args{(void*)dY,(void*)dX,(void*)dsym};
+  std::vector<void*> args{(void*)outputTfmPtr,(void*)inputTfmPtr,(void*)symbolTfmPtr};
   std::string descrip = "CPU";                //  "CPU";
   std::string devfft = "fftw";
 #endif
 
-HOCKNEYCONVProblem hcp(args, sizes, "hockneyconv");
+  HOCKNEYCONVProblem hcp(args, sizes, "hockneyconv");
 
-double *hostinp = (double *) inputHost.m_data.local();
-std::vector<int> hostrange{mm,mm,mm};
-std::complex<double> *symbp = (std::complex<double>*) symbolHost.m_data.local();
-std::vector<int> symrange{nn,nn,nn};
-for(int itn = 0; itn < iterations; itn++) 
-{
-  
-  buildInputBuffer(hostinp, hostrange);
-  buildInputBuffer_complex((double*)symbp, symrange);
+  double *hostinp = (double *) inputHost.m_data.local();
+  std::vector<int> hostrange{mm,mm,mm};
+  std::complex<double> *symbp = (std::complex<double>*) symbolHost.m_data.local();
+  std::vector<int> symrange{nn,nn,nn};
+  for (int itn = 0; itn < iterations; itn++) 
+    {
+      buildInputBuffer(hostinp, hostrange);
+      buildInputBuffer_complex((double*)symbp, symrange);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  FFTX_DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(double),
-                  FFTX_MEM_COPY_HOST_TO_DEVICE);
-  FFTX_DEVICE_MEM_COPY(dsym, symbolHost.m_data.local(),  symbolHost.m_domain.size() * sizeof(std::complex<double>),
-                  FFTX_MEM_COPY_HOST_TO_DEVICE);
+      FFTX_DEVICE_MEM_COPY(inputTfmPtr, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(double),
+                           FFTX_MEM_COPY_HOST_TO_DEVICE);
+      FFTX_DEVICE_MEM_COPY(symbolTfmPtr, symbolHost.m_data.local(),  symbolHost.m_domain.size() * sizeof(std::complex<double>),
+                           FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
-  if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied inputs\n";
+      if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied inputs\n";
 
-  hcp.transform();
-  hockneyconv_gpu[itn] = hcp.getTime();
+      hcp.transform();
+      hockneyconv_gpu[itn] = hcp.getTime();
 #if defined(FFTX_SYCL)		
-  {
-    // fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
-    // sycl::host_accessor h_acc(dY);
-    // fftx::OutStream() << h_acc[0] << std::endl;
-  }
+      {
+        // fftx::OutStream() << "MKLFFT comparison not implemented printing first output element" << std::endl;
+        // sycl::host_accessor h_acc(outputTfmPtr);
+        // fftx::OutStream() << h_acc[0] << std::endl;
+      }
 #endif
-}
+    }
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d:\nTrial #\tSpiral\trocfft\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );        //  , devfft.c_str() );
-    for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\n", itn, hockneyconv_gpu[itn]);
-    }
-#else
-     printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-    for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\n", itn, hockneyconv_gpu[itn]);
-    }
-#endif
+  FFTX_DEVICE_FREE((void*)inputTfmPtr);
+  FFTX_DEVICE_FREE((void*)outputTfmPtr);
+  FFTX_DEVICE_FREE((void*)symbolTfmPtr);
 
+  // printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d:\nTrial #\tSpiral\trocfft\n",
+  // descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );        //  , devfft.c_str() );
+#endif
+  printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d\n",
+           descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+  for (int itn = 0; itn < iterations; itn++)
+    {
+      printf ( "%d\t%.7e\n", itn, hockneyconv_gpu[itn]);
+    }
+
+    delete[] hockneyconv_gpu;
+
+    return 0;
 }
