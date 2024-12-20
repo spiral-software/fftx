@@ -23,13 +23,13 @@
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
 
-static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
+static void buildInputBuffer ( double *host_X, fftx::point_t<3> extents )
 {
     srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
+    for ( int imm = 0; imm < extents[0]; imm++ ) {
+        for ( int inn = 0; inn < extents[1]; inn++ ) {
+            for ( int ikk = 0; ikk < extents[2]; ikk++ ) {
+                int offset = (ikk + inn*extents[2] + imm*extents[1]*extents[2]);
                 host_X[offset] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
             }
         }
@@ -37,13 +37,13 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
     return;
 }
 
-static void buildInputBuffer_complex ( double *host_X, std::vector<int> sizes )
+static void buildInputBuffer_complex ( double *host_X, fftx::point_t<3> extents )
 {
     srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+    for ( int imm = 0; imm < extents[0]; imm++ ) {
+        for ( int inn = 0; inn < extents[1]; inn++ ) {
+            for ( int ikk = 0; ikk < extents[2]; ikk++ ) {
+                int offset = (ikk + inn * extents[2] + imm * extents[1] * extents[2]) * 2;
                 host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
                 host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
             }
@@ -52,13 +52,13 @@ static void buildInputBuffer_complex ( double *host_X, std::vector<int> sizes )
     return;
 }
 #else
-static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
+static void buildInputBuffer ( double *host_X, fftx::point_t<3> extents )
 {
     srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
+    for ( int imm = 0; imm < extents[0]; imm++ ) {
+        for ( int inn = 0; inn < extents[1]; inn++ ) {
+            for ( int ikk = 0; ikk < extents[2]; ikk++ ) {
+                int offset = (ikk + inn*extents[2] + imm*extents[1]*extents[2]);
                 host_X[offset] = 1;
             }
         }
@@ -66,12 +66,12 @@ static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
     return;
 }
 
-static void buildInputBuffer_complex( double *host_X, std::vector<int> sizes)
+static void buildInputBuffer_complex( double *host_X, fftx::point_t<3> extents )
 {
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
+    for ( int imm = 0; imm < extents[0]; imm++ ) {
+        for ( int inn = 0; inn < extents[1]; inn++ ) {
+            for ( int ikk = 0; ikk < extents[2]; ikk++ ) {
+                int offset = (ikk + inn * extents[2] + imm * extents[1] * extents[2]) * 2;
                 host_X[offset + 0] = 1;
                 host_X[offset + 1] = 1;
             }
@@ -174,7 +174,7 @@ int main(int argc, char* argv[])
   fftx::box_t<3> inputd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
                           fftx::point_t<3> ( { { mm, nn, kk } } ));
   fftx::box_t<3> padd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
-                        fftx::point_t<3> ( { { 2*mm, 2*nn, 2*kk } } ));                        
+                        fftx::point_t<3> ( { { 2*mm, 2*nn, 2*kk } } ));
   fftx::box_t<3> outputd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
                           fftx::point_t<3> ( { { mm, nn, kk } } ));
 
@@ -228,13 +228,13 @@ int main(int argc, char* argv[])
   HOCKNEYCONVProblem hcp(args, sizes, "hockneyconv");
 
   double *hostinp = (double *) inputHost.m_data.local();
-  std::vector<int> hostrange{mm,mm,mm};
+  fftx::point_t<3> inputextents = inputHost.m_domain.extents();
+  fftx::point_t<3> symbolextents = symbolHost.m_domain.extents();
   std::complex<double> *symbp = (std::complex<double>*) symbolHost.m_data.local();
-  std::vector<int> symrange{nn,nn,nn};
   for (int itn = 0; itn < iterations; itn++) 
     {
-      buildInputBuffer(hostinp, hostrange);
-      buildInputBuffer_complex((double*)symbp, symrange);
+      buildInputBuffer(hostinp, inputextents);
+      buildInputBuffer_complex((double*)symbp, symbolextents);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
       FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr,
                            inputHost.m_data.local(),
