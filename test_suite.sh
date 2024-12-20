@@ -26,6 +26,11 @@
 ./bin/testmdprdft -s 72x72x72
 ./bin/testmdprdft -s 128x128x128
 
+./bin/testhockneyconv -s 32x32x128
+./bin/testhockneyconv -s 32x128x32
+./bin/testhockneyconv -s 128x32x32
+./bin/testhockneyconv -s 64x64x64
+
 ./bin/testrconv_lib
 ./bin/testrconv -s 40x40x40
 ./bin/testrconv -s 72x72x72
