@@ -182,24 +182,19 @@ int main(int argc, char* argv[])
   fftx::array_t<3,double> outputHost(outputd);
   fftx::array_t<3,std::complex<double>> symbolHost(padd);
 
-  double *inputTfmPtr, *outputTfmPtr;
-  std::complex<double> *symbolTfmPtr;
-
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+  FFTX_DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
   FFTX_DEVICE_MALLOC(&inputTfmPtr, inputHost.m_domain.size() * sizeof(double));
-
   FFTX_DEVICE_MALLOC(&outputTfmPtr, outputHost.m_domain.size() * sizeof(double));
-
   FFTX_DEVICE_MALLOC(&symbolTfmPtr,  symbolHost.m_domain.size() * sizeof(std::complex<double>));
-
 #elif defined(FFTX_SYCL)
-  sycl::buffer<double> buf_Y(outputHost.m_data.local(), outputHost.m_domain.size());
-  sycl::buffer<double> buf_X(inputHost.m_data.local(), inputHost.m_domain.size());
-  sycl::buffer<std::complex<double>> buf_sym(symbolHost.m_data.local(), symbolHost.m_domain.size());
+  sycl::buffer<double> outputTfmPtr(outputHost.m_data.local(), outputHost.m_domain.size());
+  sycl::buffer<double> inputTfmPtr(inputHost.m_data.local(), inputHost.m_domain.size());
+  sycl::buffer<std::complex<double>> symbolTfmPtr(symbolHost.m_data.local(), symbolHost.m_domain.size());
 #else
-  inputTfmPtr = (double *) inputHost.m_data.local();
-  outputTfmPtr = (double *) outputHost.m_data.local();
-  symbolTfmPtr = (std::complex<double> *) symbolHost.m_data.local();
+  double* inputTfmPtr = (double *) inputHost.m_data.local();
+  double* outputTfmPtr = (double *) outputHost.m_data.local();
+  std::complex<double>* symbolTfmPtr = (std::complex<double> *) symbolHost.m_data.local();
 #endif
   if ( FFTX_DEBUGOUT ) fftx::OutStream() << "memory allocated" << std::endl;  
 
@@ -214,7 +209,7 @@ int main(int argc, char* argv[])
   std::string descrip = "AMD GPU";                //  "CPU and GPU";
   std::string devfft  = "rocfft";
 #elif defined FFTX_SYCL
-  std::vector<void*> args{(void*)&(buf_Y),(void*)&(buf_X),(void*)&(buf_sym)};
+  std::vector<void*> args{(void*)&(outputTfmPtr),(void*)&(inputTfmPtr),(void*)&(symbolTfmPtr)};
   std::string descrip = "Intel GPU";                //  "CPU and GPU";
   std::string devfft  = "mklfft";
 #else
