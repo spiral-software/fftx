@@ -182,15 +182,22 @@ int main(int argc, char* argv[])
   fftx::array_t<3,double> outputHost(outputd);
   fftx::array_t<3,std::complex<double>> symbolHost(padd);
 
+  size_t inputpts = inputHost.m_domain.size();
+  size_t outputpts = outputHost.m_domain.size();
+  size_t symbolpts = symbolHost.m_domain.size();
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+  size_t inputbytes = inputpts * sizeof(double);
+  size_t outputbytes = outputpts * sizeof(double);
+  size_t symbolbytes = symbolpts * sizeof(std::complex<double>);
+
   FFTX_DEVICE_PTR inputTfmPtr, outputTfmPtr, symbolTfmPtr;
-  FFTX_DEVICE_MALLOC(&inputTfmPtr, inputHost.m_domain.size() * sizeof(double));
-  FFTX_DEVICE_MALLOC(&outputTfmPtr, outputHost.m_domain.size() * sizeof(double));
-  FFTX_DEVICE_MALLOC(&symbolTfmPtr,  symbolHost.m_domain.size() * sizeof(std::complex<double>));
+  FFTX_DEVICE_MALLOC((void **)&inputTfmPtr, inputbytes);
+  FFTX_DEVICE_MALLOC((void **)&outputTfmPtr, outputbytes);
+  FFTX_DEVICE_MALLOC((void **)&symbolTfmPtr, symbolbytes);
 #elif defined(FFTX_SYCL)
-  sycl::buffer<double> outputTfmPtr(outputHost.m_data.local(), outputHost.m_domain.size());
-  sycl::buffer<double> inputTfmPtr(inputHost.m_data.local(), inputHost.m_domain.size());
-  sycl::buffer<std::complex<double>> symbolTfmPtr(symbolHost.m_data.local(), symbolHost.m_domain.size());
+  sycl::buffer<double> inputTfmPtr(inputHost.m_data.local(), inputpts);
+  sycl::buffer<double> outputTfmPtr(outputHost.m_data.local(), outputpts);
+  sycl::buffer<std::complex<double>> symbolTfmPtr(symbolHost.m_data.local(), symbolpts);
 #else
   double* inputTfmPtr = (double *) inputHost.m_data.local();
   double* outputTfmPtr = (double *) outputHost.m_data.local();
@@ -229,9 +236,9 @@ int main(int argc, char* argv[])
       buildInputBuffer(hostinp, hostrange);
       buildInputBuffer_complex((double*)symbp, symrange);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-      FFTX_DEVICE_MEM_COPY(inputTfmPtr, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(double),
+      FFTX_DEVICE_MEM_COPY(inputTfmPtr, inputHost.m_data.local(), inputbytes,
                            FFTX_MEM_COPY_HOST_TO_DEVICE);
-      FFTX_DEVICE_MEM_COPY(symbolTfmPtr, symbolHost.m_data.local(),  symbolHost.m_domain.size() * sizeof(std::complex<double>),
+      FFTX_DEVICE_MEM_COPY(symbolTfmPtr, symbolHost.m_data.local(), symbolbytes,
                            FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
       if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied inputs\n";
