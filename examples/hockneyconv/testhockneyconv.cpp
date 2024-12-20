@@ -236,9 +236,13 @@ int main(int argc, char* argv[])
       buildInputBuffer(hostinp, hostrange);
       buildInputBuffer_complex((double*)symbp, symrange);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-      FFTX_DEVICE_MEM_COPY(inputTfmPtr, inputHost.m_data.local(), inputbytes,
+      FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr,
+                           inputHost.m_data.local(),
+                           inputbytes,
                            FFTX_MEM_COPY_HOST_TO_DEVICE);
-      FFTX_DEVICE_MEM_COPY(symbolTfmPtr, symbolHost.m_data.local(), symbolbytes,
+      FFTX_DEVICE_MEM_COPY((void*)symbolTfmPtr,
+                           symbolHost.m_data.local(),
+                           symbolbytes,
                            FFTX_MEM_COPY_HOST_TO_DEVICE);
 #endif
       if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied inputs\n";
