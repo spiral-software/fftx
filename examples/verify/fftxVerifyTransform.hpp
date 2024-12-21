@@ -335,32 +335,15 @@ public:
              m_tp == FFTX_PROBLEM ||
              m_tp == FFTX_DEVICE_LIB)
       {
-        //        T_IN* inputHostPtr = a_inArray.m_data.local();
-        //        T_OUT* outputHostPtr = a_outArray.m_data.local();
-
-        // auto sym_pts = m_fullExtents.product();
 #if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         // on GPU
 
-        // T_IN* inputDevicePtr;
-        // T_OUT* outputDevicePtr;
-        // double* symDevicePtr;
-
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        // auto sym_bytes = sym_pts * sizeof(double);
-        // auto input_bytes = input_pts * sizeof(T_IN);
-        // auto output_bytes = output_pts * sizeof(T_OUT);
-
 	// 1. Copy input from host to device.
-        // FFTX_DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
-        // FFTX_DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
-        // FFTX_DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
         FFTX_DEVICE_PTR inputDevicePtr = fftxDeviceMallocForHostArray(a_inArray);
         FFTX_DEVICE_PTR outputDevicePtr = fftxDeviceMallocForHostArray(a_outArray);
         FFTX_DEVICE_PTR symDevicePtr = (FFTX_DEVICE_PTR) NULL;
         
-        //        FFTX_DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
-        //                        FFTX_MEM_COPY_HOST_TO_DEVICE);
         fftxCopyHostArrayToDevice(inputDevicePtr, a_inArray);
 	// 2. Perform the transform.
         if (m_tp == FFTX_DEVICE_LIB)
@@ -400,14 +383,12 @@ public:
               }
           }
 	// 3. Copy output from device to host.
-        //        FFTX_DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
-        //                             FFTX_MEM_COPY_DEVICE_TO_HOST);
         fftxCopyDeviceToHostArray(a_outArray, outputDevicePtr);
                              
 	// 4. Clean up.
-        FFTX_DEVICE_FREE((void*)inputDevicePtr);
-        FFTX_DEVICE_FREE((void*)outputDevicePtr);
-        // FFTX_DEVICE_FREE((void*)symDevicePtr);
+        fftxDeviceFree(inputDevicePtr);
+        fftxDeviceFree(outputDevicePtr);
+        // fftxDeviceFree(symDevicePtr);
 #elif defined(FFTX_SYCL)
         if (m_tp == FFTX_HANDLE)
           {          

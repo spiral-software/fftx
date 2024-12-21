@@ -101,23 +101,12 @@ public:
 #if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         // on GPU
 
-        //        auto input_bytes = input_pts * sizeof(double);
-        //        auto output_bytes = output_pts * sizeof(double);
-        //        auto symbol_bytes = symbol_pts * sizeof(double);
-
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        // FFTX_DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
-        // FFTX_DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
-        // FFTX_DEVICE_MALLOC((void **)&symbolDevicePtr, symbol_bytes);
         FFTX_DEVICE_PTR inputDevicePtr = fftxDeviceMallocForHostArray(a_input);
         FFTX_DEVICE_PTR outputDevicePtr = fftxDeviceMallocForHostArray(a_output);
         FFTX_DEVICE_PTR symbolDevicePtr = fftxDeviceMallocForHostArray(a_symbol);
 
-        //        FFTX_DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
-        //                        FFTX_MEM_COPY_HOST_TO_DEVICE);
         fftxCopyHostArrayToDevice(inputDevicePtr, a_input);
-        //        FFTX_DEVICE_MEM_COPY((void*)symbolDevicePtr, symbolHostPtr, symbol_bytes,
-        //                        FFTX_MEM_COPY_HOST_TO_DEVICE);
         fftxCopyHostArrayToDevice(symbolDevicePtr, a_symbol);
 	
         //        fftx::array_t<DIM, FFTX_DEVICE_PTR> inputDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
@@ -160,11 +149,8 @@ public:
         //     m_transformerPtr->transform(inputDevice, outputDevice, symbolDevice);
         //   }
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-        //	FFTX_DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
-        //                        FFTX_MEM_COPY_DEVICE_TO_HOST);
         fftxCopyDeviceToHostArray(a_output, outputDevicePtr);
-        //        FFTX_DEVICE_FREE((void*)inputDevicePtr);
-        //        FFTX_DEVICE_FREE((void*)outputDevicePtr);
+
         fftxDeviceFree(inputDevicePtr);
         fftxDeviceFree(outputDevicePtr);
         fftxDeviceFree(symbolDevicePtr);

@@ -183,13 +183,6 @@ int main(int argc, char* argv[])
   fftx::array_t<3,std::complex<double>> symbolHost(padd);
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  //  size_t inputbytes = inputpts * sizeof(double);
-  //  size_t outputbytes = outputpts * sizeof(double);
-  //  size_t symbolbytes = symbolpts * sizeof(std::complex<double>);
-
-  //  FFTX_DEVICE_MALLOC((void **)&inputTfmPtr, inputbytes);
-  //  FFTX_DEVICE_MALLOC((void **)&outputTfmPtr, outputbytes);
-  //  FFTX_DEVICE_MALLOC((void **)&symbolTfmPtr, symbolbytes);
   FFTX_DEVICE_PTR inputTfmPtr = fftxDeviceMallocForHostArray(inputHost);
   FFTX_DEVICE_PTR outputTfmPtr = fftxDeviceMallocForHostArray(outputHost);
   FFTX_DEVICE_PTR symbolTfmPtr = fftxDeviceMallocForHostArray(symbolHost);
@@ -238,14 +231,6 @@ int main(int argc, char* argv[])
       buildInputBuffer(hostinp, inputextents);
       buildInputBuffer_complex((double*)symbp, symbolextents);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-      //      FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr,
-      //                           inputHost.m_data.local(),
-      //                           inputbytes,
-      //                           FFTX_MEM_COPY_HOST_TO_DEVICE);
-      //      FFTX_DEVICE_MEM_COPY((void*)symbolTfmPtr,
-      //                           symbolHost.m_data.local(),
-      //                           symbolbytes,
-      //                           FFTX_MEM_COPY_HOST_TO_DEVICE);
       fftxCopyHostArrayToDevice(inputTfmPtr, inputHost);
       fftxCopyHostArrayToDevice(symbolTfmPtr, symbolHost);
 #endif

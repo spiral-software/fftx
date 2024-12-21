@@ -224,12 +224,9 @@ int main(int argc, char* argv[])
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     if ( FFTX_DEBUGOUT )fftx::OutStream() << "allocating memory" << std::endl;
-    // FFTX_DEVICE_MALLOC((void **)&inputTfmPtr, npts * sizeof(double));
     FFTX_DEVICE_PTR inputTfmPtr = fftxDeviceMallocForHostArray(inputHostArray);
-    // FFTX_DEVICE_MALLOC((void **)&outputTfmPtr, npts * sizeof(double));
     FFTX_DEVICE_PTR outputTfmPtr = fftxDeviceMallocForHostArray(outputRealFFTXHostArray);
     FFTX_DEVICE_PTR symbolTfmPtr = (FFTX_DEVICE_PTR) NULL;
-    // FFTX_DEVICE_MALLOC((void **)&tempTfmPtr, nptsTrunc * sizeof(std::complex<double>));
     FFTX_DEVICE_PTR tempTfmPtr = fftxDeviceMallocForHostArray(outputComplexFFTXHostArray);
 #elif defined(FFTX_SYCL)
     sycl::buffer<double> inputTfmPtr(inputHostPtr, npts);
@@ -356,9 +353,6 @@ int main(int argc, char* argv[])
 	// (Use different randomized data each iteration)
 	setInput((double*) inputHostPtr, sizes);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        //        FFTX_DEVICE_MEM_COPY((void*)inputTfmPtr, inputHostPtr,
-        //                        npts * sizeof(double),
-        //                        FFTX_MEM_COPY_HOST_TO_DEVICE);
         fftxCopyHostArrayToDevice(inputTfmPtr, inputHostArray);
  	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied MDPRDFT input from host to device\n";
 #endif
@@ -367,9 +361,6 @@ int main(int argc, char* argv[])
         mdp.transform();
         mdprdft_gpu[itn] = mdp.getTime();
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        //        FFTX_DEVICE_MEM_COPY ( outputComplexFFTXHostPtr, (void*)tempTfmPtr,
-        //                          nptsTrunc * sizeof(std::complex<double>),
-        //                          FFTX_MEM_COPY_DEVICE_TO_HOST );
         fftxCopyDeviceToHostArray(outputComplexFFTXHostArray, tempTfmPtr);
 #endif
 
@@ -394,9 +385,6 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_EVENT_RECORD ( custop );
             FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
             FFTX_DEVICE_EVENT_ELAPSED_TIME ( &mdprdft_vendor_millisec[itn], custart, custop );
-            //            FFTX_DEVICE_MEM_COPY ( outputComplexVendorHostPtr, (void*)tempTfmPtr,
-            //                              nptsTrunc * sizeof(std::complex<double>),
-            //                              FFTX_MEM_COPY_DEVICE_TO_HOST );
             fftxCopyDeviceToHostArray(outputComplexVendorHostArray, tempTfmPtr);
 #elif (defined ( FFTX_SYCL) && FFTX_CALL_MKLFFT)
 	    // If this is absent then iterations after the first aren't correct.
@@ -487,9 +475,6 @@ int main(int argc, char* argv[])
         symmetrizeHermitian(outputComplexFFTXHostArray,
 			    outputRealFFTXHostArray);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)    
-        //        FFTX_DEVICE_MEM_COPY ((void*)tempTfmPtr, outputComplexFFTXHostPtr,
-        //                         nptsTrunc * sizeof(std::complex<double>),
-        //                         FFTX_MEM_COPY_HOST_TO_DEVICE );
         fftxCopyHostArrayToDevice(tempTfmPtr, outputComplexFFTXHostArray);
         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied IMDPRDFT input from host to device" << std::endl;
 #endif
@@ -503,9 +488,6 @@ int main(int argc, char* argv[])
         if ( check_output )
           {
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-            //	    FFTX_DEVICE_MEM_COPY ( outputRealFFTXHostPtr, (void*)outputTfmPtr,
-            //			      npts * sizeof(double),
-            //                              FFTX_MEM_COPY_DEVICE_TO_HOST );
             fftxCopyDeviceToHostArray(outputRealFFTXHostArray, outputTfmPtr);
 
 	    FFTX_DEVICE_EVENT_RECORD ( custart );
@@ -524,9 +506,6 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
             FFTX_DEVICE_EVENT_ELAPSED_TIME ( &imdprdft_vendor_millisec[itn], custart, custop );
             
-            //            FFTX_DEVICE_MEM_COPY ( outputRealVendorHostPtr, (void*)outputTfmPtr,
-            //                              npts * sizeof(double),
-            //                              FFTX_MEM_COPY_DEVICE_TO_HOST );
             fftxCopyDeviceToHostArray(outputRealVendorHostArray, outputTfmPtr);
 #elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
 	    // If this is absent then iterations after the first aren't correct.
