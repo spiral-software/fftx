@@ -98,7 +98,8 @@
 #define FFTX_DEVICE_ERROR_T cudaError_t
 #define FFTX_DEVICE_GET_LAST_ERROR cudaGetLastError
 #define FFTX_DEVICE_GET_ERROR_STRING cudaGetErrorString
-#define FFTX_DEVICE_PTR CUdeviceptr
+// #define FFTX_DEVICE_PTR CUdeviceptr
+#define FFTX_DEVICE_PTR void **
 #define FFTX_DEVICE_FFT_TYPE cufftType
 #define FFTX_DEVICE_FFT_RESULT cufftResult
 #define FFTX_DEVICE_FFT_HANDLE cufftHandle
