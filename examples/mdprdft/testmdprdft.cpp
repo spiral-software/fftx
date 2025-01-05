@@ -222,13 +222,14 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     if ( FFTX_DEBUGOUT )fftx::OutStream() << "allocating memory" << std::endl;
     FFTX_DEVICE_PTR realFFTXTfmPtr = fftxDeviceMallocForHostArray(realFFTXHostArray);
+    FFTX_DEVICE_PTR realVendorTfmPtr = fftxDeviceMallocForHostArray(realVendorHostArray);
     FFTX_DEVICE_PTR complexFFTXTfmPtr = fftxDeviceMallocForHostArray(complexFFTXHostArray);
     FFTX_DEVICE_PTR complexVendorTfmPtr = fftxDeviceMallocForHostArray(complexVendorHostArray);
     FFTX_DEVICE_PTR symbolTfmPtr = (FFTX_DEVICE_PTR) NULL;
 #elif defined(FFTX_SYCL)
-    sycl::buffer<double> realFFTXTfmPtr(realFFTXHostPtr, npts); // FIXME: needed?
-    sycl::buffer<double> realVendorTfmPtr(realVendorHostPtr, npts); // FIXME: needed?
-    sycl::buffer<double> symbolTfmPtr((double*) NULL, 0); // not needed
+    sycl::buffer<double> realFFTXTfmPtr(realFFTXHostPtr, npts);
+    sycl::buffer<double> realVendorTfmPtr(realVendorHostPtr, npts);
+    sycl::buffer<double> symbolTfmPtr((double*) NULL, 0);
     // Use sycl::buffer on double because of problems if on complex.
     sycl::buffer<double> complexFFTXTfmPtr((double*) complexFFTXHostPtr, nptsTrunc * 2);
 #else // CPU
