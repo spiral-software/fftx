@@ -244,7 +244,7 @@ int main(int argc, char* argv[])
     std::string descrip = "NVIDIA GPU";                //  "CPU and GPU";
     std::string vendorfft  = "cufft";
 #elif defined FFTX_HIP
-    std::vector<void*> argsR2C{complexFFTXTfmPtr, realFFTXTfmPtr, symbolTfmPtr);
+    std::vector<void*> argsR2C{complexFFTXTfmPtr, realFFTXTfmPtr, symbolTfmPtr};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
     std::string vendorfft  = "rocfft";
 #elif defined FFTX_SYCL
