@@ -132,7 +132,7 @@ endif ()
 
 if ( ${_codegen} STREQUAL "CPU" )
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FFTW REQUIRED fftw3)
+    pkg_check_modules(FFTW fftw3)
     if ( FFTW_FOUND )
        message ( STATUS "FFTW found, FFTW_ROOT = ${FFTW_ROOT}" )
        message ( STATUS "FFTW_INCLUDE_DIRS = ${FFTW_INCLUDE_DIRS}" )
