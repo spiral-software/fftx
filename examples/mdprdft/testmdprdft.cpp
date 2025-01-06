@@ -232,6 +232,7 @@ int main(int argc, char* argv[])
     sycl::buffer<double> symbolTfmPtr((double*) NULL, 0);
     // Use sycl::buffer on double because of problems if on complex.
     sycl::buffer<double> complexFFTXTfmPtr((double*) complexFFTXHostPtr, nptsTrunc * 2);
+    sycl::buffer<double> complexVendorTfmPtr((double*) complexVendorHostPtr, nptsTrunc * 2);
 #else // CPU
     double* realFFTXTfmPtr = (double *) realFFTXHostPtr;
     double* complexFFTXTfmPtr = (double *) complexFFTXHostPtr;
@@ -294,8 +295,8 @@ int main(int argc, char* argv[])
       }
     catch (sycl::exception const &e)
       {
-	fftx::OutStream() << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
-	fftx::OutStream() << "Program terminating." << std::endl;
+	fftx::ErrStream() << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
+	fftx::ErrStream() << "Program terminating." << std::endl;
 	exit(-1);
 	// dev = sycl::device(sycl::cpu_selector_v);
       }
@@ -321,9 +322,9 @@ int main(int argc, char* argv[])
                       << Q.get_device().get_info<sycl::info::device::name>()
                       << std::endl;
 
-    auto realSharedPtr = sycl::malloc_shared< double >
+    auto realVendorPtr = sycl::malloc_shared< double >
       (npts, sycl_device, sycl_context);
-    auto complexSharedPtr = sycl::malloc_shared< std::complex<double> >
+    auto complexVendorPtr = sycl::malloc_shared< std::complex<double> >
       (npts, sycl_device, sycl_context); // FIXME: was nptsTrunc
 
     // Initialize 3D FFT descriptor
@@ -390,15 +391,19 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_EVENT_RECORD ( custop );
             FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
             FFTX_DEVICE_EVENT_ELAPSED_TIME ( &mdprdft_vendor_millisec[itn], custart, custop );
+
             fftxCopyDeviceToHostArray(complexVendorHostArray, complexVendorTfmPtr);
-#elif (defined ( FFTX_SYCL) && FFTX_CALL_MKLFFT)
+#elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
+	    // Copy output of FFTX transform from device to host
+	    // in order to check it against MKL FFT.
+
 	    // If this is absent then iterations after the first aren't correct.
-	    sycl::host_accessor realFFTXHostAcc(irealFFTXTfmPtr);
-	    // N.B. copmlexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
+	    sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
+	    // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
 	    sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
 	    for (int ind = 0; ind < npts; ind++)
 	      {
-		realSharedPtr[ind] = realFFTXHostPtr[ind];
+		realVendorPtr[ind] = realFFTXHostPtr[ind];
 	      }
 	    for (int ind = 0; ind < nptsTrunc; ind++)
 	      {
@@ -409,10 +414,10 @@ int main(int argc, char* argv[])
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    //  Run the vendor FFT plan on the same input data.
 	    // Perform forward transform on real array
-	    // oneapi::mkl::dft::compute_forward(transform_plan_3d, realSharedPtr, complexSharedPtr).wait();
+	    // oneapi::mkl::dft::compute_forward(transform_plan_3d, realVendorPtr, complexVendorPtr).wait();
             sycl::event e = oneapi::mkl::dft::compute_forward(transform_plan_3d,
-                                                              realSharedPtr,
-                                                              complexSharedPtr);
+                                                              realVendorPtr,
+                                                              complexVendorPtr);
             Q.wait();
 	    auto end_time = std::chrono::high_resolution_clock::now();
             uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
@@ -423,15 +428,15 @@ int main(int argc, char* argv[])
             mdprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
 	    // Rearrange the complex MKL output
-	    // from complexSharedPtr on {mm, nn, kk}
+	    // from complexVendorPtr on {mm, nn, kk}
 	    // to complexVendorHostPtr on {mm, nn, K_adj}.
-	    // MKL ignores complexSharedPtr[:, :, K_adj+1:kk].	
+	    // MKL ignores complexVendorPtr[:, :, K_adj+1:kk].
 	    for (int b = 0; b < mm * nn; b++)
 	      {
 		for (int ikk = 0; ikk < K_adj; ikk++)
 		  {
 		    complexVendorHostPtr[b*K_adj + ikk] =
-		      complexSharedPtr[b*kk + ikk];
+		      complexVendorPtr[b*kk + ikk];
 		  }
 	      }
 #elif defined(FFTX_USE_FFTW)
@@ -554,24 +559,27 @@ int main(int argc, char* argv[])
             
             fftxCopyDeviceToHostArray(realVendorHostArray, realVendorTfmPtr);
 #elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
+	    // Copy output of FFTX transform from device to host
+	    // in order to check it against MKL FFT.
+
 	    // If this is absent then iterations after the first aren't correct.
 	    sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
 	    // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
 	    sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
 	    for (int ind = 0; ind < npts; ind++)
 	      {
-                realSharedPtr[ind] = realFFTXHostAcc[ind];
+                realVendorPtr[ind] = realFFTXHostAcc[ind];
 	      }
 
 	    // Rearrange the complex MKL input
 	    // from complexVendorHostPtr on {mm, nn, K_adj}
-	    // to complexSharedPtr on {mm, nn, kk}.
-	    // MKL returns garbage in complexSharedPtr[:, :, K_adj+1:kk].
+	    // to complexVendorPtr on {mm, nn, kk}.
+	    // MKL returns garbage in complexVendorPtr[:, :, K_adj+1:kk].
 	    for (int b = 0; b < mm * nn; b++)
 	      {
 		for (int ikk = 0; ikk < K_adj; ikk++)
 		  {
-		    complexSharedPtr[b*kk + ikk] =
+		    complexVendorPtr[b*kk + ikk] =
 		      complexFFTXHostPtr[b*K_adj + ikk];
 		  }
 	      }
@@ -579,10 +587,10 @@ int main(int argc, char* argv[])
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    // Run the vendor FFT plan on the same input data.
 	    // Perform backward transform on complex array
-	    // oneapi::mkl::dft::compute_backward(transform_plan_3d, complexSharedPtr, realSharedPtr).wait();
+	    // oneapi::mkl::dft::compute_backward(transform_plan_3d, complexVendorPtr, realVendorPtr).wait();
             sycl::event e = oneapi::mkl::dft::compute_backward(transform_plan_3d,
-                                                               complexSharedPtr,
-                                                               realSharedPtr);
+                                                               complexVendorPtr,
+                                                               realVendorPtr);
             Q.wait();
 	    auto end_time = std::chrono::high_resolution_clock::now();
             uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
@@ -594,7 +602,7 @@ int main(int argc, char* argv[])
 
 	    for (int ind = 0; ind < npts; ind++)
 	      {
-		realVendorHostPtr[ind] = realSharedPtr[ind];
+		realVendorHostPtr[ind] = realVendorPtr[ind];
 	      }
 #elif defined(FFTX_USE_FFTW)
             auto start = std::chrono::high_resolution_clock::now();
@@ -641,19 +649,20 @@ int main(int argc, char* argv[])
     // Clean up.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     fftxDeviceFree(realFFTXTfmPtr);
+    fftxDeviceFree(realVendorTfmPtr);
     fftxDeviceFree(complexFFTXTfmPtr);
     fftxDeviceFree(complexVendorTfmPtr);
 #elif defined(FFTX_SYCL)
 #if FFTX_CALL_MKLFFT
-    sycl::free(realSharedPtr, sycl_context);
-    sycl::free(complexSharedPtr, sycl_context);
+    sycl::free(realVendorPtr, sycl_context);
+    sycl::free(complexVendorPtr, sycl_context);
 #endif
 #else
+    // delete[] symbolTfmPtr;
 #endif
 
     fftx::OutStream() << prog << ": All done, exiting" << std::endl;
     std::flush(fftx::OutStream());
 
     return 0;
-
 }
