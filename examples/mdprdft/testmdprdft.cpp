@@ -18,11 +18,7 @@
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
-// Set to 1 to call MKLFFT and compare with FFTX; not working properly now.
-#define FFTX_CALL_MKLFFT 0
-#if FFTX_CALL_MKLFFT
 #include <oneapi/mkl/dfti.hpp>
-#endif
 #elif defined (FFTX_USE_FFTW)
 #include "fftw3.h"
 #endif
@@ -259,7 +255,7 @@ int main(int argc, char* argv[])
     std::string vendorfft = "FFTW";
 #endif
 
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || (defined(FFTX_SYCL) && FFTX_CALL_MKLFFT) || defined(FFTX_USE_FFTW)
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL) || defined(FFTX_USE_FFTW)
     // compare results of Spiral-RTC with vendor FFT or FFTW
     bool check_output = true;
 #else
@@ -286,7 +282,7 @@ int main(int argc, char* argv[])
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
       }
-#elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
+#elif defined (FFTX_SYCL)
     // Problems with using MKLFFT now.
     sycl::device dev;
     try
@@ -301,16 +297,6 @@ int main(int argc, char* argv[])
 	// dev = sycl::device(sycl::cpu_selector_v);
       }
     sycl::context ctx = sycl::context(dev);
-    /*
-    cl_device_id ocl_dev =
-      sycl::get_native<cl::sycl::backend::opencl, sycl::device>(dev);
-    cl_context   ocl_ctx =
-      sycl::get_native<cl::sycl::backend::opencl, sycl::context>(ctx);
-    cl_int err = CL_SUCCESS;
-    cl_command_queue ocl_queue =
-      clCreateCommandQueueWithProperties(ocl_ctx, ocl_dev,0,&err);
-    sycl::queue Q = sycl::make_queue<sycl::backend::opencl>(ocl_queue,ctx);
-    */
     sycl::property_list props{sycl::property::queue::enable_profiling()};
     sycl::queue Q = sycl::queue(ctx, dev, props);
 
@@ -324,28 +310,22 @@ int main(int argc, char* argv[])
 
     auto realVendorPtr = sycl::malloc_shared< double >
       (npts, sycl_device, sycl_context);
-    auto complexVendorPtr = sycl::malloc_shared< std::complex<double> >
-      (npts, sycl_device, sycl_context); // FIXME: was nptsTrunc
+    auto complexVendorPtr = sycl::malloc_shared< double >
+      (nptsTrunc * 2, sycl_device, sycl_context);
 
     // Initialize 3D FFT descriptor
     std::vector<std::int64_t> Nvec{mm, nn, kk};
+    std::int64_t fwd_strides[] = {0, nn*kk, kk, 1};
+    std::int64_t bwd_strides[] = {0, nn*K_adj, K_adj, 1};
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
                                  oneapi::mkl::dft::domain::REAL>
-      transform_plan_3d(Nvec);
-    // The default setting for DFTI_REAL forward domain is
-    // DFTI_CONJUGATE_EVEN_STORAGE = DFTI_COMPLEX_REAL, but
-    // this setting is deprecated.  Instead we should use
-    // DFTI_CONJUGATE_EVEN_STORAGE = DFTI_COMPLEX_COMPLEX.
-    // https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-0/dfti-complex-real-conj-even-storage.html
-    transform_plan_3d.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
-    				DFTI_COMPLEX_COMPLEX);
-    transform_plan_3d.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
-    				DFTI_COMPLEX_COMPLEX);
-    transform_plan_3d.set_value(oneapi::mkl::dft::config_param::PACKED_FORMAT,
-    				DFTI_CCE_FORMAT);
-    transform_plan_3d.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
-    				DFTI_NOT_INPLACE);
-    transform_plan_3d.commit(Q);
+      plan(Nvec);
+    plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, npts);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, nptsTrunc);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, fwd_strides);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, bwd_strides);
+    plan.commit(Q);
 #elif defined (FFTX_USE_FFTW)
     fftw_plan planR2C = fftw_plan_dft_r2c_3d(mm, nn, kk,
                                              realFFTXHostPtr,
@@ -393,29 +373,31 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_EVENT_ELAPSED_TIME ( &mdprdft_vendor_millisec[itn], custart, custop );
 
             fftxCopyDeviceToHostArray(complexVendorHostArray, complexVendorTfmPtr);
-#elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
-	    // Copy output of FFTX transform from device to host
+#elif defined (FFTX_SYCL)
+            // Copy output of FFTX R2C transform from device to host
 	    // in order to check it against MKL FFT.
-
-	    // If this is absent then iterations after the first aren't correct.
-	    sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
-	    // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
-	    sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
-	    for (int ind = 0; ind < npts; ind++)
-	      {
-		realVendorPtr[ind] = realFFTXHostPtr[ind];
-	      }
+            // Need both of these accessors, else errors can occur after first iteration.
+            sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
+            // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
+            sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
 	    for (int ind = 0; ind < nptsTrunc; ind++)
 	      {
 		complexFFTXHostPtr[ind] =
-		  std::complex(complexFFTXHostAcc[2*ind], complexFFTXHostAcc[2*ind+1]);
+		  std::complex(complexFFTXHostAcc[2*ind + 0],
+                               complexFFTXHostAcc[2*ind + 1]);
+	      }
+
+            // Copy input to use in MKL call.
+	    for (int ind = 0; ind < npts; ind++)
+	      {
+		realVendorPtr[ind] = realFFTXHostPtr[ind];
 	      }
 	
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    //  Run the vendor FFT plan on the same input data.
 	    // Perform forward transform on real array
-	    // oneapi::mkl::dft::compute_forward(transform_plan_3d, realVendorPtr, complexVendorPtr).wait();
-            sycl::event e = oneapi::mkl::dft::compute_forward(transform_plan_3d,
+	    // oneapi::mkl::dft::compute_forward(plan, realVendorPtr, complexVendorPtr).wait();
+            sycl::event e = oneapi::mkl::dft::compute_forward(plan,
                                                               realVendorPtr,
                                                               complexVendorPtr);
             Q.wait();
@@ -427,18 +409,12 @@ int main(int argc, char* argv[])
 	    // mdprdft_vendor_millisec[itn] = duration.count();
             mdprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-	    // Rearrange the complex MKL output
-	    // from complexVendorPtr on {mm, nn, kk}
-	    // to complexVendorHostPtr on {mm, nn, K_adj}.
-	    // MKL ignores complexVendorPtr[:, :, K_adj+1:kk].
-	    for (int b = 0; b < mm * nn; b++)
-	      {
-		for (int ikk = 0; ikk < K_adj; ikk++)
-		  {
-		    complexVendorHostPtr[b*K_adj + ikk] =
-		      complexVendorPtr[b*kk + ikk];
-		  }
-	      }
+            for (int ind = 0; ind < nptsTrunc; ind++)
+              {
+                complexVendorHostPtr[ind] =
+                  std::complex<double>(complexVendorPtr[2*ind + 0],
+                                       complexVendorPtr[2*ind + 1]);
+              }
 #elif defined(FFTX_USE_FFTW)
             auto start = std::chrono::high_resolution_clock::now();
             fftw_execute(planR2C);
@@ -480,7 +456,6 @@ int main(int argc, char* argv[])
     
     delete[] mdprdft_gpu;
     delete[] mdprdft_vendor_millisec;
-
 
     // Set up the inverse transform.
     
@@ -558,37 +533,31 @@ int main(int argc, char* argv[])
             FFTX_DEVICE_EVENT_ELAPSED_TIME ( &imdprdft_vendor_millisec[itn], custart, custop );
             
             fftxCopyDeviceToHostArray(realVendorHostArray, realVendorTfmPtr);
-#elif (defined (FFTX_SYCL) && FFTX_CALL_MKLFFT)
-	    // Copy output of FFTX transform from device to host
+#elif defined (FFTX_SYCL)
+            // Copy output of FFTX C2R transform from device to host
 	    // in order to check it against MKL FFT.
-
-	    // If this is absent then iterations after the first aren't correct.
-	    sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
-	    // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
-	    sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
+            // Need both of these accessors, else errors can occur after first iteration.
+            sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
+            // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
+            sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
 	    for (int ind = 0; ind < npts; ind++)
 	      {
                 realVendorPtr[ind] = realFFTXHostAcc[ind];
 	      }
 
-	    // Rearrange the complex MKL input
-	    // from complexVendorHostPtr on {mm, nn, K_adj}
-	    // to complexVendorPtr on {mm, nn, kk}.
-	    // MKL returns garbage in complexVendorPtr[:, :, K_adj+1:kk].
-	    for (int b = 0; b < mm * nn; b++)
-	      {
-		for (int ikk = 0; ikk < K_adj; ikk++)
-		  {
-		    complexVendorPtr[b*kk + ikk] =
-		      complexFFTXHostPtr[b*K_adj + ikk];
-		  }
-	      }
+            // Copy input to use in MKL call.
+            for (int ind = 0; ind < nptsTrunc; ind++)
+              {
+                std::complex<double> v = complexFFTXHostPtr[ind];
+                complexVendorPtr[2*ind + 0] = FFTX_REALPART(v);
+                complexVendorPtr[2*ind + 1] = FFTX_IMAGPART(v);
+              }
 
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    // Run the vendor FFT plan on the same input data.
 	    // Perform backward transform on complex array
-	    // oneapi::mkl::dft::compute_backward(transform_plan_3d, complexVendorPtr, realVendorPtr).wait();
-            sycl::event e = oneapi::mkl::dft::compute_backward(transform_plan_3d,
+	    // oneapi::mkl::dft::compute_backward(plan, complexVendorPtr, realVendorPtr).wait();
+            sycl::event e = oneapi::mkl::dft::compute_backward(plan,
                                                                complexVendorPtr,
                                                                realVendorPtr);
             Q.wait();
@@ -653,10 +622,8 @@ int main(int argc, char* argv[])
     fftxDeviceFree(complexFFTXTfmPtr);
     fftxDeviceFree(complexVendorTfmPtr);
 #elif defined(FFTX_SYCL)
-#if FFTX_CALL_MKLFFT
     sycl::free(realVendorPtr, sycl_context);
     sycl::free(complexVendorPtr, sycl_context);
-#endif
 #else
     // delete[] symbolTfmPtr;
 #endif

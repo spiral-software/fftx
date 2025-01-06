@@ -27,7 +27,7 @@ https://github.com/spiral-software/fftx.git
 
 ### New Features
 
-* Add support for SYCL. On the SYCL backend, the `mddft` example (and only this example) compares outputs of FFTX transforms against those of MKLFFT. The `3DDFT_mpi` example and the distributed version of the `fortran` example do not support the SYCL backend yet.
+* Add support for SYCL. On the SYCL backend, the `mddft` and `mdprdft` examples (and only these examples) compare outputs of FFTX transforms against those of MKLFFT. The `3DDFT_mpi` example and the distributed version of the `fortran` example do not support the SYCL backend yet.
 * New output streams `fftx::OutStream()` replacing `stdout`, which is its default setting, and likewise `fftx::ErrStream()` replacing `stdin`, which is its default setting.
 
 #### General Cleanup:
