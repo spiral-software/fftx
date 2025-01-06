@@ -529,18 +529,6 @@ int main(int argc, char* argv[])
 	  }
       } // end iteration
 
-    // Clean up.
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    fftxDeviceFree(inputTfmPtr);
-    fftxDeviceFree(outputTfmPtr);
-    // fftxDeviceFree(symbolTfmPtr);
-#elif defined(FFTX_SYCL)
-    sycl::free(inputVendorPtr, sycl_context);
-    sycl::free(outputVendorPtr, sycl_context);
-#else
-    delete[] symbolTfmPtr;
-#endif
-
     fftx::OutStream() << "Times in milliseconds for " << descrip
                       << " on MDDFT (inverse) for "
                       << iterations << " trials of size "
@@ -566,6 +554,18 @@ int main(int argc, char* argv[])
     
     delete[] imddft_gpu;
     delete[] imddft_vendor_millisec;
+
+    // Clean up.
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    fftxDeviceFree(inputTfmPtr);
+    fftxDeviceFree(outputTfmPtr);
+    // fftxDeviceFree(symbolTfmPtr);
+#elif defined(FFTX_SYCL)
+    sycl::free(inputVendorPtr, sycl_context);
+    sycl::free(outputVendorPtr, sycl_context);
+#else
+    // delete[] symbolTfmPtr;
+#endif
 
     // printf("%s: All done, exiting\n", prog);
     fftx::OutStream() << prog << ": All done, exiting" << std::endl;
