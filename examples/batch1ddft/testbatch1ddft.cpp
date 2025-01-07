@@ -48,6 +48,45 @@ static void setInput ( double *inputPtr, std::vector<int> sizes )
 #define FFTX_IMAGPART(z) z.imag()
 #endif
 
+#define FFTX_BATCH_SEQUENTIAL 0
+#define FFTX_BATCH_STRIDED 1
+
+#ifdef FFTX_SYCL
+// MKL output needs rearrangement if input and output order are different.
+void copyBatchVendorToHost(FFTX_DOUBLECOMPLEX* hostPtr,
+                           FFTX_DOUBLECOMPLEX* sharedPtr,
+                           std::vector<int> sizes)
+{
+  int N = sizes[0];
+  int B = sizes[1];
+  int read = sizes[2];
+  int write = sizes[3];
+  if ((read == FFTX_BATCH_SEQUENTIAL) && (write == FFTX_BATCH_STRIDED))
+    { // Need to transpose results of MKL from sequential to strided.
+      for (int nn = 0; nn < N; nn++)
+        for (int bb = 0; bb < B; bb++)
+          {
+            hostPtr[nn*B + bb] = sharedPtr[nn + bb*N];
+          }
+    }
+  else if ((read == FFTX_BATCH_STRIDED) && (write == FFTX_BATCH_SEQUENTIAL))
+    { // Need to transpose results of MKL from strided to sequential.
+      for (int bb = 0; bb < B; bb++)
+        for (int nn = 0; nn < N; nn++)
+          {
+            hostPtr[nn + bb*N] = sharedPtr[nn*B + bb];
+          }
+    }
+  else              
+    {
+      for (int ind = 0; ind < B*N; ind++)
+        {
+          hostPtr[ind] = sharedPtr[ind];
+        }
+    }
+}
+#endif
+
 // Check that the buffers are identical (within roundoff)
 // outputFFTXPtr is the output buffer from the Spiral-generated transform
 // (result on GPU copied to host array outputFFTXPtr);
@@ -92,8 +131,8 @@ int main(int argc, char* argv[])
     int iterations = 2;
     int N = 32; // default array length
     int B = 2; // default batch size
-    int read = 0;
-    int write = 0;
+    int read = FFTX_BATCH_SEQUENTIAL;
+    int write = FFTX_BATCH_SEQUENTIAL;
     std::string reads = "Sequential";
     std::string writes = "Sequential";
 
@@ -136,7 +175,7 @@ int main(int argc, char* argv[])
             write = atoi ( & argv[1][baz] );
             break;
         case 'h':
-            fftx::ErrStream() << "Usage: " << argv[0]
+            fftx::OutStream() << "Usage: " << argv[0]
                               << " [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]"
                               << std::endl;
             exit (0);
@@ -146,21 +185,39 @@ int main(int argc, char* argv[])
         }
         argv++, argc--;
     }
-    if (read == 0)
+
+    if (read == FFTX_BATCH_SEQUENTIAL)
         reads = "Sequential";
-    else
+    else if (read == FFTX_BATCH_STRIDED)
         reads = "Strided";
-    if (write == 0)
-        writes = "Sequential";
     else
+      {
+            fftx::ErrStream() << "Usage: " << argv[0]
+                              << " [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]"
+                              << std::endl;
+            exit (-1);
+      }
+    
+    if (write == FFTX_BATCH_SEQUENTIAL)
+        writes = "Sequential";
+    else if (write == FFTX_BATCH_STRIDED)
         writes = "Strided";
+    else
+      {
+            fftx::ErrStream() << "Usage: " << argv[0]
+                              << " [ -i iterations ] [ -s NxB (DFT Length x Batch Size) ] [-r ReadxWrite (sequential = 0, strided = 1)] [ -h (print help message) ]"
+                              << std::endl;
+            exit (-1);
+      }
 
     if ( FFTX_DEBUGOUT ) fftx::OutStream() << N << " " << B << " " << reads << " " << writes << std::endl;
     std::vector<int> sizes{N,B, read,write};
 
-    std::vector<std::complex<double>> inputHostVector(B * N);
-    std::vector<std::complex<double>> outputFFTXHostVector(B * N);
-    std::vector<std::complex<double>> outputVendorHostVector(B * N);
+    long npts = B * N;
+
+    std::vector<std::complex<double>> inputHostVector(npts);
+    std::vector<std::complex<double>> outputFFTXHostVector(npts);
+    std::vector<std::complex<double>> outputVendorHostVector(npts);
 
     std::complex<double> *inputHostPtr = (std::complex<double> *) inputHostVector.data();
     std::complex<double> *outputFFTXHostPtr = (std::complex<double> *) outputFFTXHostVector.data();
@@ -171,19 +228,22 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     if ( FFTX_DEBUGOUT ) fftx::OutStream() << "allocating memory" << std::endl;
     // Allocate memory on device.
-    FFTX_DEVICE_MALLOC((void**)&inputTfmPtr, inputHostVector.size() * sizeof(std::complex<double>));
-    FFTX_DEVICE_MALLOC((void**)&outputFFTXTfmPtr, outputFFTXHostVector.size() * sizeof(std::complex<double>));
-    FFTX_DEVICE_MALLOC((void**)&outputVendorTfmPtr, outputVendorHostVector.size() * sizeof(std::complex<double>));
-#elif defined (FFTX_SYCL)
-    // These will store complex data, so need double the array size.
-    sycl::buffer<double> inputBuffer((double*) inputHostVector.data(), 2 * inputHostVector.size());
-    sycl::buffer<double> outputFFTXBuffer((double*) outputFFTXHostVector.data(), 2 * outputFFTXHostVector.size());
-    sycl::buffer<double> outputVendorBuffer((double*) outputVendorHostVector.data(), 2 * outputVendorHostVector.size());
-#else // CPU
+    size_t bytes = npts * sizeof(std::complex<double>);
+    FFTX_DEVICE_MALLOC((void**)&inputTfmPtr, bytes);
+    FFTX_DEVICE_MALLOC((void**)&outputFFTXTfmPtr, bytes);
+    FFTX_DEVICE_MALLOC((void**)&outputVendorTfmPtr, bytes);
+#else // SYCL or CPU
     // FIXME: should these be (double *)?
     inputTfmPtr = inputHostVector.data();
     outputFFTXTfmPtr = outputFFTXHostVector.data();
     outputVendorTfmPtr = outputVendorHostVector.data();
+#endif
+    
+#ifdef FFTX_SYCL
+    // These will store complex data, so need double the array size.
+    sycl::buffer<double> inputBuffer((double*) inputTfmPtr, 2*npts);
+    sycl::buffer<double> outputFFTXBuffer((double*) outputFFTXTfmPtr, 2*npts);
+    sycl::buffer<double> outputVendorBuffer((double*) outputVendorTfmPtr, 2*npts);
 #endif
 
     // Order within args:  output, input.
@@ -229,14 +289,14 @@ int main(int argc, char* argv[])
 
     std::string read_str;
     int istride, idist;
-    if (read == 0)
+    if (read == FFTX_BATCH_SEQUENTIAL)
       {
         read_str = "APAR";
         istride = 1;
         idist = N;
       }
     else
-      {
+      { // strided
         read_str = "AVEC";
         istride = B;
         idist = 1;
@@ -244,14 +304,14 @@ int main(int argc, char* argv[])
 
     std::string write_str;
     int ostride, odist;
-    if (write == 0)
+    if (write == FFTX_BATCH_SEQUENTIAL)
       {
         write_str = "APAR";
         ostride = 1;
         odist = N;
       }
     else
-      {
+      { // strided
         write_str = "AVEC";
         ostride = B;
         odist = 1;
@@ -291,47 +351,46 @@ int main(int argc, char* argv[])
                       << Q.get_device().get_info<sycl::info::device::name>()
                       << std::endl;
 
-    auto inputVendorPtr = sycl::malloc_shared< std::complex<double> >
-      (B * N, sycl_device, sycl_context);
-    auto outputVendorPtr = sycl::malloc_shared< std::complex<double> >
-      (B * N, sycl_device, sycl_context);
+    FFTX_DOUBLECOMPLEX* inputVendorPtr =
+      sycl::malloc_shared< std::complex<double> >
+      (npts, sycl_device, sycl_context);
+    FFTX_DOUBLECOMPLEX* outputVendorPtr =
+      sycl::malloc_shared< std::complex<double> >
+      (npts, sycl_device, sycl_context);
 
-    int fwd_dist, bwd_dist;
+    // Set strides and distance for forward and backward MKL transforms.
+    // These are input strides.  If the read ordering and the write ordering
+    // differ, then we'll need to rearrange the MKL output; this is done in
+    // copyBatchVendorToHost.
     std::int64_t fwd_strides[2];
     std::int64_t bwd_strides[2];
+    int fwd_dist, bwd_dist;
     fwd_strides[0] = 0;
     bwd_strides[0] = 0;
-    if (read == 0)
+    if (read == FFTX_BATCH_SEQUENTIAL)
       {
-        fwd_dist = N;
         fwd_strides[1] = 1;
-      }
-    else
-      {
-        fwd_dist = 1;
-        fwd_strides[1] = B;
-      }
-
-    if (write == 0)
-      {
-        bwd_dist = N;
         bwd_strides[1] = 1;
+        fwd_dist = N;
+        bwd_dist = N;
       }
     else
-      {
-        bwd_dist = 1;
+      { // strided
+        fwd_strides[1] = B;
         bwd_strides[1] = B;
+        fwd_dist = 1;
+        bwd_dist = 1;
       }
 
     // Initialize batch 1D FFT descriptor
-    std::vector<std::int64_t> Nvec{mm, nn, kk};
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
 				 oneapi::mkl::dft::domain::COMPLEX> plan(N);
+    //    plan.set_value(oneapi::mkl::dft::config_param::BACKWARD_SCALE, bwd_scale);
     plan.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, B);
-    plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, fwd_dist);
-    plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, bwd_dist);
     plan.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, fwd_strides);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, fwd_dist);
     plan.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, bwd_strides);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, bwd_dist);
     plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
     plan.commit(Q);
 #endif
@@ -348,7 +407,7 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         FFTX_DEVICE_MEM_COPY(inputTfmPtr,
                              inputHostPtr,
-                             inputHostVector.size() * sizeof(std::complex<double>),
+                             bytes,
                              FFTX_MEM_COPY_HOST_TO_DEVICE);
 	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
 #endif
@@ -364,7 +423,7 @@ int main(int argc, char* argv[])
 	    // in order to check it against cuFFT or rocFFT.
             FFTX_DEVICE_MEM_COPY(outputFFTXHostPtr,
                                  outputFFTXTfmPtr,
-                                 outputFFTXHostVector.size() * sizeof(std::complex<double>),
+                                 bytes,
                                  FFTX_MEM_COPY_DEVICE_TO_HOST);
 
 	    // Run cuFFT or rocFFT.
@@ -386,7 +445,7 @@ int main(int argc, char* argv[])
 
             FFTX_DEVICE_MEM_COPY(outputVendorHostVector.data(),
                                  outputVendorTfmPtr,
-                                 outputVendorHostVector.size() * sizeof(std::complex<double>),
+                                 bytes,
                                  FFTX_MEM_COPY_DEVICE_TO_HOST);
             
 #elif defined (FFTX_SYCL)
@@ -398,20 +457,20 @@ int main(int argc, char* argv[])
 
 	    // outputFFTXAcc is double* because outputFFTXBuffer is sycl::buffer<double>.
 	    sycl::host_accessor outputFFTXAcc(outputFFTXBuffer);
-	    for (int ind = 0; ind < outputFFTXHostVector.size(); ind++)
+	    for (int ind = 0; ind < npts; ind++)
 	      {
 		outputFFTXHostVector[ind] =
 		  std::complex(outputFFTXAcc[2*ind], outputFFTXAcc[2*ind+1]);
 	      }
 	
 	    // Run MKL FFT plan on the same input data.
-	    for (int ind = 0; ind < inputHostVector.size(); ind++)
+	    for (int ind = 0; ind < npts; ind++)
 	      { // These are both complex.
 		inputVendorPtr[ind] = inputHostPtr[ind];
 	      }
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    // Perform forward transform on complex array
-            // oneapi::mkl::dft::compute_forward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
+            // oneapi::mkl::dft::compute_forward(plan, inputVendorPtr, outputVendorPtr).wait();
             sycl::event e = oneapi::mkl::dft::compute_forward(plan,
                                                               inputVendorPtr,
                                                               outputVendorPtr);
@@ -421,11 +480,8 @@ int main(int argc, char* argv[])
             uint64_t e_end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
             uint64_t profile_nanosec = e_end - e_start;
             batch1ddft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
-      
-	    for (int ind = 0; ind < outputVendorHostVector.size(); ind++)
-	      { // These are both complex.
-		outputVendorHostPtr[ind] = outputVendorPtr[ind];
-	      }
+
+            copyBatchVendorToHost(outputVendorHostPtr, outputVendorPtr, sizes);
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
@@ -434,7 +490,7 @@ int main(int argc, char* argv[])
                               << " \tBatch 1D FFT (Forward)\t";
 	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
 			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
-			   (long) outputFFTXHostVector.size() );
+                           npts);
 	  } // end check_output
       } // end iteration
 
@@ -477,7 +533,7 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         FFTX_DEVICE_MEM_COPY(inputTfmPtr,
                              inputHostPtr,
-                             inputHostVector.size() * sizeof(std::complex<double>),
+                             bytes,
                              FFTX_MEM_COPY_HOST_TO_DEVICE);
         if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
 #endif
@@ -494,7 +550,7 @@ int main(int argc, char* argv[])
 	    // in order to check it against cuFFT or rocFFT.
             FFTX_DEVICE_MEM_COPY(outputFFTXHostPtr,
                                  outputFFTXTfmPtr,
-                                 outputFFTXHostVector.size() * sizeof(std::complex<double>),
+                                 bytes,
                                  FFTX_MEM_COPY_DEVICE_TO_HOST);
 
 	    // Run cuFFT or rocFFT.	    
@@ -516,7 +572,7 @@ int main(int argc, char* argv[])
 
             FFTX_DEVICE_MEM_COPY(outputVendorHostVector.data(),
                                  outputVendorTfmPtr,
-                                 outputVendorHostVector.size() * sizeof(std::complex<double>),
+                                 bytes,
                                  FFTX_MEM_COPY_DEVICE_TO_HOST);
 #elif defined (FFTX_SYCL)
 	    // Copy output of FFTX transform from device to host
@@ -527,20 +583,21 @@ int main(int argc, char* argv[])
 
 	    // outputFFTXAcc is double* because outputFFTXBuffer is sycl::buffer<double>.
 	    sycl::host_accessor outputFFTXAcc(outputFFTXBuffer);
-	    for (int ind = 0; ind < outputFFTXHostVector.size(); ind++)
+	    for (int ind = 0; ind < npts; ind++)
 	      {
 		outputFFTXHostVector[ind] =
-		  std::complex(outputFFTXAcc[2*ind], outputFFTXAcc[2*ind+1]);
+		  std::complex(outputFFTXAcc[2*ind],
+                               outputFFTXAcc[2*ind+1]);
 	      }
 
 	    // Run MKL FFT plan on the same input data.
-	    for (int ind = 0; ind < inputHostVector.size(); ind++)
+	    for (int ind = 0; ind < npts; ind++)
 	      { // These are both complex.
 		inputVendorPtr[ind] = inputHostPtr[ind];
 	      }
 	    auto start_time = std::chrono::high_resolution_clock::now();
 	    // Perform backward transform on complex array
-            // oneapi::mkl::dft::compute_backward(transform_plan_3d, inputVendorPtr, outputVendorPtr).wait();
+            // oneapi::mkl::dft::compute_backward(plan, inputVendorPtr, outputVendorPtr).wait();
             sycl::event e = oneapi::mkl::dft::compute_backward(plan,
                                                                inputVendorPtr,
                                                                outputVendorPtr);
@@ -551,10 +608,7 @@ int main(int argc, char* argv[])
             uint64_t profile_nanosec = e_end - e_start;
             ibatch1ddft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-	    for (int ind = 0; ind < outputVendorHostVector.size(); ind++)
-	      { // These are both complex.
-		outputVendorHostPtr[ind] = outputVendorPtr[ind];
-	      }
+            copyBatchVendorToHost(outputVendorHostPtr, outputVendorPtr, sizes);
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
@@ -563,7 +617,7 @@ int main(int argc, char* argv[])
                               << " \tBatch 1D FFT (Inverse)\t";
 	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
 			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
-			   (long) outputFFTXHostVector.size() );
+			   npts );
 	  } // end check_output
       } // end iteration
             
