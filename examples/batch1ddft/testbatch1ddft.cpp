@@ -55,10 +55,6 @@ static void buildInputBuffer ( std::complex<double> *host_X, std::vector<int> si
 #define FFTX_DOUBLECOMPLEX std::complex<double>
 #define FFTX_REALPART(z) z.real()
 #define FFTX_IMAGPART(z) z.imag()
-#elif defined (FFTX_USE_FFTW)
-#define FFTX_DOUBLECOMPLEX fftw_complex
-#define FFTX_REALPART(z) z[0]
-#define FFTX_IMAGPART(z) z[1]
 #else // need these #defines here, or else #ifdef around checkOutputs.
 #define FFTX_DOUBLECOMPLEX std::complex<double>
 #define FFTX_REALPART(z) z.real()
