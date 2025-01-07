@@ -322,14 +322,11 @@ int main(int argc, char* argv[])
         bwd_dist = 1;
         bwd_strides[1] = B;
       }
-    //    double bwd_scale = (double) 1.0 / (double) N;
-    //    std::cout << "bwd_scale = " << bwd_scale << std::endl;
 
     // Initialize batch 1D FFT descriptor
     std::vector<std::int64_t> Nvec{mm, nn, kk};
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
 				 oneapi::mkl::dft::domain::COMPLEX> plan(N);
-    // plan.set_value(oneapi::mkl::dft::config_param::BACKWARD_SCALE, bwd_scale);
     plan.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, B);
     plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, fwd_dist);
     plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, bwd_dist);
