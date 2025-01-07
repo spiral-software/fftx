@@ -227,7 +227,7 @@ int main(int argc, char* argv[])
     FFTX_DEVICE_EVENT_CREATE ( &custart );
     FFTX_DEVICE_EVENT_CREATE ( &custop );
 
-    string read_str;
+    std::string read_str;
     int istride, idist;
     if (read == 0)
       {
@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
         idist = 1;
       }
 
-    string write_str;
+    std::string write_str;
     int ostride, odist;
     if (write == 0)
       {
@@ -596,7 +596,7 @@ int main(int argc, char* argv[])
     // Clean up.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     fftxDeviceFree(inputTfmPtr);
-    fftxDeviceFree(outputTfmPtr);
+    fftxDeviceFree(outputFFTXTfmPtr);
     fftxDeviceFree(outputVendorTfmPtr);
 #elif defined(FFTX_SYCL)
     sycl::free(inputVendorPtr, sycl_context);
