@@ -27,8 +27,9 @@ https://github.com/spiral-software/fftx.git
 
 ### New Features
 
-* Add support for SYCL. On the SYCL backend, the `mddft` and `mdprdft` examples (and only these examples) compare outputs of FFTX transforms against those of MKLFFT. The `3DDFT_mpi` example and the distributed version of the `fortran` example do not support the SYCL backend yet.
+* Add support for SYCL. On the SYCL backend, the `mddft`, `mdprdft`, `batch1ddft` and `batch1dprdft`  examples compare outputs of FFTX transforms against those of MKLFFT. The `3DDFT_mpi` example and the distributed version of the `fortran` example do not support the SYCL backend yet.
 * New output streams `fftx::OutStream()` replacing `stdout`, which is its default setting, and likewise `fftx::ErrStream()` replacing `stdin`, which is its default setting.
+* On the CPU backend, the `testmdddft` and `testmdprdft` examples compare results with FFTW if that library is found by CMake.
 
 #### General Cleanup:
 
@@ -47,7 +48,7 @@ https://github.com/spiral-software/fftx.git
 
 ### Known Issues
 
-N/A
+On the CPU backend, the `batch1ddft` and `batch1dprdft` examples work only in the read sequential, write sequential case, which is the default case `-r 0x0`.
 
 ## License
 
