@@ -610,9 +610,19 @@ int main(int argc, char* argv[])
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     FFTX_DEVICE_FFT_HANDLE planC2R;     
     FFTX_DEVICE_FFT_TYPE xfmtypeC2R = FFTX_DEVICE_FFT_Z2D ;
+    // istride, idist, ostride, odist the same with these exceptions
+    if (read == FFTX_BATCH_SEQUENTIAL)
+      {
+        idist = xc;
+      }
+    if (write == FFTX_BATCH_SEQUENTIAL)
+      {
+        odist = xr;
+      }
+
     res = FFTX_DEVICE_FFT_PLAN_MANY ( &planC2R, 1, &xr, // plan, rank, length
-                                      &xc, ostride, odist, // FIXME
-                                      &xr, istride, idist, // FIXME
+                                      &xc, istride, idist,
+                                      &xr, ostride, odist,
                                       xfmtypeC2R, B); // type, batch
     if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
