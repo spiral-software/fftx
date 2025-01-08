@@ -43,87 +43,6 @@
 #define FFTX_BATCH_SEQUENTIAL 0
 #define FFTX_BATCH_STRIDED 1
 
-#ifdef FFTX_SYCL
-// MKL output needs rearrangement if input and output order are different.
-void copyBatchVendorToHost(double* hostPtr,
-                           double* sharedPtr,
-                           std::vector<int> sizes)
-{
-  int N = sizes[0];
-  int B = sizes[1];
-  int read = sizes[2];
-  int write = sizes[3];
-  if ((read == FFTX_BATCH_SEQUENTIAL) && (write == FFTX_BATCH_STRIDED))
-    { // Need to transpose results of MKL from sequential to strided.
-      for (int nn = 0; nn < N; nn++)
-        for (int bb = 0; bb < B; bb++)
-          {
-            hostPtr[nn*B + bb] = sharedPtr[nn + bb*N];
-          }
-    }
-  else if ((read == FFTX_BATCH_STRIDED) && (write == FFTX_BATCH_SEQUENTIAL))
-    { // Need to transpose results of MKL from strided to sequential.
-      for (int bb = 0; bb < B; bb++)
-        for (int nn = 0; nn < N; nn++)
-          {
-            hostPtr[nn + bb*N] = sharedPtr[nn*B + bb];
-          }
-    }
-  else
-    {
-      for (int ind = 0; ind < B*N; ind++)
-        {
-          hostPtr[ind] = sharedPtr[ind];
-        }
-    }
-}
-
-void copyBatchVendorToHost(std::complex<double>* hostPtr,
-                           double* sharedPtr,
-                           std::vector<int> sizes)
-{
-  int N = sizes[0];
-  int B = sizes[1];
-  int read = sizes[2];
-  int write = sizes[3];
-  if ((read == FFTX_BATCH_SEQUENTIAL) && (write == FFTX_BATCH_STRIDED))
-    { // Need to transpose results of MKL from sequential to strided.
-      for (int nn = 0; nn < N; nn++)
-        for (int bb = 0; bb < B; bb++)
-          {
-            int indc = nn + bb*N;
-            hostPtr[nn*B + bb] =
-              std::complex<double>(sharedPtr[2*indc],
-                                   sharedPtr[2*indc + 1]);
-          }
-    }
-  else if ((read == FFTX_BATCH_STRIDED) && (write == FFTX_BATCH_SEQUENTIAL))
-    { // Need to transpose results of MKL from strided to sequential.
-      for (int bb = 0; bb < B; bb++)
-        for (int nn = 0; nn < N; nn++)
-          {
-            int indc = nn*B + bb;
-            hostPtr[nn + bb*N] =
-              std::complex<double>(sharedPtr[2*indc],
-                                   sharedPtr[2*indc + 1]);
-          }
-    }
-  else
-    {
-      for (int ind = 0; ind < B*N; ind++)
-        {
-          hostPtr[ind] =
-            std::complex<double>(sharedPtr[2*ind],
-                                 sharedPtr[2*ind + 1]);
-        }
-    }
-}
-#endif
-
-//  Build a random input buffer for Spiral and rocfft
-//  host_X is the host buffer to setup -- it'll be copied to the device later
-//  sizes is a vector with the X, Y, & Z dimensions
-
 static void setRandomData ( double *data, long arrsz)
 {
   for ( int ind = 0; ind < arrsz; ind++)
@@ -480,38 +399,34 @@ int main(int argc, char* argv[])
       sycl::malloc_shared< double >
       (nptsTrunc * 2, sycl_device, sycl_context);
 
-    // Set strides and distance for forward and backward MKL transforms.
-    // These are input strides.  If the read ordering and the write ordering
-    // differ, then we'll need to rearrange the MKL output; this is done in
-    // copyBatchVendorToHost.
-    std::int64_t fwd_strides[2];
-    std::int64_t bwd_strides[2];
-    int fwd_dist, bwd_dist;
-    fwd_strides[0] = 0;
-    bwd_strides[0] = 0;
-    if (read == FFTX_BATCH_SEQUENTIAL)
-      {
-        fwd_strides[1] = 1;
-        bwd_strides[1] = 1;
-        fwd_dist = N;
-        bwd_dist = N_adj;
-      }
-    else
-      { // strided read
-        fwd_strides[1] = B;
-        bwd_strides[1] = B;
-        fwd_dist = 1;
-        bwd_dist = 1;
-      }
+    // Set strides and distance for reading and writing MKL transforms.
+    // N.B. Our application specifies either sequential or strided input,
+    // and either sequential or strided output,
+    // and these specifications apply to both the forward transform
+    // and the inverse transform.
 
+    // If we have specified sequential reads & strided writes, or vice versa,
+    // then we need separate mkl::dft plans for compute_forward and
+    // compute_backward, in order for the output ordering to be correct.
+    std::int64_t read_strides[2];
+    std::int64_t write_strides[2];
+    read_strides[0] = 0;
+    write_strides[0] = 0;
+
+    read_strides[1] = (read == FFTX_BATCH_SEQUENTIAL) ? 1 : B;
+    int read_dist = (read == FFTX_BATCH_SEQUENTIAL) ? N : 1;
+
+    write_strides[1] = (write == FFTX_BATCH_SEQUENTIAL) ? 1 : B;
+    int write_dist = (write == FFTX_BATCH_SEQUENTIAL) ? N_adj : 1;
+    
     // Initialize batch 1D FFT descriptor
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
                                  oneapi::mkl::dft::domain::REAL> plan(N);
     plan.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, B);
-    plan.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, fwd_strides);
-    plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, fwd_dist);
-    plan.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, bwd_strides);
-    plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, bwd_dist);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, read_strides);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, read_dist);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, write_strides);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, write_dist);
     plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
     plan.commit(Q);
 #endif
@@ -521,8 +436,7 @@ int main(int argc, char* argv[])
 
     for (int itn = 0; itn < iterations; itn++)
       {
-        // Set up random data for input buffer.
-	// (Use different randomized data each iteration.)
+        // Fill input buffer with random data, different each iteration.
         setRandomData( (double*) realFFTXHostPtr, npts );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         FFTX_DEVICE_MEM_COPY(realFFTXTfmPtr,
@@ -602,7 +516,12 @@ int main(int argc, char* argv[])
             uint64_t profile_nanosec = e_end - e_start;
             batch1dprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-            copyBatchVendorToHost(complexVendorHostPtr, complexVendorPtr, sizesTrunc);
+            for (int ind = 0; ind < nptsTrunc; ind++)
+              {
+                complexVendorHostPtr[ind] =
+                  std::complex<double>(complexVendorPtr[2*ind],
+                                       complexVendorPtr[2*ind + 1]);
+              }
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
@@ -677,15 +596,29 @@ int main(int argc, char* argv[])
         check_output = false;
       }
 #elif defined (FFTX_SYCL)
-    // Got plan that works with compute_backward.
+    // Need a separate plan for compute_backward if and only if read != write.
+    oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+                                 oneapi::mkl::dft::domain::REAL> planInv(N);
+    if (read != write)
+      {
+        // Use read_dist_inv and write_dist_inv for C2R transform.
+        int read_dist_inv = (read == FFTX_BATCH_SEQUENTIAL) ? N_adj : 1;
+        int write_dist_inv = (write == FFTX_BATCH_SEQUENTIAL) ? N : 1;
+        planInv.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS, B);
+        planInv.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, write_strides);
+        planInv.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, write_dist_inv);
+        planInv.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, read_strides);
+        planInv.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, read_dist_inv);
+        planInv.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
+        planInv.commit(Q);
+      }
 #endif
 
     float *ibatch1dprdft_gpu = new float[iterations];
     float *ibatch1dprdft_vendor_millisec = new float[iterations];
     for (int itn = 0; itn < iterations; itn++)
       {
-        // Set up random data for input buffer.
-	// (Use different randomized data each iteration)
+        // Fill input buffer with random data, different each iteration.
         setRandomData( (double*) complexFFTXHostPtr, nptsTrunc * 2);
         // For complex vector v of length n to have the right symmetry:
         // v[0].imag == 0;
@@ -761,7 +694,7 @@ int main(int argc, char* argv[])
 	    // Run the vendor FFT plan on the same input data.
 	    // Perform backward transform on complex array
 	    // oneapi::mkl::dft::compute_backward(plan, complexVendorPtr, realVendorPtr).wait();
-            sycl::event e = oneapi::mkl::dft::compute_backward(plan,
+            sycl::event e = oneapi::mkl::dft::compute_backward((read == write) ? plan : planInv,
                                                                complexVendorPtr,
                                                                realVendorPtr);
             Q.wait();
@@ -773,7 +706,10 @@ int main(int argc, char* argv[])
 	    // ibatch1dprdft_vendor_millisec[itn] = duration.count();
             ibatch1dprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-            copyBatchVendorToHost(realVendorHostPtr, realVendorPtr, sizes);
+            for (int ind = 0; ind < npts; ind++)
+              {
+                realVendorHostPtr[ind] = realVendorPtr[ind];
+              }
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
