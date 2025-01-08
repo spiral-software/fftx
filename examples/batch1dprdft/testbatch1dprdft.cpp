@@ -23,34 +23,6 @@
 #include <oneapi/mkl/dfti.hpp>
 #endif
 
-//  Build a random input buffer for Spiral and rocfft
-//  host_X is the host buffer to setup -- it'll be copied to the device later
-//  sizes is a vector with the X, Y, & Z dimensions
-
-static void setInput ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0) * sizes.at(1); imm++ ) {
-      host_X[imm] = ((double) rand()) / (double) (RAND_MAX/2);
-    }
-    return;
-}
-
-// FIXME: For complex vector v of length n to have the right symmetry:
-// v[0].imag == 0;
-// if n is even then v[n/2].imag == 0;
-// for k = floor(n/2)+1 to n-1, v[k] = conj(v[n - k]).
-static void setInput_complex ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    // doubled because it is complex
-    for ( int imm = 0; imm < 2 * sizes.at(0) * sizes.at(1); imm++ ) {
-      host_X[imm] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-    }
-    return;
-}
-
-
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #define FFTX_DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
 #define FFTX_DOUBLEREAL FFTX_DEVICE_FFT_DOUBLEREAL
@@ -70,6 +42,78 @@ static void setInput_complex ( double *host_X, std::vector<int> sizes )
 
 #define FFTX_BATCH_SEQUENTIAL 0
 #define FFTX_BATCH_STRIDED 1
+
+//  Build a random input buffer for Spiral and rocfft
+//  host_X is the host buffer to setup -- it'll be copied to the device later
+//  sizes is a vector with the X, Y, & Z dimensions
+
+static void setInput ( double *host_X, std::vector<int> sizes )
+{
+    int N = sizes.at(0);
+    int B = sizes.at(1);
+    srand(time(NULL));
+    for ( int imm = 0; imm < B * N; imm++ ) {
+      host_X[imm] = ((double) rand()) / (double) (RAND_MAX/2);
+    }
+    return;
+}
+
+// For complex vector v of length n to have the right symmetry:
+// v[0].imag == 0;
+// if n is even then v[n/2].imag == 0;
+// for k = floor(n/2)+1 to n-1, v[k] = conj(v[n - k]).
+static void setInput_complex ( double *host_X, std::vector<int> sizes )
+{
+    int N_adj = sizes.at(0);
+    int B = sizes.at(1);
+    int read = sizes.at(2);
+    int write = sizes.at(3);
+    srand(time(NULL));
+    if (read == FFTX_BATCH_SEQUENTIAL)
+      {
+        int ind = 0;
+        for (int bb = 0; bb < B; bb++)
+          {
+            // at nn == 0, imaginary part is 0.
+            host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+            host_X[ind++] = 0.;
+            for (int nn = 1; nn < N_adj-1; nn++)
+              {
+                host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+                host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+              }
+            // at nn == N_adj-1, imaginary part is 0.
+            // You can't know if the original N is even or odd!
+            host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+            host_X[ind++] = 0.;
+          }
+      }
+    else
+      { // strided
+        int ind = 0;
+        // at nn == 0, imaginary part is 0.
+        for (int bb = 0; bb < B; bb++)
+          {
+            host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+            host_X[ind++] = 0.;
+          }
+        for (int nn = 1; nn < N_adj-1; nn++)
+          for (int bb = 0; bb < B; bb++)
+            {
+              host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+              host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+            }
+        // at nn = N_adj-1, imaginary part is 0.
+        // You can't know if the original N is even or odd!
+        for (int bb = 0; bb < B; bb++)
+          {
+            host_X[ind++] = 1.0 - ((double) rand()) / (double) (RAND_MAX/2);
+            host_X[ind++] = 0.;
+          }
+      }
+    return;
+}
+
 
 // Check that the buffers are identical (within roundoff)
 // outputFFTXPtr is the output buffer from the Spiral-generated transform
@@ -375,7 +419,7 @@ int main(int argc, char* argv[])
     auto realVendorPtr =
       sycl::malloc_shared< double >
       (npts, sycl_device, sycl_context);
-    // FIXME: Should this be <complex> with nptsTrunc?
+    // Should this be <complex> with nptsTrunc?
     auto complexVendorPtr =
       sycl::malloc_shared< double >
       (nptsTrunc * 2, sycl_device, sycl_context);
@@ -587,7 +631,6 @@ int main(int argc, char* argv[])
         // Set up random data for input buffer.
 	// (Use different randomized data each iteration)
 	setInput_complex((double*) complexFFTXHostPtr, sizesTrunc);
-        // FIXME symmetrizeHermitian(complexFFTXHostArray, realFFTXHostArray);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         FFTX_DEVICE_MEM_COPY(complexFFTXTfmPtr,
                              complexFFTXHostPtr,
