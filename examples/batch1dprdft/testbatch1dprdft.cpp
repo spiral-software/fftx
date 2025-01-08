@@ -47,6 +47,52 @@
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
 
+static void setRandomData ( double *data, long arrsz)
+{
+  for ( int ind = 0; ind < arrsz; ind++)
+    {
+      data[ind] = ((double) rand()) / (double) (RAND_MAX/2);
+    }
+  return;
+}
+
+// Set the imaginary part of the first element of each vector to 0.
+static void setFirstImag0 ( double *data, std::vector<int> sizesTrunc )
+{
+    int N_adj = sizesTrunc.at(0);
+    int B = sizesTrunc.at(1);
+    int read = sizesTrunc.at(2);
+    int write = sizesTrunc.at(3);
+    int lenvec = 2*N_adj;
+    int lenfull = B * lenvec;
+    // There are B input vectors, each containing lenvec doubles.
+    // First vector element has real part at [0] and imaginary part at [1].
+    int first = 1;
+    int stride = (read == FFTX_BATCH_SEQUENTIAL) ? lenvec : 2;
+    for (int ind = first; ind < lenfull; ind += stride)
+      {
+        data[ind] = 0.;
+      }
+}
+
+// Set the imaginary part of the last element of each vector to 0.
+static void setLastImag0 ( double *data, std::vector<int> sizesTrunc )
+{
+    int N_adj = sizesTrunc.at(0);
+    int B = sizesTrunc.at(1);
+    int read = sizesTrunc.at(2);
+    int write = sizesTrunc.at(3);
+    int lenvec = 2*N_adj;
+    int lenfull = B * lenvec;
+    // There are B input vectors, each containing lenvec doubles.
+    int first = (read == FFTX_BATCH_SEQUENTIAL) ? (lenvec-1) : ((B-1)*lenvec + 1);
+    int stride = (read == FFTX_BATCH_SEQUENTIAL) ? lenvec : 2;
+    for (int ind = first; ind < lenfull; ind += stride)
+      {
+        data[ind] = 0.;
+      }
+}
+
 static void setInput ( double *host_X, std::vector<int> sizes )
 {
     int N = sizes.at(0);
@@ -471,8 +517,7 @@ int main(int argc, char* argv[])
       {
         // Set up random data for input buffer.
 	// (Use different randomized data each iteration.)
-        
-	setInput( (double*) realFFTXHostPtr, sizes);
+        setRandomData( (double*) realFFTXHostPtr, npts );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         FFTX_DEVICE_MEM_COPY(realFFTXTfmPtr,
                              realFFTXHostPtr,
@@ -640,7 +685,13 @@ int main(int argc, char* argv[])
       {
         // Set up random data for input buffer.
 	// (Use different randomized data each iteration)
-	setInput_complex((double*) complexFFTXHostPtr, sizesTrunc);
+        setRandomData( (double*) complexFFTXHostPtr, nptsTrunc * 2);
+        // For complex vector v of length n to have the right symmetry:
+        // v[0].imag == 0;
+        // if N is even then v[N/2].imag == 0;
+        // for k = N_adj + 1 to  N - 1, v[k] = conj(v[N - k]).
+        setFirstImag0( (double*) complexFFTXHostPtr, sizesTrunc );
+        if (N % 2 == 0) setLastImag0( (double*) complexFFTXHostPtr, sizesTrunc );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         FFTX_DEVICE_MEM_COPY(complexFFTXTfmPtr,
                              complexFFTXHostPtr,
