@@ -43,6 +43,83 @@
 #define FFTX_BATCH_SEQUENTIAL 0
 #define FFTX_BATCH_STRIDED 1
 
+#ifdef FFTX_SYCL
+// MKL output needs rearrangement if input and output order are different.
+void copyBatchVendorToHost(double* hostPtr,
+                           double* sharedPtr,
+                           std::vector<int> sizes)
+{
+  int N = sizes[0];
+  int B = sizes[1];
+  int read = sizes[2];
+  int write = sizes[3];
+  if ((read == FFTX_BATCH_SEQUENTIAL) && (write == FFTX_BATCH_STRIDED))
+    { // Need to transpose results of MKL from sequential to strided.
+      for (int nn = 0; nn < N; nn++)
+        for (int bb = 0; bb < B; bb++)
+          {
+            hostPtr[nn*B + bb] = sharedPtr[nn + bb*N];
+          }
+    }
+  else if ((read == FFTX_BATCH_STRIDED) && (write == FFTX_BATCH_SEQUENTIAL))
+    { // Need to transpose results of MKL from strided to sequential.
+      for (int bb = 0; bb < B; bb++)
+        for (int nn = 0; nn < N; nn++)
+          {
+            hostPtr[nn + bb*N] = sharedPtr[nn*B + bb];
+          }
+    }
+  else
+    {
+      for (int ind = 0; ind < B*N; ind++)
+        {
+          hostPtr[ind] = sharedPtr[ind];
+        }
+    }
+}
+
+void copyBatchVendorToHost(std::complex<double>* hostPtr,
+                           double* sharedPtr,
+                           std::vector<int> sizes)
+{
+  int N = sizes[0];
+  int B = sizes[1];
+  int read = sizes[2];
+  int write = sizes[3];
+  if ((read == FFTX_BATCH_SEQUENTIAL) && (write == FFTX_BATCH_STRIDED))
+    { // Need to transpose results of MKL from sequential to strided.
+      for (int nn = 0; nn < N; nn++)
+        for (int bb = 0; bb < B; bb++)
+          {
+            int indc = nn + bb*N;
+            hostPtr[nn*B + bb] =
+              std::complex<double>(sharedPtr[2*indc],
+                                   sharedPtr[2*indc + 1]);
+          }
+    }
+  else if ((read == FFTX_BATCH_STRIDED) && (write == FFTX_BATCH_SEQUENTIAL))
+    { // Need to transpose results of MKL from strided to sequential.
+      for (int bb = 0; bb < B; bb++)
+        for (int nn = 0; nn < N; nn++)
+          {
+            int indc = nn*B + bb;
+            hostPtr[nn + bb*N] =
+              std::complex<double>(sharedPtr[2*indc],
+                                   sharedPtr[2*indc + 1]);
+          }
+    }
+  else
+    {
+      for (int ind = 0; ind < B*N; ind++)
+        {
+          hostPtr[ind] =
+            std::complex<double>(sharedPtr[2*ind],
+                                 sharedPtr[2*ind + 1]);
+        }
+    }
+}
+#endif
+
 //  Build a random input buffer for Spiral and rocfft
 //  host_X is the host buffer to setup -- it'll be copied to the device later
 //  sizes is a vector with the X, Y, & Z dimensions
@@ -339,7 +416,7 @@ int main(int argc, char* argv[])
         idist = xr;
       }
     else
-      { // strided
+      { // strided read
         read_str = "AVEC";
         istride = B;
         idist = 1;
@@ -354,7 +431,7 @@ int main(int argc, char* argv[])
         odist = xc;
       }
     else
-      { // strided
+      { // strided write
         write_str = "AVEC";
         ostride = B;
         odist = 1;
@@ -404,6 +481,9 @@ int main(int argc, char* argv[])
       (nptsTrunc * 2, sycl_device, sycl_context);
 
     // Set strides and distance for forward and backward MKL transforms.
+    // These are input strides.  If the read ordering and the write ordering
+    // differ, then we'll need to rearrange the MKL output; this is done in
+    // copyBatchVendorToHost.
     std::int64_t fwd_strides[2];
     std::int64_t bwd_strides[2];
     int fwd_dist, bwd_dist;
@@ -412,25 +492,18 @@ int main(int argc, char* argv[])
     if (read == FFTX_BATCH_SEQUENTIAL)
       {
         fwd_strides[1] = 1;
-        fwd_dist = N;
-      }
-    else
-      { // strided
-        fwd_strides[1] = B;
-        fwd_dist = 1;
-      }
-
-    if (write == FFTX_BATCH_SEQUENTIAL)
-      {
         bwd_strides[1] = 1;
+        fwd_dist = N;
         bwd_dist = N_adj;
       }
     else
-      { // strided write
+      { // strided read
+        fwd_strides[1] = B;
         bwd_strides[1] = B;
+        fwd_dist = 1;
         bwd_dist = 1;
       }
-    
+
     // Initialize batch 1D FFT descriptor
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
                                  oneapi::mkl::dft::domain::REAL> plan(N);
@@ -529,12 +602,7 @@ int main(int argc, char* argv[])
             uint64_t profile_nanosec = e_end - e_start;
             batch1dprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-            for (int ind = 0; ind < nptsTrunc; ind++)
-              {
-                complexVendorHostPtr[ind] =
-                  std::complex<double>(complexVendorPtr[2*ind + 0],
-                                       complexVendorPtr[2*ind + 1]);
-              }
+            copyBatchVendorToHost(complexVendorHostPtr, complexVendorPtr, sizesTrunc);
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
@@ -705,10 +773,7 @@ int main(int argc, char* argv[])
 	    // ibatch1dprdft_vendor_millisec[itn] = duration.count();
             ibatch1dprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-	    for (int ind = 0; ind < npts; ind++)
-	      {
-		realVendorHostPtr[ind] = realVendorPtr[ind];
-	      }
+            copyBatchVendorToHost(realVendorHostPtr, realVendorPtr, sizes);
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
