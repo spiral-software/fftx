@@ -589,7 +589,7 @@ int main(int argc, char* argv[])
 	setInput_complex((double*) complexFFTXHostPtr, sizesTrunc);
         // FIXME symmetrizeHermitian(complexFFTXHostArray, realFFTXHostArray);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        FFTX_DEVICE_MEM_COPY(complexFFTFTfmPtr,
+        FFTX_DEVICE_MEM_COPY(complexFFTXTfmPtr,
                              complexFFTXHostPtr,
                              bytesTrunc,
                              FFTX_MEM_COPY_HOST_TO_DEVICE);
