@@ -27,21 +27,13 @@
 #include "fftw3.h"
 #endif
 
-//  Build a random input buffer for Spiral and vendor FFT
-//  inputPtr is the host buffer to setup -- it'll be copied to the device later
-//  sizes is a vector with the X, Y, & Z dimensions
-static void setInput ( double *inputPtr, std::vector<int> sizes )
+static void setRandomData ( double *data, long arrsz)
 {
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
-                inputPtr[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-                inputPtr[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-            }
-        }
+  for ( int ind = 0; ind < arrsz; ind++)
+    {
+      data[ind] = ((double) rand()) / (double) (RAND_MAX/2);
     }
-    return;
+  return;
 }
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
@@ -210,10 +202,6 @@ int main(int argc, char* argv[])
     std::string vendorfft = "FFTW";
 #endif
 
-    float *mddft_gpu = new float[iterations];
-    float *imddft_gpu = new float[iterations];
-    float *mddft_vendor_millisec = new float[iterations];
-    float *imddft_vendor_millisec = new float[iterations];
 #if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL) || defined(FFTX_USE_FFTW)
     // compare results of Spiral-RTC with vendor FFT or FFTW
     bool check_output = true;
@@ -257,16 +245,6 @@ int main(int argc, char* argv[])
 	// dev = sycl::device(sycl::cpu_selector_v);
       }
     sycl::context ctx = sycl::context(dev);
-    /*
-    cl_device_id ocl_dev =
-      sycl::get_native<cl::sycl::backend::opencl, sycl::device>(dev);
-    cl_context   ocl_ctx =
-      sycl::get_native<cl::sycl::backend::opencl, sycl::context>(ctx);
-    cl_int err = CL_SUCCESS;
-    cl_command_queue ocl_queue =
-      clCreateCommandQueueWithProperties(ocl_ctx, ocl_dev,0,&err);
-    sycl::queue Q = sycl::make_queue<sycl::backend::opencl>(ocl_queue,ctx);
-    */
     sycl::property_list props{sycl::property::queue::enable_profiling()};
     sycl::queue Q = sycl::queue(ctx, dev, props);
 
@@ -296,14 +274,14 @@ int main(int argc, char* argv[])
                                       FFTW_FORWARD, FFTW_ESTIMATE);
 #endif
 
+    float *mddft_gpu = new float[iterations];
+    float *mddft_vendor_millisec = new float[iterations];
+
     // double *hostinp = (double *) inputHostPtr;
     for (int itn = 0; itn < iterations; itn++)
       {
-        // Set up random data for input buffer.
-	// (Use different randomized data each iteration.)
-
-	// setInput ( hostinp, sizes );
-	setInput ( (double*) inputHostPtr, sizes );
+        // Fill input buffer with random data, different each iteration.
+        setRandomData( (double*) inputHostPtr, 2 * npts );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         fftxCopyHostArrayToDevice(inputTfmPtr, inputHostArray);
 	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied input from host to device\n";
@@ -418,11 +396,18 @@ int main(int argc, char* argv[])
         fftx::OutStream() << std::endl;
       }
     
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(plan);
+#endif
+
     delete[] mddft_gpu;
     delete[] mddft_vendor_millisec;
 
 
-    // Set up the inverse transform (we'll reuse the vendor FFT plan already created).
+    // Set up the inverse transform.
+    // (We'll reuse the vendor FFT plan already created.)
     IMDDFTProblem imdp(args, sizes, "imddft");
 
 #if defined(FFTX_USE_FFTW)
@@ -431,12 +416,14 @@ int main(int argc, char* argv[])
                             (fftw_complex*) outputVendorHostPtr,
                             FFTW_BACKWARD, FFTW_ESTIMATE);
 #endif
+
+    float *imddft_gpu = new float[iterations];
+    float *imddft_vendor_millisec = new float[iterations];
+
     for (int itn = 0; itn < iterations; itn++)
       {
-        // Set up random data for input buffer.
-	// (Use different randomized data each iteration.)
-
-	setInput ( (double*) inputHostPtr, sizes );
+        // Fill input buffer with random data, different each iteration.
+        setRandomData( (double*) inputHostPtr, 2 * npts );
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         fftxCopyHostArrayToDevice(inputTfmPtr, inputHostArray);
 #endif
@@ -552,6 +539,13 @@ int main(int argc, char* argv[])
         fftx::OutStream() << std::endl;
       }
     
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(plan);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(plan);
+#endif
+
     delete[] imddft_gpu;
     delete[] imddft_vendor_millisec;
 

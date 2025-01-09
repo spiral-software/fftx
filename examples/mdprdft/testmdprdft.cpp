@@ -15,6 +15,7 @@
 #else  
 #include "fftxcpubackend.hpp"
 #endif
+
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
@@ -22,40 +23,6 @@
 #elif defined (FFTX_USE_FFTW)
 #include "fftw3.h"
 #endif
-
-//  Build a random input buffer for Spiral and rocfft
-//  host_X is the host buffer to setup -- it'll be copied to the device later
-//  sizes is a vector with the X, Y, & Z dimensions
-
-static void setInput ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
-                host_X[offset] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-            }
-        }
-    }
-    return;
-}
-
-static void setInput_complex ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
-                host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-                host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-            }
-        }
-    }
-    return;
-}
-
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #define FFTX_DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
@@ -78,6 +45,15 @@ static void setInput_complex ( double *host_X, std::vector<int> sizes )
 #define FFTX_REALPART(z) z.real()
 #define FFTX_IMAGPART(z) z.imag()
 #endif
+
+static void setRandomData ( double *data, long arrsz)
+{
+  for ( int ind = 0; ind < arrsz; ind++)
+    {
+      data[ind] = ((double) rand()) / (double) (RAND_MAX/2);
+    }
+  return;
+}
 
 // Check that the buffers are identical (within roundoff)
 // outputFFTXPtr is the output buffer from the Spiral-generated transform
@@ -335,9 +311,8 @@ int main(int argc, char* argv[])
 
     for (int itn = 0; itn < iterations; itn++)
       {
-        // Set up random data for input buffer.
-	// (Use different randomized data each iteration)
-	setInput( (double*) realFFTXHostPtr, sizes);
+        // Fill input buffer with random data, different each iteration.
+	setRandomData( (double*) realFFTXHostPtr, npts);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
         fftxCopyHostArrayToDevice(realFFTXTfmPtr, realFFTXHostArray);
  	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied MDPRDFT input from host to device\n";
@@ -453,7 +428,14 @@ int main(int argc, char* argv[])
           }
         fftx::OutStream() << std::endl;
       }
-    
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(planR2C);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(planR2C);
+#endif
+
     delete[] mdprdft_gpu;
     delete[] mdprdft_vendor_millisec;
 
@@ -494,9 +476,8 @@ int main(int argc, char* argv[])
 
     for (int itn = 0; itn < iterations; itn++)
       {
-        // Set up random data for input buffer.
-	// (Use different randomized data each iteration)
-	setInput_complex((double*) complexFFTXHostPtr, sizesTrunc);
+        // Fill input buffer with random data, different each iteration.
+        setRandomData( (double*) complexFFTXHostPtr, 2 * nptsTrunc);
         symmetrizeHermitian(complexFFTXHostArray, realFFTXHostArray);
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)    
         fftxCopyHostArrayToDevice(complexFFTXTfmPtr, complexFFTXHostArray);
@@ -612,6 +593,13 @@ int main(int argc, char* argv[])
         fftx::OutStream() << std::endl;
       }
     
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(planC2R);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(planC2R);
+#endif
+
     delete[] imdprdft_gpu;
     delete[] imdprdft_vendor_millisec;
     
