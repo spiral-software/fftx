@@ -21,6 +21,8 @@
 #include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
 #include <oneapi/mkl/dfti.hpp>
+#elif defined (FFTX_USE_FFTW)
+#include "fftw3.h"
 #endif
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
@@ -33,6 +35,11 @@
 #define FFTX_DOUBLEREAL double
 #define FFTX_REALPART(z) z.real()
 #define FFTX_IMAGPART(z) z.imag()
+#elif defined (FFTX_USE_FFTW)
+#define FFTX_DOUBLECOMPLEX fftw_complex
+#define FFTX_DOUBLEREAL double
+#define FFTX_REALPART(z) z[0]
+#define FFTX_IMAGPART(z) z[1]
 #else // need these #defines here, or else #ifdef around checkOutputs.
 #define FFTX_DOUBLECOMPLEX std::complex<double>
 #define FFTX_DOUBLEREAL double
@@ -305,15 +312,21 @@ int main(int argc, char* argv[])
     std::string vendorfft = "FFTW";
 #endif
 
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
-    // compare results of Spiral-RTC with vendor FFT
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL) || defined(FFTX_USE_FFTW)
+    // compare results of Spiral-RTC with vendor FFT or FFTW
     bool check_output = true;
 #else
     bool check_output = false;
 #endif
 
     BATCH1DPRDFTProblem b1prdft(argsR2C, sizes, "b1prdft");
-    
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL) || defined(FFTX_USE_FFTW)
+    int read_stride = (read == FFTX_BATCH_SEQUENTIAL) ? 1 : B;
+    int read_dist = (read == FFTX_BATCH_SEQUENTIAL) ? N : 1;
+
+    int write_stride = (write == FFTX_BATCH_SEQUENTIAL) ? 1 : B;
+    int write_dist = (write == FFTX_BATCH_SEQUENTIAL) ? N_adj : 1;
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
     //  Set up a plan to run the transform using cufft or rocfft.
     FFTX_DEVICE_FFT_HANDLE planR2C;
@@ -323,45 +336,15 @@ int main(int argc, char* argv[])
     FFTX_DEVICE_EVENT_CREATE ( &custart );
     FFTX_DEVICE_EVENT_CREATE ( &custop );
 
-    int xr = N;
-    int xc = N_adj;
-
-    std::string read_str;
-    int istride, idist;
-    if (read == FFTX_BATCH_SEQUENTIAL)
-      {
-        read_str = "APAR";
-        istride = 1;
-        idist = xr;
-      }
-    else
-      { // strided read
-        read_str = "AVEC";
-        istride = B;
-        idist = 1;
-      }
-
-    std::string write_str;
-    int ostride, odist;
-    if (write == FFTX_BATCH_SEQUENTIAL)
-      {
-        write_str = "APAR";
-        ostride = 1;
-        odist = xc;
-      }
-    else
-      { // strided write
-        write_str = "AVEC";
-        ostride = B;
-        odist = 1;
-      }
-
+    std::string read_str = (read == FFTX_BATCH_SEQUENTIAL) ? "APAR" : "AVEC";
+    std::string write_str = (write == FFTX_BATCH_SEQUENTIAL) ? "APAR" : "AVEC";
+  
     if ( FFTX_DEBUGOUT ) fftx::OutStream() << read_str << ", "
                                            << write_str << std::endl;
     
-    res = FFTX_DEVICE_FFT_PLAN_MANY( &planR2C, 1, &xr, // plan, rank, length
-                                     &xr, istride, idist,
-                                     &xc, ostride, odist,
+    res = FFTX_DEVICE_FFT_PLAN_MANY( &planR2C, 1, &N, // plan, rank, length
+                                     &N, read_stride, read_dist,
+                                     &N_adj, write_stride, write_dist,
                                      xfmtypeR2C, B); // type, batch
     if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
@@ -408,16 +391,8 @@ int main(int argc, char* argv[])
     // If we have specified sequential reads & strided writes, or vice versa,
     // then we need separate mkl::dft plans for compute_forward and
     // compute_backward, in order for the output ordering to be correct.
-    std::int64_t read_strides[2];
-    std::int64_t write_strides[2];
-    read_strides[0] = 0;
-    write_strides[0] = 0;
-
-    read_strides[1] = (read == FFTX_BATCH_SEQUENTIAL) ? 1 : B;
-    int read_dist = (read == FFTX_BATCH_SEQUENTIAL) ? N : 1;
-
-    write_strides[1] = (write == FFTX_BATCH_SEQUENTIAL) ? 1 : B;
-    int write_dist = (write == FFTX_BATCH_SEQUENTIAL) ? N_adj : 1;
+    std::int64_t read_strides[] = {0, read_stride};
+    std::int64_t write_strides[] = {0, write_stride};
     
     // Initialize batch 1D FFT descriptor
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
@@ -429,8 +404,17 @@ int main(int argc, char* argv[])
     plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, write_dist);
     plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
     plan.commit(Q);
+#elif defined (FFTX_USE_FFTW)
+    fftw_plan planR2C =
+      fftw_plan_many_dft_r2c(1, &N, B,
+                             realFFTXHostPtr,
+                             &N, read_stride, read_dist,
+                             (fftw_complex*) complexVendorHostPtr,
+                             &N_adj, write_stride, write_dist,
+                             FFTW_ESTIMATE);
 #endif
-
+#endif
+    
     float *batch1dprdft_gpu = new float[iterations];
     float *batch1dprdft_vendor_millisec = new float[iterations];
 
@@ -522,6 +506,12 @@ int main(int argc, char* argv[])
                   std::complex<double>(complexVendorPtr[2*ind],
                                        complexVendorPtr[2*ind + 1]);
               }
+#elif defined (FFTX_USE_FFTW)
+            auto start = std::chrono::high_resolution_clock::now();
+            fftw_execute(planR2C);
+            auto stop = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float, std::milli> duration = stop - start;
+            batch1dprdft_vendor_millisec[itn] = duration.count();
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
@@ -554,6 +544,13 @@ int main(int argc, char* argv[])
         fftx::OutStream() << std::endl;
       }
     
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(planR2C);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(planR2C);
+#endif
+
     delete[] batch1dprdft_gpu;
     delete[] batch1dprdft_vendor_millisec;
 
@@ -612,6 +609,16 @@ int main(int argc, char* argv[])
         planInv.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
         planInv.commit(Q);
       }
+#elif defined(FFTX_USE_FFTW)
+    int read_dist_inv = (read == FFTX_BATCH_SEQUENTIAL) ? N_adj : 1;
+    int write_dist_inv = (write == FFTX_BATCH_SEQUENTIAL) ? N : 1;
+    fftw_plan planC2R =
+      fftw_plan_many_dft_c2r(1, &N, B,
+                             (fftw_complex*) complexFFTXHostPtr,
+                             &N_adj, read_stride, read_dist_inv,
+                             realVendorHostPtr,
+                             &N, write_stride, write_dist_inv,
+                             FFTW_ESTIMATE);
 #endif
 
     float *ibatch1dprdft_gpu = new float[iterations];
@@ -710,6 +717,12 @@ int main(int argc, char* argv[])
               {
                 realVendorHostPtr[ind] = realVendorPtr[ind];
               }
+#elif defined (FFTX_USE_FFTW)
+            auto start = std::chrono::high_resolution_clock::now();
+            fftw_execute(planC2R);
+            auto stop = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float, std::milli> duration = stop - start;
+            ibatch1dprdft_vendor_millisec[itn] = duration.count();
 #endif
             fftx::OutStream() << "DFT = " << N
                               << " Batch = " << B
@@ -742,6 +755,13 @@ int main(int argc, char* argv[])
         fftx::OutStream() << std::endl;
       }
     
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(planC2R);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(planC2R);
+#endif
+
     delete[] ibatch1dprdft_gpu;
     delete[] ibatch1dprdft_vendor_millisec;
     
