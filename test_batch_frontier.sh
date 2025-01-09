@@ -19,6 +19,17 @@ module load python
 
 export FFTX_HOME=$PWD
 
+N=256
+B=64
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 0x0
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 0x1
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 1x0
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 1x1
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 0x0
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 0x1
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 1x0
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 1x1
+
 ### dimensions of distributed FFT
 M=128
 N=128
