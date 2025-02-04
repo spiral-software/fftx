@@ -86,3 +86,7 @@ The following examples configurations have been verified on Frontier on 4 ranks 
 Limited testing on Frontier for batch > 1 has been
 verified to be correct. Due to cuFFT's unique alignment requirements,
 batch > 1 configurations is currently not supported for NVIDIA devices.
+
+When running a 1D-distributed 3D transform of dimensions M x N x K:
+- if a forward transform, K must be divisible by p;
+- if an inverse transform, M must be divisible by p, and additionally, if unembedded, K must also be divisible by p.
