@@ -61,7 +61,10 @@ fftx_plan fftx_plan_distributed_1d(
     plan->use_fftx = true;
   } else {
 #endif
-    fftx::OutStream() << "configuration not supported, using vendor backend" << std::endl;
+    fftx::OutStream() << "configuration complex=" << is_complex
+                      << " batch=" << batch
+                      << " not supported by fftx_plan_distributed_1d_spiral,"
+                      << " using vendor backend" << std::endl;
     plan = fftx_plan_distributed_1d_default(comm, p, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
   }

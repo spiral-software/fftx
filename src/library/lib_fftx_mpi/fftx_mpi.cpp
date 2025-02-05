@@ -89,7 +89,10 @@ fftx_plan fftx_plan_distributed(MPI_Comm comm, int r, int c, int M, int N, int K
      plan = fftx_plan_distributed_spiral(comm, r, c, M, N, K, batch, is_embedded, is_complex);
      plan->use_fftx = true;
   } else {
-     fftx::OutStream() << "configuration not supported, using vendor backend" << std::endl;
+     fftx::OutStream() << "configuration complex=" << is_complex
+                       << " batch=" << batch
+                       << " not supported by fftx_plan_distributed_spiral,"
+                       << " using vendor backend" << std::endl;
 #endif
     plan = fftx_plan_distributed_default(comm, r, c, M, N, K, batch, is_embedded, is_complex);
     plan->use_fftx = false;
