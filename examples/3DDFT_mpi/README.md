@@ -83,9 +83,10 @@ The following examples configurations have been verified on Frontier on 4 ranks 
 
 * **Limitations**
 
-Limited testing on Frontier for batch > 1 has been
-verified to be correct. Due to cuFFT's unique alignment requirements,
-batch > 1 configurations is currently not supported for NVIDIA devices.
+For ``batch > 1``, only the complex-to-complex transforms are implemented
+in FFTX; the R2C and C2R transforms are implemented only for ``batch = 1``.
+There has also been limited testing on Frontier to verify that
+examples with ``batch > 1`` are correct.
 
 When running a 1D-distributed 3D transform of dimensions ``M`` x ``N`` x ``K`` on ``p`` MPI ranks,
 - if a forward transform, ``K`` must be divisible by ``p``;
