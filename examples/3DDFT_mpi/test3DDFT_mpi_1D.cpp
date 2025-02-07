@@ -258,7 +258,7 @@ int main(int argc, char* argv[])
       int in_extents[] = {(int) K_in_local, (int) N_in, (int) M_in};
       in_domain = box0size<3>(in_extents);
       in_pts = in_domain.size();
-      in_doubles = in_pts * batch * C_in;
+      in_doubles = in_pts * batch*C_in;
       in_bytes = in_doubles * sizeof(double);
       host_in = (double *) malloc(in_bytes);
 
@@ -331,7 +331,7 @@ int main(int argc, char* argv[])
       int in_extents[] = {(int) N_in, (int) M_in_local, (int) K_in};
       in_domain = box0size<3>(in_extents);
       in_pts = in_domain.size();
-      in_doubles = in_pts * batch * C_in;
+      in_doubles = in_pts * batch*C_in;
       in_bytes = in_doubles * sizeof(double);
       host_in = (double *) malloc(in_bytes);
 
@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
       out_subdomain.hi[0] = min(K_out_local, K_out_global - rank*K_out_local) - 1;
     } // end forward/inverse
 
-  size_t out_doubles = out_pts * batch * C_out;
+  size_t out_doubles = out_pts * batch*C_out;
   size_t out_bytes = out_doubles * sizeof(double);
   double *host_out = (double *) malloc(out_bytes);
   double *dev_in, *dev_out;
@@ -739,7 +739,7 @@ int main(int argc, char* argv[])
           int global_in_extents[] = {(int) (K*expansion), (int) (N*expansion), (int) Mfull_in};
           fftx::box_t<3> global_in_domain = box0size<3>(global_in_extents);
           size_t global_in_pts = global_in_domain.size();
-          size_t global_in_doubles = global_in_pts * C_in;
+          size_t global_in_doubles = global_in_pts * batch*C_in;
           size_t global_in_bytes = global_in_doubles * sizeof(double);
           double *host_global_in;
           // Set to true if host_global_in is allocated.
@@ -754,7 +754,7 @@ int main(int argc, char* argv[])
           int global_out_extents[] = {(int) (K*expansion), (int) (N*expansion), (int) (M_out_global)};
           fftx::box_t<3> global_out_domain = box0size<3>(global_out_extents);
           size_t global_out_pts = global_out_domain.size();
-          size_t global_out_doubles = global_out_pts * batch * C_out;
+          size_t global_out_doubles = global_out_pts * batch*C_out;
           size_t global_out_bytes = global_out_doubles * sizeof(double);
           double *host_global_vendor_out;
           host_global_vendor_out = (double *) malloc(global_out_bytes);
@@ -862,40 +862,66 @@ int main(int argc, char* argv[])
           FFTX_DEVICE_FFT_HANDLE plan_vendor;
  
           // dimensions from slowest to fastest.
+          int stride = batch;
+          int dist = 1;
+          int dims[] = {(int) (K*expansion), (int) (N*expansion), (int) (M*expansion)};
+
+          FFTX_DEVICE_FFT_TYPE tfmtype;
           if (C2C)
             {
-              FFTX_DEVICE_FFT_PLAN3D(&plan_vendor,
-                                     K*expansion, N*expansion, M*expansion,
-                                     FFTX_DEVICE_FFT_Z2Z);
+              tfmtype = FFTX_DEVICE_FFT_Z2Z;
+            }
+          else if (R2C)
+            {
+              tfmtype = FFTX_DEVICE_FFT_D2Z;
+            }
+          else if (C2R)
+            {
+              tfmtype = FFTX_DEVICE_FFT_Z2D;
+            }
+          else
+            {
+              fftx::ErrStream() << "Error: unknown plan type." << std::endl;
+              goto end;
+            }
+          FFTX_DEVICE_FFT_PLAN_MANY(&plan_vendor, 3, dims,
+                                    global_in_extents, stride, dist,
+                                    global_out_extents, stride, dist,
+                                    tfmtype, batch);
+          if (C2C)
+            {
+              // FFTX_DEVICE_FFT_PLAN3D(&plan_vendor,
+              // K*expansion, N*expansion, M*expansion,
+              // FFTX_DEVICE_FFT_Z2Z);
               FFTX_DEVICE_FFT_EXECZ2Z(plan_vendor,
                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dev_global_in,
                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dev_global_out,
                                       is_forward ? FFTX_DEVICE_FFT_FORWARD : FFTX_DEVICE_FFT_INVERSE
                                       );
             }
-          else if (C2R)
-            {
-              FFTX_DEVICE_FFT_PLAN3D(&plan_vendor,
-                                     K*expansion, N*expansion, M*expansion,
-                                     FFTX_DEVICE_FFT_Z2D);
-              FFTX_DEVICE_FFT_EXECZ2D(plan_vendor,
-                                      (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dev_global_in,
-                                      (FFTX_DEVICE_FFT_DOUBLEREAL *) dev_global_out
-                                      );
-            }
           else if (R2C)
             {
-              FFTX_DEVICE_FFT_PLAN3D(&plan_vendor,
-                                     K*expansion, N*expansion, M*expansion,
-                                     FFTX_DEVICE_FFT_D2Z);
+              // FFTX_DEVICE_FFT_PLAN3D(&plan_vendor,
+              // K*expansion, N*expansion, M*expansion,
+              // FFTX_DEVICE_FFT_D2Z);
               FFTX_DEVICE_FFT_EXECD2Z(plan_vendor,
                                       (FFTX_DEVICE_FFT_DOUBLEREAL *) dev_global_in,
                                       (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dev_global_out
                                       );
             }
+          else if (C2R)
+            {
+              // FFTX_DEVICE_FFT_PLAN3D(&plan_vendor,
+              // K*expansion, N*expansion, M*expansion,
+              // FFTX_DEVICE_FFT_Z2D);
+              FFTX_DEVICE_FFT_EXECZ2D(plan_vendor,
+                                      (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) dev_global_in,
+                                      (FFTX_DEVICE_FFT_DOUBLEREAL *) dev_global_out
+                                      );
+            }
           else
             {
-              fftx::OutStream() << "Error: unknown plan type." << std::endl;
+              fftx::ErrStream() << "Error: unknown plan type." << std::endl;
               goto end;
             }
 
