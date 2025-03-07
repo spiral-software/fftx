@@ -8,6 +8,9 @@
 #include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
 #include "fftxrconvObj.hpp"
+// for testRandomSymbol
+#include "fftxmdprdftObj.hpp"
+#include "fftximdprdftObj.hpp"
 
 // #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 // #include "fftx_rconv_gpu_public.h"
@@ -158,6 +161,93 @@ public:
       }
   }
 
+  virtual void exec2(fftx::array_t<DIM, double>& a_input,
+                     fftx::array_t<DIM, double>& a_output,
+                     fftx::array_t<DIM, double>& a_symbol)
+  {
+    if (m_tp == EMPTY)
+      {
+        fftx::ErrStream() << "calling exec2 on empty RealConvolution" << std::endl;
+      }
+    else if (m_tp == FFTX_HANDLE || m_tp == FFTX_LIB)
+      {
+        double* inputHostPtr = a_input.m_data.local();
+        double* outputHostPtr = a_output.m_data.local();
+	double* symbolHostPtr = a_symbol.m_data.local();
+
+        // intermediate arrays
+        fftx::array_t<DIM, std::complex<double> > outComplex(m_fdomain);
+        fftx::array_t<DIM, std::complex<double> > inComplex(m_fdomain);
+        std::complex<double>* outComplexHostPtr = outComplex.m_data.local();
+        std::complex<double>* inComplexHostPtr = inComplex.m_data.local();
+#if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
+        // on GPU
+
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
+        FFTX_DEVICE_PTR inputDevicePtr = fftxDeviceMallocForHostArray(a_input);
+        FFTX_DEVICE_PTR outputDevicePtr = fftxDeviceMallocForHostArray(a_output);
+        FFTX_DEVICE_PTR symbolDevicePtr = fftxDeviceMallocForHostArray(a_symbol);
+
+        fftxCopyHostArrayToDevice(inputDevicePtr, a_input);
+        fftxCopyHostArrayToDevice(symbolDevicePtr, a_symbol);
+	
+        //        fftx::array_t<DIM, FFTX_DEVICE_PTR> inputDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
+        //						   (&inputDevicePtr, 0, 1), m_domain);
+        //        fftx::array_t<DIM, FFTX_DEVICE_PTR> outputDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
+        //						    (&outputDevicePtr, 0, 1), m_domain);
+        //        fftx::array_t<DIM, FFTX_DEVICE_PTR> symbolDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
+        //						    (&symbolDevicePtr, 0, 1), m_fdomain);
+
+#if defined(FFTX_CUDA)
+        std::vector<void*> args{&outputDevicePtr, &inputDevicePtr, &symbolDevicePtr};
+#elif defined(FFTX_HIP)
+        std::vector<void*> args{outputDevicePtr, inputDevicePtr, symbolDevicePtr};
+#endif
+
+#elif defined(FFTX_SYCL)
+        auto input_pts = m_domain.size();
+        auto output_pts = m_domain.size();
+        auto symbol_pts = m_fdomain.size();
+
+	sycl::buffer<double> inputBuffer(inputHostPtr, input_pts);
+	sycl::buffer<double> outputBuffer(outputHostPtr, output_pts);
+	sycl::buffer<double> symbolBuffer(symbolHostPtr, symbol_pts);
+        std::vector<void*> args{(void*)&(outputBuffer), (void*)&(inputBuffer), (void*)&(symbolBuffer)};
+#endif
+
+#else // neither CUDA nor HIP nor SYCL
+        // std::vector<void*> args{(void*)outputHostPtr, (void*)inputHostPtr, (void*)symbolHostPtr };
+        std::vector<void*> argsR2C{(void*)outComplexHostPtr, (void*)inputHostPtr, (void*) NULL };
+        std::vector<void*> argsC2R{(void*)outputHostPtr, (void*)inComplexHostPtr, (void*) NULL };
+#endif
+        MDPRDFTProblem tfmR2C(argsR2C, m_sizes, "mdprdft");
+        IMDPRDFTProblem tfmC2R(argsC2R, m_sizes, "imdprdft");
+
+        // output outComplexHostPtr, input inputHostPtr
+        tfmR2C.transform();
+
+        // Set inComplex = outComplex * symbol.
+        auto fpts = m_fdomain.size();
+        // std::cout << "m_fdomain points: " << fpts << std::endl;
+        for (size_t ind = 0; ind < fpts; ind++)
+          {
+            inComplexHostPtr[ind] =
+              outComplexHostPtr[ind] * symbolHostPtr[ind];
+          }
+
+        // output outHostPtr, input inComplexHostPtr
+        tfmC2R.transform();
+
+#if defined(FFTX_HIP) || defined(FFTX_CUDA)
+        fftxCopyDeviceToHostArray(a_output, outputDevicePtr);
+
+        fftxDeviceFree(inputDevicePtr);
+        fftxDeviceFree(outputDevicePtr);
+        fftxDeviceFree(symbolDevicePtr);
+#endif
+      }
+  }
+
 protected:
 
   enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2};
@@ -204,6 +294,7 @@ public:
     updateMax(err, testConstantSymbol());
     updateMax(err, testDelta());
     updateMax(err, testPoisson());
+    updateMax(err, testRandomSymbol());
     fftx::OutStream() << DIM << "D tests in "
                       << m_rounds << " rounds max error " << err
                       << std::endl;
@@ -444,5 +535,48 @@ protected:
       }
     return errPoisson;
   }
+
+  double testRandomSymbol()
+  {
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        fftx::OutStream() << "calling testRandomSymbol<"
+                          << DIM << ">" << std::endl;
+      }
+    fftx::array_t<DIM, double> input(m_domain);
+    fftx::array_t<DIM, double> output(m_domain);
+    fftx::array_t<DIM, double> symbol(m_fdomain);
+
+    fftx::array_t<DIM, double> output2(m_domain);
+    
+    double errRandomSymbol = 0.;
+    for (int itn = 1; itn <= m_rounds; itn++)
+      { // FIXME: after first iteration, m_tfm doesn't work.
+        unifRealArray(input);
+        unifRealArray(symbol); // FIXME: set Hermitian symmetry?
+
+        m_tfm.exec(input, output, symbol);
+
+        m_tfm.exec2(input, output2, symbol);
+
+        double err = absMaxDiffArray(output, output2);
+        updateMax(errRandomSymbol, err);
+        if (m_verbosity >= SHOW_ROUNDS)
+          {
+            fftx::OutStream() << DIM
+                              << "D random input with random symbol max error "
+                              << err << std::endl;
+          }
+      }
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        fftx::OutStream() << DIM
+                          << "D random input with random symbol in "
+                          << m_rounds << " rounds: max error "
+                          << errRandomSymbol << std::endl;
+      }
+    return errRandomSymbol;
+  }
+
 };
 #endif
