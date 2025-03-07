@@ -188,6 +188,9 @@ public:
         FFTX_DEVICE_PTR outputDevicePtr = fftxDeviceMallocForHostArray(a_output);
         FFTX_DEVICE_PTR symbolDevicePtr = fftxDeviceMallocForHostArray(a_symbol);
 
+        FFTX_DEVICE_PTR outComplexDevicePtr = fftxDeviceMallocForHostArray(outComplex);
+        FFTX_DEVICE_PTR inComplexDevicePtr = fftxDeviceMallocForHostArray(inComplex);
+
         fftxCopyHostArrayToDevice(inputDevicePtr, a_input);
         fftxCopyHostArrayToDevice(symbolDevicePtr, a_symbol);
 	
@@ -199,9 +202,11 @@ public:
         //						    (&symbolDevicePtr, 0, 1), m_fdomain);
 
 #if defined(FFTX_CUDA)
-        std::vector<void*> args{&outputDevicePtr, &inputDevicePtr, &symbolDevicePtr};
+        std::vector<void*> argsR2C{&outComplexDevicePtr, &inputDevicePtr, NULL };
+        std::vector<void*> argsC2R{&outputDevicePtr, &inComplexDevicePtr, NULL };
 #elif defined(FFTX_HIP)
-        std::vector<void*> args{outputDevicePtr, inputDevicePtr, symbolDevicePtr};
+        std::vector<void*> argsR2C{outComplexDevicePtr, inputDevicePtr, NULL };
+        std::vector<void*> argsC2R{outputDevicePtr, inComplexDevicePtr, NULL };
 #endif
 
 #elif defined(FFTX_SYCL)
@@ -212,11 +217,14 @@ public:
 	sycl::buffer<double> inputBuffer(inputHostPtr, input_pts);
 	sycl::buffer<double> outputBuffer(outputHostPtr, output_pts);
 	sycl::buffer<double> symbolBuffer(symbolHostPtr, symbol_pts);
-        std::vector<void*> args{(void*)&(outputBuffer), (void*)&(inputBuffer), (void*)&(symbolBuffer)};
+	sycl::buffer<double> inComplexBuffer((double *) inComplexHostPtr, symbol_pts * 2);
+	sycl::buffer<double> outComplexBuffer((double *) outComplexHostPtr, symbol_pts * 2);
+
+        std::vector<void*> argsR2C{(void*)&(outComplexBuffer), (void*)&(inputBuffer), (void*) NULL };
+        std::vector<void*> argsC2R{(void*)&(outputBuffer), (void*)&(inComplexBuffer), (void*) NULL };
 #endif
 
 #else // neither CUDA nor HIP nor SYCL
-        // std::vector<void*> args{(void*)outputHostPtr, (void*)inputHostPtr, (void*)symbolHostPtr };
         std::vector<void*> argsR2C{(void*)outComplexHostPtr, (void*)inputHostPtr, (void*) NULL };
         std::vector<void*> argsC2R{(void*)outputHostPtr, (void*)inComplexHostPtr, (void*) NULL };
 #endif
@@ -225,6 +233,9 @@ public:
 
         // output outComplexHostPtr, input inputHostPtr
         tfmR2C.transform();
+#if defined (FFTX_CUDA) || defined (FFTX_HIP)
+        fftxCopyDeviceToHostArray(outComplex, outComplexDevicePtr);
+#endif
 
         // Set inComplex = outComplex * symbol.
         auto fpts = m_fdomain.size();
@@ -235,15 +246,21 @@ public:
               outComplexHostPtr[ind] * symbolHostPtr[ind];
           }
 
-        // output outHostPtr, input inComplexHostPtr
+#if defined (FFTX_CUDA) || defined (FFTX_HIP)
+        fftxCopyHostToDeviceArray(inComplexDevicePtr, inComplex);
+#endif
+        // output outputHostPtr, input inComplexHostPtr
         tfmC2R.transform();
+#if defined (FFTX_CUDA) || defined (FFTX_HIP)
+        fftxCopyDeviceToHostArray(a_output, outputDevicePtr);
+#endif
 
 #if defined(FFTX_HIP) || defined(FFTX_CUDA)
-        fftxCopyDeviceToHostArray(a_output, outputDevicePtr);
-
         fftxDeviceFree(inputDevicePtr);
         fftxDeviceFree(outputDevicePtr);
         fftxDeviceFree(symbolDevicePtr);
+        fftxDeviceFree(outComplexDevicePtr);
+        fftxDeviceFree(inComplexDevicePtr);
 #endif
       }
   }
