@@ -43,6 +43,11 @@ if ( _fallow-argument-mismatch )
     set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch" )
 endif ()
 
+check_fortran_compiler_flag ( "-fPIC" _fPIC )
+if ( _fPIC )
+    set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC" )
+endif ()
+
 ##  Get around SYCL problem linking C++ and Fortran code.
 if ( ${_codegen} STREQUAL "SYCL" )
    string ( REPLACE "CMAKE_CXX_COMPILER" "CMAKE_Fortran_COMPILER" _new_link_executable ${CMAKE_CXX_LINK_EXECUTABLE} )
