@@ -184,7 +184,6 @@ public:
         // on GPU
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        std::cout << "allocating device pointers" << std::endl;
         FFTX_DEVICE_PTR inputDevicePtr = fftxDeviceMallocForHostArray(a_input);
         FFTX_DEVICE_PTR outputDevicePtr = fftxDeviceMallocForHostArray(a_output);
         FFTX_DEVICE_PTR symbolDevicePtr = fftxDeviceMallocForHostArray(a_symbol);
@@ -193,9 +192,7 @@ public:
         FFTX_DEVICE_PTR inComplexDevicePtr = fftxDeviceMallocForHostArray(inComplex);
         FFTX_DEVICE_PTR nullDevicePtr = (FFTX_DEVICE_PTR) NULL;
 
-        std::cout << "copying a_input to device" << std::endl;
         fftxCopyHostArrayToDevice(inputDevicePtr, a_input);
-        std::cout << "copying a_symbol to device" << std::endl;
         fftxCopyHostArrayToDevice(symbolDevicePtr, a_symbol);
 	
         //        fftx::array_t<DIM, FFTX_DEVICE_PTR> inputDevice(fftx::global_ptr<FFTX_DEVICE_PTR>
@@ -206,7 +203,6 @@ public:
         //						    (&symbolDevicePtr, 0, 1), m_fdomain);
 
 #if defined(FFTX_CUDA)
-        std::cout << "settings argsR2c and argsC2R" << std::endl;
         std::vector<void*> argsR2C{&outComplexDevicePtr, &inputDevicePtr, &nullDevicePtr };
         std::vector<void*> argsC2R{&outputDevicePtr, &inComplexDevicePtr, &nullDevicePtr };
 #elif defined(FFTX_HIP)
@@ -233,23 +229,17 @@ public:
         std::vector<void*> argsR2C{(void*)outComplexHostPtr, (void*)inputHostPtr, (void*) NULL };
         std::vector<void*> argsC2R{(void*)outputHostPtr, (void*)inComplexHostPtr, (void*) NULL };
 #endif
-        std::cout << "define MDPRDFTProblem" << std::endl;
         MDPRDFTProblem tfmR2C(argsR2C, m_sizes, "mdprdft");
-        std::cout << "define IMDPRDFTProblem" << std::endl;
         IMDPRDFTProblem tfmC2R(argsC2R, m_sizes, "imdprdft");
 
         // output outComplexHostPtr, input inputHostPtr
-        std::cout << "doing R2C" << std::endl;
         tfmR2C.transform();
 #if defined (FFTX_CUDA) || defined (FFTX_HIP)
-        std::cout << "copy device to outComplex" << std::endl;
         fftxCopyDeviceToHostArray(outComplex, outComplexDevicePtr);
 #endif
 
         // Set inComplex = outComplex * symbol.
         auto fpts = m_fdomain.size();
-        // std::cout << "m_fdomain points: " << fpts << std::endl;
-        std::cout << "mult by symbol" << std::endl;
         for (size_t ind = 0; ind < fpts; ind++)
           {
             inComplexHostPtr[ind] =
@@ -257,17 +247,13 @@ public:
           }
 
 #if defined (FFTX_CUDA) || defined (FFTX_HIP)
-        std::cout << "copying inComplex to device" << std::endl;
         fftxCopyHostArrayToDevice(inComplexDevicePtr, inComplex);
 #endif
         // output outputHostPtr, input inComplexHostPtr
-        std::cout << "doing C2R transform" << std::endl;
         tfmC2R.transform();
 #if defined (FFTX_CUDA) || defined (FFTX_HIP)
-        std::cout << "copying device to a_output" << std::endl;
         fftxCopyDeviceToHostArray(a_output, outputDevicePtr);
 
-        std::cout << "freeing device arrays" << std::endl;
         fftxDeviceFree(inputDevicePtr);
         fftxDeviceFree(outputDevicePtr);
         fftxDeviceFree(symbolDevicePtr);
