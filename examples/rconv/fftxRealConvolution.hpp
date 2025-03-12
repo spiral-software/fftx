@@ -257,7 +257,6 @@ public:
 
 #if defined (FFTX_CUDA) || defined (FFTX_HIP)
         fftxCopyHostArrayToDevice(inComplexDevicePtr, inComplex);
-#elif defined (FFTX_SYCL)
 #endif
         // output outputHostPtr, input inComplexHostPtr
         tfmC2R.transform();
@@ -269,7 +268,6 @@ public:
         fftxDeviceFree(symbolDevicePtr);
         fftxDeviceFree(outComplexDevicePtr);
         fftxDeviceFree(inComplexDevicePtr);
-#elif defined (FFTX_SYCL)
 #endif
       }
   }
@@ -577,7 +575,7 @@ protected:
     
     double errRandomSymbol = 0.;
     for (int itn = 1; itn <= m_rounds; itn++)
-      { // FIXME: on Apple, after first iteration, m_tfm doesn't work.
+      { // FIXME: on CPU, after first iteration, m_tfm doesn't work.
         unifRealArray(input);
 	unifRealArray(symbol); // FIXME: set Hermitian symmetry?
 
