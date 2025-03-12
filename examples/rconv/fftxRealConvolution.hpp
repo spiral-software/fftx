@@ -220,9 +220,10 @@ public:
 	sycl::buffer<double> symbolBuffer(symbolHostPtr, symbol_pts);
 	sycl::buffer<double> inComplexBuffer((double *) inComplexHostPtr, symbol_pts * 2);
 	sycl::buffer<double> outComplexBuffer((double *) outComplexHostPtr, symbol_pts * 2);
+	sycl::buffer<double> nullBuffer((double*) NULL, 0);
 
-        std::vector<void*> argsR2C{(void*)&(outComplexBuffer), (void*)&(inputBuffer), (void*) NULL };
-        std::vector<void*> argsC2R{(void*)&(outputBuffer), (void*)&(inComplexBuffer), (void*) NULL };
+        std::vector<void*> argsR2C{(void*)&(outComplexBuffer), (void*)&(inputBuffer), (void*)&(nullBuffer) };
+        std::vector<void*> argsC2R{(void*)&(outputBuffer), (void*)&(inComplexBuffer), (void*)&(nullBuffer) };
 #endif
 
 #else // neither CUDA nor HIP nor SYCL
@@ -236,6 +237,14 @@ public:
         tfmR2C.transform();
 #if defined (FFTX_CUDA) || defined (FFTX_HIP)
         fftxCopyDeviceToHostArray(outComplex, outComplexDevicePtr);
+#elif defined (FFTX_SYCL)
+	sycl::host_accessor outComplexHostAcc(outComplexBuffer);
+	for (int ind = 0; ind < symbol_pts; ind++)
+	  {
+	    outComplexHostPtr[ind] =
+	      std::complex(outComplexHostAcc[2*ind + 0],
+			   outComplexHostAcc[2*ind + 1]);
+	  }
 #endif
 
         // Set inComplex = outComplex * symbol.
@@ -248,6 +257,7 @@ public:
 
 #if defined (FFTX_CUDA) || defined (FFTX_HIP)
         fftxCopyHostArrayToDevice(inComplexDevicePtr, inComplex);
+#elif defined (FFTX_SYCL)
 #endif
         // output outputHostPtr, input inComplexHostPtr
         tfmC2R.transform();
@@ -259,6 +269,7 @@ public:
         fftxDeviceFree(symbolDevicePtr);
         fftxDeviceFree(outComplexDevicePtr);
         fftxDeviceFree(inComplexDevicePtr);
+#elif defined (FFTX_SYCL)
 #endif
       }
   }
@@ -566,14 +577,14 @@ protected:
     
     double errRandomSymbol = 0.;
     for (int itn = 1; itn <= m_rounds; itn++)
-      { // FIXME: after first iteration, m_tfm doesn't work.
+      { // FIXME: on Apple, after first iteration, m_tfm doesn't work.
         unifRealArray(input);
-        unifRealArray(symbol); // FIXME: set Hermitian symmetry?
+	unifRealArray(symbol); // FIXME: set Hermitian symmetry?
 
         m_tfm.exec(input, output, symbol);
 
         m_tfm.exec2(input, output2, symbol);
-
+	
         double err = absMaxDiffArray(output, output2);
         updateMax(errRandomSymbol, err);
         if (m_verbosity >= SHOW_ROUNDS)
