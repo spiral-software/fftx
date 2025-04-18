@@ -42,7 +42,7 @@
 #define FFTX_XSTR(s) FFTX_STR(s)
 #define FFTX_STR(s) #s
 
-#define FFTX_VERSION 1.1
+#define FFTX_VERSION 1.3.0
 
 // Set this to 1 for row-major order, 0 for column-major order.
 #define FFTX_ROW_MAJOR_ORDER 1
