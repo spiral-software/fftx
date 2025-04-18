@@ -100,8 +100,13 @@ static void checkOutputBuffers ( FFTX_DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, FFTX_D
         correct &= elem_correct;
     }
     
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
+    // printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
+    fftx::OutStream() << "Correct: " << (correct ? "True" : "False") << "\t"
+                      << "Max delta = " << std::scientific << maxdelta
+                      << std::endl;
+    // fflush ( stdout );
+    std::flush(fftx::OutStream());
+    
 
     return;
 }
@@ -162,10 +167,16 @@ int main(int argc, char* argv[])
           kk = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+          // printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+          fftx::OutStream() << "Usage: " << argv[0]
+                            << ": [ -i iterations ] [ -s MMxNNxKK ] [ -h (pri\
+nt help message) ]"
+                            << std::endl;
           exit (0);
       default:
-          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+          // printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+          fftx::OutStream() << prog << ": unknown argument: "
+                            << argv[1] << " ... ignored" << std::endl;
       }
       argv++, argc--;
   }
@@ -255,14 +266,27 @@ int main(int argc, char* argv[])
   // printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d:\nTrial #\tSpiral\trocfft\n",
   // descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );        //  , devfft.c_str() );
 #endif
-  printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d\n",
-           descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+  // printf ( "Times in milliseconds for %s on HOCKNEY CONVOLUTION for %d trials of size %d %d %d\n",
+  // descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
+  fftx::OutStream() << "Times in milliseconds for " << descrip
+                    << " on HOCKNEY CONVOLUTION for "
+                    << iterations << " trials of size "
+                    << sizes.at(0) << " "
+                    << sizes.at(1) << " "
+                    << sizes.at(2) << ":" << std::endl;
+  fftx::OutStream() << "Trial#    Spiral" << std::endl;
   for (int itn = 0; itn < iterations; itn++)
     {
-      printf ( "%d\t%.7e\n", itn, hockneyconv_gpu[itn]);
+      // printf ( "%d\t%.7e\n", itn, hockneyconv_gpu[itn]);
+      fftx::OutStream() << std::setw(4) << (itn+1)
+                        << std::scientific << std::setw(17)
+                        << hockneyconv_gpu[itn] << std::endl;
     }
 
     delete[] hockneyconv_gpu;
+
+    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    std::flush(fftx::OutStream());
 
     return 0;
 }
