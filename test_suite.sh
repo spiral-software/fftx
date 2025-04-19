@@ -31,12 +31,12 @@
 ./bin/testhockneyconv -i 5 -s 128x32x32
 ./bin/testhockneyconv -i 5 -s 64x64x64
 
-./bin/testrconv_lib
+./bin/testrconv_lib -i 5
 ./bin/testrconv -i 5 -s 40x40x40
 ./bin/testrconv -i 5 -s 72x72x72
 ./bin/testrconv -i 5 -s 128x128x128
 
-./bin/testverify_lib
+./bin/testverify_lib -i 5
 ./bin/testverify -i 5 -s 40x40x40
 ./bin/testverify -i 5 -s 72x72x72
 ./bin/testverify -i 5 -s 128x128x128
