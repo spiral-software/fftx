@@ -38,6 +38,12 @@
    \endlink
 */
 
+// Macros for stringizing:  do std::string(FFTX_XSTR(macroname)).
+#define FFTX_XSTR(s) FFTX_STR(s)
+#define FFTX_STR(s) #s
+
+#define FFTX_VERSION 1.3.0
+
 // Set this to 1 for row-major order, 0 for column-major order.
 #define FFTX_ROW_MAJOR_ORDER 1
 
@@ -46,7 +52,8 @@
 
 namespace fftx
 {
-
+  inline std::string version() { return std::string(FFTX_XSTR(FFTX_VERSION)); }
+  
   /**
      Is this a FFTX codegen program, or is this application code using a generated transform.
   */
@@ -628,7 +635,7 @@ namespace fftx
     #ifndef FFTX_PLAN_CODEGEN_H
     #define FFTX_PLAN_CODEGEN_H
 
-    #include "fftx3.hpp"
+    #include "fftx.hpp"
 
     extern void init_PLAN_spiral(); 
     extern void PLAN_spiral(double** Y, double** X, double** symvar); 
@@ -711,7 +718,7 @@ namespace fftx
   }
 
   /** \internal */
-  template<typename T, int DIM, unsigned long COUNT>
+  template<typename T, int DIM, std::size_t COUNT>
   std::string varNames(const std::array<array_t<DIM,T>, COUNT>& a_vars)
   {
    std::string rtn;
@@ -733,7 +740,7 @@ template<int DIM>
     #ifndef FFTX_PLAN_CODEGEN_H
     #define FFTX_PLAN_CODEGEN_H
 
-    #include "fftx3.hpp"
+    #include "fftx.hpp"
 
     extern void init_PLAN_spiral(); 
     extern void PLAN_spiral(double* Y, double* X, double* symvar); 
@@ -852,14 +859,14 @@ template<int DIM>
  
  
   /** \internal */
-  template<typename T, int DIM, unsigned long COUNT>
+    template<typename T, int DIM, std::size_t COUNT>
   void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars, const char* name)
   {
     closeScalarDAG<DIM>(varNames(a_vars), name);
   }
 
   /** \internal */
-template<typename T, typename T2, int DIM, unsigned long COUNT, unsigned long COUNT2>
+    template<typename T, typename T2, int DIM, std::size_t COUNT, std::size_t COUNT2>
   void closeScalarDAG(const std::array<array_t<DIM,T>, COUNT>& a_vars,
                       const std::array<array_t<DIM,T2>, COUNT2>& a_vars2, const char* name)
   {

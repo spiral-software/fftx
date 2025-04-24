@@ -21,8 +21,6 @@
 #include "fftximdprdft.precompile.hpp"
 // #include "fftxrconv.precompile.hpp"
 
-#include "fftx3utilities.h"
-
 #include "fftxdevice_macros.h"
 #include "fftxVerifyTransform.hpp"
 

@@ -9,9 +9,6 @@
 
 // #include "fftxrconv.precompile.hpp"
 
-#include "fftx3utilities.h"
-
-#include "fftxdevice_macros.h"
 #include "fftxRealConvolution.hpp"
 
 template<int DIM>
@@ -23,10 +20,7 @@ void rconvDimension(std::vector<int> sizes,
 {
   fftx::OutStream() << "***** test " << DIM << "D real convolution on "
                     << a_domain << std::endl;
-
-  // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
-  RCONVProblem rp("rconv");
-  RealConvolution<DIM> fun(rp, sizes, a_domain, a_fdomain);
+  RealConvolution<DIM> fun(sizes, a_domain, a_fdomain);
   TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
 }
 

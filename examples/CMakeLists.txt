@@ -21,7 +21,7 @@ manage_add_subdir ( batch1ddft    TRUE      TRUE )
 manage_add_subdir ( batch1dprdft  TRUE      TRUE )
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( mdprdft       TRUE      TRUE )
-
+manage_add_subdir ( hockneyconv   TRUE      TRUE )
 manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
 
@@ -40,5 +40,5 @@ if ( Fortran_ENABLED )
     ##  Build the Fortran example
     manage_add_subdir ( fortran       TRUE      TRUE )
 else ()
-    message ( WARNING "No Fortran compiler found.  Skipping Fortran example build." )
+    message ( STATUS "No Fortran compiler found.  Skipping Fortran example build." )
 endif ()

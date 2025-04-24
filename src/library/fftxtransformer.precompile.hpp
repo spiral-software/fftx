@@ -6,7 +6,7 @@
 //#include <hip/hip_runtime.h>
 //#endif
 
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include "fftxdevice_macros.h"
 
 /*

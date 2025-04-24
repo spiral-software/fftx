@@ -10,7 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include <array>
 #include <cstdio>
 #include <cassert>
@@ -21,7 +21,6 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
-  #include <direct.h>
   #define FFTX_POPEN _popen
   #define FFTX_PCLOSE _pclose
   // #define popen _popen
@@ -71,7 +70,7 @@
 #endif
 #pragma once
 
-#if defined ( PRINTDEBUG )
+#if defined ( FFTX_PRINTDEBUG )
 #define FFTX_DEBUGOUT 1
 #else
 #define FFTX_DEBUGOUT 0

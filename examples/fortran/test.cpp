@@ -10,7 +10,6 @@
 #include "fftximddftObj.hpp"
 #include "fftxmdprdftObj.hpp"
 #include "fftximdprdftObj.hpp"
-// #include "fftx3utilities.h"
 
 //#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined (FFTX_SYCL)
 // #include "fftxdevice_macros.h"

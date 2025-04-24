@@ -1,7 +1,6 @@
 #ifndef FFTX_rconv_PRECOMPILE_H
 #define FFTX_rconv_PRECOMPILE_H
 
-#include "fftx3.hpp"
 #include "fftxtransformer.precompile.hpp"
 
 /*
