@@ -48,6 +48,7 @@ int verify3d(fftx::point_t<3> a_fullExtents,
       fun(a_iprdft, a_fullExtents, name, 1);
     status += fun.testAll(a_rounds, a_verbosity);
   }
+  return status;
 }
                     
 
