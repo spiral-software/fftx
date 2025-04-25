@@ -91,8 +91,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, std::complex<double>>
               fun(&tfm, -1);
-            VerifyTransform<3, std::complex<double>, std::complex<double>>
-              (fun, rounds, verbosity);
+            fun.testAll(rounds, verbosity);
           }
        }
 
@@ -102,8 +101,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, std::complex<double>>
               fun(&tfm, 1);
-            VerifyTransform<3, std::complex<double>, std::complex<double>>
-              (fun, rounds, verbosity);
+            fun.testAll(rounds, verbosity);
           }
        }
 
@@ -113,8 +111,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, double, std::complex<double>>
               fun(&tfm, -1);
-            VerifyTransform<3, double, std::complex<double>>
-              (fun, rounds, verbosity);
+            fun.testAll(rounds, verbosity);
           }
       }
 
@@ -124,8 +121,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, double>
               fun(&tfm, 1);
-            VerifyTransform<3, std::complex<double>, double>
-              (fun, rounds, verbosity);
+            fun.testAll(rounds, verbosity);
           }
       }
     }

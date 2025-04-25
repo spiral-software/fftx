@@ -85,7 +85,7 @@ static void buildInputBuffer_complex( double *host_X, fftx::point_t<3> extents )
 // devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
 // arrsz is the size of each array
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-static void checkOutputBuffers ( FFTX_DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, FFTX_DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
+static bool checkOutputBuffers ( FFTX_DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, FFTX_DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
 {
     bool correct = true;
     double maxdelta = 0.0;
@@ -108,7 +108,7 @@ static void checkOutputBuffers ( FFTX_DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, FFTX_D
     std::flush(fftx::OutStream());
     
 
-    return;
+    return correct;
 }
 #endif
 
@@ -181,6 +181,7 @@ nt help message) ]"
       argv++, argc--;
   }
   fftx::OutStream() << mm << " " << nn << " " << kk << std::endl;
+  int status = 0;
   std::vector<int> sizes{mm, nn, kk};
   fftx::box_t<3> inputd ( fftx::point_t<3> ( { { 1, 1, 1 } } ),
                           fftx::point_t<3> ( { { mm, nn, kk } } ));
@@ -288,5 +289,5 @@ nt help message) ]"
     fftx::OutStream() << prog << ": All done, exiting" << std::endl;
     std::flush(fftx::OutStream());
 
-    return 0;
+    return status;
 }

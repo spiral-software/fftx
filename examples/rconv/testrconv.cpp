@@ -6,16 +6,16 @@
 // using namespace fftx;
 // fftx::handle_t (a_transform)
 template<int DIM>
-void rconvDimension(std::vector<int> sizes,
-                    fftx::box_t<DIM> a_domain,
-                    fftx::box_t<DIM> a_fdomain,
-                    int a_rounds,
-                    int a_verbosity)
+int rconvDimension(std::vector<int> sizes,
+                   fftx::box_t<DIM> a_domain,
+                   fftx::box_t<DIM> a_fdomain,
+                   int a_rounds,
+                   int a_verbosity)
 {
   fftx::OutStream() << "***** test " << DIM << "D real convolution on "
                     << a_domain << std::endl;
   RealConvolution<DIM> fun(sizes, a_domain, a_fdomain);
-  TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
+  return fun.testAll(a_rounds, a_verbosity);
 }
 
 
@@ -105,9 +105,9 @@ int main(int argc, char* argv[])
   fftx::box_t<3> domain3 = domainFromSize(fullExtents, offsets);
   fftx::box_t<3> fdomain3 = domainFromSize(truncExtents, offsets);
 
-  rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
+  int status = rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
   // rconv3::destroy();
   
   fftx::OutStream() << prog << ": All done, exiting" << std::endl;
-  return 0;
+  return status;
 }

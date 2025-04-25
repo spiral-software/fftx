@@ -46,15 +46,13 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       // funprob(&mdp, a_domain, a_domain, fullExtents, name, -1);
       funprob(&mdp, -1);
-    VerifyTransform<DIM, std::complex<double>, std::complex<double>>
-      (funprob, a_rounds, a_verbosity);
+    funprob.testAll(a_rounds, a_verbosity);
 
     fftx::OutStream() << "########### with a_mddft now" << std::endl;
     
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       fun(a_mddft, a_domain, a_domain, fullExtents, name, -1);
-    VerifyTransform<DIM, std::complex<double>, std::complex<double>>
-      (fun, a_rounds, a_verbosity);
+    fun.testAll(a_rounds, a_verbosity);
   }
 
   {
@@ -63,8 +61,7 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
                       << a_domain << std::endl;
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       fun(a_imddft, a_domain, a_domain, fullExtents, name, 1);
-    VerifyTransform<DIM, std::complex<double>, std::complex<double>>
-      (fun, a_rounds, a_verbosity);
+    fun.testAll(a_rounds, a_verbosity);
   }
 
   {
@@ -73,8 +70,7 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
                       << a_domain << " to complex " << a_fdomain << std::endl;
     TransformFunction<DIM, double, std::complex<double>>
       fun(a_prdft, a_domain, a_fdomain, fullExtents, name, -1);
-    VerifyTransform<DIM, double, std::complex<double>>
-      (fun, a_rounds, a_verbosity);
+    fun.testAll(a_rounds, a_verbosity);
   }
 
   {
@@ -83,8 +79,7 @@ void verifyDimension(fftx::box_t<DIM> a_domain,
                       << a_fdomain << " to real " << a_domain << std::endl;
     TransformFunction<DIM, std::complex<double>, double>
       fun(a_iprdft, a_fdomain, a_domain, fullExtents, name, 1);
-    VerifyTransform<DIM, std::complex<double>, double>
-      (fun, a_rounds, a_verbosity);
+    fun.testAll(a_rounds, a_verbosity);
   }
 }
                     
@@ -104,8 +99,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
                       << a_fullExtents << std::endl;
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       funprob(&a_mddft, -1);
-    VerifyTransform<DIM, std::complex<double>, std::complex<double>>
-      (funprob, a_rounds, a_verbosity);
+    funprob.testAll(a_rounds, a_verbosity);
   }
 
   {
@@ -114,8 +108,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
                       << a_fullExtents << std::endl;
     TransformFunction<DIM, std::complex<double>, std::complex<double>>
       funprob(&a_imddft, 1);
-    VerifyTransform<DIM, std::complex<double>, std::complex<double>>
-      (funprob, a_rounds, a_verbosity);
+    funprob.testAll(a_rounds, a_verbosity);
   }
 
   {
@@ -124,8 +117,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
                       << a_fullExtents << std::endl;
     TransformFunction<DIM, double, std::complex<double>>
       funprob(&a_mdprdft, -1);
-    VerifyTransform<DIM, double, std::complex<double>>
-      (funprob, a_rounds, a_verbosity);
+    funprob.testAll(a_rounds, a_verbosity);
   }
 
   {
@@ -134,8 +126,7 @@ void verifyDimension(fftx::point_t<DIM>& a_fullExtents, // need for templating
                       << a_fullExtents << std::endl;
     TransformFunction<DIM, std::complex<double>, double>
       funprob(&a_imdprdft, 1);
-    VerifyTransform<DIM, std::complex<double>, double>
-      (funprob, a_rounds, a_verbosity);
+    funprob.testAll(a_rounds, a_verbosity);
   }
 }
                     
