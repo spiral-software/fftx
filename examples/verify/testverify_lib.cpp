@@ -71,6 +71,8 @@ int main(int argc, char* argv[])
                     << ", random " << rounds << " rounds"
                     << std::endl;
 
+  int status = 0;
+  
   /*
     Set up random number generator.
   */
@@ -91,7 +93,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, std::complex<double>>
               fun(&tfm, -1);
-            fun.testAll(rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
        }
 
@@ -101,7 +103,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, std::complex<double>>
               fun(&tfm, 1);
-            fun.testAll(rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
        }
 
@@ -111,7 +113,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, double, std::complex<double>>
               fun(&tfm, -1);
-            fun.testAll(rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
       }
 
@@ -121,12 +123,12 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, double>
               fun(&tfm, 1);
-            fun.testAll(rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
       }
     }
 
   // printf("%s: All done, exiting\n", prog);
   fftx::OutStream() << prog << ": All done, exiting" << std::endl;
-  return 0;
+  return status;
 }
