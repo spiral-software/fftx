@@ -308,7 +308,7 @@ contains
     enddo
   end subroutine laplacian2periodicDistComplex
   
-  integer function doDistComplexConvolution(out_array, in_array, sym_array)
+  subroutine doDistComplexConvolution(out_array, in_array, sym_array)
     use fft_mod, only : fftx_3D_mddft_dist, fftx_3D_imddft_dist
     implicit none
     complex(C_DOUBLE_COMPLEX), dimension(:, :, :), intent(out) :: out_array
@@ -320,8 +320,6 @@ contains
     integer :: ix, iy, iz, ind
     integer :: ix_global, iy_global, iz_global
 
-    doDistComplexConvolution = 0
-    
     call tfm_mddft%init()
     call tfm_imddft%init()
 
@@ -361,7 +359,7 @@ contains
 
     call tfm_mddft%finalize()
     call tfm_imddft%finalize()
-  end function doDistComplexConvolution
+  end subroutine doDistComplexConvolution
 
   integer function distComplexConvolutionTest() ! data_out, data_in, data_symbol
     use mpi_utils_mod, only : i_am_mpi_master, mpi_rank, MPISumComplex, MPIMaxReal
@@ -524,7 +522,7 @@ contains
     
     call tfm_mdprdft%finalize()
     call tfm_imdprdft%finalize()
-  end function doDistRealConvolution
+  end subroutine doDistRealConvolution
   
   integer function distRealConvolutionTest() ! data_out, data_in, data_symbol
     use mpi_utils_mod, only : i_am_mpi_master, mpi_rank, MPISumReal, MPIMaxReal
