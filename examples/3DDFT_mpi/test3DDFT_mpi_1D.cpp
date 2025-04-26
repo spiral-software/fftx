@@ -145,6 +145,8 @@ double inputRealSymmetric(int i, int j, int l, int K, int N, int M)
 
 int main(int argc, char* argv[])
 {
+  int status = 0;
+  
   MPI_Init(&argc, &argv);
 
   int rank;
@@ -428,23 +430,32 @@ int main(int argc, char* argv[])
   /*
     Run trials of the distributed FFTX transform, and report timings.
   */
-  for (int t = 0; t < trials; t++)
+  FFTX_DEVICE_EVENT_T custart, custop;
+  FFTX_DEVICE_EVENT_CREATE ( &custart );
+  FFTX_DEVICE_EVENT_CREATE ( &custop );
+  for (int t = 1; t <= trials; t++)
     {
-      double start_time = MPI_Wtime();
+      FFTX_DEVICE_EVENT_RECORD ( custart );
 
       fftx_execute_1d(plan,
                       (double*)dev_out,
                       (double*)dev_in,
-                      (is_forward ? FFTX_DEVICE_FFT_FORWARD : FFTX_DEVICE_FFT_INVERSE));
+                      (is_forward ? FFTX_DEVICE_FFT_FORWARD :
+                       FFTX_DEVICE_FFT_INVERSE));
 
-      double end_time = MPI_Wtime();
-      double max_time = max_diff(start_time, end_time, MPI_COMM_WORLD);
+      FFTX_DEVICE_EVENT_RECORD ( custop );
+      FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+      float millisec;
+      FFTX_DEVICE_EVENT_ELAPSED_TIME ( &millisec, custart, custop );
+      float max_time;
+      MPI_Reduce(&millisec, &max_time, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
 
       if (rank == root)
         {
           if (FFTX_PRETTY_PRINT)
             {
-              fftx::OutStream() << "\tTrial " << t << ": " << max_time << " seconds" << std::endl;
+              fftx::OutStream() << "\tTrial " << t << ": "
+                                << max_time << " millisec" << std::endl;
             }
           else
             {
@@ -687,6 +698,7 @@ int main(int argc, char* argv[])
           {
             fftx::ErrStream() << "Error: MPI_Gather on input returned error code "
                               << error << std::endl;
+            status++;
           }
       }
       MPI_Barrier(MPI_COMM_WORLD);
@@ -706,6 +718,7 @@ int main(int argc, char* argv[])
           {
             fftx::ErrStream() << "Error: MPI_Gather on FFTX output returned error code "
                               << error << std::endl;
+            status++;
           }
       }
       MPI_Barrier(MPI_COMM_WORLD);
@@ -882,6 +895,7 @@ int main(int argc, char* argv[])
           else
             {
               fftx::ErrStream() << "Error: unknown plan type." << std::endl;
+              status++;
               goto end;
             }
           FFTX_DEVICE_FFT_PLAN_MANY(&plan_vendor, 3, dims,
@@ -922,6 +936,7 @@ int main(int argc, char* argv[])
           else
             {
               fftx::ErrStream() << "Error: unknown plan type." << std::endl;
+              status++;
               goto end;
             }
 
@@ -932,6 +947,7 @@ int main(int argc, char* argv[])
                 fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code "
                                   << device_status << " after 3DFFT!"
                                   << std::endl;
+                status++;
               }
           }
 
@@ -949,6 +965,7 @@ int main(int argc, char* argv[])
                 fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code "
                                   << device_status << " after 3DFFT!"
                                   << std::endl;
+                status++;
               }
           }
 
@@ -1104,5 +1121,5 @@ int main(int argc, char* argv[])
   free(host_out);
 
   MPI_Finalize();
-  return 0;
+  return status;
 }
