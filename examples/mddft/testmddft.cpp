@@ -60,7 +60,7 @@ static void setRandomData ( double *data, long arrsz)
 // outputVendorPtr is the output buffer from the vendor transform
 // (result on GPU copied to host array outputVendorPtr).
 // arrsz is the size of each array
-static void checkOutputs ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
+static bool checkOutputs ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
 			   FFTX_DOUBLECOMPLEX *outputVendorPtr,
 			   long arrsz )
 {
@@ -89,7 +89,7 @@ static void checkOutputs ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
                       << std::endl;
     std::flush(fftx::OutStream());
 
-    return;
+    return correct;
 }
 
 
@@ -139,6 +139,7 @@ int main(int argc, char* argv[])
     }
 
     fftx::OutStream() << mm << " " << nn << " " << kk << std::endl;
+    int status = 0;
     std::vector<int> sizes{mm,nn,kk};
     fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
                             point_t<3> ( { { mm, nn, kk } } ));
@@ -230,6 +231,7 @@ int main(int argc, char* argv[])
         fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
+        status++;
       }
 #elif defined (FFTX_SYCL)
     sycl::device dev;
@@ -310,6 +312,7 @@ int main(int argc, char* argv[])
                 fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
                                   << res << " ... skip buffer check" << std::endl;
 		check_output = false;
+                status++;
 		//  break;
 	      }
             FFTX_DEVICE_EVENT_RECORD ( custop );
@@ -367,9 +370,10 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "MDDFT (Forward) \t";
-	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
-			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
-			   (long) npts );
+            bool chk = checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
+                                      (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
+                                      (long) npts );
+            if (chk == false) status++;
 	  } // end check_output
       } // end iteration
 
@@ -452,6 +456,7 @@ int main(int argc, char* argv[])
                 fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
                                   << res << " ... skip buffer check" << std::endl;
                 check_output = false;
+                status++;
                 //  break;
 	      }
             FFTX_DEVICE_EVENT_RECORD ( custop );
@@ -510,9 +515,10 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "IMDDFT (Inverse)\t";
-	    checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
-			   (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
-			   (long) npts );
+	    bool chk = checkOutputs ( (FFTX_DOUBLECOMPLEX*) outputFFTXHostPtr,
+                                      (FFTX_DOUBLECOMPLEX*) outputVendorHostPtr,
+                                      (long) npts );
+            if (chk == false) status++;
 	  }
       } // end iteration
 
@@ -565,5 +571,5 @@ int main(int argc, char* argv[])
     fftx::OutStream() << prog << ": All done, exiting" << std::endl;
     std::flush(fftx::OutStream());
 
-    return 0;
+    return status;
 }

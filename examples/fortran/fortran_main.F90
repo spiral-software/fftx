@@ -13,8 +13,11 @@ PROGRAM FFTX_CONVOLUTION
   DOUBLE PRECISION :: starttime, endtime, time, time_max
   character(len=32) :: inputarg
   integer :: nargs, iostat, i
+  integer :: status
   integer, dimension(3) :: dims
 
+  status = 0
+  
   ! Initialize MPI, if using.
   call init_mpi()
 
@@ -25,7 +28,7 @@ PROGRAM FFTX_CONVOLUTION
      if (i_am_mpi_master) then
         print *, 'Error: command-line arguments must include 3 dimensions, nx ny nz'
      endif
-     stop
+     stop -1
   endif
     
   do i = 1, 3
@@ -74,14 +77,14 @@ PROGRAM FFTX_CONVOLUTION
 
      print *, '================= single COMPLEX convolution test ==========='
      call CPU_TIME(starttime)
-     call singleComplexConvolutionTest()
+     status = status + singleComplexConvolutionTest()
      call CPU_TIME(endtime)
      time = endtime - starttime
      write(*,*) 'single complex convolution test time:', time
   
      print *, '================= single REAL convolution test =============='
      call CPU_TIME(starttime)
-     call singleRealConvolutionTest()
+     status = status + singleRealConvolutionTest()
      call CPU_TIME(endtime)
      time = endtime - starttime
      write(*,*) 'single real convolution test time:', time
@@ -141,7 +144,7 @@ PROGRAM FFTX_CONVOLUTION
      print *, '================= distributed COMPLEX convolution test ==========='
   endif
   starttime = MPI_Wtime()
-  call distComplexConvolutionTest()
+  status = status + distComplexConvolutionTest()
   endtime   = MPI_Wtime()
   time = endtime - starttime
   time_max = MPIMaxReal(time)
@@ -153,7 +156,7 @@ PROGRAM FFTX_CONVOLUTION
      print *, '================= distributed REAL convolution test ==========='
   endif
   starttime = MPI_Wtime()
-  call distRealConvolutionTest()
+  status = status + distRealConvolutionTest()
   endtime   = MPI_Wtime()
   time = endtime - starttime
   time_max = MPIMaxReal(time)
@@ -165,5 +168,7 @@ PROGRAM FFTX_CONVOLUTION
   call finalize_mpi()
 
 #endif
+
+  stop status
 
 END PROGRAM FFTX_CONVOLUTION

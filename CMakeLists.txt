@@ -29,15 +29,6 @@ project (FFTX_PROJECT
 ##  Do this *early* to avoid issues on Windows with Intel ifx...
 ##  --------------------------------------------------------------------------------
 
-# set ( Fortran_ENABLED FALSE )
-# enable_language ( Fortran OPTIONAL )
-# if ( CMAKE_Fortran_COMPILER_WORKS )
-#     message ( STATUS "Working Fortran compiler found: ${CMAKE_Fortran_COMPILER}." )
-#     set ( Fortran_ENABLED TRUE )
-# else ()
-#     message ( STATUS "No functional Fortran compiler found." )
-# endif ()
-
 set ( Fortran_ENABLED FALSE )
 find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
 if ( FORTRAN_COMPILER )
@@ -57,13 +48,18 @@ else ()
     message ( STATUS "No Fortran compiler found. Fortran support disabled." )
 endif ()
 
+if ( WIN32 )
+    set ( FINDMPIFLAG NO_MODULE )
+else ()
+    set ( FINDMPIFLAG )
+endif ()
+
 ##  --------------------------------------------------------------------------------
 ##  Intel's ifx compiler introduces some invalid flags for an MSVC linker
 ##  Clean them up and force it to use MSVC linker [ifx seems to assume it will
 ##  compile and link]
 ##  --------------------------------------------------------------------------------
 
-set ( FINDMPIFLAG NO_MODULE )
 if ( WIN32 AND CMAKE_Fortran_COMPILER MATCHES "ifx" )
     message ( STATUS "Windows + Intel ifx detected - clearing bad /Qoption,link flags" )
 

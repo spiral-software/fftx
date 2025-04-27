@@ -12,6 +12,8 @@
 #include "fftxmdprdftObj.hpp"
 #include "fftximdprdftObj.hpp"
 
+#define FFTX_TOLERANCE 1e-8
+
 // #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 // #include "fftx_rconv_gpu_public.h"
 // #else
@@ -273,83 +275,26 @@ public:
       }
   }
 
-protected:
-
-  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2};
-
-  TransformType m_tp;
-  RCONVProblem m_rp;
-  MDPRDFTProblem m_r2c;
-  IMDPRDFTProblem m_c2r;
-  std::vector<int> m_sizes;
-  fftx::box_t<DIM> m_domain;
-  fftx::box_t<DIM> m_fdomain;
-
-  // case FFTX_HANDLE
-  fftx::handle_t (*m_functionPtr) (fftx::array_t<DIM, double>&,
-                                   fftx::array_t<DIM, double>&,
-                                   fftx::array_t<DIM, double>&);
-  
-  // case FFTX_LIB
-  // fftx::rconv<DIM>* m_transformerPtr;
-};
-
-template<int DIM>
-class TestRealConvolution
-{
-public:
-
-  TestRealConvolution(RealConvolution<DIM> a_tfm,
-                      int a_rounds,
-                      int a_verbosity)
+  int testAll(int a_rounds,
+              int a_verbosity)
   {
-    if (!a_tfm.isDefined())
-      {
-        fftx::ErrStream() << "transformation not defined" << std::endl;
-        return;
-      }
-    fftx::OutStream() << std::scientific << std::setprecision(5);
-
-    m_tfm = a_tfm;
     m_rounds = a_rounds;
     m_verbosity = a_verbosity;
 
-    m_domain = m_tfm.domain();
-    m_fdomain = m_tfm.fdomain();
-
+    int status = 0;
     double err = 0.;
-    updateMax(err, testConstantSymbol());
-    updateMax(err, testDelta());
-    updateMax(err, testPoisson());
-    updateMax(err, testRandomSymbol());
+    fftx::OutStream() << std::scientific << std::setprecision(5);
+    
+    updateStatusAndErrMax(status, err, testConstantSymbol());
+    updateStatusAndErrMax(status, err, testDelta());
+    updateStatusAndErrMax(status, err, testPoisson());
+    updateStatusAndErrMax(status, err, testRandomSymbol());
     fftx::OutStream() << DIM << "D tests in "
                       << m_rounds << " rounds max error " << err
                       << std::endl;
+    return status;
   }
-
-protected:
-
-  enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
-
-  RealConvolution<DIM> m_tfm;
-  
-  int m_rounds;
-  
-  int m_verbosity;
-
-  fftx::box_t<DIM> m_domain;
-  fftx::box_t<DIM> m_fdomain;
-
-  // Fill a_arr with real numbers distributed uniformly in (-1/2, 1/2).
-  void unifRealArray(fftx::array_t<DIM, double>& a_arr)
-  {
-    forall([](double(&v),
-              const fftx::point_t<DIM>& p)
-           {
-             v = unifReal();
-           }, a_arr);
-  }
-
+              
   double testConstantSymbol()
   {
     if (m_verbosity >= SHOW_CATEGORIES)
@@ -367,7 +312,7 @@ protected:
     for (int itn = 1; itn <= m_rounds; itn++)
       {
         unifRealArray(input);
-        m_tfm.exec(input, output, symbol);
+        exec(input, output, symbol);
         double err = absMaxDiffArray(input, output);
         updateMax(errConstantSymbol, err);
         if (m_verbosity >= SHOW_ROUNDS)
@@ -421,7 +366,7 @@ protected:
     auto indCornerLo = positionInBox(cornerLo, m_fdomain);
     symbolPtr[indCornerLo] = scaling;
 
-    m_tfm.exec(input, output, symbol);
+    exec(input, output, symbol);
     double errDelta = absMaxDiffArray(input, output);
     if (m_verbosity >= SHOW_CATEGORIES)
       {
@@ -548,7 +493,7 @@ protected:
           }
       }
 
-    m_tfm.exec(input, output, symbol);
+    exec(input, output, symbol);
 
     fftx::array_t<DIM, double> lap2output(m_domain);
     laplacian2periodic(lap2output, output);
@@ -590,9 +535,9 @@ protected:
         unifRealArray(input);
 	unifRealArray(symbol); // FIXME: set Hermitian symmetry?
 
-        m_tfm.exec(input, output, symbol);
+        exec(input, output, symbol);
 
-        m_tfm.exec2(input, output2, symbol);
+        exec2(input, output2, symbol);
 	
         double err = absMaxDiffArray(output, output2);
         updateMax(errRandomSymbol, err);
@@ -616,5 +561,38 @@ protected:
     return errRandomSymbol;
   }
 
+protected:
+
+  inline void updateStatusAndErrMax(int& status,
+                                    double& errmax,
+                                    double err)
+  {
+    updateMax(errmax, err);
+    if (err > FFTX_TOLERANCE) status++;
+  }
+  
+  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2};
+  enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
+
+  TransformType m_tp;
+  RCONVProblem m_rp;
+  MDPRDFTProblem m_r2c;
+  IMDPRDFTProblem m_c2r;
+  std::vector<int> m_sizes;
+  fftx::box_t<DIM> m_domain;
+  fftx::box_t<DIM> m_fdomain;
+
+  // case FFTX_HANDLE
+  fftx::handle_t (*m_functionPtr) (fftx::array_t<DIM, double>&,
+                                   fftx::array_t<DIM, double>&,
+                                   fftx::array_t<DIM, double>&);
+  
+  // case FFTX_LIB
+  // fftx::rconv<DIM>* m_transformerPtr;
+
+  // for tests
+  int m_verbosity;
+  int m_rounds;
 };
+
 #endif

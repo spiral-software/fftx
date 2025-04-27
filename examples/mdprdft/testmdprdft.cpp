@@ -61,7 +61,7 @@ static void setRandomData ( double *data, long arrsz)
 // outputVendorPtr is the output buffer from the vendor transform
 // (result on GPU copied to host array outputVendorPtr).
 // arrsz is the size of each array
-static void checkOutputs_R2C ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
+static bool checkOutputs_R2C ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
                                FFTX_DOUBLECOMPLEX *outputVendorPtr,
                                long arrsz )
 {
@@ -90,10 +90,10 @@ static void checkOutputs_R2C ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
                       << "Max delta = " << maxdelta << std::endl;
     std::flush(fftx::OutStream());
 
-    return;
+    return correct;
 }
 
-static void checkOutputs_C2R ( FFTX_DOUBLEREAL *outputFFTXPtr,
+static bool checkOutputs_C2R ( FFTX_DOUBLEREAL *outputFFTXPtr,
                                FFTX_DOUBLEREAL *outputVendorPtr,
                                long arrsz )
 {
@@ -116,7 +116,7 @@ static void checkOutputs_C2R ( FFTX_DOUBLEREAL *outputFFTXPtr,
                       << "Max delta = " << maxdelta << std::endl;
     std::flush(fftx::OutStream());
 
-    return;
+    return correct;
 }
 
 
@@ -171,6 +171,7 @@ int main(int argc, char* argv[])
     
     int K_adj = (int) ( kk / 2 ) + 1;
     fftx::OutStream() << mm << " " << nn << " " << kk << std::endl;
+    int status = 0;
     std::vector<int> sizes{mm,nn,kk};
     std::vector<int> sizesTrunc{mm,nn,K_adj};
     fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
@@ -257,6 +258,7 @@ int main(int argc, char* argv[])
         fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
+        status++;
       }
 #elif defined (FFTX_SYCL)
     // Problems with using MKLFFT now.
@@ -341,6 +343,7 @@ int main(int argc, char* argv[])
                                   << res << " ... skip buffer check"
                                   << std::endl;
                 check_output = false;
+                status++;
                 //  break;
               }
             FFTX_DEVICE_EVENT_RECORD ( custop );
@@ -400,9 +403,10 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "MDPRDFT (Forward) \t";
-	    checkOutputs_R2C ( (FFTX_DOUBLECOMPLEX *) complexFFTXHostPtr,
-                               (FFTX_DOUBLECOMPLEX *) complexVendorHostPtr,
-			       (long) nptsTrunc);
+	    bool chk = checkOutputs_R2C ( (FFTX_DOUBLECOMPLEX *) complexFFTXHostPtr,
+                                          (FFTX_DOUBLECOMPLEX *) complexVendorHostPtr,
+                                          (long) nptsTrunc);
+            if (chk == false) status++;
 	  } // end check_output
       } // end iteration
 
@@ -465,6 +469,7 @@ int main(int argc, char* argv[])
         fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
+        status++;
       }
 #elif defined FFTX_SYCL
 #elif defined (FFTX_USE_FFTW)
@@ -507,6 +512,7 @@ int main(int argc, char* argv[])
                                   << res << " ... skip buffer check"
                                   << std::endl;
                 check_output = false;
+                status++;
                 //  break;
               }
             FFTX_DEVICE_EVENT_RECORD ( custop );
@@ -564,9 +570,10 @@ int main(int argc, char* argv[])
             fftx::OutStream() << "cube = [ "
                               << mm << ", " << nn << ", " << kk << " ]\t"
                               << "IMDPRDFT (Inverse)\t";
-	    checkOutputs_C2R ((FFTX_DOUBLEREAL*) realFFTXHostPtr,
-                              (FFTX_DOUBLEREAL*) realVendorHostPtr,
-                              (long) npts );
+	    bool chk = checkOutputs_C2R ((FFTX_DOUBLEREAL*) realFFTXHostPtr,
+                                         (FFTX_DOUBLEREAL*) realVendorHostPtr,
+                                         (long) npts );
+            if (chk == false) status++;
 	  } // end check_output
       } // end iteration
 
@@ -619,5 +626,5 @@ int main(int argc, char* argv[])
     fftx::OutStream() << prog << ": All done, exiting" << std::endl;
     std::flush(fftx::OutStream());
 
-    return 0;
+    return status;
 }
