@@ -19,22 +19,25 @@ import re
 import datetime
 
 
-def extract_fftx_version(header_file_path):
+def extract_fftx_version ( header_file_path ):
     """Extract the FFTX version from the specified header file."""
+    if not os.path.exists ( header_file_path ):
+        print ( "Header file does not exist at specified path" )
+
     try:
-        with open(header_file_path, "r") as file:
+        with open ( header_file_path, "r" ) as file:
             content = file.read()
-            # Adjust regex to match your specific version definition
-            match = re.search(r"#define\s+FFTX_VERSION\s+([\d\.]+)", content)
+            match = re.search ( r"FFTX_VERSION\s+([\d\.]+)", content )
             if match:
                 return match.group(1)
     except Exception as e:
-        print(f"Error extracting FFTX version: {e}")
+        print ( f"Error extracting FFTX version: {e}" )
     return "Unknown Version"
 
 # The FFTX version is defined in fftx.hpp
-header_file_path = os.path.join(os.path.dirname(__file__), "../src/include/FFTX.hpp")
-fftx_version = extract_fftx_version(header_file_path)
+header_file_path = os.path.join ( os.path.dirname(__file__), "../src/include/FFTX.hpp" )
+print ( f"Resolved header file path: {header_file_path}" )
+fftx_version = extract_fftx_version ( header_file_path )
 
 # Get current time and format a 'docs generated on' message
 
