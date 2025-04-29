@@ -9,8 +9,10 @@ pushd ../spiral-software
     git clone -b develop https://www.github.com/spiral-software/spiral-package-jit jit
   popd
   mkdir -p build
-  pushd $SPIRAL_HOME/build
+  pushd build
+    echo "testing cmake" > test_cmake.txt
     cmake ..
+    echo "testing make" > test_make.txt
     make install
   popd
 popd
