@@ -10,9 +10,7 @@ pushd ../spiral-software
   popd
   mkdir -p build
   pushd build
-    echo "testing cmake" > test_cmake.txt
-    cmake ..
-    echo "testing make" > test_make.txt
+    cmake .. > /tmp/cmakeout.txt
     make install
   popd
 popd
