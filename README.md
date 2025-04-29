@@ -304,7 +304,7 @@ buffers are already allocated/initialized as needed; error checking is omitted
 for clarity and brevity:
 
 ```
-#include "fftx3.hpp"
+#include "fftx.hpp"
 #include "fftxtransformlib.hpp"
 
     std::vector<int> sizes{ mm, nn, kk };         // 'cube' dimensions

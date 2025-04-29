@@ -2,7 +2,7 @@
 #define FFTX_DEVICE_MACROS_HEADER
 
 // Need this for ErrStream().
-#include "fftx3.hpp"
+#include "fftx.hpp"
 
 #if defined(FFTX_HIP)
 #include <hip/hiprtc.h>
@@ -98,7 +98,8 @@
 #define FFTX_DEVICE_ERROR_T cudaError_t
 #define FFTX_DEVICE_GET_LAST_ERROR cudaGetLastError
 #define FFTX_DEVICE_GET_ERROR_STRING cudaGetErrorString
-#define FFTX_DEVICE_PTR CUdeviceptr
+// #define FFTX_DEVICE_PTR CUdeviceptr
+#define FFTX_DEVICE_PTR void **
 #define FFTX_DEVICE_FFT_TYPE cufftType
 #define FFTX_DEVICE_FFT_RESULT cufftResult
 #define FFTX_DEVICE_FFT_HANDLE cufftHandle
@@ -188,6 +189,52 @@ inline void FFTX_DEVICE_FFT_CHECK(FFTX_DEVICE_FFT_RESULT a_rc, const std::string
                           << std::endl;
         exit(-1);
      }
+}
+
+// For allocating an array on device that is same size as array.
+template<int DIM, typename Thost>
+inline FFTX_DEVICE_PTR fftxDeviceMallocForHostArray(fftx::array_t<DIM, Thost>& a_hostArray)
+{
+  size_t npts = a_hostArray.m_domain.size();
+  size_t bytes = npts * sizeof(Thost);
+  FFTX_DEVICE_PTR devicePtr;
+  FFTX_DEVICE_MALLOC((void **)&devicePtr, bytes);
+  return devicePtr;
+}
+
+// Simpler function to free device memory.
+template<typename T>
+inline FFTX_DEVICE_ERROR_T fftxDeviceFree(T* a_devicePtr)
+{
+  return FFTX_DEVICE_FREE((void*) a_devicePtr);
+}
+
+// For copying an FFTX array on host to an array on device.
+template<int DIM, typename Thost, typename Tdevice>
+inline FFTX_DEVICE_ERROR_T fftxCopyHostArrayToDevice(Tdevice* a_devicePtr,
+                                                     fftx::array_t<DIM, Thost>& a_hostArray)
+{
+  auto hostDataPtr = a_hostArray.m_data.local();
+  size_t npts = a_hostArray.m_domain.size();
+  size_t bytes = npts * sizeof(Thost);
+  return FFTX_DEVICE_MEM_COPY((void*) a_devicePtr,
+                              hostDataPtr,
+                              bytes,
+                              FFTX_MEM_COPY_HOST_TO_DEVICE);
+}
+
+// For copying an array on device to an FFTX array on host.
+template<int DIM, typename Thost, typename Tdevice>
+inline FFTX_DEVICE_ERROR_T fftxCopyDeviceToHostArray(fftx::array_t<DIM, Thost>& a_hostArray,
+                                                     Tdevice* a_devicePtr)
+{
+  auto hostDataPtr = a_hostArray.m_data.local();
+  size_t npts = a_hostArray.m_domain.size();
+  size_t bytes = npts * sizeof(Thost);
+  return FFTX_DEVICE_MEM_COPY(hostDataPtr,
+                              (void*) a_devicePtr,
+                              bytes,
+                              FFTX_MEM_COPY_DEVICE_TO_HOST);
 }
 #endif                    // defined(__CUDACC__) || defined(FFTX_HIP)
 

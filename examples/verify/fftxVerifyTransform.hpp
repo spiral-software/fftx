@@ -4,9 +4,9 @@
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
-#include "fftx3.hpp"
+#include "fftx.hpp"
+#include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
-// #include "fftx3utilities.h"
 
 // Define {init|destroy|run}TransformFunc and transformTuple if undefined.
 
@@ -37,6 +37,8 @@ typedef struct transformTuple {
 
 #include "fftxdevice_macros.h"
 #include "fftxtransformer.precompile.hpp"
+
+#define FFTX_TOLERANCE 1e-8
 
 std::mt19937 generator;
 // unifRealDist is uniform over the reals in (-1/2, 1/2).
@@ -213,6 +215,70 @@ imdprdft3dDevice(FFTX_DEVICE_FFT_Z2D);
 
 #endif
 
+
+// Return random real number.
+double unifReal()
+{
+  return unifRealDist(generator);
+}
+
+// Return random complex number.
+std::complex<double> unifComplex()
+{
+  return std::complex<double>(unifReal(), unifReal());
+}
+
+inline void getUnifScalar(double& a_scalar)
+{
+  a_scalar = unifReal();
+}
+
+inline void getUnifScalar(std::complex<double>& a_scalar)
+{
+  a_scalar = unifComplex();
+}
+
+template<typename T>
+inline T unifScalar()
+{
+  T ret;
+  getUnifScalar(ret);
+  return ret;
+}
+
+// a_scalarIn and a_scalarOut must have the same value.
+// If they have the same type, then set them equal to a random of that type.
+// If one is real and the other complex, set them to the same random real.
+template<typename T_IN, typename T_OUT>
+inline void getUnifScalarPair(T_IN& a_scalarIn,
+                              T_OUT& a_scalarOut);
+
+template<>
+inline void getUnifScalarPair(std::complex<double>& a_scalarIn,
+                              std::complex<double>& a_scalarOut)
+{
+  a_scalarIn = unifComplex();
+  a_scalarOut = a_scalarIn;
+}
+
+template<>
+inline void getUnifScalarPair(double& a_scalarIn,
+                              std::complex<double>& a_scalarOut)
+{
+  a_scalarIn = unifReal();
+  a_scalarOut = std::complex<double>(a_scalarIn, 0.);
+}
+
+template<>
+inline void getUnifScalarPair(std::complex<double>& a_scalarIn,
+                              double& a_scalarOut)
+{
+  a_scalarOut = unifReal();
+  a_scalarIn = std::complex<double>(a_scalarOut, 0.);
+}
+
+
+
 template <int DIM, typename T_IN, typename T_OUT>
 class TransformFunction
 {
@@ -335,36 +401,16 @@ public:
              m_tp == FFTX_PROBLEM ||
              m_tp == FFTX_DEVICE_LIB)
       {
-        T_IN* inputHostPtr = a_inArray.m_data.local();
-        T_OUT* outputHostPtr = a_outArray.m_data.local();
-
-        // auto sym_pts = m_fullExtents.product();
 #if defined(FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL)
         // on GPU
-        auto input_pts = m_inDomain.size();
-        auto output_pts = m_outDomain.size();
-
-        // T_IN* inputDevicePtr;
-        // T_OUT* outputDevicePtr;
-        // double* symDevicePtr;
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
-        // auto sym_bytes = sym_pts * sizeof(double);
-        auto input_bytes = input_pts * sizeof(T_IN);
-        auto output_bytes = output_pts * sizeof(T_OUT);
-
 	// 1. Copy input from host to device.
-	FFTX_DEVICE_PTR inputDevicePtr;
-	FFTX_DEVICE_PTR outputDevicePtr;
-	FFTX_DEVICE_PTR symDevicePtr;
-
-        FFTX_DEVICE_MALLOC((void **)&inputDevicePtr, input_bytes);
-        FFTX_DEVICE_MALLOC((void **)&outputDevicePtr, output_bytes);
-        // FFTX_DEVICE_MALLOC((void **)&symDevicePtr, sym_bytes);
-        symDevicePtr = (FFTX_DEVICE_PTR) NULL;
+        FFTX_DEVICE_PTR inputDevicePtr = fftxDeviceMallocForHostArray(a_inArray);
+        FFTX_DEVICE_PTR outputDevicePtr = fftxDeviceMallocForHostArray(a_outArray);
+        FFTX_DEVICE_PTR symDevicePtr = (FFTX_DEVICE_PTR) NULL;
         
-        FFTX_DEVICE_MEM_COPY((void*)inputDevicePtr, inputHostPtr, input_bytes,
-                        FFTX_MEM_COPY_HOST_TO_DEVICE);
+        fftxCopyHostArrayToDevice(inputDevicePtr, a_inArray);
 	// 2. Perform the transform.
         if (m_tp == FFTX_DEVICE_LIB)
           {
@@ -403,13 +449,12 @@ public:
               }
           }
 	// 3. Copy output from device to host.
-        FFTX_DEVICE_MEM_COPY(outputHostPtr, (void*)outputDevicePtr, output_bytes,
-                        FFTX_MEM_COPY_DEVICE_TO_HOST);
-
+        fftxCopyDeviceToHostArray(a_outArray, outputDevicePtr);
+                             
 	// 4. Clean up.
-        FFTX_DEVICE_FREE((void*)inputDevicePtr);
-        FFTX_DEVICE_FREE((void*)outputDevicePtr);
-        // FFTX_DEVICE_FREE((void*)symDevicePtr);
+        fftxDeviceFree(inputDevicePtr);
+        fftxDeviceFree(outputDevicePtr);
+        // fftxDeviceFree(symDevicePtr);
 #elif defined(FFTX_SYCL)
         if (m_tp == FFTX_HANDLE)
           {          
@@ -426,10 +471,12 @@ public:
 	    // Doesn't allocate enough space for complex if you do it this way:
 	    // sycl::buffer<T_IN> buf_inputPtr(inputHostPtr, input_pts);
 	    // sycl::buffer<T_OUT> buf_outputPtr(outputHostPtr, output_pts);
+            auto input_pts = m_inDomain.size();
+            auto output_pts = m_outDomain.size();
 	    auto input_doubles = input_pts * sizeof(T_IN)/sizeof(double);
 	    auto output_doubles = output_pts * sizeof(T_OUT)/sizeof(double);
-	    sycl::buffer<double> inputBuffer((double *) inputHostPtr, input_doubles);
-	    sycl::buffer<double> outputBuffer((double *) outputHostPtr, output_doubles);
+	    sycl::buffer<double> inputBuffer((double *) a_inArray.m_data.local(), input_doubles);
+	    sycl::buffer<double> outputBuffer((double *) a_outArray.m_data.local(), output_doubles);
 	    // double* symHostPtr = new double[sym_pts];
 	    // sycl::buffer<double> symBuffer(symHostPtr, sym_pts);
             sycl::buffer<double> symBuffer((double*) NULL, 0); // not needed
@@ -457,8 +504,8 @@ public:
         else if (m_tp == FFTX_PROBLEM)
           {
             double *dX, *dY, *dsym;
-            dX = (double *) inputHostPtr;
-            dY = (double *) outputHostPtr;
+            dX = (double *) a_inArray.m_data.local();
+            dY = (double *) a_outArray.m_data.local();
             // dsym = new double[sym_pts];
             dsym = (double*) NULL;
             // dsym = new std::complex<double>[m_fullExtents.product()];
@@ -472,121 +519,16 @@ public:
       }
   }
 
-protected:
-
-  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2, FFTX_DEVICE_LIB = 3 , FFTX_PROBLEM = 4 };
-
-  TransformType m_tp;
-  fftx::box_t<DIM> m_inDomain;
-  fftx::box_t<DIM> m_outDomain;
-  int m_sign;
-  fftx::point_t<DIM> m_fullExtents;
-
-  std::string m_name;
-  
-  // case FFTX_HANDLE
-  fftx::handle_t (*m_functionPtr) (fftx::array_t<DIM, T_IN>&,
-                                  fftx::array_t<DIM, T_OUT>&);
-  
-  // case FFTX_LIB
-  fftx::transformer<DIM, T_IN, T_OUT>* m_transformerPtr;
-
-  // case FFTX_PROBLEM
-  FFTXProblem* m_transformProblemPtr;
-
-#if defined(FFTX_CUDA) || defined(FFTX_HIP)
-  // case FFTX_DEVICE_LIB
-  deviceTransform3d<T_IN, T_OUT>* m_deviceTfm3dPtr;
-#endif
-};
-
-
-// Return random real number.
-double unifReal()
-{
-  return unifRealDist(generator);
-}
-
-// Return random complex number.
-std::complex<double> unifComplex()
-{
-  return std::complex<double>(unifReal(), unifReal());
-}
-
-inline void getUnifScalar(double& a_scalar)
-{
-  a_scalar = unifReal();
-}
-
-inline void getUnifScalar(std::complex<double>& a_scalar)
-{
-  a_scalar = unifComplex();
-}
-
-template<typename T>
-inline T unifScalar()
-{
-  T ret;
-  getUnifScalar(ret);
-  return ret;
-}
-
-// a_scalarIn and a_scalarOut must have the same value.
-// If they have the same type, then set them equal to a random of that type.
-// If one is real and the other complex, set them to the same random real.
-template<typename T_IN, typename T_OUT>
-inline void getUnifScalarPair(T_IN& a_scalarIn,
-                              T_OUT& a_scalarOut);
-
-template<>
-inline void getUnifScalarPair(std::complex<double>& a_scalarIn,
-                              std::complex<double>& a_scalarOut)
-{
-  a_scalarIn = unifComplex();
-  a_scalarOut = a_scalarIn;
-}
-
-template<>
-inline void getUnifScalarPair(double& a_scalarIn,
-                              std::complex<double>& a_scalarOut)
-{
-  a_scalarIn = unifReal();
-  a_scalarOut = std::complex<double>(a_scalarIn, 0.);
-}
-
-template<>
-inline void getUnifScalarPair(std::complex<double>& a_scalarIn,
-                              double& a_scalarOut)
-{
-  a_scalarOut = unifReal();
-  a_scalarIn = std::complex<double>(a_scalarOut, 0.);
-}
-
-
-template <int DIM, typename T_IN, typename T_OUT>
-class VerifyTransform
-{
-public:
-
-  VerifyTransform(TransformFunction<DIM, T_IN, T_OUT> a_tfm,
-                  int a_rounds,
-                  int a_verbosity)
+  int testAll(int a_rounds,
+              int a_verbosity)
   {
-    if (!a_tfm.isDefined())
-      {
-        fftx::ErrStream() << "transformation not defined" << std::endl;
-        return;
-      }
-    fftx::OutStream() << std::scientific << std::setprecision(5);
-    
-    m_tfm = a_tfm;
     m_rounds = a_rounds;
     m_verbosity = a_verbosity;
 
-    m_sign = a_tfm.sign();
-    m_inDomain = m_tfm.inDomain();
-    m_outDomain = m_tfm.outDomain();
-
+    int status = 0;
+    double err = 0.;
+    fftx::OutStream() << std::scientific << std::setprecision(5);
+    
     fftx::point_t<DIM> inLo = m_inDomain.lo;
     fftx::point_t<DIM> inHi = m_inDomain.hi;
     for (int d = 0; d < DIM; d++)
@@ -595,33 +537,418 @@ public:
       }
     // m_unifRealDist = std::uniform_real_distribution<double>(-0.5, 0.5);
 
-    double err = 0.;
-    updateMax(err, test1());
-    updateMax(err, test2());
-    updateMax(err, test3());
+    updateStatusAndErrMax(status, err, test1());
+    updateStatusAndErrMax(status, err, test2());
+    updateStatusAndErrMax(status, err, test3());
     // printf("%dD test on %s in %d rounds max relative error %11.5e\n",
     //        DIM, m_tfm.name().c_str(), m_rounds, err);
-    fftx::OutStream() << DIM << "D test on " << m_tfm.name()
+    fftx::OutStream() << DIM << "D test on " << name()
                       << " in " << m_rounds
                       << " rounds max relative error " << err
                       << std::endl;
+    return status;
   }
+
+  double test1()
+  {
+    fftx::array_t<DIM, T_IN> inA(m_inDomain);
+    fftx::array_t<DIM, T_IN> inB(m_inDomain);
+    fftx::array_t<DIM, T_IN> LCin(m_inDomain);
+
+    fftx::array_t<DIM, T_OUT> outA(m_outDomain);
+    fftx::array_t<DIM, T_OUT> outB(m_outDomain);
+    fftx::array_t<DIM, T_OUT> LCout(m_outDomain);
+    fftx::array_t<DIM, T_OUT> outLCin(m_outDomain);
+
+    double errtest1 = 0.;
+    for (int itn = 1; itn <= m_rounds; itn++)
+      {
+        T_IN alphaIn, betaIn;
+        T_OUT alphaOut, betaOut;
+        getUnifScalarPair(alphaIn, alphaOut);
+        getUnifScalarPair(betaIn, betaOut);
+        unifArray(inA);
+        unifArray(inB);
+        sumArrays(LCin, inA, inB, alphaIn, betaIn);
+        exec(inA, outA);
+        exec(inB, outB);
+        sumArrays(LCout, outA, outB, alphaOut, betaOut);
+        exec(LCin, outLCin);
+        double err = absMaxRelDiffArray(outLCin, LCout);
+        updateMax(errtest1, err);
+        if (m_verbosity >= SHOW_ROUNDS)
+          {
+            // printf("%dD linearity test round %d max relative error %11.5e\n", DIM, itn, err);
+            fftx::OutStream() << DIM << "D linearity test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
+          }
+      }
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {        
+        // printf("%dD Test 1 (linearity) in %d rounds: max relative error %11.5e\n", DIM, m_rounds, errtest1);
+        fftx::OutStream() << DIM << "D Test 1 (linearity) in " << m_rounds
+                          << ": max relative error " << errtest1
+                          << std::endl;
+      }
+    return errtest1;
+  }
+
+
+  double test2()
+  {
+    double errtest2 = 0.;
+    updateMax(errtest2, test2impulse1());
+    updateMax(errtest2, test2impulsePlus());
+    updateMax(errtest2, test2constant());
+    updateMax(errtest2, test2constantPlus());
+    T_OUT outputVar = scalarVal<T_OUT>(1.);
+    updateMax(errtest2, test2impulseRandom(outputVar)); // only if output is complex
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        // printf("%dD Test 2 (impulses) in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2);
+        fftx::OutStream() << DIM << "D Test 2 (impulses) in " << m_rounds
+                          << " rounds: max relative error " << errtest2
+                          << std::endl;
+      }
+    return errtest2;
+  }
+
+  double test2impulse1()
+  { // Unit impulse at low corner.
+    fftx::array_t<DIM, T_IN> inImpulse(m_inDomain);
+    fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
+    fftx::array_t<DIM, T_OUT> all1out(m_outDomain);
+    setUnitImpulse(inImpulse, m_inDomain.lo);
+    setConstant(all1out, scalarVal<T_OUT>(1.));
+    exec(inImpulse, outImpulse);
+    double errtest2impulse1 = absMaxRelDiffArray(outImpulse, all1out);
+    if (m_verbosity >= SHOW_SUBTESTS)
+      {
+        // printf("%dD unit impulse low corner test: max relative error %11.5e\n",
+        // DIM, errtest2impulse1);
+        fftx::OutStream() << DIM << "D unit impulse low corner test: max relative error "
+                          << errtest2impulse1 << std::endl;
+      }
+    return errtest2impulse1;
+  }
+
+  
+  double test2impulsePlus()
+  { // Unit impulse at low corner.
+    fftx::array_t<DIM, T_IN> inImpulse(m_inDomain);
+    fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
+    fftx::array_t<DIM, T_OUT> all1out(m_outDomain);
+    setUnitImpulse(inImpulse, m_inDomain.lo);
+    setConstant(all1out, scalarVal<T_OUT>(1.));
+    exec(inImpulse, outImpulse);
+
+    fftx::array_t<DIM, T_IN> inRand(m_inDomain);
+    fftx::array_t<DIM, T_IN> inImpulseMinusRand(m_inDomain);
+
+    fftx::array_t<DIM, T_OUT> outRand(m_outDomain);
+    fftx::array_t<DIM, T_OUT> outImpulseMinusRand(m_outDomain);
+    fftx::array_t<DIM, T_OUT> mysum(m_outDomain);
+  
+    // Check that for random arrays inRand,
+    // fft(inRand) + fft(inImpulse - inRand) = fft(inImpulse) = all1out.
+    double errtest2impulsePlus = 0.;
+    for (int itn = 1; itn <= m_rounds; itn++)
+      {
+        unifArray(inRand);
+        exec(inRand, outRand);
+        diffArrays(inImpulseMinusRand, inImpulse, inRand);
+        exec(inImpulseMinusRand, outImpulseMinusRand);
+        sumArrays(mysum, outRand, outImpulseMinusRand);
+        double err = absMaxRelDiffArray(mysum, all1out);
+        updateMax(errtest2impulsePlus, err);
+        if (m_verbosity >= SHOW_ROUNDS)
+          {
+            // printf("%dD random + unit impulse low corner test round %d max relative error %11.5e\n", DIM, itn, err);
+            fftx::OutStream() << DIM << "D random + unit impulse low corner test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
+          }
+      }
+
+    if (m_verbosity >= SHOW_SUBTESTS)
+      {
+        // printf("%dD unit impulse low corner test in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2impulsePlus);
+        fftx::OutStream() << DIM << "D unit impulse low corner test in " << m_rounds
+                          << ": max relative error " << errtest2impulsePlus
+                          << std::endl;
+      }
+    return errtest2impulsePlus;
+  }
+
+  
+  double test2constant()
+  { // Check that constant maps back to unit impulse at low corner.
+    fftx::array_t<DIM, T_IN> all1in(m_inDomain);
+    setConstant(all1in, scalarVal<T_IN>(1.));
+
+    fftx::array_t<DIM, T_OUT> magImpulse(m_outDomain);
+    auto npts = size().product();
+    T_OUT mag = scalarVal<T_OUT>(npts * 1.);
+    setUnitImpulse(magImpulse, m_outDomain.lo, mag);
+
+    fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
+    exec(all1in, outImpulse);
+
+    double errtest2constant = absMaxRelDiffArray(outImpulse, magImpulse);
+    if (m_verbosity >= SHOW_SUBTESTS)
+    {
+      // printf("%dD constant test: max relative error %11.5e\n",
+      // DIM, errtest2constant);
+      fftx::OutStream() << DIM << "D constant test: max relative error "
+                        << errtest2constant << std::endl;
+    }
+    return errtest2constant;
+  }
+
+  double test2constantPlus()
+  {
+    fftx::array_t<DIM, T_IN> all1in(m_inDomain);
+    setConstant(all1in, scalarVal<T_IN>(1.));
+
+    fftx::array_t<DIM, T_OUT> magImpulse(m_outDomain);
+    auto npts = size().product();
+    T_OUT mag = scalarVal<T_OUT>(npts * 1.);
+    setUnitImpulse(magImpulse, m_outDomain.lo, mag);
+
+    fftx::array_t<DIM, T_IN> inRand(m_inDomain);
+    fftx::array_t<DIM, T_IN> inConstantMinusRand(m_inDomain);
+
+    fftx::array_t<DIM, T_OUT> outRand(m_outDomain);
+    fftx::array_t<DIM, T_OUT> outConstantMinusRand(m_outDomain);
+    fftx::array_t<DIM, T_OUT> outSum(m_outDomain);
+
+    // Check that for random arrays inRand,
+    // fft(inRand) + fft(all1 - inRand) = fft(all1) = magImpulse.
+    double errtest2constantPlus = 0.;
+    for (int itn = 1; itn <= m_rounds; itn++)
+      {
+        unifArray(inRand);
+        exec(inRand, outRand);
+
+        diffArrays(inConstantMinusRand, all1in, inRand);
+        exec(inConstantMinusRand, outConstantMinusRand);
+
+        sumArrays(outSum, outRand, outConstantMinusRand);
+      
+        double err = absMaxRelDiffArray(outSum, magImpulse);
+        updateMax(errtest2constantPlus, err);
+        if (m_verbosity >= SHOW_ROUNDS)
+          {
+            // printf("%dD random + constant test round %d max relative error %11.5e\n",
+            // DIM, itn, err);
+            fftx::OutStream() << DIM << "D random + constant test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
+          }
+      }
+
+    if (m_verbosity >= SHOW_SUBTESTS)
+      {
+        // printf("%dD random + constant test in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2constantPlus);
+        fftx::OutStream() << DIM << "D random + constant test in " << m_rounds
+                          << ": max relative error " << errtest2constantPlus
+                          << std::endl;
+      }
+    return errtest2constantPlus;
+  }
+
+  double test2impulseRandom(double a_outputVar)
+  {
+    // Do nothing if output is real. Run this test only if output is complex.
+    return 0.;
+  }
+
+  double test2impulseRandom(std::complex<double> a_outputVar)
+  {
+    // Check unit impulse at random position.
+    fftx::array_t<DIM, T_IN> inImpulse(m_inDomain);
+    fftx::array_t<DIM, std::complex<double>> outImpulse(m_outDomain);
+    fftx::array_t<DIM, std::complex<double>> outCheck(m_outDomain);
+    double errtest2impulseRandom = 0.;
+    // fftx::point_t<DIM> fullExtents = size();
+    fftx::point_t<DIM> fullExtents = m_inDomain.extents();
+    for (int itn = 1; itn <= m_rounds; itn++)
+      {
+        fftx::point_t<DIM> rpoint = unifPoint();
+        setUnitImpulse(inImpulse, rpoint);
+        exec(inImpulse, outImpulse);
+        // Recall m_inDomain is whole domain,
+        // but m_outDomain may be truncated;
+        // waves defined on m_outDomain,
+        // but based on the full m_inDomain extents.
+        setProductWaves(outCheck, fullExtents, rpoint, m_sign);
+        double err = absMaxRelDiffArray(outImpulse, outCheck);
+        updateMax(errtest2impulseRandom, err);
+        if (m_verbosity >= SHOW_ROUNDS)
+          {
+            // printf("%dD random impulse test round %d max relative error %11.5e\n",
+            // DIM, itn, err);
+            fftx::OutStream() << DIM << "D random impulse test round " << itn
+                              << " max relative error " << err
+                              << std::endl;
+          }
+      }
+
+    if (m_verbosity >= SHOW_SUBTESTS)
+      {
+        // printf("%dD random impulse in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest2impulseRandom);
+        fftx::OutStream() << DIM << "D random impulse in " << m_rounds
+                          << ": max relative error " << errtest2impulseRandom
+                          << std::endl;
+      }
+    return errtest2impulseRandom;
+  }
+    
+  double test3()
+  {
+    double errtest3 = 0.;
+    T_OUT outputVar = scalarVal<T_OUT>(1.);
+    updateMax(errtest3, test3time(outputVar)); // only if output is complex
+    T_IN inputVar = scalarVal<T_IN>(1.);
+    updateMax(errtest3, test3frequency(inputVar)); // only if input is complex
+    if (m_verbosity >= SHOW_CATEGORIES)
+      {
+        // printf("%dD Test 3 (shifts) in %d rounds: max relative error %11.5e\n",
+        // DIM, m_rounds, errtest3);
+        fftx::OutStream() << DIM << "D Test 3 (shifts) in " << m_rounds
+                          << ": max relative error " << errtest3
+                          << std::endl;
+      }
+    return errtest3;
+  }
+
+  double test3time(double outputVar)
+  {
+    // Do nothing if output is real. Run this test only if output is complex.
+    return 0.;
+  }
+
+  double test3time(std::complex<double> outputVar)
+  {
+    fftx::array_t<DIM, T_IN> inRand(m_inDomain);
+    fftx::array_t<DIM, T_IN> inRandRot(m_inDomain);
+    fftx::array_t<DIM, std::complex<double>> outRand(m_outDomain);
+    fftx::array_t<DIM, std::complex<double>> outRandRot(m_outDomain);
+    fftx::array_t<DIM, std::complex<double>> rotator(m_outDomain);
+    fftx::array_t<DIM, std::complex<double>> outRandRotMult(m_outDomain);
+    double errtest3timeDim[DIM];
+    double errtest3time = 0.;
+    for (int d = 0; d < DIM; d++)
+      {
+        errtest3timeDim[d] = 0.;
+        setRotator(rotator, m_inDomain, d, -m_sign); // +1 for MDDFT, -1 for IMDDFT, -1 for PRDFT
+        for (int itn = 1; itn <= m_rounds; itn++)
+          {
+            unifArray(inRand);
+            // time-shift test in dimension d
+            rotate(inRandRot, inRand, d, 1); // +1 for MDDFT, +1 for IMDDFT, +1 for PRDFT
+            exec(inRand, outRand);
+            exec(inRandRot, outRandRot);
+            productArrays(outRandRotMult, outRandRot, rotator);
+            double err = absMaxRelDiffArray(outRandRotMult, outRand);
+            updateMax(errtest3timeDim[d], err);
+            updateMax(errtest3time, errtest3timeDim[d]);
+            if (m_verbosity >= SHOW_ROUNDS)
+              {
+                // printf("%dD dim %d time-shift test %d max relative error %11.5e\n",
+                // DIM, d, itn, err);
+                fftx::OutStream() << DIM << "D dim " << d << " time-shift test "
+                                  << itn << " max relative error " << err
+                                  << std::endl;
+              }
+          }
+        if (m_verbosity >= SHOW_SUBTESTS)
+          {
+            // printf("%dD dim %d time-shift test in %d rounds: max relative error %11.5e\n",
+            // DIM, d, m_rounds, errtest3timeDim[d]);
+            fftx::OutStream() << DIM << "D dim " << d << " time-shift test in "
+                              << m_rounds << " rounds: max relative error "
+                              << errtest3timeDim[d] << std::endl;
+          }
+      }
+    return errtest3time;
+  }
+
+
+
+  double test3frequency(double a_inVar)
+  { // Do nothing if input is real. Run this test only if input is complex.
+    return 0.;
+  }
+
+  double test3frequency(std::complex<double>& a_inVar)
+  {
+    fftx::array_t<DIM, std::complex<double>> inRand(m_inDomain);
+    fftx::array_t<DIM, std::complex<double>> inRandMult(m_inDomain);
+    fftx::array_t<DIM, T_OUT> outRand(m_outDomain);
+    fftx::array_t<DIM, T_OUT> outRandMult(m_outDomain);
+    fftx::array_t<DIM, std::complex<double>> rotatorUp(m_inDomain);
+    fftx::array_t<DIM, T_OUT> outRandMultRot(m_outDomain);
+    double errtest3frequencyDim[DIM];
+    double errtest3frequency = 0.;
+    for (int d = 0; d < DIM; d++)
+      {
+        // frequency-shift test in dimension d
+        errtest3frequencyDim[d] = 0.;
+        // Recall m_outDomain is whole domain,
+        // but m_inDomain may be truncated;
+        // rotatorUp is defined on m_inDomain,
+        // but based on full m_outDomain.
+        setRotator(rotatorUp, m_outDomain, d, 1);
+        for (int itn = 1; itn <= m_rounds; itn++)
+          {
+            unifComplexArray(inRand);
+            productArrays(inRandMult, inRand, rotatorUp);
+            exec(inRand, outRand);
+            exec(inRandMult, outRandMult);
+            rotate(outRandMultRot, outRandMult, d, m_sign);
+            double err = absMaxRelDiffArray(outRandMultRot, outRand);
+            updateMax(errtest3frequencyDim[d], err);
+            updateMax(errtest3frequency, errtest3frequencyDim[d]);
+            if (m_verbosity >= SHOW_ROUNDS)
+              {
+                // printf("%dD dim %d frequency-shift test %d max relative error %11.5e\n", DIM, d, itn, err);
+                fftx::OutStream() << DIM << "D dim " << d
+                                  << " frequency-shift test " << itn
+                                  << " max relative error " << err
+                                  << std::endl;
+              }
+          }
+        if (m_verbosity >= SHOW_SUBTESTS)
+          {
+            // printf("%dD dim %d frequency-shift test in %d rounds: max relative error %11.5e\n",
+            // DIM, d, m_rounds, errtest3frequencyDim[d]);
+            fftx::OutStream() << DIM << "D dim " << d
+                              << " frequency-shift test in " << m_rounds
+                              << " rounds: max relative error "
+                              << errtest3frequencyDim[d]
+                              << std::endl;
+          }
+      }
+    return errtest3frequency;
+  }
+
 
 protected:
 
-  enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
-
-  TransformFunction<DIM, T_IN, T_OUT> m_tfm;
+  inline void updateStatusAndErrMax(int& status,
+                                    double& errmax,
+                                    double err)
+  {
+    updateMax(errmax, err);
+    if (err > FFTX_TOLERANCE) status++;
+  }
   
-  int m_rounds;
-  
-  int m_verbosity;
-
-  int m_sign;
-  
-  fftx::box_t<DIM> m_inDomain;
-  fftx::box_t<DIM> m_outDomain;
-
   // m_unifInt[d] is uniform over the integers in domain.lo[d] : domain.hi[d]
   std::uniform_int_distribution<int> m_unifInt[DIM];
 
@@ -762,397 +1089,35 @@ protected:
     arrPtr[indFixed] = a_scaling;
   }
 
+  enum TransformType { EMPTY = 0, FFTX_HANDLE = 1, FFTX_LIB = 2, FFTX_DEVICE_LIB = 3 , FFTX_PROBLEM = 4 };
+  enum VerbosityLevel { SHOW_CATEGORIES = 1, SHOW_SUBTESTS = 2, SHOW_ROUNDS = 3};
+
+  TransformType m_tp;
+  fftx::box_t<DIM> m_inDomain;
+  fftx::box_t<DIM> m_outDomain;
+  int m_sign;
+  fftx::point_t<DIM> m_fullExtents;
+
+  std::string m_name;
   
-  double test1()
-  {
-    fftx::array_t<DIM, T_IN> inA(m_inDomain);
-    fftx::array_t<DIM, T_IN> inB(m_inDomain);
-    fftx::array_t<DIM, T_IN> LCin(m_inDomain);
-
-    fftx::array_t<DIM, T_OUT> outA(m_outDomain);
-    fftx::array_t<DIM, T_OUT> outB(m_outDomain);
-    fftx::array_t<DIM, T_OUT> LCout(m_outDomain);
-    fftx::array_t<DIM, T_OUT> outLCin(m_outDomain);
-
-    double errtest1 = 0.;
-    for (int itn = 1; itn <= m_rounds; itn++)
-      {
-        T_IN alphaIn, betaIn;
-        T_OUT alphaOut, betaOut;
-        getUnifScalarPair(alphaIn, alphaOut);
-        getUnifScalarPair(betaIn, betaOut);
-        unifArray(inA);
-        unifArray(inB);
-        sumArrays(LCin, inA, inB, alphaIn, betaIn);
-        m_tfm.exec(inA, outA);
-        m_tfm.exec(inB, outB);
-        sumArrays(LCout, outA, outB, alphaOut, betaOut);
-        m_tfm.exec(LCin, outLCin);
-        double err = absMaxRelDiffArray(outLCin, LCout);
-        updateMax(errtest1, err);
-        if (m_verbosity >= SHOW_ROUNDS)
-          {
-            // printf("%dD linearity test round %d max relative error %11.5e\n", DIM, itn, err);
-            fftx::OutStream() << DIM << "D linearity test round " << itn
-                              << " max relative error " << err
-                              << std::endl;
-          }
-      }
-    if (m_verbosity >= SHOW_CATEGORIES)
-      {        
-        // printf("%dD Test 1 (linearity) in %d rounds: max relative error %11.5e\n", DIM, m_rounds, errtest1);
-        fftx::OutStream() << DIM << "D Test 1 (linearity) in " << m_rounds
-                          << ": max relative error " << errtest1
-                          << std::endl;
-      }
-    return errtest1;
-  }
-
-
-  double test2()
-  {
-    double errtest2 = 0.;
-    updateMax(errtest2, test2impulse1());
-    updateMax(errtest2, test2impulsePlus());
-    updateMax(errtest2, test2constant());
-    updateMax(errtest2, test2constantPlus());
-    T_OUT outputVar = scalarVal<T_OUT>(1.);
-    updateMax(errtest2, test2impulseRandom(outputVar)); // only if output is complex
-    if (m_verbosity >= SHOW_CATEGORIES)
-      {
-        // printf("%dD Test 2 (impulses) in %d rounds: max relative error %11.5e\n",
-        // DIM, m_rounds, errtest2);
-        fftx::OutStream() << DIM << "D Test 2 (impulses) in " << m_rounds
-                          << " rounds: max relative error " << errtest2
-                          << std::endl;
-      }
-    return errtest2;
-  }
-
-  double test2impulse1()
-  { // Unit impulse at low corner.
-    fftx::array_t<DIM, T_IN> inImpulse(m_inDomain);
-    fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
-    fftx::array_t<DIM, T_OUT> all1out(m_outDomain);
-    setUnitImpulse(inImpulse, m_inDomain.lo);
-    setConstant(all1out, scalarVal<T_OUT>(1.));
-    m_tfm.exec(inImpulse, outImpulse);
-    double errtest2impulse1 = absMaxRelDiffArray(outImpulse, all1out);
-    if (m_verbosity >= SHOW_SUBTESTS)
-      {
-        // printf("%dD unit impulse low corner test: max relative error %11.5e\n",
-        // DIM, errtest2impulse1);
-        fftx::OutStream() << DIM << "D unit impulse low corner test: max relative error "
-                          << errtest2impulse1 << std::endl;
-      }
-    return errtest2impulse1;
-  }
-
+  // case FFTX_HANDLE
+  fftx::handle_t (*m_functionPtr) (fftx::array_t<DIM, T_IN>&,
+                                  fftx::array_t<DIM, T_OUT>&);
   
-  double test2impulsePlus()
-  { // Unit impulse at low corner.
-    fftx::array_t<DIM, T_IN> inImpulse(m_inDomain);
-    fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
-    fftx::array_t<DIM, T_OUT> all1out(m_outDomain);
-    setUnitImpulse(inImpulse, m_inDomain.lo);
-    setConstant(all1out, scalarVal<T_OUT>(1.));
-    m_tfm.exec(inImpulse, outImpulse);
+  // case FFTX_LIB
+  fftx::transformer<DIM, T_IN, T_OUT>* m_transformerPtr;
 
-    fftx::array_t<DIM, T_IN> inRand(m_inDomain);
-    fftx::array_t<DIM, T_IN> inImpulseMinusRand(m_inDomain);
+  // case FFTX_PROBLEM
+  FFTXProblem* m_transformProblemPtr;
 
-    fftx::array_t<DIM, T_OUT> outRand(m_outDomain);
-    fftx::array_t<DIM, T_OUT> outImpulseMinusRand(m_outDomain);
-    fftx::array_t<DIM, T_OUT> mysum(m_outDomain);
-  
-    // Check that for random arrays inRand,
-    // fft(inRand) + fft(inImpulse - inRand) = fft(inImpulse) = all1out.
-    double errtest2impulsePlus = 0.;
-    for (int itn = 1; itn <= m_rounds; itn++)
-      {
-        unifArray(inRand);
-        m_tfm.exec(inRand, outRand);
-        diffArrays(inImpulseMinusRand, inImpulse, inRand);
-        m_tfm.exec(inImpulseMinusRand, outImpulseMinusRand);
-        sumArrays(mysum, outRand, outImpulseMinusRand);
-        double err = absMaxRelDiffArray(mysum, all1out);
-        updateMax(errtest2impulsePlus, err);
-        if (m_verbosity >= SHOW_ROUNDS)
-          {
-            // printf("%dD random + unit impulse low corner test round %d max relative error %11.5e\n", DIM, itn, err);
-            fftx::OutStream() << DIM << "D random + unit impulse low corner test round " << itn
-                              << " max relative error " << err
-                              << std::endl;
-          }
-      }
+#if defined(FFTX_CUDA) || defined(FFTX_HIP)
+  // case FFTX_DEVICE_LIB
+  deviceTransform3d<T_IN, T_OUT>* m_deviceTfm3dPtr;
+#endif
 
-    if (m_verbosity >= SHOW_SUBTESTS)
-      {
-        // printf("%dD unit impulse low corner test in %d rounds: max relative error %11.5e\n",
-        // DIM, m_rounds, errtest2impulsePlus);
-        fftx::OutStream() << DIM << "D unit impulse low corner test in " << m_rounds
-                          << ": max relative error " << errtest2impulsePlus
-                          << std::endl;
-      }
-    return errtest2impulsePlus;
-  }
-
-  
-  double test2constant()
-  { // Check that constant maps back to unit impulse at low corner.
-    fftx::array_t<DIM, T_IN> all1in(m_inDomain);
-    setConstant(all1in, scalarVal<T_IN>(1.));
-
-    fftx::array_t<DIM, T_OUT> magImpulse(m_outDomain);
-    auto npts = m_tfm.size().product();
-    T_OUT mag = scalarVal<T_OUT>(npts * 1.);
-    setUnitImpulse(magImpulse, m_outDomain.lo, mag);
-
-    fftx::array_t<DIM, T_OUT> outImpulse(m_outDomain);
-    m_tfm.exec(all1in, outImpulse);
-
-    double errtest2constant = absMaxRelDiffArray(outImpulse, magImpulse);
-    if (m_verbosity >= SHOW_SUBTESTS)
-    {
-      // printf("%dD constant test: max relative error %11.5e\n",
-      // DIM, errtest2constant);
-      fftx::OutStream() << DIM << "D constant test: max relative error "
-                        << errtest2constant << std::endl;
-    }
-    return errtest2constant;
-  }
-
-  double test2constantPlus()
-  {
-    fftx::array_t<DIM, T_IN> all1in(m_inDomain);
-    setConstant(all1in, scalarVal<T_IN>(1.));
-
-    fftx::array_t<DIM, T_OUT> magImpulse(m_outDomain);
-    auto npts = m_tfm.size().product();
-    T_OUT mag = scalarVal<T_OUT>(npts * 1.);
-    setUnitImpulse(magImpulse, m_outDomain.lo, mag);
-
-    fftx::array_t<DIM, T_IN> inRand(m_inDomain);
-    fftx::array_t<DIM, T_IN> inConstantMinusRand(m_inDomain);
-
-    fftx::array_t<DIM, T_OUT> outRand(m_outDomain);
-    fftx::array_t<DIM, T_OUT> outConstantMinusRand(m_outDomain);
-    fftx::array_t<DIM, T_OUT> outSum(m_outDomain);
-
-    // Check that for random arrays inRand,
-    // fft(inRand) + fft(all1 - inRand) = fft(all1) = magImpulse.
-    double errtest2constantPlus = 0.;
-    for (int itn = 1; itn <= m_rounds; itn++)
-      {
-        unifArray(inRand);
-        m_tfm.exec(inRand, outRand);
-
-        diffArrays(inConstantMinusRand, all1in, inRand);
-        m_tfm.exec(inConstantMinusRand, outConstantMinusRand);
-
-        sumArrays(outSum, outRand, outConstantMinusRand);
-      
-        double err = absMaxRelDiffArray(outSum, magImpulse);
-        updateMax(errtest2constantPlus, err);
-        if (m_verbosity >= SHOW_ROUNDS)
-          {
-            // printf("%dD random + constant test round %d max relative error %11.5e\n",
-            // DIM, itn, err);
-            fftx::OutStream() << DIM << "D random + constant test round " << itn
-                              << " max relative error " << err
-                              << std::endl;
-          }
-      }
-
-    if (m_verbosity >= SHOW_SUBTESTS)
-      {
-        // printf("%dD random + constant test in %d rounds: max relative error %11.5e\n",
-        // DIM, m_rounds, errtest2constantPlus);
-        fftx::OutStream() << DIM << "D random + constant test in " << m_rounds
-                          << ": max relative error " << errtest2constantPlus
-                          << std::endl;
-      }
-    return errtest2constantPlus;
-  }
-
-  double test2impulseRandom(double a_outputVar)
-  {
-    // Do nothing if output is real. Run this test only if output is complex.
-    return 0.;
-  }
-
-  double test2impulseRandom(std::complex<double> a_outputVar)
-  {
-    // Check unit impulse at random position.
-    fftx::array_t<DIM, T_IN> inImpulse(m_inDomain);
-    fftx::array_t<DIM, std::complex<double>> outImpulse(m_outDomain);
-    fftx::array_t<DIM, std::complex<double>> outCheck(m_outDomain);
-    double errtest2impulseRandom = 0.;
-    // fftx::point_t<DIM> fullExtents = m_tfm.size();
-    fftx::point_t<DIM> fullExtents = m_inDomain.extents();
-    for (int itn = 1; itn <= m_rounds; itn++)
-      {
-        fftx::point_t<DIM> rpoint = unifPoint();
-        setUnitImpulse(inImpulse, rpoint);
-        m_tfm.exec(inImpulse, outImpulse);
-        // Recall m_inDomain is whole domain,
-        // but m_outDomain may be truncated;
-        // waves defined on m_outDomain,
-        // but based on the full m_inDomain extents.
-        setProductWaves(outCheck, fullExtents, rpoint, m_sign);
-        double err = absMaxRelDiffArray(outImpulse, outCheck);
-        updateMax(errtest2impulseRandom, err);
-        if (m_verbosity >= SHOW_ROUNDS)
-          {
-            // printf("%dD random impulse test round %d max relative error %11.5e\n",
-            // DIM, itn, err);
-            fftx::OutStream() << DIM << "D random impulse test round " << itn
-                              << " max relative error " << err
-                              << std::endl;
-          }
-      }
-
-    if (m_verbosity >= SHOW_SUBTESTS)
-      {
-        // printf("%dD random impulse in %d rounds: max relative error %11.5e\n",
-        // DIM, m_rounds, errtest2impulseRandom);
-        fftx::OutStream() << DIM << "D random impulse in " << m_rounds
-                          << ": max relative error " << errtest2impulseRandom
-                          << std::endl;
-      }
-    return errtest2impulseRandom;
-  }
-    
-  double test3()
-  {
-    double errtest3 = 0.;
-    T_OUT outputVar = scalarVal<T_OUT>(1.);
-    updateMax(errtest3, test3time(outputVar)); // only if output is complex
-    T_IN inputVar = scalarVal<T_IN>(1.);
-    updateMax(errtest3, test3frequency(inputVar)); // only if input is complex
-    if (m_verbosity >= SHOW_CATEGORIES)
-      {
-        // printf("%dD Test 3 (shifts) in %d rounds: max relative error %11.5e\n",
-        // DIM, m_rounds, errtest3);
-        fftx::OutStream() << DIM << "D Test 3 (shifts) in " << m_rounds
-                          << ": max relative error " << errtest3
-                          << std::endl;
-      }
-    return errtest3;
-  }
-
-  double test3time(double outputVar)
-  {
-    // Do nothing if output is real. Run this test only if output is complex.
-    return 0.;
-  }
-
-  double test3time(std::complex<double> outputVar)
-  {
-    fftx::array_t<DIM, T_IN> inRand(m_inDomain);
-    fftx::array_t<DIM, T_IN> inRandRot(m_inDomain);
-    fftx::array_t<DIM, std::complex<double>> outRand(m_outDomain);
-    fftx::array_t<DIM, std::complex<double>> outRandRot(m_outDomain);
-    fftx::array_t<DIM, std::complex<double>> rotator(m_outDomain);
-    fftx::array_t<DIM, std::complex<double>> outRandRotMult(m_outDomain);
-    double errtest3timeDim[DIM];
-    double errtest3time = 0.;
-    for (int d = 0; d < DIM; d++)
-      {
-        errtest3timeDim[d] = 0.;
-        setRotator(rotator, m_inDomain, d, -m_sign); // +1 for MDDFT, -1 for IMDDFT, -1 for PRDFT
-        for (int itn = 1; itn <= m_rounds; itn++)
-          {
-            unifArray(inRand);
-            // time-shift test in dimension d
-            rotate(inRandRot, inRand, d, 1); // +1 for MDDFT, +1 for IMDDFT, +1 for PRDFT
-            m_tfm.exec(inRand, outRand);
-            m_tfm.exec(inRandRot, outRandRot);
-            productArrays(outRandRotMult, outRandRot, rotator);
-            double err = absMaxRelDiffArray(outRandRotMult, outRand);
-            updateMax(errtest3timeDim[d], err);
-            updateMax(errtest3time, errtest3timeDim[d]);
-            if (m_verbosity >= SHOW_ROUNDS)
-              {
-                // printf("%dD dim %d time-shift test %d max relative error %11.5e\n",
-                // DIM, d, itn, err);
-                fftx::OutStream() << DIM << "D dim " << d << " time-shift test "
-                                  << itn << " max relative error " << err
-                                  << std::endl;
-              }
-          }
-        if (m_verbosity >= SHOW_SUBTESTS)
-          {
-            // printf("%dD dim %d time-shift test in %d rounds: max relative error %11.5e\n",
-            // DIM, d, m_rounds, errtest3timeDim[d]);
-            fftx::OutStream() << DIM << "D dim " << d << " time-shift test in "
-                              << m_rounds << " rounds: max relative error "
-                              << errtest3timeDim[d] << std::endl;
-          }
-      }
-    return errtest3time;
-  }
-
-
-
-  double test3frequency(double a_inVar)
-  { // Do nothing if input is real. Run this test only if input is complex.
-    return 0.;
-  }
-
-  double test3frequency(std::complex<double>& a_inVar)
-  {
-    fftx::array_t<DIM, std::complex<double>> inRand(m_inDomain);
-    fftx::array_t<DIM, std::complex<double>> inRandMult(m_inDomain);
-    fftx::array_t<DIM, T_OUT> outRand(m_outDomain);
-    fftx::array_t<DIM, T_OUT> outRandMult(m_outDomain);
-    fftx::array_t<DIM, std::complex<double>> rotatorUp(m_inDomain);
-    fftx::array_t<DIM, T_OUT> outRandMultRot(m_outDomain);
-    double errtest3frequencyDim[DIM];
-    double errtest3frequency = 0.;
-    for (int d = 0; d < DIM; d++)
-      {
-        // frequency-shift test in dimension d
-        errtest3frequencyDim[d] = 0.;
-        // Recall m_outDomain is whole domain,
-        // but m_inDomain may be truncated;
-        // rotatorUp is defined on m_inDomain,
-        // but based on full m_outDomain.
-        setRotator(rotatorUp, m_outDomain, d, 1);
-        for (int itn = 1; itn <= m_rounds; itn++)
-          {
-            unifComplexArray(inRand);
-            productArrays(inRandMult, inRand, rotatorUp);
-            m_tfm.exec(inRand, outRand);
-            m_tfm.exec(inRandMult, outRandMult);
-            rotate(outRandMultRot, outRandMult, d, m_sign);
-            double err = absMaxRelDiffArray(outRandMultRot, outRand);
-            updateMax(errtest3frequencyDim[d], err);
-            updateMax(errtest3frequency, errtest3frequencyDim[d]);
-            if (m_verbosity >= SHOW_ROUNDS)
-              {
-                // printf("%dD dim %d frequency-shift test %d max relative error %11.5e\n", DIM, d, itn, err);
-                fftx::OutStream() << DIM << "D dim " << d
-                                  << " frequency-shift test " << itn
-                                  << " max relative error " << err
-                                  << std::endl;
-              }
-          }
-        if (m_verbosity >= SHOW_SUBTESTS)
-          {
-            // printf("%dD dim %d frequency-shift test in %d rounds: max relative error %11.5e\n",
-            // DIM, d, m_rounds, errtest3frequencyDim[d]);
-            fftx::OutStream() << DIM << "D dim " << d
-                              << " frequency-shift test in " << m_rounds
-                              << " rounds: max relative error "
-                              << errtest3frequencyDim[d]
-                              << std::endl;
-          }
-      }
-    return errtest3frequency;
-  }
-  
+  // for tests
+  int m_verbosity;
+  int m_rounds;
 };
-
 
 #endif

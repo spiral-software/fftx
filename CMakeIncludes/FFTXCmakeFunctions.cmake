@@ -164,20 +164,10 @@ endfunction ()
 ##  build.
 
 function ( add_includes_libs_to_target _target _stem _prefixes )
-    ##  Test _codegen and setup accordingly
-    # if ( ${_codegen} STREQUAL "HIP" )
-    # 	## run hipify-perl on the test driver
-    # 	run_hipify_perl ( ${_target} ${_suffix} )
-    # 	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
-    # 	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
-    # 	foreach ( _pref ${_prefixes} )
-    # 	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
-    # 	endforeach ()
-    # else ()
-	list ( APPEND _all_build_srcs ${_target}.${_suffix} )
-    # endif ()
-
+    list ( APPEND _all_build_srcs ${_target}.${_suffix} )
     add_executable   ( ${_target} ${_all_build_srcs} )
+    set_target_properties ( ${_target} PROPERTIES LINKER_LANGUAGE CXX)  # force explicit linking step
+
     ##  message ( STATUS "executable added: target = ${_target}, depends: = ${_all_build_srcs}" )
     ##  message ( STATUS "dependencies for ${_target} = ${_all_build_deps}" )
     if ( NOT "X${_all_build_deps}" STREQUAL "X" )
@@ -202,6 +192,11 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     elseif ( ${_codegen} STREQUAL "CPU" )
         if ( NOT WIN32 )
 	    target_link_libraries      ( ${_target} PRIVATE dl )
+        endif ()
+        if ( FFTW_FOUND )
+            target_link_directories    ( ${_target} PRIVATE ${FFTW_LIBRARY_DIRS} )
+            target_link_libraries      ( ${_target} PRIVATE ${FFTW_LIBRARIES} )
+            target_include_directories ( ${_target} PRIVATE ${FFTW_INCLUDE_DIRS} )
         endif ()
     endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
@@ -367,9 +362,12 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 endfunction ()
 
 
-##  setup_mpi_variables() is a function to perform variable setup so that MPI
-##  examples can be built.  It should only be called if MPI is successfully
-##  found.  No arguments are required.
+##  --------------------------------------------------------------------------------
+##  setup_mpi_variables() is more a legacy function to perform variable setup so that
+##  MPI examples can be built.  It should only be called if MPI is successfully
+##  found.  No arguments are required.  Currently, it just logs [message] info for
+##  cmake build info purposes.  It may be removed unless specific platform failures occur. 
+##  --------------------------------------------------------------------------------
 
 function ( setup_mpi_variables )
     ##  We assume MPI installation found
@@ -388,44 +386,11 @@ function ( setup_mpi_variables )
     ##  message(STATUS "MPI Libraries: ${MPI_LIBRARIES}")
     ##  message(STATUS "MPI Fortran Link Flags: ${MPI_Fortran_LINK_FLAGS}")
     ##  message(STATUS "MPI Fortran Include Path: ${MPI_Fortran_INCLUDE_PATH}")
-
-    set ( _index 0 )
-    foreach ( _mpilib ${MPI_CXX_LIBRARIES} )
-	set ( MPI_CXX_LIB${_index} ${_mpilib} PARENT_SCOPE )
-        message ( STATUS "MPI_CXX_LIB${_index} = ${_mpilib}" )
-	math ( EXPR _index "${_index} + 1" )
-    endforeach ()
-    set ( _num_MPI_libs ${_index} )
-    message ( STATUS "Number of MPI Libraries = ${_num_MPI_libs}" )
-
-    set ( _index 0 )
-    foreach ( _mpiinc ${MPI_CXX_INCLUDE_DIRS} )
-	set ( MPI_CXX_INCL${_index} ${_mpiinc} PARENT_SCOPE )
-        message ( STATUS "MPI_CXX_INCL${_index} = ${_mpiinc}" )
-	math ( EXPR _index "${_index} + 1" )
-    endforeach ()
-    set ( _num_MPI_incls ${_index} )
-    message ( STATUS "Number of MPI Include Dirs = ${_num_MPI_incls}" )
-
-    ##  set values for Fortran ...
-    set ( _index 0 )
-    foreach ( _mpilib ${MPI_Fortran_LIBRARIES} )
-	set ( MPI_FORT_LIB${_index} ${_mpilib} PARENT_SCOPE )
-        message ( STATUS "MPI_FORT_LIB${_index} = ${_mpilib}" )
-	math ( EXPR _index "${_index} + 1" )
-    endforeach ()
-    set ( _num_MPI_libs ${_index} )
-    message ( STATUS "Number of Fortran MPI Libraries = ${_num_MPI_libs}" )
-
-    set ( _index 0 )
-    foreach ( _mpiinc ${MPI_Fortran_INCLUDE_PATH} )
-	set ( MPI_FORT_INCL${_index} ${_mpiinc} PARENT_SCOPE )
-        message ( STATUS "MPI_FORT_INCL${_index} = ${_mpiinc}" )
-	math ( EXPR _index "${_index} + 1" )
-    endforeach ()
-    set ( _num_MPI_incls ${_index} )
-    message ( STATUS "Number of Fortran MPI Include Dirs = ${_num_MPI_incls}" )
     
+    get_target_property ( _mpi_type MPI::MPI_CXX TYPE )
+    message ( STATUS "MPI::MPI_CXX target type = ${_mpi_type}" )
+    get_target_property ( _mpi_type MPI::MPI_Fortran TYPE )
+    message ( STATUS "MPI::MPI_Fortran target type = ${_mpi_type}" )
 
 endfunction ()
 

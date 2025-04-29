@@ -9,8 +9,12 @@
 
 using cx = std::complex<double>;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
+  int status = 0;
 
+  int ntrials = 3;
+  
   MPI_Init(&argc, &argv);
 
   int commRank;
@@ -167,16 +171,23 @@ int main(int argc, char* argv[]) {
     fftx::OutStream() << "Complex         : " << (is_complex ? "Yes" : "No") << std::endl;
   }
 
-  for (int t = 0; t < 3; t++) {
+  FFTX_DEVICE_EVENT_T custart, custop;
+  FFTX_DEVICE_EVENT_CREATE ( &custart );
+  FFTX_DEVICE_EVENT_CREATE ( &custop );
+  for (int t = 1; t <= ntrials; t++) {
 
-    double start_time = MPI_Wtime();
+    FFTX_DEVICE_EVENT_RECORD ( custart );
 
-    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer, (is_forward ? FFTX_DEVICE_FFT_FORWARD: FFTX_DEVICE_FFT_INVERSE));
+    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer,
+                 (is_forward ? FFTX_DEVICE_FFT_FORWARD:
+                  FFTX_DEVICE_FFT_INVERSE));
 
-    double end_time = MPI_Wtime();
-
-    // double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
-    double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
+    FFTX_DEVICE_EVENT_RECORD ( custop );
+    FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+    float millisec;
+    FFTX_DEVICE_EVENT_ELAPSED_TIME ( &millisec, custart, custop );
+    float max_time;
+    MPI_Reduce(&millisec, &max_time, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
 
     FFTX_DEVICE_MEM_COPY(fftx_out, out_buffer, ((Mo*No*Ko)/p) * sizeof(cx)*batch, FFTX_MEM_COPY_DEVICE_TO_HOST);
     FFTX_DEVICE_SYNCHRONIZE();
@@ -215,5 +226,5 @@ int main(int argc, char* argv[]) {
  FFTX_DEVICE_FREE(out_buffer);
  delete[] fftx_in;
  delete[] fftx_out;
- return 0;
+ return status;
 }

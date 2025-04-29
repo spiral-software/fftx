@@ -15,11 +15,34 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import subprocess, os
+import re
 import datetime
+
+
+def extract_fftx_version ( header_file_path ):
+    """Extract the FFTX version from the specified header file."""
+    if not os.path.exists ( header_file_path ):
+        print ( "Header file does not exist at specified path" )
+
+    try:
+        with open ( header_file_path, "r" ) as file:
+            content = file.read()
+            match = re.search ( r"FFTX_VERSION\s+([\d\.]+)", content )
+            if match:
+                return match.group(1)
+    except Exception as e:
+        print ( f"Error extracting FFTX version: {e}" )
+    return "Unknown Version"
+
+# The FFTX version is defined in .../src/include/fftx.hpp
+header_file_path = os.path.abspath ( os.path.normpath ( os.path.join ( os.path.dirname(__file__),
+                                                                       "../src/include/fftx.hpp" ) ) )
+print ( f"Resolved header file path: {header_file_path}" )
+fftx_version = extract_fftx_version ( header_file_path )
 
 # Get current time and format a 'docs generated on' message
 
-current_date = datetime.datetime.now().strftime("%B %d, %Y at %H:%M")
+current_date = datetime.datetime.now().strftime("%B %d, %Y")
 
 # Check if we're running on Read the Docs' servers
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
@@ -36,7 +59,7 @@ if read_the_docs_build:
 # -- Project information -----------------------------------------------------
 
 project = 'FFTX'
-copyright = f"2024, FFTX Team.            Documentation generated on {current_date}"
+copyright = f"2025, FFTX Team.     Version: {fftx_version};     Documentation generated on {current_date}"
 author = 'FFTX Team'
 
 

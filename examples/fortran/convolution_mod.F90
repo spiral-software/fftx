@@ -2,6 +2,8 @@ module convolution_mod
   use data_functions_mod
   implicit none
 
+  real(C_DOUBLE), parameter :: tol = 1.e-10
+  
 contains
 
   integer function wrap1(i, n)
@@ -94,7 +96,6 @@ contains
     integer :: ix, iy, iz
     complex(C_DOUBLE_COMPLEX) :: v
     real(C_DOUBLE) :: w
-    real(C_DOUBLE) :: tol = 1.e-10
 
     call tfm_mdprdft%init()
     call tfm_imdprdft%init()
@@ -141,12 +142,14 @@ contains
     call tfm_imddft%finalize()
   end subroutine doComplexConvolution
   
-  subroutine singleComplexConvolutionTest() ! data_out, data_in, data_symbol
+  integer function singleComplexConvolutionTest() ! data_out, data_in, data_symbol
     implicit none
     integer :: ix, iy, iz ! loop indices
     complex(C_DOUBLE_COMPLEX), dimension(nx_global, ny_global, nz_global) :: &
          in_array, out_array, sym_array, lap2out_array, diff_array
     real(C_DOUBLE) :: in_abs_max, lap2out_abs_max, diff_abs_max, rval, ival
+
+    singleComplexConvolutionTest = 0
 
     ! Set in_array.
     do iz = 1, nz_global
@@ -186,15 +189,20 @@ contains
 
     print 400, in_abs_max, lap2out_abs_max, diff_abs_max, (diff_abs_max/in_abs_max)
 400 format ('Single complex conv max abs input', es12.4, ' laplacian2(output)', es12.4, ' ERROR abs', es12.4, ' relative', es12.4)
-  end subroutine singleComplexConvolutionTest
+    if ( (diff_abs_max/in_abs_max) .gt. tol ) then
+       singleComplexConvolutionTest = 1
+    endif
+  end function singleComplexConvolutionTest
 
-  subroutine singleRealConvolutionTest()
+  integer function singleRealConvolutionTest()
     implicit none
     integer :: ix, iy, iz ! loop indices
     real(C_DOUBLE), dimension(nx_global, ny_global, nz_global) :: &
          in_array, out_array, lap2out_array, diff_array
     real(C_DOUBLE), dimension(dimsc_global(1), dimsc_global(2), dimsc_global(3)) :: sym_array
     real(C_DOUBLE) :: in_abs_max, lap2out_abs_max, diff_abs_max
+
+    singleRealConvolutionTest = 0
 
     ! Set in_array.
     do iz = 1, nz_global
@@ -230,7 +238,10 @@ contains
 
     print 400, in_abs_max, lap2out_abs_max, diff_abs_max, (diff_abs_max/in_abs_max)
 400 format ('Single real conv max abs input', es12.4, ' laplacian2(output)', es12.4, ' ERROR abs', es12.4, ' relative', es12.4)
-  end subroutine singleRealConvolutionTest
+    if ( (diff_abs_max/in_abs_max) .gt. tol ) then
+       singleRealConvolutionTest = 1
+    endif
+  end function singleRealConvolutionTest
 
 #if defined(FFTX_CUDA) || defined(FFTX_HIP)
 
@@ -350,7 +361,7 @@ contains
     call tfm_imddft%finalize()
   end subroutine doDistComplexConvolution
 
-  subroutine distComplexConvolutionTest() ! data_out, data_in, data_symbol
+  integer function distComplexConvolutionTest() ! data_out, data_in, data_symbol
     use mpi_utils_mod, only : i_am_mpi_master, mpi_rank, MPISumComplex, MPIMaxReal
     implicit none
     integer :: ix, iy, iz ! loop indices
@@ -361,6 +372,8 @@ contains
     complex(C_DOUBLE_COMPLEX) :: sum_all, ptval
     real(C_DOUBLE) :: in_abs_max, lap2out_abs_max, diff_abs_max, max_all, rval, ival
     integer :: ix_global, iy_global, iz_global ! global coordinate values
+
+    distComplexConvolutionTest = 0
 
     ! Might want to write this out if calling inputRealSymmetric.
     !    print 380, nx_global, ny_global, nz_global
@@ -449,8 +462,10 @@ contains
        print 400, in_abs_max, lap2out_abs_max, diff_abs_max, (diff_abs_max/in_abs_max)
 400    format ('Dist complex conv max abs input', es12.4, ' laplacian2(output)', es12.4, ' ERROR abs', es12.4, ' relative', es12.4)
     endif
-
-  end subroutine distComplexConvolutionTest
+    if ( (diff_abs_max/in_abs_max) .gt. tol ) then
+       distComplexConvolutionTest = 1
+    endif
+  end function distComplexConvolutionTest
 
   subroutine doDistRealConvolution(out_array, in_array, sym_array)
     use fft_mod, only : fftx_3D_mdprdft_dist, fftx_3D_imdprdft_dist
@@ -509,7 +524,7 @@ contains
     call tfm_imdprdft%finalize()
   end subroutine doDistRealConvolution
   
-  subroutine distRealConvolutionTest() ! data_out, data_in, data_symbol
+  integer function distRealConvolutionTest() ! data_out, data_in, data_symbol
     use mpi_utils_mod, only : i_am_mpi_master, mpi_rank, MPISumReal, MPIMaxReal
     implicit none
     integer :: ix, iy, iz ! loop indices
@@ -520,6 +535,8 @@ contains
     real(C_DOUBLE) :: sum_all, ptval, in_abs_max, lap2out_abs_max, diff_abs_max, max_all
     integer :: ix_global, iy_global, iz_global ! global coordinate values
 
+    distRealConvolutionTest = 0
+    
     ! Might want to write this out if calling inputRealSymmetric.
     !    print 380, nx_global, ny_global, nz_global
     ! 380 format ('centered sine x on ', i2, ', squared y on ', i2, ' cos on ', i2)
@@ -615,8 +632,10 @@ contains
        print 400, in_abs_max, lap2out_abs_max, diff_abs_max, (diff_abs_max/in_abs_max)
 400    format ('Dist real conv max abs input', es12.4, ' laplacian2(output)', es12.4, ' ERROR abs', es12.4, ' relative', es12.4)
     endif
-
-  end subroutine distRealConvolutionTest
+    if ( (diff_abs_max/in_abs_max) .gt. tol ) then
+       distRealConvolutionTest = 1
+    endif
+  end function distRealConvolutionTest
 
 #endif
   
