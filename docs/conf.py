@@ -34,8 +34,9 @@ def extract_fftx_version ( header_file_path ):
         print ( f"Error extracting FFTX version: {e}" )
     return "Unknown Version"
 
-# The FFTX version is defined in fftx.hpp
-header_file_path = os.path.join ( os.path.dirname(__file__), "../src/include/FFTX.hpp" )
+# The FFTX version is defined in .../src/include/fftx.hpp
+header_file_path = os.path.abspath ( os.path.normpath ( os.path.join ( os.path.dirname(__file__),
+                                                                       "../src/include/fftx.hpp" ) ) )
 print ( f"Resolved header file path: {header_file_path}" )
 fftx_version = extract_fftx_version ( header_file_path )
 
