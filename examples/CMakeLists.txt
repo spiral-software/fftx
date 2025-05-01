@@ -40,5 +40,5 @@ if ( Fortran_ENABLED )
     ##  Build the Fortran example
     manage_add_subdir ( fortran       TRUE      TRUE )
 else ()
-    message ( WARNING "No Fortran compiler found.  Skipping Fortran example build." )
+    message ( STATUS "No Fortran compiler found.  Skipping Fortran example build." )
 endif ()
