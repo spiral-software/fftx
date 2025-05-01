@@ -75,7 +75,12 @@ foreach ( _prog ${BUILD_PROGS} )
     add_includes_libs_to_target ( ${_prog} ${_stem} "${_prefixes}" )
     fort_add_mpi_decorations_to_target ( ${_prog} )
 
-    # get_target_property ( LINKED_LIBS ${_prog} LINK_LIBRARIES )
-    # message ( STATUS "Libraries linked to target ${_prog}: ${LINKED_LIBS}" )
+    if ( WIN32 AND CMAKE_Fortran_COMPILER MATCHES "ifx" )
+        target_link_libraries ( ${_prog} PRIVATE ucrt.lib msvcrt.lib vcruntime.lib oldnames.lib )
+        message ( STATUS "Linked MSVC CRTs explicitly for Fortran target to satisfy Intel LLVM ifx" )
+    endif ()
+
+    get_target_property ( LINKED_LIBS ${_prog} LINK_LIBRARIES )
+    message ( STATUS "Libraries linked to target ${_prog}: ${LINKED_LIBS}" )
 
 endforeach ()
