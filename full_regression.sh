@@ -4,6 +4,7 @@ statusfile=$HOME/regression_status_$timestamp.txt
 outputfile=$HOME/regression_output_$timestamp.txt
 # Get and install SPIRAL, and set SPIRAL_HOME to its location.
 source get_install_spiral.sh
+echo $SPIRAL_HOME > spiral_home_2.txt
 if [ -f "$SPIRAL_HOME/bin/spiral" ]; then
     pushd fftx
       # Install FFTX, and set FFTX_HOME to its location.
