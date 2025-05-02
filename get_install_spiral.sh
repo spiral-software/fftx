@@ -10,8 +10,6 @@ pushd ../spiral-software
   popd
   mkdir -p build
   pushd build
-    cmake .. > ../cmakeout.txt
     make install
   popd
 popd
-echo $SPIRAL_HOME > spiral_home_1.txt
