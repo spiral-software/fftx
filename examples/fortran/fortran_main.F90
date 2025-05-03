@@ -11,37 +11,55 @@ PROGRAM FFTX_CONVOLUTION
   implicit none
 
   DOUBLE PRECISION :: starttime, endtime, time, time_max
-  character(len=32) :: inputarg
-  integer :: nargs, iostat, i
+  character(len=32) :: inputarg, progname
+  integer :: nargs, iostat, i, ier
   integer :: status
   integer, dimension(3) :: dims
+  logical :: gotdims
 
   status = 0
-  
+
   ! Initialize MPI, if using.
   call init_mpi()
 
-  ! Get input size.
-  
+  call get_command_argument(0, progname)
   nargs = command_argument_count()
-  if (nargs .lt. 3) then
-     if (i_am_mpi_master) then
-        print *, 'Error: command-line arguments must include 3 dimensions, nx ny nz'
-     endif
-     stop -1
-  endif
-    
-  do i = 1, 3
+  gotdims = .false.
+  i = 1
+  do while (i .le. nargs)
      call get_command_argument(i, inputarg)
-     read (inputarg, *, iostat=iostat) dims(i)
-     if (iostat .gt. 0) then
-        if (i_am_mpi_master) then
-           print *, 'Error: command-line arguments must include 3 dimensions, nx ny nz'
+     i = i + 1
+     if (inputarg(1:1) .eq. '-') then
+        if (inputarg(2:2) .eq. 's') then
+           call get_command_argument(i, inputarg)
+           i = i + 1
+           call getDimsFromString(inputarg, dims, status)
+           if (status .eq. 0) then
+              gotdims = .true.
+           endif
+        elseif (inputarg(2:2) .eq. 'h') then
+           if (i_am_mpi_master) then
+              print *, 'Usage: ', trim(progname), ' [ -s MMxNNxKK ] [ -h (print help message) ]'
+           endif
+           stop status
+        else
+           if (i_am_mpi_master) then
+              print *, trim(progname), ': ignoring unknown argument ', inputarg
+           endif
         endif
-        stop
      endif
   enddo
+  if (status .eq. 0 .and. .not. gotdims) then
+     status = -1
+  endif
 
+  if (status .ne. 0) then
+     if (i_am_mpi_master) then
+        print *, 'Usage: ', trim(progname), ' [ -s MMxNNxKK ] [ -h (print help message) ]'
+     endif
+     stop status
+  endif
+ 
   call initProblemDimensions(dims)
 
   if (i_am_mpi_master) then

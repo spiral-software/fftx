@@ -44,7 +44,7 @@ CUDA: CC_INCLUDE=-I$(CUDATOOLKIT_HOME)/../../examples/OpenMP/SDK/include
 CUDA: CC_LINK=-L$(CUDATOOLKIT_HOME)/lib64 -lcudart
 CUDA: FFTX_LIBRARIES=$(FFTX_MPI_LIBRARY) $(FFTX_GPU_LIBRARIES)
 # Targets to build.
-CUDA: main
+CUDA: fortran_main
 
 #
 ## make HIP: needs ROCM_PATH and CRAY_MPICH_PREFIX
@@ -56,7 +56,7 @@ HIP: CC_INCLUDE=-I$(CRAY_MPICH_PREFIX)/include
 HIP: CC_LINK=-L$(ROCM_PATH)/lib -lamdhip64 -lhipfft -lrocfft -lstdc++
 HIP: FFTX_LIBRARIES=$(FFTX_MPI_LIBRARY) $(FFTX_GPU_LIBRARIES)
 # Targets to build.
-HIP: main
+HIP: fortran_main
 
 #
 ## make SYCL: needs AURORA_PE_ONEAPI_ROOT
@@ -66,7 +66,7 @@ SYCL: CCFLAGS=-std=c++17 -fsycl
 SYCL: PRESETS=-DFFTX_SYCL
 SYCL: CC_LINK=-L$(AURORA_PE_ONEAPI_ROOT) -lOpenCL -lmkl_core -lmkl_cdft_core -lmkl_sequential -lmkl_rt -lmkl_intel_lp64 -lmkl_sycl
 SYCL: FFTX_LIBRARIES=$(FFTX_GPU_LIBRARIES)
-SYCL: main
+SYCL: fortran_main
 
 #
 ## make CPU: default
@@ -75,7 +75,7 @@ CPU: CC=mpicxx
 CPU: CCFLAGS=-std=c++11
 CPU: FFTX_LIBRARIES=$(FFTX_CPU_LIBRARIES)
 # Targets to build.
-CPU: main
+CPU: fortran_main
 
 #
 # Fortran
@@ -86,7 +86,7 @@ RM = rm -f
 
 # Find all source files in all directories and subdorectories and resolve program dependencies.
 # Actually compile.
-main: test.o
+fortran_main: test.o
 		$(FC) $(PRESETS) \
 			math_constants_mod.F90 \
 			mpi_utils_mod.F90 \
@@ -95,11 +95,11 @@ main: test.o
 			data_functions_mod.F90 \
 			transform_tests_mod.F90 \
 			convolution_mod.F90 \
-			main.F90 \
+			fortran_main.F90 \
 			$(LDFLAGS) test.o \
 			$(CC_LINK) \
 			$(FFTX_LINK) $(FFTX_LIBRARIES) \
-			-o  main
+			-o  fortran_main
 
   # delete modules
 		@$(RM) *.mod
@@ -112,7 +112,7 @@ test.o: test.cpp
 
 ## make clean: remove executables and other files
 clean:
-		@rm -f main
+		@rm -f fortran_main
 		@rm -f test.o
 		@rm -rf *.mod
 		@rm -rf *.smod
