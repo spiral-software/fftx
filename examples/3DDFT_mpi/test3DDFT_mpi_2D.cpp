@@ -11,6 +11,7 @@ using cx = std::complex<double>;
 
 int main(int argc, char* argv[])
 {
+  char *prog = argv[0];
   int status = 0;
 
   int ntrials = 3;
@@ -226,5 +227,10 @@ int main(int argc, char* argv[])
  FFTX_DEVICE_FREE(out_buffer);
  delete[] fftx_in;
  delete[] fftx_out;
+
+ fftx::OutStream() << prog << ": All done, exiting with status "
+                   << status << std::endl;
+ std::flush(fftx::OutStream());
+   
  return status;
 }

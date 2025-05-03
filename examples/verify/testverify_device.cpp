@@ -127,6 +127,9 @@ int main(int argc, char* argv[])
                      verbosity);
   
   // printf("%s: All done, exiting\n", prog);
-  fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+  fftx::OutStream() << prog << ": All done, exiting with status "
+                    << status << std::endl;
+  std::flush(fftx::OutStream());
+
   return status;
 }

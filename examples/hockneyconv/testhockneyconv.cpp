@@ -286,7 +286,8 @@ nt help message) ]"
 
     delete[] hockneyconv_gpu;
 
-    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    fftx::OutStream() << prog << ": All done, exiting with status "
+                      << status << std::endl;
     std::flush(fftx::OutStream());
 
     return status;

@@ -108,6 +108,9 @@ int main(int argc, char* argv[])
   int status = rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
   // rconv3::destroy();
   
-  fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+  fftx::OutStream() << prog << ": All done, exiting with status "
+                    << status << std::endl;
+  std::flush(fftx::OutStream());
+
   return status;
 }
