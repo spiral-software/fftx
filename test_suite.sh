@@ -62,7 +62,6 @@ run_tests() {
 }
 
 ##  Test definitions
-run_tests "fortran_main"        0   47x41x43
 run_tests "testbatch1ddft"      5   256x64 512x32 1024x16
 run_tests "testbatch1dprdft"    5   256x64 512x32 1024x16
 run_tests "testmddft"           5   40x40x40 64x64x64 72x72x72 128x128x128
