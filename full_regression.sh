@@ -1,5 +1,8 @@
 #!/bin/bash
-echo "Starting `date`"
+# For install_fftx.sh,
+# need _codegen set to one of: CPU CUDA HIP SYCL;
+# optional _compilerspec set to -DCMAKE_CXX_COMPILER=(compiler).
+echo "Starting full_regression.sh at `date`"
 source get_install_spiral.sh
 if [ -f "$SPIRAL_HOME/bin/spiral" ]; then
     echo "SUCCESS: Spiral installed at $SPIRAL_HOME/bin/spiral"
@@ -14,3 +17,4 @@ if [ -f "$SPIRAL_HOME/bin/spiral" ]; then
 else
     echo "FAILED: Spiral not installed at $SPIRAL_HOME"
 fi
+echo "Finished full_regression at `date`"
