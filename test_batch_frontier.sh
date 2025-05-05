@@ -35,15 +35,15 @@ M=128
 N=128
 K=128
 
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testmddft -s $M"x"$N"x"$K
+srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testmddft -s $M"x"$N"x"$K -i 5
 
-srun --nodes=1 --ntasks=4 --gpus=4 bin/fortran_main $M $N $K
+srun --nodes=1 --ntasks=4 --gpus=4 bin/fortran_main -s $M"x"$N"x"$K -i 5
 
 M=64
 N=64
 K=64
 
-srun --nodes=1 --ntasks=4 --gpus=4 bin/fortran_main $M $N $K
+srun --nodes=1 --ntasks=4 --gpus=4 bin/fortran_main -s $M"x"$N"x"$K -i 5
 
 batch=1
 
