@@ -1123,9 +1123,12 @@ int main(int argc, char* argv[])
 
   MPI_Finalize();
 
-  fftx::OutStream() << prog << ": All done, exiting with status "
-                    << status << std::endl;
-  std::flush(fftx::OutStream());
+  if (rank == root)
+    {
+      fftx::OutStream() << prog << ": All done, exiting with status "
+                        << status << std::endl;
+      std::flush(fftx::OutStream());
+    }
   
   return status;
 }

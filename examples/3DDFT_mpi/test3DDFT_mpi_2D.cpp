@@ -228,9 +228,12 @@ int main(int argc, char* argv[])
  delete[] fftx_in;
  delete[] fftx_out;
 
- fftx::OutStream() << prog << ": All done, exiting with status "
-                   << status << std::endl;
- std::flush(fftx::OutStream());
+ if (commRank == 0)
+    {
+      fftx::OutStream() << prog << ": All done, exiting with status "
+                        << status << std::endl;
+      std::flush(fftx::OutStream());
+    }
    
  return status;
 }
