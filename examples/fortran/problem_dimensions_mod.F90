@@ -42,7 +42,8 @@ contains
     integer, intent(out) :: ier
     integer :: posx, iostat
     character(len=32) :: istr, rest
-    
+
+    ier = 0
     posx = index(str, 'x')
     if (posx .lt. 2) then
        ier = -1

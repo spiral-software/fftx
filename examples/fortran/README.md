@@ -39,6 +39,7 @@ In any case, the executable will be in `fortran_main`.
 ### To run in serial:
 
 Use command arguments `-s MMxNNxKK` for dimensions MMxNNxKK.
+An optional argument `-i itns` runs each test `itns` times; this defaults to 1.
 For example, to run convolution tests in serial on 32x40x48, do:
 ```
 ./fortran_main -s 32x40x48

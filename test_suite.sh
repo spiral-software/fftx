@@ -73,4 +73,4 @@ run_tests "testrconv"           5   40x40x40 64x64x64 72x72x72 128x128x128
 run_tests "testverify_lib"      5           ##  No sizes
 run_tests "testverify"          5   40x40x40 64x64x64 72x72x72 128x128x128
 
-run_tests "fortran_main"        0   32x32x32 64x64x64
+run_tests "fortran_main"        5   32x32x32 64x64x64
