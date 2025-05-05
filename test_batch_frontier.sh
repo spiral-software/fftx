@@ -1,6 +1,10 @@
 #!/bin/bash
-### fill in with your account name
-#SBATCH --account=
+### Need these settings:
+### export SBATCH_ACCOUNT=(your account name)
+### export SPIRAL_HOME=(home directory for SPIRAL)
+### export FFTX_HOME=(home directory for FFTX)
+### Then to submit:
+### sbatch test_batch_frontier.sh
 #SBATCH --time=0:10:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=4
@@ -15,61 +19,5 @@ module load rocm
 module load PrgEnv-gnu
 module load python
 
-### export SPIRAL_HOME=(home directory for SPIRAL)
-
-export FFTX_HOME=$PWD
-
-N=256
-B=64
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 0x0
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 0x1
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 1x0
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1ddft -s $N"x"$B -r 1x1
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 0x0
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 0x1
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 1x0
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testbatch1dprdft -s $N"x"$B -r 1x1
-
-### dimensions of distributed FFT
-M=128
-N=128
-K=128
-
-srun --nodes=1 --ntasks=1 --cpus-per-task=1 --gpus=1 bin/testmddft -s $M"x"$N"x"$K -i 5
-
-srun --nodes=1 --ntasks=4 --gpus=4 bin/fortran_main -s $M"x"$N"x"$K -i 5
-
-M=64
-N=64
-K=64
-
-srun --nodes=1 --ntasks=4 --gpus=4 bin/fortran_main -s $M"x"$N"x"$K -i 5
-
-batch=1
-
-embedded=1
-unembedded=0
-
-### forward or inverse transform
-forward=1
-inverse=0
-
-### complex or real transform
-complex=1
-real=0
-
-trials=3
-check=2
-
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_1D $M $N $K $batch $unembedded $forward $complex $trials $check
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_1D $M $N $K $batch $unembedded $inverse $complex $trials $check
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_1D $M $N $K $batch $unembedded $forward $real    $trials $check
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_1D $M $N $K $batch $unembedded $inverse $real    $trials $check
-
-rows=2
-cols=2
-
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_2D $M $N $K $batch $rows $cols $unembedded $forward $complex
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_2D $M $N $K $batch $rows $cols $unembedded $inverse $complex
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_2D $M $N $K $batch $rows $cols $unembedded $forward $real
-srun --nodes=1 --ntasks=4 --gpus=4 bin/test3DDFT_mpi_2D $M $N $K $batch $rows $cols $unembedded $inverse $real
+cd $FFTX_HOME
+source test_batch_script.sh
