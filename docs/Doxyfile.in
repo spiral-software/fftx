@@ -506,7 +506,6 @@ NUM_PROC_THREADS       = 1
 # The default value is: NO.
 
 TIMESTAMP              = NO
-HTML_TIMESTAMP         = YES
 
 #---------------------------------------------------------------------------
 # Build related configuration options
@@ -952,7 +951,7 @@ INPUT                  = "@DOXYGEN_INPUT_DIR@/fftx.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftxmdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftximdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftxutilities.hpp" \
-                         doc_templates.hpp
+                         "@DOXYGEN_INPUT_DIR@/doc_templates.hpp"
                          
 # INPUT                  = ../src/include/fftx.hpp \
 #                          ../src/include/fftxinterface.hpp \
