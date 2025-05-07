@@ -82,7 +82,8 @@ jobs:
         cmake -DFFTX_MAKE_DOCS=True ..
         make Sphinx
         ##  find . -iname namespacefftx.xml
-        ##  ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
+        ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
+        cat /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml/index.xml
         ##  ls docs
         ##  ls docs/doxygen/xml
         ##  cat docs/doxygen/xml/index.xml
