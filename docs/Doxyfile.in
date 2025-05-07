@@ -951,7 +951,9 @@ INPUT                  = "@DOXYGEN_INPUT_DIR@/fftx.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftximddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftxmdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftximdprdftObj.hpp" \
-                         "@DOXYGEN_INPUT_DIR@/fftxutilities.hpp"
+                         "@DOXYGEN_INPUT_DIR@/fftxutilities.hpp" \
+                         doc_templates.hpp
+                         
 # INPUT                  = ../src/include/fftx.hpp \
 #                          ../src/include/fftxinterface.hpp \
 #                          ../src/include/fftxutilities.hpp
