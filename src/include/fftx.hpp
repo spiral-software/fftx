@@ -52,6 +52,16 @@
 // Set this to 1 if truncating complex array in last dimension, 0 if in first.
 #define FFTX_COMPLEX_TRUNC_LAST 1
 
+/*! \struct bogus_struct
+  For doxygen 1.9.8 to find structs within namespace fftx,
+  need to define a struct outside namespace fftx.
+*/
+struct bogus_struct
+{
+  bogus_struct() = default;
+}
+
+
 /*!
  * \addtogroup fftx
  * @{
