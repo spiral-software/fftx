@@ -29,6 +29,9 @@
 #include <cassert>
 #include <complex>
 #include <iomanip>
+
+/*! \file fftx.hpp */
+
 /**
    \mainpage Documentation for FFTX
 
@@ -49,6 +52,10 @@
 // Set this to 1 if truncating complex array in last dimension, 0 if in first.
 #define FFTX_COMPLEX_TRUNC_LAST 1
 
+/*!
+ * \addtogroup fftx
+ * @{
+ */
 namespace fftx
 {
   inline std::string version() { return std::string(FFTX_XSTR(FFTX_VERSION)); }
@@ -99,7 +106,7 @@ namespace fftx
     std::shared_ptr<handle_implem_t> m_implem;
   };
 
-  /**
+  /*! \class global_ptr
      A non-owning global pointer object.
      Can be used in place of upcxx::global_ptr.
 
@@ -159,7 +166,7 @@ namespace fftx
  
     
 
-  /**
+  /*! \struct point_t
      A tuple of integer coordinates as an index into
      a <b>Z</b><sup>DIM</sup> space.
 
@@ -210,7 +217,9 @@ namespace fftx
   };
 
 
-  /** A rectangular domain on an integer lattice in DIM dimensions, defined by its low and high corners in index space. */
+  /*! \struct box_t
+    A rectangular domain on an integer lattice in DIM dimensions, defined by its low and high corners in index space.
+  */
   template<int DIM>
   struct box_t
   {
@@ -247,7 +256,8 @@ namespace fftx
     }
   };
 
-  /** Non-owning view into a contiguous array of multi-dimensional data.
+  /*! \struct array_t
+    Non-owning view into a contiguous array of DIM-dimensional data.
    */
   template<int DIM, typename T>
   struct array_t
@@ -728,8 +738,8 @@ namespace fftx
         if(i+1<COUNT) rtn +=",";
       }
     return rtn;
-  }                                           
-
+  }
+  
   /** \internal */
 template<int DIM>
   void closeScalarDAG(std::string localVarNames, const char* name)
@@ -1178,9 +1188,14 @@ template<int DIM>
     return output;
   }
 
-}
+} // namespace fftx
+/*! @} */
 
 
+/*!
+ * \addtogroup fftx_helper
+ * @{
+ */
 namespace fftx_helper
 {
   inline size_t reverseBits(size_t x, int n) {
@@ -1302,6 +1317,8 @@ namespace fftx_helper
           }
       }
   }
-}
+} // namespace fftx_helper
+/*! @} */
+
 
 #endif /*  end include guard FFTX_H */
