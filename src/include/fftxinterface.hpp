@@ -307,15 +307,15 @@ class FFTXProblem {
 public:
 
   /** Array of length 3 that contains the following.
-      - <tt>args[0]</tt>:  pointer to output array.
-      - <tt>args[1]</tt>:  pointer to input array.
-      - <tt>args[2]</tt>:  pointer to symbol array (not used by all transforms). If not used, then can be set to NULL.
+      - \c args[0]:  pointer to output array.
+      - \c args[1]:  pointer to input array.
+      - \c args[2]:  pointer to symbol array (not used by all transforms). If not used, then can be set to NULL.
 
-      The manner of specifying the pointer in each element of <tt>args</tt> depends on the backend:
-      - for CUDA, specify <tt>&ptr</tt> with <tt>CUdeviceptr ptr</tt> (or <tt>FFTX_DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
-      - for HIP, specify <tt>ptr</tt> with <tt>hipDeviceptr_t ptr</tt> (or <tt>FFTX_DEVICE_PTR ptr</tt> if you have <tt>#include "fftxdevice_macros.h"</tt>).
-      - for SYCL, specify <tt>(void*) ptr</tt> with <tt>sycl::buffer<double> ptr</tt>.
-      - for CPU, specify <tt>(void*) ptr</tt> with <tt>double* ptr</tt>.
+      The pointer format for each backend should be specified as follows:
+      - CUDA: \c &ptr with \c CUdeviceptr ptr (or \c FFTX_DEVICE_PTR ptr if you have `#include "fftxdevice_macros.h"`).
+      - HIP:  \c ptr  with \c hipDeviceptr_t ptr (or \c FFTX_DEVICE_PTR ptr if you have `#include "fftxdevice_macros.h"`).
+      - SYCL: \c (void*) ptr with \c sycl::buffer<double> ptr.
+      - CPU:  \c (void*) ptr with \c double* ptr.
   */
     std::vector<void*> args;
 
