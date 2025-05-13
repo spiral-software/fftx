@@ -59,7 +59,7 @@
 struct bogus_struct
 {
   bogus_struct() = default;
-}
+};
 
 
 /*!
