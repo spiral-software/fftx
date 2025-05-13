@@ -30,8 +30,6 @@
 #include <complex>
 #include <iomanip>
 
-/*! \file fftx.hpp */
-
 /**
    \mainpage Documentation for FFTX
 
@@ -52,20 +50,18 @@
 // Set this to 1 if truncating complex array in last dimension, 0 if in first.
 #define FFTX_COMPLEX_TRUNC_LAST 1
 
+#ifdef __FFTX_DOXYGEN__
 /*! \struct bogus_struct
-  For doxygen 1.9.8 to find structs within namespace fftx,
-  need to define a struct outside namespace fftx.
+  This is a kludge.
+  In order for doxygen 1.9.8 to find structs within namespace fftx,
+  we need to define a struct outside namespace fftx,
+  without the obligatory semicolon after it.
+  This needs to be in an #ifdef __FFTX_DOXYGEN__ block because
+  it will not compile as C++ due to the missing semicolon.
 */
-struct bogus_struct
-{
-  bogus_struct() = default;
-};
+struct bogus_struct { }
+#endif
 
-
-/*!
- * \addtogroup fftx
- * @{
- */
 namespace fftx
 {
   inline std::string version() { return std::string(FFTX_XSTR(FFTX_VERSION)); }
@@ -177,11 +173,11 @@ namespace fftx
     
 
   /*! \struct point_t
-     A tuple of integer coordinates as an index into
-     a <b>Z</b><sup>DIM</sup> space.
-
-     Usually constructed with an array argument, such as:
-     <tt>fftx::point_t<3> pt( {1, 2, 3} );</tt>
+    A tuple of integer coordinates as an index into
+    a <b>Z</b><sup>DIM</sup> space.
+    
+    Usually constructed with an array argument, such as:
+    <tt>fftx::point_t<3> pt( {1, 2, 3} );</tt>
    */
   template<int DIM>
   struct point_t
@@ -228,7 +224,8 @@ namespace fftx
 
 
   /*! \struct box_t
-    A rectangular domain on an integer lattice in DIM dimensions, defined by its low and high corners in index space.
+    A rectangular domain on an integer lattice in DIM dimensions,
+    defined by its low and high corners in index space.
   */
   template<int DIM>
   struct box_t
@@ -1199,13 +1196,8 @@ template<int DIM>
   }
 
 } // namespace fftx
-/*! @} */
 
 
-/*!
- * \addtogroup fftx_helper
- * @{
- */
 namespace fftx_helper
 {
   inline size_t reverseBits(size_t x, int n) {
@@ -1328,7 +1320,6 @@ namespace fftx_helper
       }
   }
 } // namespace fftx_helper
-/*! @} */
 
 
 #endif /*  end include guard FFTX_H */
