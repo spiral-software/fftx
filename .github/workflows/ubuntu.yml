@@ -45,6 +45,7 @@ jobs:
         sudo apt-get install -y python3
         sudo curl -L -o /usr/local/bin/cmake-easyinstall https://git.io/JvLxY
         sudo chmod a+x /usr/local/bin/cmake-easyinstall
+        sudo apt-get -y install libfftw3-dev
         export CEI_SUDO="sudo"
     - name: Build SPIRAL
       env:
