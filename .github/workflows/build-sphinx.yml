@@ -85,9 +85,9 @@ jobs:
         sphinx-build --version
         pandoc --version
         ##  find . -iname namespacefftx.xml
-        ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
-        cat /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml/index.xml
-        cat /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml/fftx_8hpp.xml
+        ## ls /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml
+        ## cat /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml/index.xml
+        ## cat /home/runner/work/fftx/fftx/fftx/build/docs/doxygen/xml/fftx_8hpp.xml
         ##  ls docs
         ##  ls docs/doxygen/xml
         ##  cat docs/doxygen/xml/index.xml
