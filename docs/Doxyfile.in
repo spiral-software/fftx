@@ -950,6 +950,10 @@ INPUT                  = "@DOXYGEN_INPUT_DIR@/fftx.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftximddftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftxmdprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftximdprdftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftxbatch1ddftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftxibatch1ddftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftxbatch1dprdftObj.hpp" \
+                         "@DOXYGEN_INPUT_DIR@/fftxibatch1dprdftObj.hpp" \
                          "@DOXYGEN_INPUT_DIR@/fftxutilities.hpp"
 # INPUT                  = ../src/include/fftx.hpp \
 #                          ../src/include/fftxinterface.hpp \

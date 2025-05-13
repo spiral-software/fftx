@@ -20,6 +20,30 @@ static std::string batch1dprdft_script_1x1 = "transform := let(\n\
     TTensorI(PRDFT1(N, sign), B, APar, read),\n\
     rec(fname := name, params := [])));";
 
+
+/**
+   Class for real-to-complex batched 1D FFT.
+
+   The specification allows both the input and the output to be
+   distributed in either
+   a sequential way
+   (full first array in the batch followed by full second array, etc.)
+   or a strided way
+   (first element of every array in the batch followed by second element 
+   of every array, etc.).
+
+   <tt>FFTXProblem::args</tt> must be set to a <tt>std::vector<void*></tt> of length 2, where
+   - <tt>args[0]</tt> is a pointer to a complex output array of size the product of the batch size and FFT output length: this array size is <tt>(sizes[0]+1)/2 * sizes[1]</tt>;
+   - <tt>args[1]</tt> is a pointer to a real input array of size the product of the batch size and FFT input length: this array size is <tt>sizes[0] * sizes[1]</tt>.
+
+   <tt>FFTXProblem::sizes</tt> must be set to a <tt>std::vector<int></tt> of length 4, where:
+   - <tt>sizes[0]</tt> is the input length of the FFT;
+   - <tt>sizes[1]</tt> is the batch size;
+   - <tt>sizes[2]</tt> is 0 if the input is sequential, 1 if the input is strided;
+   - <tt>sizes[3]</tt> is 0 if the output is sequential, 1 if the output is strided.
+
+   <tt>FFTXProblem::name</tt> must be set to <tt>"b1prdft"</tt>.
+ */
 class BATCH1DPRDFTProblem: public FFTXProblem {
 public:
     using FFTXProblem::FFTXProblem;
