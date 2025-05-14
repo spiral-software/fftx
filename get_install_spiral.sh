@@ -10,8 +10,8 @@ pushd ../spiral-software
   popd
   mkdir -p build
   pushd build
-    cmake .. > ../cmake.out
-    make install > ../make.out
+    cmake .. &> ../cmake.out
+    make install &> ../make.out
   popd
 popd
 # back to fftx directory
