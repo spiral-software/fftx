@@ -21,7 +21,7 @@
 #elif defined (FFTX_SYCL)
 // #include "mkl_dfti.h"
 // #include <sycl/sycl.hpp>
-#include <oneapi/mkl/dfti.hpp>
+#include <oneapi/mkl/dft.hpp>
 // #include <oneapi/mkl/vm.hpp>
 #elif defined (FFTX_USE_FFTW)
 #include "fftw3.h"
