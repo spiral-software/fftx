@@ -1,5 +1,5 @@
-FFTX Project
-============
+Building / Installing the FFTX Project
+======================================
 
 This is the public repository for the **FFTX** API source, examples, and documentation.
 
@@ -7,7 +7,7 @@ This is the public repository for the **FFTX** API source, examples, and documen
 
 This project is licensed under the BSD License (available [**here**](https://www.github.com/spiral-software/fftx/blob/main/License.txt))
 
-Copyright (c) 2018-2023, Carnegie Mellon University.  All rights reserved.
+Copyright (c) 2018-2025, Carnegie Mellon University.  All rights reserved.
 
 ## Building FFTX
 

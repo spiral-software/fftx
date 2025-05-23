@@ -1,7 +1,7 @@
 
 
-How to install FFTX
-===================
+Where to Get FFTX
+=================
 
 FFTX is `available on GitHub <https://github.com/spiral-software/fftx/>`__
 as open source under a non-viral
