@@ -1,25 +1,28 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <cmath> // Without this, abs is the wrong function!
 #include <random>
 
-#include "RealConvolution.hpp"
-#include "fftx3utilities.h"
+#include "fftxRealConvolution.hpp"
 
 // using namespace fftx;
 // fftx::handle_t (a_transform)
 template<int DIM>
-void rconvDimension(std::vector<int> sizes,
-                    fftx::box_t<DIM> a_domain,
-                    fftx::box_t<DIM> a_fdomain,
-                    int a_rounds,
-                    int a_verbosity)
+int rconvDimension(std::vector<int> sizes,
+                   fftx::box_t<DIM> a_domain,
+                   fftx::box_t<DIM> a_fdomain,
+                   int a_rounds,
+                   int a_verbosity)
 {
-  std::cout << "***** test " << DIM << "D real convolution on "
-            << a_domain << std::endl;
-
-  // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
-  RCONVProblem rp("rconv");
-  RealConvolution<DIM> fun(rp, sizes, a_domain, a_fdomain);
-  TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
+  fftx::OutStream() << "***** test " << DIM << "D real convolution on "
+                    << a_domain << std::endl;
+  RealConvolution<DIM> fun(sizes, a_domain, a_fdomain);
+  return fun.testAll(a_rounds, a_verbosity);
 }
 
 
@@ -67,16 +70,21 @@ int main(int argc, char* argv[])
           verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+          fftx::OutStream() << "Usage: " << argv[0]
+                            << ": [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -s MMxNNxKK ] [ -h (print help message) ]"
+                            << std::endl;
           exit (0);
       default:
-          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+        fftx::OutStream() << prog << ": unknown argument: "
+                          << argv[1] << " ... ignored" << std::endl;
       }
       argv++, argc--;
   }
-  
-  printf("Running size %dx%dx%d with verbosity %d, random %d rounds\n", mm, nn, kk, verbosity, rounds);
-  // std::cout << mm << " " << nn << " " << kk << std::endl;
+
+  // printf("Running size %dx%dx%d with verbosity %d, random %d rounds\n", mm, nn, kk, verbosity, rounds);
+  fftx::OutStream() << "Running size " << mm << "x" << nn << "x" << kk
+                    << " with verbosity " << verbosity
+                    << ", random " << rounds << " rounds" << std::endl;
   std::vector<int> sizes{mm, nn, kk};
 
   /*
@@ -104,9 +112,12 @@ int main(int argc, char* argv[])
   fftx::box_t<3> domain3 = domainFromSize(fullExtents, offsets);
   fftx::box_t<3> fdomain3 = domainFromSize(truncExtents, offsets);
 
-  rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
+  int status = rconvDimension(sizes, domain3, fdomain3, rounds, verbosity);
   // rconv3::destroy();
   
-  printf("%s: All done, exiting\n", prog);
-  return 0;
+  fftx::OutStream() << prog << ": All done, exiting with status "
+                    << status << std::endl;
+  std::flush(fftx::OutStream());
+
+  return status;
 }

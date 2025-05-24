@@ -1,9 +1,16 @@
-#ifndef COMMON_UTIL_H
-#define COMMON_UTIL_H
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
+#ifndef FFTX_COMMON_UTIL_H
+#define FFTX_COMMON_UTIL_H
 
 #include <mpi.h>
 
-using namespace std;
+// using namespace std;
 
 inline double max_diff(double start, double end, const MPI_Comm&  comm) {
   double my_time = end - start;

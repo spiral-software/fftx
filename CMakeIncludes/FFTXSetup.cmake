@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
-## All rights reserved.
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
 ##
-## See LICENSE file for full information
+##  See LICENSE file for full information.
 ##
 
 ##  Define variables and items required for building FFTX.  This module is intended to be
@@ -88,6 +88,26 @@ endif ()
 ##  Default setting is false; only running on 64 bit machines.
 
 if ( ${_codegen} STREQUAL "CUDA" )
+    ##  Try finding CUDAToolkit and use the directory it reports for target building
+    ##  Provide a means to set/override the CUDA root (if not automatically found)
+    set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
+    find_package ( CUDAToolkit REQUIRED )
+    ##  Find the libraries: cufft culibos nvrtc
+    find_library ( CUDALIBS_DIR 
+        NAMES cufft culibos nvrtc
+        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
+              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
+              /usr/local/cuda                   ##  Another [legacy] fallback
+    )
+
+    if ( CUDALIBS_DIR )
+        ##  Extract the directory name from the full path
+        get_filename_component ( CUDALINK_DIR ${CUDALIBS_DIR} DIRECTORY )
+        message ( STATUS "CUDA libraries exist in folder: ${CUDALINK_DIR}" )
+    else ()
+        message ( FATAL_ERROR "CUDA library folder not found!" )
+    endif ()
+
     if (WIN32)
 	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
@@ -106,15 +126,77 @@ endif ()
 
 if ( ${_codegen} STREQUAL "SYCL" )
     ##  Setup what we need to build for SYCL
-    list ( APPEND LIBS_FOR_SYCL OpenCL )
+    list ( APPEND LIBS_FOR_SYCL OpenCL mkl_core mkl_cdft_core mkl_sequential mkl_rt mkl_intel_lp64 mkl_sycl )
     list ( APPEND ADDL_COMPILE_FLAGS -fsycl -DFFTX_SYCL )
 endif ()
 
-if ( "x${DIM_X}" STREQUAL "x" )
-    ##  DIM_X is not defined (on command line).  Assume building with default sizes only
-    message ( STATUS "Building for default size example only" )
-else ()
-    ## DIM_X is defined (presumably DIM_Y & DIM_Z also since they come form a script)
+if ( ${_codegen} STREQUAL "CPU" )
+    ##  Help cmake find FFTW, add $FFTW_HOME to CMAKE_PREFIX_PATH if defined
+    if ( DEFINED ENV{FFTW_HOME} )
+        list ( APPEND CMAKE_PREFIX_PATH $ENV{FFTW_HOME} )
+        message ( STATUS "FFTW_HOME = $ENV{FFTW_HOME} added to CMake prefix PATH." )
+        ##  message ( STATUS "CMAKE_PREFIX_PATH = ${CMAKE_PREFIX_PATH}" )
+    else ()
+        ##  message ( STATUS "FFTW_HOME is not set. FFTW may not be found." )
+    endif ()
+
+    ##  FFTW may be installed and known by either FFTW or FFTW3, try both
+    ##  FFTW installs don't always have the file FFTW3LibraryDepends.cmake, so try pkg_config first
+
+    ##  Check for pkg-config availability
+    find_program ( PKG_CONFIG_EXECUTABLE pkg-config QUIET )
+    if ( PKG_CONFIG_EXECUTABLE )
+        message ( STATUS "pkg-config found: ${PKG_CONFIG_EXECUTABLE}" )
+        include ( FindPkgConfig )
+        pkg_check_modules ( FFTW fftw3 )
+        if ( FFTW_FOUND )
+            message ( STATUS "FFTW found, via pkg_config; FFTW_ROOT = ${FFTW_ROOT}" )
+            message ( STATUS "FFTW found, FFTW_ROOT = ${FFTW_ROOT}" )
+            message ( STATUS "FFTW_INCLUDE_DIRS = ${FFTW_INCLUDE_DIRS}" )
+            message ( STATUS "FFTW_LIBRARY_DIRS = ${FFTW_LIBRARY_DIRS}" )
+            message ( STATUS "FFTW_LIBRARIES = ${FFTW_LIBRARIES}" )
+            list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_USE_FFTW )
+        endif ()
+    endif ()
+
+    if ( NOT FFTW_FOUND )
+        set ( FFTW3_FOUND FALSE )
+        find_package ( FFTW3 QUIET CONFIG )
+        if ( FFTW3_FOUND )
+            message ( STATUS "FFTW3 found via FFTW3Config.cmake" )
+            ##  message ( STATUS "FFTW_INCLUDE_DIRS = ${FFTW3_INCLUDE_DIRS}" )
+            ##  message ( STATUS "FFTW_LIBRARY_DIRS = ${FFTW3_LIBRARY_DIRS}" )
+            ##  message ( STATUS "FFTW_LIBRARIES = ${FFTW3_LIBRARIES}" )
+            set ( FFTW_FOUND TRUE )
+            set ( FFTW_INCLUDE_DIRS ${FFTW3_INCLUDE_DIRS} )
+            set ( FFTW_LIBRARY_DIRS ${FFTW3_LIBRARY_DIRS} )
+            set ( FFTW_LIBRARIES ${FFTW3_LIBRARIES} )
+        else ()
+            ##  Fallback to FFTW
+            find_package ( FFTW QUIET CONFIG )
+            if ( FFTW_FOUND )
+                message ( STATUS "FFTW found via FFTWConfig.cmake" )
+            else ()
+                message ( STATUS "FFTW not found; examples using FFTW will be skipped" )
+            endif ()
+        endif ()
+
+        if ( FFTW_FOUND )
+            ##  message ( STATUS "FFTW_INCLUDE_DIRS = ${FFTW_INCLUDE_DIRS}" )
+            ##  message ( STATUS "FFTW_LIBRARY_DIRS = ${FFTW_LIBRARY_DIRS}" )
+            ##  message ( STATUS "FFTW_LIBRARIES = ${FFTW_LIBRARIES}" )
+            list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_USE_FFTW )
+
+            # Add FFTW directories to lists...
+            list ( APPEND CMAKE_INCLUDE_PATH ${FFTW_INCLUDE_DIRS} )
+            list ( APPEND CMAKE_LIBRARY_PATH ${FFTW_LIBRARY_DIRS} )
+            list ( APPEND CMAKE_TARGET_LIBRARIES ${FFTW_LIBRARIES} )
+        endif ()
+    endif ()
+endif ()
+
+if ( NOT "x${DIM_X}" STREQUAL "x" )
+    ##  DIM_X is defined (on command line; presumably DIM_Y & DIM_Z also since they come form a script)
     list ( APPEND ADDL_COMPILE_FLAGS -Dfftx_nx=${DIM_X} -Dfftx_ny=${DIM_Y} -Dfftx_nz=${DIM_Z} )
     message ( STATUS "Building for size [ ${DIM_X}, ${DIM_Y}, ${DIM_Z} ]" )
 endif ()

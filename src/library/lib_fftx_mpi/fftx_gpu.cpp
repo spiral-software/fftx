@@ -1,12 +1,19 @@
-#include <stdio.h>
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
+// #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <complex>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 
-using namespace std;
+// using namespace std;
 
 __global__ void __unpack(
 	std::complex<double> *dst,
@@ -101,7 +108,7 @@ __global__ void __unpack_embed(
 }
 
 
-DEVICE_ERROR_T pack(
+FFTX_DEVICE_ERROR_T pack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a_dim,
@@ -113,15 +120,17 @@ DEVICE_ERROR_T pack(
 	size_t copy_size
 ) {
   __pack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size);
-	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-		return device_status;
+	FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
+          return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 }
 
-DEVICE_ERROR_T pack_embedded(
+FFTX_DEVICE_ERROR_T pack_embedded(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t x,
@@ -129,15 +138,17 @@ DEVICE_ERROR_T pack_embedded(
 	size_t z
 ) {
 	__pack_embed<<<dim3(y, 2*x), dim3(min(z, (size_t) 1024))>>>((double2 *) dst, (double2 *) src, x, y, z);
-	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-		return device_status;
+	FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
+          return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 }
 
-DEVICE_ERROR_T unpack_embedded(
+FFTX_DEVICE_ERROR_T unpack_embedded(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t x,
@@ -145,17 +156,19 @@ DEVICE_ERROR_T unpack_embedded(
 	size_t z
 ) {
 	__unpack_embed<<<dim3(y, 2*x), dim3(min(z, (size_t) 1024))>>>((double2 *) dst, (double2 *) src, x, y, z);
-	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-		return device_status;
+	FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
+          return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 }
 
 
 
-DEVICE_ERROR_T unpack(
+FFTX_DEVICE_ERROR_T unpack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a_dim,
@@ -167,10 +180,12 @@ DEVICE_ERROR_T unpack(
 	size_t copy_size
 ) {
 	__unpack<<<dim3(a_dim, b_dim, 1), dim3(min(copy_size, (size_t) 1024))>>>(dst, src, a_dim, a_i_stride, a_o_stride, b_dim, b_i_stride, b_o_stride, copy_size);
-	DEVICE_ERROR_T device_status = DEVICE_SYNCHRONIZE();
-	if (device_status != DEVICE_SUCCESS) {
-		fprintf(stderr, "DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
-		return device_status;
+	FFTX_DEVICE_ERROR_T device_status = FFTX_DEVICE_SYNCHRONIZE();
+	if (device_status != FFTX_DEVICE_SUCCESS) {
+          // fprintf(stderr, "FFTX_DEVICE_SYNCHRONIZE returned error code %d after launching addKernel!\n", device_status);
+          fftx::ErrStream() << "FFTX_DEVICE_SYNCHRONIZE returned error code " << device_status
+                            << " after launching addKernel!" << std::endl;
+          return device_status;
 	}
-	return DEVICE_SUCCESS;
+	return FFTX_DEVICE_SUCCESS;
 }

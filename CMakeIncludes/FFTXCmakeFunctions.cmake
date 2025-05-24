@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
-## All rights reserved.
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
 ##
-## See LICENSE file for full information
+##  See LICENSE file for full information.
 ##
 
 ##  create and run a driver program, given a <prefix> and a <stem> (filename =
@@ -164,20 +164,10 @@ endfunction ()
 ##  build.
 
 function ( add_includes_libs_to_target _target _stem _prefixes )
-    ##  Test _codegen and setup accordingly
-    # if ( ${_codegen} STREQUAL "HIP" )
-    # 	## run hipify-perl on the test driver
-    # 	run_hipify_perl ( ${_target} ${_suffix} )
-    # 	list ( APPEND _all_build_srcs ${_target}-hip.${_suffix} )
-    # 	set_source_files_properties ( ${_target}-hip.${_suffix} PROPERTIES LANGUAGE CXX )
-    # 	foreach ( _pref ${_prefixes} )
-    # 	    set_source_files_properties ( ${_pref}.${_stem}.source.${_suffix} PROPERTIES LANGUAGE CXX )
-    # 	endforeach ()
-    # else ()
-	list ( APPEND _all_build_srcs ${_target}.${_suffix} )
-    # endif ()
-
+    list ( APPEND _all_build_srcs ${_target}.${_suffix} )
     add_executable   ( ${_target} ${_all_build_srcs} )
+    set_target_properties ( ${_target} PROPERTIES LINKER_LANGUAGE CXX)  # force explicit linking step
+
     ##  message ( STATUS "executable added: target = ${_target}, depends: = ${_all_build_srcs}" )
     ##  message ( STATUS "dependencies for ${_target} = ${_all_build_deps}" )
     if ( NOT "X${_all_build_deps}" STREQUAL "X" )
@@ -194,6 +184,7 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
 	target_link_directories    ( ${_target} PRIVATE $ENV{ROCM_PATH}/lib )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_HIP} )
     elseif ( ${_codegen} STREQUAL "CUDA" )
+	target_link_directories    ( ${_target} PRIVATE ${CUDALINK_DIR} )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_CUDA} )
     elseif ( ${_codegen} STREQUAL "SYCL" )
 	target_link_libraries      ( ${_target} PRIVATE ${LIBS_FOR_SYCL} )
@@ -201,6 +192,11 @@ function ( add_includes_libs_to_target _target _stem _prefixes )
     elseif ( ${_codegen} STREQUAL "CPU" )
         if ( NOT WIN32 )
 	    target_link_libraries      ( ${_target} PRIVATE dl )
+        endif ()
+        if ( FFTW_FOUND )
+            target_link_directories    ( ${_target} PRIVATE ${FFTW_LIBRARY_DIRS} )
+            target_link_libraries      ( ${_target} PRIVATE ${FFTW_LIBRARIES} )
+            target_include_directories ( ${_target} PRIVATE ${FFTW_INCLUDE_DIRS} )
         endif ()
     endif ()
     if ( NOT "X{_library_names}" STREQUAL "X" )
@@ -225,6 +221,25 @@ function ( add_mpi_decorations_to_target _target )
 	##  target_link_options        ( ${_target} PRIVATE ${MPI_CXX_LINK_FLAGS} )
 	##  link flags are wrong on thom
 	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_CXX ${ADDL_MPI_LIBS} )
+        if ( NOT "X{_library_names}" STREQUAL "X" )
+            target_link_libraries      ( ${_target} PRIVATE ${_library_names} )
+        endif ()
+    else ()
+	message ( STATUS "MPI was not found -- cannot add decorations for target = ${_target}" )
+    endif ()
+endfunction ()
+
+
+##  fort_add_mpi_decorations_to_target() -- Add MPI include directories, compile flags,
+##  link options, and libraries to target to a Fortran target
+
+function ( fort_add_mpi_decorations_to_target _target )
+    if (${MPI_FOUND} )
+	##  MPI installation found -- add the libraries and include for this target
+        ##        target_include_directories ( ${_target} PRIVATE ${MPI_Fortran_INCLUDE_PATH} )
+        ##  In some cases Fortran include dirs not returned correctly; add the C++ ones as a fallback
+        target_include_directories ( ${_target} PRIVATE ${MPI_CXX_INCLUDE_DIRS} )
+	target_link_libraries      ( ${_target} PRIVATE MPI::MPI_Fortran )
         if ( NOT "X{_library_names}" STREQUAL "X" )
             target_link_libraries      ( ${_target} PRIVATE ${_library_names} )
         endif ()
@@ -347,9 +362,12 @@ function ( manage_add_subdir _subdir _buildForCpu _buildForGpu )
 endfunction ()
 
 
-##  setup_mpi_variables() is a function to perform variable setup so that MPI
-##  examples can be built.  It should only be called if MPI is successfully
-##  found.  No arguments are required.
+##  --------------------------------------------------------------------------------
+##  setup_mpi_variables() is more a legacy function to perform variable setup so that
+##  MPI examples can be built.  It should only be called if MPI is successfully
+##  found.  No arguments are required.  Currently, it just logs [message] info for
+##  cmake build info purposes.  It may be removed unless specific platform failures occur. 
+##  --------------------------------------------------------------------------------
 
 function ( setup_mpi_variables )
     ##  We assume MPI installation found
@@ -361,24 +379,19 @@ function ( setup_mpi_variables )
     ##  message ( STATUS "MPI_CXX_LINK_FLAGS = ${MPI_CXX_LINK_FLAGS}" )
     ##  message ( STATUS "MPI_CXX_LIBRARIES = ${MPI_CXX_LIBRARIES}" )
 
-    set ( _index 0 )
-    foreach ( _mpilib ${MPI_CXX_LIBRARIES} )
-	set ( MPI_CXX_LIB${_index} ${_mpilib} PARENT_SCOPE )
-        message ( STATUS "MPI_CXX_LIB${_index} = ${_mpilib}" )
-	math ( EXPR _index "${_index} + 1" )
-    endforeach ()
-    set ( _num_MPI_libs ${_index} )
-    message ( STATUS "Number of MPI Libraries = ${_num_MPI_libs}" )
-
-    set ( _index 0 )
-    foreach ( _mpiinc ${MPI_CXX_INCLUDE_DIRS} )
-	set ( MPI_CXX_INCL${_index} ${_mpiinc} PARENT_SCOPE )
-        message ( STATUS "MPI_CXX_INCL${_index} = ${_mpiinc}" )
-	math ( EXPR _index "${_index} + 1" )
-    endforeach ()
-    set ( _num_MPI_incls ${_index} )
-    message ( STATUS "Number of MPI Include Dirs = ${_num_MPI_incls}" )
+    ##  Show MPI version and found components
+    ##  message(STATUS "MPI version: ${MPI_VERSION}")
+    ##  message(STATUS "MPI Fortran Found: ${MPI_Fortran_FOUND}")
+    ##  message(STATUS "MPI Fortran Libraries: ${MPI_Fortran_LIBRARIES}")
+    ##  message(STATUS "MPI Libraries: ${MPI_LIBRARIES}")
+    ##  message(STATUS "MPI Fortran Link Flags: ${MPI_Fortran_LINK_FLAGS}")
+    ##  message(STATUS "MPI Fortran Include Path: ${MPI_Fortran_INCLUDE_PATH}")
     
+    get_target_property ( _mpi_type MPI::MPI_CXX TYPE )
+    message ( STATUS "MPI::MPI_CXX target type = ${_mpi_type}" )
+    get_target_property ( _mpi_type MPI::MPI_Fortran TYPE )
+    message ( STATUS "MPI::MPI_Fortran target type = ${_mpi_type}" )
+
 endfunction ()
 
 

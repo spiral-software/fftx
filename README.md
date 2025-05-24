@@ -1,5 +1,5 @@
-FFTX Project
-============
+Building / Installing the FFTX Project
+======================================
 
 This is the public repository for the **FFTX** API source, examples, and documentation.
 
@@ -7,7 +7,7 @@ This is the public repository for the **FFTX** API source, examples, and documen
 
 This project is licensed under the BSD License (available [**here**](https://www.github.com/spiral-software/fftx/blob/main/License.txt))
 
-Copyright (c) 2018-2023, Carnegie Mellon University.  All rights reserved.
+Copyright (c) 2018-2025, Carnegie Mellon University.  All rights reserved.
 
 ## Building FFTX
 
@@ -157,13 +157,13 @@ the desired transform can be generated and compiled on-the-fly (RTC).
 Run the script as follows:
 ```
 ./config-fftx-libs.sh <platform>
-##  where <platform> is one of { CPU [default] | CUDA | HIP }
+##  where <platform> is one of { CPU [default] | CUDA | HIP | SYCL }
 ```
 If no argument is provided, then the platform defaults
 to CPU.  This script runs the **build-lib-code.sh** script in the **src/library**
 directory and will marshal the resources and options needed for the set of libraries.
 This step can take quite some time depending on the number of transforms and set of sizes
-to create.  The code is targeted to run on a CPU or a GPU (either CUDA or HIP) depending
+to create.  The code is targeted to run on a CPU or a GPU (either CUDA or HIP or SYCL) depending
 on the platform specified with the script.  By default, only a small number of fixed sizes
 will be created for the fixed-size libraries.
 
@@ -193,9 +193,11 @@ either the directory path or the environment variable on the **CMake** command l
 export FFTX_HOME=~/work/fftx
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CPU ..      # build for CPU, *or*
-cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME  -D_codegen=CUDA ..     # build for CUDA, *or*
-cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -DCMAKE_CXX_COMPILER=hipcc -D_codegen=HIP ..      # build for HIP
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CPU ..      # build for CPU, *or*
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CUDA ..     # build for CUDA, *or*
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -DCMAKE_CXX_COMPILER=hipcc -D_codegen=HIP ..      # build for HIP
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -DCMAKE_CXX_COMPILER=icpx -D_codegen=SYCL ..      # build for SYCL
+
 make install
 ```
 
@@ -213,26 +215,27 @@ directories will be created/populated:
 
 ### Building on Windows
 
-**FFTX** can be built on Windows, however, you need to be able to run a [bash]
+**FFTX** can be built on Windows; however, you need to be able to run a [bash]
 shell script as mentioned above to build the library source code.  To build
 **FFTX**, open a shell and do the following:
 ```
 cd fftx
 ./config-fftx-libs.sh <platform> where <platform> is one of { CPU [default] | CUDA | HIP }
+export FFTX_HOME=~/work/fftx
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=~/work/fftx -D_codegen=CUDA ..
+cmake -DCMAKE_INSTALL_PREFIX=$FFTX_HOME -D_codegen=CUDA ..
 cmake --build . --target install --config Release
 ```
-This shows an example building for CUDA on Windows, you can also build for CPU
-or AMD HIP as shown above (under Building for Linux).
+This shows an example building for CUDA on Windows. You can also build for CPU
+or AMD HIP or Intel SYCL as shown above (under Building for Linux).
 
 ## Running FFTX Example Programs
 
 After building **FFTX**, to run the programs that are in the **examples** subtree, simply do:
 ```
 cd $FFTX_HOME/bin
-./testcompare_device
+./testrconv
 ./testverify
 ```
 etc.  Since we set **RPATH** to point to where the libraries are installed, you
@@ -301,8 +304,8 @@ buffers are already allocated/initialized as needed; error checking is omitted
 for clarity and brevity:
 
 ```
-#include "fftx3.hpp"
-#include "transformlib.hpp"
+#include "fftx.hpp"
+#include "fftxtransformlib.hpp"
 
     std::vector<int> sizes{ mm, nn, kk };         // 'cube' dimensions
     std::vector<void *> args{ dY, dX, dsym };     // pointers to the Output, Input, and symbol arrays

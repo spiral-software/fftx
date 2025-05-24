@@ -1,5 +1,9 @@
-##  Copyright (c) 2018-2023, Carnegie Mellon University
-##  See LICENSE for details
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information
+##
 
 ##  1D batch of 1D DFTs: R2C & C2R
 

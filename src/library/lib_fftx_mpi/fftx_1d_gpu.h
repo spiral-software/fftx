@@ -1,12 +1,19 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <complex>
-DEVICE_ERROR_T embed(
+FFTX_DEVICE_ERROR_T embed(
     std::complex<double> *dst,
     std::complex<double> *src,
     int a,
     int b
 );
 
-DEVICE_ERROR_T embed(
+FFTX_DEVICE_ERROR_T embed(
     std::complex<double> *dst,
     std::complex<double> *src,
     int faster,
@@ -14,7 +21,7 @@ DEVICE_ERROR_T embed(
     int slower
 );
 
-DEVICE_ERROR_T embed(
+FFTX_DEVICE_ERROR_T embed(
     std::complex<double> *dst,
     std::complex<double> *src,
     size_t faster,

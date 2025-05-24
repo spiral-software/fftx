@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
@@ -7,33 +14,27 @@
 #include "fftx_rconv_cpu_public.h"
 #endif
 
-// #include "rconv.fftx.precompile.hpp"
+// #include "fftxrconv.precompile.hpp"
 
-#include "fftx3utilities.h"
-
-#include "device_macros.h"
-#include "RealConvolution.hpp"
+#include "fftxRealConvolution.hpp"
 
 template<int DIM>
-void rconvDimension(std::vector<int> sizes,
-                    fftx::box_t<DIM> a_domain,
-                    fftx::box_t<DIM> a_fdomain,
-                    int a_rounds,
-                    int a_verbosity)
+int rconvDimension(std::vector<int> sizes,
+                   fftx::box_t<DIM> a_domain,
+                   fftx::box_t<DIM> a_fdomain,
+                   int a_rounds,
+                   int a_verbosity)
 {
-  std::cout << "***** test " << DIM << "D real convolution on "
-            << a_domain << std::endl;
-
-  // RealConvolution<DIM> fun(a_transform, a_domain, a_fdomain);
-  RCONVProblem rp("rconv");
-  RealConvolution<DIM> fun(rp, sizes, a_domain, a_fdomain);
-  TestRealConvolution<DIM>(fun, a_rounds, a_verbosity);
+  fftx::OutStream() << "***** test " << DIM << "D real convolution on "
+                    << a_domain << std::endl;
+  RealConvolution<DIM> fun(sizes, a_domain, a_fdomain);
+  return fun.testAll(a_rounds, a_verbosity);
 }
 
 
-void rconvSize(fftx::point_t<3> a_size,
-               int a_rounds,
-               int a_verbosity)
+int rconvSize(fftx::point_t<3> a_size,
+              int a_rounds,
+              int a_verbosity)
 {
   int offx = 3, offy = 5, offz = 11;
   fftx::point_t<3> offsets({{offx, offy, offz}});
@@ -46,7 +47,7 @@ void rconvSize(fftx::point_t<3> a_size,
   // fftx::rconv<3> tfm(a_size); // does initialization
   // rconvDimension(tfm, a_rounds, a_verbosity);
   std::vector<int> sizes{a_size[0], a_size[1], a_size[2]};
-  rconvDimension(sizes, fulldomain, halfdomain, a_rounds, a_verbosity);
+  return rconvDimension(sizes, fulldomain, halfdomain, a_rounds, a_verbosity);
 }
   
 int main(int argc, char* argv[])
@@ -55,26 +56,41 @@ int main(int argc, char* argv[])
   char *prog = argv[0];
   int verbosity = 0;
   int rounds = 2;
+  int baz = 0;
   while ( argc > 1 && argv[1][0] == '-' ) {
       switch ( argv[1][1] ) {
       case 'i':
-          argv++, argc--;
-          rounds = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          rounds = atoi ( & argv[1][baz] );
           break;
       case 'v':
-          argv++, argc--;
-          verbosity = atoi ( argv[1] );
+          if(strlen(argv[1]) > 2) {
+            baz = 2;
+          } else {
+            baz = 0;
+            argv++, argc--;
+          }
+          verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          fftx::OutStream() << "Usage: " << argv[0]
+                            << ": [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]"
+                            << std::endl;
           exit (0);
       default:
-          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+          fftx::OutStream() << prog << ": unknown argument: "
+                            << argv[1] << " ... ignored" << std::endl;
       }
       argv++, argc--;
   }
 
-  printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
+  fftx::OutStream() << "Running with verbosity " << verbosity
+                    << ", random " << rounds << " rounds" << std::endl;
 
   /*
     Set up random number generator.
@@ -97,11 +113,13 @@ int main(int argc, char* argv[])
 
   // rconvSize(fftx::point_t<3>({{  48,  48,  48 }}), rounds, verbosity);
 
+  int status = 0;
+
   fftx::point_t<3> *ents = fftx_rconv_QuerySizes ();
 
   for ( int ind = 0; ents[ind][0] != 0; ind++ )
     {
-      rconvSize(ents[ind], rounds, verbosity);
+      status += rconvSize(ents[ind], rounds, verbosity);
     }
   
   // rconvSize(fftx::point_t<3>({{  48,  48,  48 }}), rounds, verbosity);
@@ -111,6 +129,9 @@ int main(int argc, char* argv[])
   // rconvDimension(tfm, rconv_dims::domain3, rconv_dims::fdomain3,
   //                rounds, verbosity);
 
-  printf("%s: All done, exiting\n", prog);
-  return 0;
+  fftx::OutStream() << prog << ": All done, exiting with status "
+                    << status << std::endl;
+  std::flush(fftx::OutStream());
+
+  return status;
 }

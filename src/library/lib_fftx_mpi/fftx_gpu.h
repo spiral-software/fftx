@@ -1,13 +1,20 @@
-#include <stdio.h>
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
+// #include <stdio.h>
 #include <stdlib.h>
 //  #include <sys/time.h>
 #include <malloc.h>
 
 #include <complex>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 
-DEVICE_ERROR_T pack(
+FFTX_DEVICE_ERROR_T pack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a_dim,
@@ -22,7 +29,7 @@ DEVICE_ERROR_T pack(
 
 // slowest to fastest
 // [a, b, c] -> [b, a, 2c]
-DEVICE_ERROR_T pack_embedded(
+FFTX_DEVICE_ERROR_T pack_embedded(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a,
@@ -31,7 +38,7 @@ DEVICE_ERROR_T pack_embedded(
 );
 
 
-DEVICE_ERROR_T unpack(
+FFTX_DEVICE_ERROR_T unpack(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a_dim,
@@ -46,7 +53,7 @@ DEVICE_ERROR_T unpack(
 
 // slowest to fastest
 // [a, b, c] -> [b, a, 2c]
-DEVICE_ERROR_T unpack_embedded(
+FFTX_DEVICE_ERROR_T unpack_embedded(
 	std::complex<double> *dst,
 	std::complex<double> *src,
 	size_t a,

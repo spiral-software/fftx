@@ -1,8 +1,11 @@
 ##  codebuilder.py
 ##  Define a class to hold code generated/added while building a library
 
-##  Copyright (c) 2018-2023, Carnegie Mellon University
-##  See LICENSE for details
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
 
 class CodeBuilder:
     """A class to hold code items generated while building source code for an FFTX libray

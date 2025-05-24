@@ -29,7 +29,7 @@ where:
 
     ``complex`` - 1 for a complex-to-complex transform, or 0 if the input or output is real (e.g. R2C or C2R). 
 
-    ``check`` - 1 to check the distributed computation with an equivalent 3D transform using vendor libraries only on rank 0. This should be 0 for problem sizes that would be too large to fit in device memory.
+    ``check`` - 2 to check the distributed computation on all elements of an equivalent 3D transform using vendor libraries only on rank 0; 1 to check only first element; 0 for no check. This should be 0 for problem sizes that would be too large to fit in device memory. No check is done if any dimension has length greater than 64 or if there are more than 4 MPI ranks.
 
 For a forward transform, the input data is laid out as ``[(Z0), Z1, Y, X]``, where ``Z0`` and ``Z1`` are derived from tiling the ``Z`` dimension and distributing a block to each of the ``p`` MPI ranks.
 Therefore, ``Z0`` is distributed over the ranks, ``Z1`` is the slowest local dimension and ``X`` is the fastest dimension.
@@ -83,6 +83,11 @@ The following examples configurations have been verified on Frontier on 4 ranks 
 
 * **Limitations**
 
-Limited testing on Frontier for batch > 1 has been
-verified to be correct. Due to cuFFT's unique alignment requirements,
-batch > 1 configurations is currently not supported for NVIDIA devices.
+For ``batch > 1``, only the complex-to-complex transforms are implemented
+in FFTX; the R2C and C2R transforms are implemented only for ``batch = 1``.
+There has also been limited testing on Frontier to verify that
+examples with ``batch > 1`` are correct.
+
+When running a 1D-distributed 3D transform of dimensions ``M`` x ``N`` x ``K`` on ``p`` MPI ranks,
+- if a forward transform, ``K`` must be divisible by ``p``;
+- if an inverse transform, ``M`` must be divisible by ``p``, and additionally, if unembedded, ``K`` must also be divisible by ``p``.

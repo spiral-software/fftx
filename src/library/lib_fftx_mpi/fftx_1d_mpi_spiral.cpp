@@ -1,45 +1,54 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <complex>
 #include <cstdio>
 #include <vector>
 #include <mpi.h>
 #include <iostream>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 #include "fftx_1d_gpu.h"
 #include "fftx_util.h"
 #include "fftx_mpi.hpp"
 
-#include "interface.hpp"
-#include "batch1ddftObj.hpp"
-#include "ibatch1ddftObj.hpp"
-#include "batch2ddftObj.hpp"
-#include "ibatch2ddftObj.hpp"
-#include "batch1dprdftObj.hpp"
-#include "ibatch1dprdftObj.hpp"
-// #include "batch2dprdftObj.hpp"
-// #include "ibatch2dprdftObj.hpp"
+#include "fftxinterface.hpp"
+#include "fftxbatch1ddftObj.hpp"
+#include "fftxibatch1ddftObj.hpp"
+#include "fftxbatch2ddftObj.hpp"
+#include "fftxibatch2ddftObj.hpp"
+#include "fftxbatch1dprdftObj.hpp"
+#include "fftxibatch1dprdftObj.hpp"
+// #include "fftxbatch2dprdftObj.hpp"
+// #include "fftxibatch2dprdftObj.hpp"
 #if defined FFTX_CUDA
-#include "cudabackend.hpp"
+#include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #else
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
 
-using namespace std;
+// using namespace std;
 
 BATCH1DDFTProblem bdstg1_1d;
 BATCH1DDFTProblem bdstg2_1d;
 BATCH1DDFTProblem bdstg3_1d;
 IBATCH1DDFTProblem ibdstg1_1d;
 IBATCH1DDFTProblem ibdstg2_1d;
+IBATCH1DDFTProblem ibdstg3_1d; // NEW
 
 BATCH2DDFTProblem b2dstg1_1d;
 BATCH2DDFTProblem b2dstg2_1d;
 BATCH2DDFTProblem b2dstg3_1d;
 IBATCH2DDFTProblem ib2dstg1_1d;
 IBATCH2DDFTProblem ib2dstg2_1d;
+IBATCH2DDFTProblem ib2dstg3_1d; // NEW
 
 BATCH1DPRDFTProblem bprdstg1_1d;
 IBATCH1DPRDFTProblem ibprdstg1_1d;
@@ -51,10 +60,11 @@ inline int ceil_div(int a, int b) {
 }
 
 fftx_plan fftx_plan_distributed_1d_spiral(
-  int p, int M, int N, int K,
+  MPI_Comm comm, int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex
 ) {
   fftx_plan plan   = (fftx_plan) malloc(sizeof(fftx_plan_t));
+  plan->all_comm = comm;
   plan->M = M;
   plan->N = N;
   plan->K = K;
@@ -99,8 +109,8 @@ fftx_plan fftx_plan_distributed_1d_spiral(
   int invK0 = ceil_div(K*e, p);
 
   size_t buff_size = ((size_t) M0) * ((size_t) M1) * ((size_t) N*e) * 1 * ((size_t) invK0) * ((size_t) batch); // can either omit M1 or K1. arbit omit K1.
-  DEVICE_MALLOC(&(plan->Q3), sizeof(complex<double>) * buff_size * batch);
-  DEVICE_MALLOC(&(plan->Q4), sizeof(complex<double>) * buff_size * batch);
+  FFTX_DEVICE_MALLOC(&(plan->Q3), sizeof(std::complex<double>) * buff_size * batch);
+  FFTX_DEVICE_MALLOC(&(plan->Q4), sizeof(std::complex<double>) * buff_size * batch);
 
   return plan;
 }
@@ -111,7 +121,7 @@ void fftx_execute_1d_spiral(
   int direction )
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_rank(plan->all_comm, &rank);
   int inM = plan->M * (plan->is_embed ? 2 : 1);
   int inN = plan->N * (plan->is_embed ? 2 : 1);
   int inK = plan->K * (plan->is_embed ? 2 : 1);
@@ -136,6 +146,7 @@ void fftx_execute_1d_spiral(
       std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
       std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
       std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg3 = {inK, batch_sizeZ, 0, 0}; // NEW
       std::vector<int> size_istg2 = {inN, batch_sizeY_inv, 1, 0};  
       std::vector<int> size_istg1 = {inM, batch_sizeX_inv, 1, 0}; 
       bdstg1_1d.setSizes(size_stg1);
@@ -143,15 +154,18 @@ void fftx_execute_1d_spiral(
       bdstg3_1d.setSizes(size_stg3);
       ibdstg1_1d.setSizes(size_istg1);
       ibdstg2_1d.setSizes(size_istg2);
+      ibdstg3_1d.setSizes(size_istg3); // NEW
       bdstg1_1d.setName("b1dft");
       bdstg2_1d.setName("b1dft");
       bdstg3_1d.setName("b1dft");
       ibdstg1_1d.setName("ib1dft");
       ibdstg2_1d.setName("ib1dft");
+      ibdstg3_1d.setName("ib1dft"); // NEW
     } else {
       std::vector<int> size_stg1 = {inM, plan->b, batch_sizeX, 0, 1};  
       std::vector<int> size_stg2 = {inN, plan->b, batch_sizeY, 0, 1};  
       std::vector<int> size_stg3 = {inK, plan->b, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg3 = {inK, plan->b, batch_sizeZ, 0, 0}; // NEW
       std::vector<int> size_istg2 = {inN, plan->b, batch_sizeY_inv, 1, 0};  
       std::vector<int> size_istg1 = {inM, plan->b, batch_sizeX_inv, 1, 0};  
       b2dstg1_1d.setSizes(size_stg1);
@@ -159,27 +173,32 @@ void fftx_execute_1d_spiral(
       b2dstg3_1d.setSizes(size_stg3);
       ib2dstg1_1d.setSizes(size_istg1);
       ib2dstg2_1d.setSizes(size_istg2);
+      ib2dstg3_1d.setSizes(size_istg3); // NEW
       b2dstg1_1d.setName("b2dft");
       b2dstg2_1d.setName("b2dft");
       b2dstg3_1d.setName("b2dft");
       ib2dstg1_1d.setName("ib2dft");
       ib2dstg2_1d.setName("ib2dft");
+      ib2dstg3_1d.setName("ib2dft"); // NEW
     }
   } else {
     if(plan->b == 1) {
       std::vector<int> size_stg1 = {inM, batch_sizeX, 0, 1};  
       std::vector<int> size_stg2 = {inN, batch_sizeY, 0, 1};  
       std::vector<int> size_stg3 = {inK, batch_sizeZ, 0, 0};  
+      std::vector<int> size_istg3 = {inK, batch_sizeZ, 0, 0}; // NEW
       std::vector<int> size_istg2 = {inN, batch_sizeY_inv, 1, 0};  
       std::vector<int> size_istg1 = {inM, batch_sizeX_inv, 1, 0}; 
       bprdstg1_1d.setSizes(size_stg1);
       bdstg2_1d.setSizes(size_stg2);
       bdstg3_1d.setSizes(size_stg3);
+      ibdstg3_1d.setSizes(size_istg3); // NEW
       ibprdstg1_1d.setSizes(size_istg1);
       ibdstg2_1d.setSizes(size_istg2);
       bprdstg1_1d.setName("b1prdft");
       bdstg2_1d.setName("b1dft");
       bdstg3_1d.setName("b1dft");
+      ibdstg3_1d.setName("ib1dft"); // NEW
       ibprdstg1_1d.setName("ib1prdft");
       ibdstg2_1d.setName("ib1dft");
     }
@@ -202,7 +221,7 @@ void fftx_execute_1d_spiral(
     // }
   }
 
-  if (direction == DEVICE_FFT_FORWARD) {
+  if (direction == FFTX_DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
       if(plan->b  == 1){
@@ -339,9 +358,9 @@ void fftx_execute_1d_spiral(
       //   b2dstg3.transform();
       // }
     }
-  } else if (direction == DEVICE_FFT_INVERSE) { // backward
-    DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
-    DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
+  } else if (direction == FFTX_DEVICE_FFT_INVERSE) { // backward
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
     // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
     if(plan->b == 1) {
       #if defined FFTX_CUDA
@@ -349,20 +368,20 @@ void fftx_execute_1d_spiral(
       #else 
       std::vector<void*> args{stg3i_output, stg3i_input};
       #endif
-      bdstg3_1d.setArgs(args);
-      bdstg3_1d.transform();
+      ibdstg3_1d.setArgs(args); // NEW i
+      ibdstg3_1d.transform(); // NEW i
     } else {
       #if defined FFTX_CUDA
       std::vector<void*> args{&stg3i_output, &stg3i_input};
       #else 
       std::vector<void*> args{stg3i_output, stg3i_input};
       #endif
-      b2dstg3_1d.setArgs(args);
-      b2dstg3_1d.transform();
+      ib2dstg3_1d.setArgs(args); // NEW i
+      ib2dstg3_1d.transform(); // NEW i
     }
     // no permutation necessary, use previous output as input.
-    DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
-    DEVICE_FFT_DOUBLECOMPLEX *stg2i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q4;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg2i_output = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q4;
     // TODO: add code here if we expect embedded.
 
     //stage 2i
@@ -385,7 +404,7 @@ void fftx_execute_1d_spiral(
       ib2dstg2_1d.transform();
     }
 
-    DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
 
     // permute such that
     // [X'/px, pz, Z/pz, Y] <= [X'/px         Z, Y] (reshape)
@@ -394,7 +413,7 @@ void fftx_execute_1d_spiral(
     // [       X', Z/pz, Y] <= [px, X'/px, Z/pz, Y] (reshape)
     fftx_mpi_rcperm_1d(plan, (double *) stg1i_input, (double *) stg2i_output, FFTX_MPI_EMBED_4, plan->is_embed);
 
-    DEVICE_FFT_DOUBLECOMPLEX *stg1i_output = (DEVICE_FFT_DOUBLECOMPLEX *) out_buffer;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg1i_output = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) out_buffer;
 
     //stage 1i
     if(plan->is_complex) {

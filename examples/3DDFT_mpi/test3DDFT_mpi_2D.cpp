@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <mpi.h>
 #include <complex>
 #include <iostream>
@@ -5,36 +12,61 @@
 
 #include "fftx_mpi.hpp"
 
-using namespace std;
+// using namespace std;
 
-int main(int argc, char* argv[]) {
+using cx = std::complex<double>;
 
+int main(int argc, char* argv[])
+{
+  char *prog = argv[0];
+  int status = 0;
+
+  int ntrials = 3;
+  
   MPI_Init(&argc, &argv);
 
   int commRank;
   int p;
 
+  MPI_Comm_size(MPI_COMM_WORLD, &p);
+  MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
+
   // ==== for timing, set by argument ====================
-  if (argc != 9) {
-    printf("usage: %s <M> <N> <K> <batch> <grid dim> <embedded> <forward> <complex>\n", argv[0]);
+  if (argc != 10) {
+    if (commRank == 0) {
+      // printf("usage: %s <M> <N> <K> <batch> <grid rows> <grid columns> <embedded> <forward> <complex>\n", argv[0]);
+      fftx::OutStream() << "usage: " << argv[0]
+                        << " <M> <N> <K> <batch> <grid rows> <grid columns> <embedded> <forward> <complex>"
+                        << std::endl;
+    }
+    MPI_Finalize();
     exit(-1);
   }
   int M = atoi(argv[1]);
   int N = atoi(argv[2]);
   int K = atoi(argv[3]);
   int batch = atoi(argv[4]);
-  int grid = atoi(argv[5]);
-  bool is_embedded = 0 < atoi(argv[6]);
-  bool is_forward = 0 < atoi(argv[7]);
-  bool is_complex = 0 < atoi(argv[8]);
+  int r = atoi(argv[5]);
+  int c = atoi(argv[6]);
+  bool is_embedded = 0 < atoi(argv[7]);
+  bool is_forward = 0 < atoi(argv[8]);
+  bool is_complex = 0 < atoi(argv[9]);
   // -----------------------------------------------------
 
-  MPI_Comm_size(MPI_COMM_WORLD, &p);
-  MPI_Comm_rank(MPI_COMM_WORLD, &commRank);
-
+  if (c * r != p) {
+    if (commRank == 0) {
+      // printf("error: product of splits %d and %d is %d, but there are %d MPI ranks\n", c, r, c*r, p);
+      fftx::OutStream() << "error: product of splits "
+                        << c << " and " << r << " is " << (c*r)
+                        << ", but there are " << p << " MPI ranks"
+                        << std::endl;
+    }
+    MPI_Finalize();
+    exit(-1);
+  }
   //define grid
-  int r = grid;
-  int c = grid;
+  // int r = grid;
+  // int c = grid;
 
   // 3d fft sizes
   uint64_t Mi, Ni, Ki;
@@ -49,32 +81,31 @@ int main(int argc, char* argv[]) {
 
   //define device buffers
   double *in_buffer = NULL;
-  complex<double> *out_buffer = NULL;
+  cx *out_buffer = NULL;
 
   //define host buffers
   double *fftx_in;
-  complex<double> *fftx_out;
-
+  cx *fftx_out;
 
   //embedded requires dim Z to be padded to full size (Ko instead of Ki)
   if (is_complex) {
-    fftx_in = new double[Ko * Mi * Ni/p * batch * 2];
-    fftx_out = new complex<double>[Mo * No * Ko/p * batch];
+    fftx_in = new double[(Ko * Mi * Ni)/p * batch * 2];
+    fftx_out = new cx[(Mo * No * Ko)/p * batch];
   } else {
-    fftx_in = new double[Ko * Mi * Ni/p * batch];
-    fftx_out = new complex<double>[Mo * No * Ko/p * batch];  //does this need to be padded further?
+    fftx_in = new double[(Ko * Mi * Ni)/p * batch];
+    fftx_out = new cx[(Mo * No * Ko)/p * batch];  //does this need to be padded further?
   }
 
   //allocate buffers
-  DEVICE_ERROR_T err = DEVICE_MALLOC(&in_buffer, Ko*Mi*Ni/p * (is_complex ? sizeof(complex<double>): sizeof(double))  * batch);
-  if (err != DEVICE_SUCCESS) {
-    cout << "DEVICE_MALLOC failed\n" << endl;
+  FFTX_DEVICE_ERROR_T err = FFTX_DEVICE_MALLOC(&in_buffer, (Ko*Mi*Ni)/p * (is_complex ? sizeof(cx): sizeof(double))  * batch);
+  if (err != FFTX_DEVICE_SUCCESS) {
+    fftx::OutStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
     exit(-1);
   }
 
-  err = DEVICE_MALLOC(&out_buffer, Mo*No*Ko/p * sizeof(complex<double>) * batch);
-  if (err != DEVICE_SUCCESS) {
-    cout << "DEVICE_MALLOC failed\n" << endl;
+  err = FFTX_DEVICE_MALLOC(&out_buffer, (Mo*No*Ko)/p * sizeof(cx) * batch);
+  if (err != FFTX_DEVICE_SUCCESS) {
+    fftx::OutStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
     exit(-1);
   }
 
@@ -87,9 +118,9 @@ int main(int argc, char* argv[]) {
         for (uint64_t b = 0; b < batch; b++) {
           double *in = fftx_in +
             n * (Mi/c) * Ko * batch * cmplx +
-            m          * Ko * batch * cmplx +
-            k               * batch * cmplx +
-            b                       * cmplx +
+            m               * Ko * batch * cmplx +
+            k                    * batch * cmplx +
+            b                            * cmplx +
             0
           ;
           in[0] = (
@@ -127,43 +158,51 @@ int main(int argc, char* argv[]) {
   }
   //end init
 
-  err = DEVICE_MEM_COPY( in_buffer, fftx_in, Ko*Mi*Ni/p *  (is_complex ? sizeof(complex<double>): sizeof(double)) * batch, MEM_COPY_HOST_TO_DEVICE );
-  if (err != DEVICE_SUCCESS) {
-    cout << "DEVICE_MEM_COPY failed\n" << endl;
+  err = FFTX_DEVICE_MEM_COPY( in_buffer, fftx_in, (Ko*Mi*Ni)/p *  (is_complex ? sizeof(cx): sizeof(double)) * batch, FFTX_MEM_COPY_HOST_TO_DEVICE );
+  if (err != FFTX_DEVICE_SUCCESS) {
+    fftx::OutStream() << "FFTX_DEVICE_MEM_COPY failed\n" << std::endl;
     exit(-1);
   }
 
-  fftx_plan  plan = fftx_plan_distributed(r, c, M, N, K, batch, is_embedded, is_complex);
+  fftx_plan  plan = fftx_plan_distributed(MPI_COMM_WORLD, r, c, M, N, K, batch, is_embedded, is_complex);
 
-  DEVICE_SYNCHRONIZE();
+  FFTX_DEVICE_SYNCHRONIZE();
   MPI_Barrier(MPI_COMM_WORLD);
 
   if (commRank == 0) {
-    cout << "Problem size    : " << M << " x " << N << " x " << K << endl;
-    cout << "Batch size      : " << batch << endl;
-    cout << "Complex         : " << (is_complex ? "Yes" : "No") << endl;
-    cout << "Embedded        : " << (is_embedded ? "Yes": "No") << endl;
-    cout << "Direction       : " << (is_forward ? "Forward": "Inverse") << endl;
-    cout << "Grid size       : " << r << " x " << c << endl;
+    fftx::OutStream() << "Problem size    : " << M << " x " << N << " x " << K << std::endl;
+    fftx::OutStream() << "Batch size      : " << batch << std::endl;
+    fftx::OutStream() << "Grid rows       : " << r << std::endl;
+    fftx::OutStream() << "Grid columns    : " << c << std::endl;
+    fftx::OutStream() << "Embedded        : " << (is_embedded ? "Yes": "No") << std::endl;
+    fftx::OutStream() << "Direction       : " << (is_forward ? "Forward": "Inverse") << std::endl;
+    fftx::OutStream() << "Complex         : " << (is_complex ? "Yes" : "No") << std::endl;
   }
 
-  for (int t = 0; t < 3; t++) {
+  FFTX_DEVICE_EVENT_T custart, custop;
+  FFTX_DEVICE_EVENT_CREATE ( &custart );
+  FFTX_DEVICE_EVENT_CREATE ( &custop );
+  for (int t = 1; t <= ntrials; t++) {
 
-    double start_time = MPI_Wtime();
+    FFTX_DEVICE_EVENT_RECORD ( custart );
 
-    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer, (is_forward ? DEVICE_FFT_FORWARD: DEVICE_FFT_INVERSE));
+    fftx_execute(plan, (double*)out_buffer, (double*)in_buffer,
+                 (is_forward ? FFTX_DEVICE_FFT_FORWARD:
+                  FFTX_DEVICE_FFT_INVERSE));
 
-    double end_time = MPI_Wtime();
+    FFTX_DEVICE_EVENT_RECORD ( custop );
+    FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+    float millisec;
+    FFTX_DEVICE_EVENT_ELAPSED_TIME ( &millisec, custart, custop );
+    float max_time;
+    MPI_Reduce(&millisec, &max_time, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
 
-    // double min_time    = min_diff(start_time, end_time, MPI_COMM_WORLD);
-    double max_time    = max_diff(start_time, end_time, MPI_COMM_WORLD);
-
-    DEVICE_MEM_COPY(fftx_out, out_buffer, (Mo*No*Ko/p) * sizeof(complex<double>)*batch, MEM_COPY_DEVICE_TO_HOST);
-    DEVICE_SYNCHRONIZE();
+    FFTX_DEVICE_MEM_COPY(fftx_out, out_buffer, ((Mo*No*Ko)/p) * sizeof(cx)*batch, FFTX_MEM_COPY_DEVICE_TO_HOST);
+    FFTX_DEVICE_SYNCHRONIZE();
 
     if (commRank == 0) {
-      // cout<<endl<<"end_to_end," << max_time<<endl;
-      cout<<endl;
+      // fftx::OutStream()<<std::endl<<"end_to_end," << max_time<<std::endl;
+      fftx::OutStream()<<std::endl;
     }
   }
   MPI_Barrier(MPI_COMM_WORLD);
@@ -171,17 +210,17 @@ int main(int argc, char* argv[]) {
   // for (int rank = 0; rank < p; ++rank){
   for (int rank = 0; rank < 1; ++rank){
     if (rank == commRank){
-      cout<<commRank<<": ";
+      fftx::OutStream()<<commRank<<": ";
 
       /*
       for (int i = 0; i != Mo*No*Ko/p; ++i)
-	cout<<fftx_out[i].real()<<" ";
-      cout<<endl;
+	fftx::OutStream()<<fftx_out[i].real()<<" ";
+      fftx::OutStream()<<std::endl;
       */
       for (int b = 0; b < batch; b++) {
-	cout<<fftx_out[b].real()<<" ";
+	fftx::OutStream()<<fftx_out[b].real()<<" ";
       }
-      cout<<endl;
+      fftx::OutStream()<<std::endl;
 
     }
     MPI_Barrier(MPI_COMM_WORLD);
@@ -191,9 +230,17 @@ int main(int argc, char* argv[]) {
 
  MPI_Finalize();
 
- DEVICE_FREE(in_buffer);
- DEVICE_FREE(out_buffer);
+ FFTX_DEVICE_FREE(in_buffer);
+ FFTX_DEVICE_FREE(out_buffer);
  delete[] fftx_in;
  delete[] fftx_out;
- return 0;
+
+ if (commRank == 0)
+    {
+      fftx::OutStream() << prog << ": All done, exiting with status "
+                        << status << std::endl;
+      std::flush(fftx::OutStream());
+    }
+   
+ return status;
 }

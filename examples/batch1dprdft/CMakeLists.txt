@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
-## All rights reserved.
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
 ##
-## See LICENSE file for full information
+##  See LICENSE file for full information.
 ##
 
 include ( ../ExamplesCommon.cmake )
@@ -18,7 +18,7 @@ set ( _stem fftx )
 set ( _prefixes  )
 set ( BUILD_PROGS test${PROJECT_NAME} )
 
-##  One .cpp file is coded with device_macros and should build for CUDA & HIP
+##  One .cpp file is coded with fftxdevice_macros and should build for CUDA & HIP
 set ( _desired_suffix cpp )
 
 if ( NOT WIN32 )

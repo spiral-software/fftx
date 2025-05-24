@@ -1,8 +1,8 @@
 ##
-##  Copyright (c) 2018-2022, Carnegie Mellon University
+##  Copyright (c) 2018-2025, Carnegie Mellon University
 ##  All rights reserved.
 ##
-##  See LICENSE file for full information
+##  See LICENSE file for full information.
 ##
 
 if ( ${_codegen} STREQUAL "CUDA" )
@@ -62,13 +62,13 @@ message ( STATUS "Library names = ${_library_names}" )
 
 
 ##  List of header files to be copies to .../include on 'make install'
-set ( _incl_files imddft.fftx.precompile.hpp
-	imdprdft.fftx.precompile.hpp
-	mddft.fftx.precompile.hpp
-	mdprdft.fftx.precompile.hpp
-	rconv.fftx.precompile.hpp
-	transformer.fftx.precompile.hpp
-	device_macros.h
+set ( _incl_files fftximddft.precompile.hpp
+	fftximdprdft.precompile.hpp
+	fftxmddft.precompile.hpp
+	fftxmdprdft.precompile.hpp
+	fftxrconv.precompile.hpp
+	fftxtransformer.precompile.hpp
+	fftxdevice_macros.h
     )
 
 install ( FILES ${_incl_files}

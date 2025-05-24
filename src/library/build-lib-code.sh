@@ -1,5 +1,11 @@
 #! /bin/bash
 
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information
+##
 ##  Script to generate the source code for the libraries
 
 ##  Expects either 0 or 1 argument:  no arg ==> build CPU code only

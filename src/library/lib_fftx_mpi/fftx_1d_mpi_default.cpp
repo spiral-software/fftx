@@ -1,10 +1,17 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <complex>
 #include <cstdio>
 #include <vector>
 #include <mpi.h>
 #include <iostream>
 
-#include "device_macros.h"
+#include "fftxdevice_macros.h"
 #include "fftx_gpu.h"
 #include "fftx_1d_gpu.h"
 #include "fftx_util.h"
@@ -13,17 +20,18 @@
 #include "fftx_1d_mpi.hpp"
 #include "fftx_1d_mpi_default.hpp"
 
-using namespace std;
+// using namespace std;
 
 inline int ceil_div(int a, int b) {
   return (a + b - 1) / b;
 }
 
 fftx_plan fftx_plan_distributed_1d_default(
-  int p, int M, int N, int K,
+  MPI_Comm comm, int p, int M, int N, int K,
   int batch, bool is_embedded, bool is_complex
 ) {
   fftx_plan plan   = (fftx_plan) malloc(sizeof(fftx_plan_t));
+  plan->all_comm = comm;
   plan->M = M;
   plan->N = N;
   plan->K = K;
@@ -68,49 +76,49 @@ fftx_plan fftx_plan_distributed_1d_default(
   int invK0 = ceil_div(K*e, p);
 
   size_t buff_size = ((size_t) M0) * ((size_t) M1) * ((size_t) N*e) * 1 * ((size_t) invK0) * ((size_t) batch); // can either omit M1 or K1. arbit omit K1.
-  DEVICE_MALLOC(&(plan->Q3), sizeof(complex<double>) * buff_size * batch);
-  DEVICE_MALLOC(&(plan->Q4), sizeof(complex<double>) * buff_size * batch);
+  FFTX_DEVICE_MALLOC(&(plan->Q3), sizeof(std::complex<double>) * buff_size * batch);
+  FFTX_DEVICE_MALLOC(&(plan->Q4), sizeof(std::complex<double>) * buff_size * batch);
 
   if (plan->is_complex) {
     int batch_sizeX = N * K0;  // stage 1, dist Z
-    DEVICE_FFT_PLAN_MANY(
+    FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg1),  1, &inM,
         &inM, plan->b, inM*plan->b,
         &inM, batch_sizeX*plan->b, plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeX
+        FFTX_DEVICE_FFT_Z2Z, batch_sizeX
     );
     int batch_sizeY = K * M0;   // stage 2, dist X
-    DEVICE_FFT_PLAN_MANY(
+    FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg2),  1, &inN,
         &inN, plan->b, inN*plan->b,
         &inN, batch_sizeY*plan->b, plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeY
+        FFTX_DEVICE_FFT_Z2Z, batch_sizeY
     );
     int batch_sizeZ = M0 * N*e; // stage 3, dist X
         // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
-    DEVICE_FFT_PLAN_MANY(
+    FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg3), 1, &inK,
         &inK, plan->b, inK*plan->b,
         &inK, plan->b, inK*plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeZ
+        FFTX_DEVICE_FFT_Z2Z, batch_sizeZ
     );
     {
       int batch_sizeY = M0 * K*e;   // stage 2i, dist X
       // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
-      DEVICE_FFT_PLAN_MANY(
+      FFTX_DEVICE_FFT_PLAN_MANY(
           &(plan->stg2i),  1, &inN,
           &inN, batch_sizeY*plan->b, plan->b,
           &inN, plan->b, inN*plan->b,
-          DEVICE_FFT_Z2Z, batch_sizeY
+          FFTX_DEVICE_FFT_Z2Z, batch_sizeY
       );
 
       int K0 = ceil_div(K*e, p);
       int batch_sizeX = N*e * K0;  // stage 1i, dist Z
-      DEVICE_FFT_PLAN_MANY(
+      FFTX_DEVICE_FFT_PLAN_MANY(
           &(plan->stg1i),  1, &inM,
           &inM, batch_sizeX*plan->b, plan->b,
           &inM, plan->b, inM*plan->b,
-          DEVICE_FFT_Z2Z, batch_sizeX
+          FFTX_DEVICE_FFT_Z2Z, batch_sizeX
       );
     }
 
@@ -122,42 +130,42 @@ fftx_plan fftx_plan_distributed_1d_default(
     // X' is complex size M/2 + 1
 
     int batch_sizeX = N * K0;  // stage 1, dist Z
-    DEVICE_FFT_PLAN_MANY(
+    FFTX_DEVICE_FFT_PLAN_MANY(
       &(plan->stg1), 1, &xr,
       &xr, plan->b, xr*plan->b,
       &xc, batch_sizeX*plan->b, plan->b,
-      DEVICE_FFT_D2Z, batch_sizeX
+      FFTX_DEVICE_FFT_D2Z, batch_sizeX
     );
     // [Y, X'/px, Z] <= [X'/px, Z, Y] (read seq, write strided)
     // if embedded, put output in
     // [Y, X'/px, 2Z]
     {
       int batch_sizeY = K * M0;   // stage 2, dist X
-      DEVICE_FFT_PLAN_MANY(
+      FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg2),  1, &inN,
         &inN, plan->b, inN*plan->b,
         &inN, batch_sizeY*plan->b, plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeY
+        FFTX_DEVICE_FFT_Z2Z, batch_sizeY
       );
 
       int batch_sizeZ = M0 * N*e; // stage 3, dist X
       // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
-      DEVICE_FFT_PLAN_MANY(
+      FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg3), 1, &inK,
         &inK, plan->b, inK*plan->b,
         &inK, plan->b, inK*plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeZ
+        FFTX_DEVICE_FFT_Z2Z, batch_sizeZ
       );
     }
 
     // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
     {
       int batch_sizeY = K*e * M0;   // stage 2i, dist X
-      DEVICE_FFT_PLAN_MANY(
+      FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg2i), 1, &inN,
         &inN, batch_sizeY*plan->b, plan->b,
         &inN, plan->b, inN*plan->b,
-        DEVICE_FFT_Z2Z, batch_sizeY
+        FFTX_DEVICE_FFT_Z2Z, batch_sizeY
       );
 
       // [Z/pz, Y, X] <= [px * ceil(X'/px), Z/pz, Y] (read strided, write seq)
@@ -165,11 +173,11 @@ fftx_plan fftx_plan_distributed_1d_default(
       // [Z/pz, Y, X] <= [px * ceil(X'/px), Z/pz, Y]
       int K0 = ceil_div(K*e, p);
       int batch_sizeX = N*e * K0;  // stage 1i, dist Z
-      DEVICE_FFT_PLAN_MANY(
+      FFTX_DEVICE_FFT_PLAN_MANY(
         &(plan->stg1i), 1, &xr,
         &xc, batch_sizeX*plan->b, plan->b,
         &xr, plan->b, xr*plan->b,
-        DEVICE_FFT_Z2D, batch_sizeX
+        FFTX_DEVICE_FFT_Z2D, batch_sizeX
       );
     }
   }
@@ -183,16 +191,16 @@ void fftx_execute_1d_default(
   int direction
 ) {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_rank(plan->all_comm, &rank);
 
-  if (direction == DEVICE_FFT_FORWARD) {
+  if (direction == FFTX_DEVICE_FFT_FORWARD) {
     if (plan->is_complex) {
       // [X', ceil(Z/p), Y, b] <= [ceil(Z/p), Y, X, b]
       for (size_t b = 0; b < plan->b; b++) {
-        DEVICE_FFT_EXECZ2Z(
+        FFTX_DEVICE_FFT_EXECZ2Z(
           plan->stg1,
-          ((DEVICE_FFT_DOUBLECOMPLEX *) in_buffer) + b,
-          ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX *) in_buffer) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + b,
           direction
         );
       }
@@ -202,10 +210,10 @@ void fftx_execute_1d_default(
 
       for (size_t b = 0; b < plan->b; ++b) {
         // [Y, ceil(X'/px), pz, ceil(Z/pz), b] <= [ceil(X'/px), pz, ceil(Z/pz), Y, b]
-        DEVICE_FFT_EXECZ2Z(
+        FFTX_DEVICE_FFT_EXECZ2Z(
           plan->stg2,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + b,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + b,
           direction
         );
       }
@@ -221,10 +229,10 @@ void fftx_execute_1d_default(
       }
       // [Y, X'/px, Z] (no permutation on last stage)
       for (int b = 0; b < plan->b; ++b) {
-        DEVICE_FFT_EXECZ2Z(
+        FFTX_DEVICE_FFT_EXECZ2Z(
           plan->stg3,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + b,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + b,
           direction
         );
       }
@@ -232,10 +240,10 @@ void fftx_execute_1d_default(
       //forward real
       // [X', Z/p, Y, b] <= [Z/p, Y, X, b]
       for (size_t b = 0; b < plan->b; b++) {
-        DEVICE_FFT_EXECD2Z(
+        FFTX_DEVICE_FFT_EXECD2Z(
           plan->stg1,
-          ((DEVICE_FFT_DOUBLEREAL    *) in_buffer) + b,
-          ((DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + b
+          ((FFTX_DEVICE_FFT_DOUBLEREAL    *) in_buffer) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3)  + b
         );
       }
       // [X'/px, pz, b, Z/pz, Y] <= [px, X'/px, b, Z/pz, Y]
@@ -244,10 +252,10 @@ void fftx_execute_1d_default(
       // [Y, X'/px, Z] <= [X'/px, Z, Y]
       // [Y, X'/px, 2Z]
       for (size_t b = 0; b < plan->b; ++b) {
-        DEVICE_FFT_EXECZ2Z(
+        FFTX_DEVICE_FFT_EXECZ2Z(
           plan->stg2,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + b,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q4) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) plan->Q3) + b,
           direction
         );
       }
@@ -263,32 +271,32 @@ void fftx_execute_1d_default(
 
       // [Y, X'/px, Z] (no permutation on last stage)
       for (size_t b = 0; b < plan->b; ++b) {
-        DEVICE_FFT_EXECZ2Z(
+        FFTX_DEVICE_FFT_EXECZ2Z(
           plan->stg3,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + b,
-          ((DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) stg3_input) + b,
+          ((FFTX_DEVICE_FFT_DOUBLECOMPLEX  *) out_buffer) + b,
           direction
         );
       }
     }
-  } else if (direction == DEVICE_FFT_INVERSE) { // backward
-    DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
-    DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
+  } else if (direction == FFTX_DEVICE_FFT_INVERSE) { // backward
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg3i_input  = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) in_buffer;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg3i_output = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
     // [Y, X'/px, Z] <= [Y, X'/px, Z] (read seq, write seq)
     for (size_t b = 0; b < plan->b; b++) {
-      DEVICE_FFT_EXECZ2Z(plan->stg3, stg3i_input + b, stg3i_output + b, direction);
+      FFTX_DEVICE_FFT_EXECZ2Z(plan->stg3, stg3i_input + b, stg3i_output + b, direction);
     }
     // no permutation necessary, use previous output as input.
-    DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
-    DEVICE_FFT_DOUBLECOMPLEX *stg2i_output = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q4;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg2i_input  = stg3i_output;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg2i_output = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q4;
 
     //stage 2i
     // [X'/px, Z, Y] <= [Y, X'/px, Z] (read strided, write seq)
     for (size_t b = 0; b < plan->b; ++b) {
-      DEVICE_FFT_EXECZ2Z(plan->stg2i, stg2i_input + b, stg2i_output + b, direction);
+      FFTX_DEVICE_FFT_EXECZ2Z(plan->stg2i, stg2i_input + b, stg2i_output + b, direction);
     }
 
-    DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg1i_input = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) plan->Q3;
 
     // permute such that
     // [X'/px, pz, Z/pz, Y] <= [X'/px         Z, Y] (reshape)
@@ -297,17 +305,17 @@ void fftx_execute_1d_default(
     // [       X', Z/pz, Y] <= [px, X'/px, Z/pz, Y] (reshape)
     fftx_mpi_rcperm_1d(plan, (double *) stg1i_input, (double *) stg2i_output, FFTX_MPI_EMBED_4, plan->is_embed);
 
-    DEVICE_FFT_DOUBLECOMPLEX *stg1i_output = (DEVICE_FFT_DOUBLECOMPLEX *) out_buffer;
+    FFTX_DEVICE_FFT_DOUBLECOMPLEX *stg1i_output = (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) out_buffer;
 
     //stage 1i
     for (size_t b = 0; b < plan->b; ++b) {
       // [ceil(Z/pz), Y, X] <= [       X', ceil(Z/pz), Y]
       if (plan->is_complex) {
         //backward complex
-        DEVICE_FFT_EXECZ2Z(plan->stg1i, stg1i_input + b, stg1i_output + b, direction);
+        FFTX_DEVICE_FFT_EXECZ2Z(plan->stg1i, stg1i_input + b, stg1i_output + b, direction);
       } else {
         //backward real
-        DEVICE_FFT_EXECZ2D(plan->stg1i, stg1i_input + b, ((DEVICE_FFT_DOUBLEREAL *) stg1i_output) + b);
+        FFTX_DEVICE_FFT_EXECZ2D(plan->stg1i, stg1i_input + b, ((FFTX_DEVICE_FFT_DOUBLEREAL *) stg1i_output) + b);
       }
     }
   } // end backward.

@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 
@@ -15,16 +22,14 @@
 // #include "fftx_rconv_cpu_public.h"
 #endif
 
-#include "mddft.fftx.precompile.hpp"
-#include "imddft.fftx.precompile.hpp"
-#include "mdprdft.fftx.precompile.hpp"
-#include "imdprdft.fftx.precompile.hpp"
-// #include "rconv.fftx.precompile.hpp"
+#include "fftxmddft.precompile.hpp"
+#include "fftximddft.precompile.hpp"
+#include "fftxmdprdft.precompile.hpp"
+#include "fftximdprdft.precompile.hpp"
+// #include "fftxrconv.precompile.hpp"
 
-#include "fftx3utilities.h"
-
-#include "device_macros.h"
-#include "VerifyTransform.hpp"
+#include "fftxdevice_macros.h"
+#include "fftxVerifyTransform.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -54,16 +59,27 @@ int main(int argc, char* argv[])
           verbosity = atoi ( & argv[1][baz] );
           break;
       case 'h':
-          printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          // printf ( "Usage: %s: [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]\n", argv[0] );
+          fftx::OutStream() << "Usage: " << argv[0]
+                            << ": [ -i rounds ] [-v verbosity: 0 for summary, 1 for categories, 2 for subtests, 3 for all iterations] [ -h (print help message) ]"
+                            << std::endl;
           exit (0);
       default:
-          printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+          // printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+        fftx::OutStream() << prog << ": unknown argument: " << argv[1]
+                          << " ... ignored"
+                          << std::endl;
       }
       argv++, argc--;
   }
 
-  printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
+  // printf("Running with verbosity %d, random %d rounds\n", verbosity, rounds);
+  fftx::OutStream() << "Running with verbosity " << verbosity
+                    << ", random " << rounds << " rounds"
+                    << std::endl;
 
+  int status = 0;
+  
   /*
     Set up random number generator.
   */
@@ -84,8 +100,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, std::complex<double>>
               fun(&tfm, -1);
-            VerifyTransform<3, std::complex<double>, std::complex<double>>
-              (fun, rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
        }
 
@@ -95,8 +110,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, std::complex<double>>
               fun(&tfm, 1);
-            VerifyTransform<3, std::complex<double>, std::complex<double>>
-              (fun, rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
        }
 
@@ -106,8 +120,7 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, double, std::complex<double>>
               fun(&tfm, -1);
-            VerifyTransform<3, double, std::complex<double>>
-              (fun, rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
       }
 
@@ -117,12 +130,15 @@ int main(int argc, char* argv[])
           {
             TransformFunction<3, std::complex<double>, double>
               fun(&tfm, 1);
-            VerifyTransform<3, std::complex<double>, double>
-              (fun, rounds, verbosity);
+            status += fun.testAll(rounds, verbosity);
           }
       }
     }
 
-  printf("%s: All done, exiting\n", prog);
-  return 0;
+  // printf("%s: All done, exiting\n", prog);
+  fftx::OutStream() << prog << ": All done, exiting with status "
+                    << status << std::endl;
+  std::flush(fftx::OutStream());
+ 
+  return status;
 }

@@ -1,136 +1,131 @@
-#include "fftx3.hpp"
-#include "fftx3utilities.h"
-#include "interface.hpp"
-#include "mdprdftObj.hpp"
-#include "imdprdftObj.hpp"
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
+#include "fftx.hpp"
+#include "fftxutilities.hpp"
+#include "fftxinterface.hpp"
+#include "fftxmdprdftObj.hpp"
+#include "fftximdprdftObj.hpp"
 #include <string>
 #include <fstream>
 
 #if defined FFTX_CUDA
-#include "cudabackend.hpp"
+#include "fftxcudabackend.hpp"
 #elif defined FFTX_HIP
-#include "hipbackend.hpp"
+#include "fftxhipbackend.hpp"
 #elif defined FFTX_SYCL
-#include "syclbackend.hpp"
+#include "fftxsyclbackend.hpp"
 #else  
-#include "cpubackend.hpp"
+#include "fftxcpubackend.hpp"
 #endif
-#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined (FFTX_SYCL)
-#include "device_macros.h"
-#endif
-
-#if defined(FFTX_HIP) || defined(FFTX_CUDA)
-//  Build a random input buffer for Spiral and rocfft
-//  host_X is the host buffer to setup -- it'll be copied to the device later
-//  sizes is a vector with the X, Y, & Z dimensions
-
-static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
-                host_X[offset] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-            }
-        }
-    }
-    return;
-}
-
-static void buildInputBuffer_complex ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
-                host_X[offset + 0] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-                host_X[offset + 1] = 1 - ((double) rand()) / (double) (RAND_MAX/2);
-            }
-        }
-    }
-    return;
-}
-#else
-static void buildInputBuffer ( double *host_X, std::vector<int> sizes )
-{
-    srand(time(NULL));
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn*sizes.at(2) + imm*sizes.at(1)*sizes.at(2));
-                host_X[offset] = 1;
-            }
-        }
-    }
-    return;
-}
-
-static void buildInputBuffer_complex( double *host_X, std::vector<int> sizes)
-{
-    for ( int imm = 0; imm < sizes.at(0); imm++ ) {
-        for ( int inn = 0; inn < sizes.at(1); inn++ ) {
-            for ( int ikk = 0; ikk < sizes.at(2); ikk++ ) {
-                int offset = (ikk + inn * sizes.at(2) + imm * sizes.at(1) * sizes.at(2)) * 2;
-                host_X[offset + 0] = 1;
-                host_X[offset + 1] = 1;
-            }
-        }
-    }
-    return;
-}
-#endif
-
-// Check that the buffer are identical (within roundoff)
-// spiral_Y is the output buffer from the Spiral generated transform (result on GPU copied to host array spiral_Y)
-// devfft_Y is the output buffer from the device equivalent transform (result on GPU copied to host array devfft_Y)
-// arrsz is the size of each array
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-static void checkOutputBuffers_fwd ( DEVICE_FFT_DOUBLECOMPLEX *spiral_Y, DEVICE_FFT_DOUBLECOMPLEX *devfft_Y, long arrsz )
-{
-    bool correct = true;
-    double maxdelta = 0.0;
-
-    for ( int indx = 0; indx < arrsz; indx++ ) {
-        DEVICE_FFT_DOUBLECOMPLEX s = spiral_Y[indx];
-        DEVICE_FFT_DOUBLECOMPLEX c = devfft_Y[indx];
-
-        bool elem_correct = ( (abs(s.x - c.x) < 1e-7) && (abs(s.y - c.y) < 1e-7) );
-        maxdelta = maxdelta < (double)(abs(s.x -c.x)) ? (double)(abs(s.x -c.x)) : maxdelta ;
-        maxdelta = maxdelta < (double)(abs(s.y -c.y)) ? (double)(abs(s.y -c.y)) : maxdelta ;
-        correct &= elem_correct;
-    }
-    
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
-
-    return;
-}
-
-static void checkOutputBuffers_inv ( DEVICE_FFT_DOUBLEREAL *spiral_Y, DEVICE_FFT_DOUBLEREAL *devfft_Y, long arrsz )
-{
-    bool correct = true;
-    double maxdelta = 0.0;
-
-    for ( int indx = 0; indx < arrsz; indx++ ) {
-        DEVICE_FFT_DOUBLEREAL s = spiral_Y[indx];
-        DEVICE_FFT_DOUBLEREAL c = devfft_Y[indx];
-
-        double deltar = abs ( s - c );
-        bool   elem_correct = ( deltar < 1e-7 );
-        maxdelta = maxdelta < deltar ? deltar : maxdelta ;
-        correct &= elem_correct;
-    }
-    
-    printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
-    fflush ( stdout );
-
-    return;
-}
-
+#include "fftxdevice_macros.h"
+#elif defined (FFTX_SYCL)
+#include <oneapi/mkl/dft.hpp>
+#elif defined (FFTX_USE_FFTW)
+#include "fftw3.h"
 #endif
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+#define FFTX_DOUBLECOMPLEX FFTX_DEVICE_FFT_DOUBLECOMPLEX
+#define FFTX_DOUBLEREAL FFTX_DEVICE_FFT_DOUBLEREAL
+#define FFTX_REALPART(z) z.x
+#define FFTX_IMAGPART(z) z.y
+#elif defined (FFTX_SYCL)
+#define FFTX_DOUBLECOMPLEX std::complex<double>
+#define FFTX_DOUBLEREAL double
+#define FFTX_REALPART(z) z.real()
+#define FFTX_IMAGPART(z) z.imag()
+#elif defined (FFTX_USE_FFTW)
+#define FFTX_DOUBLECOMPLEX fftw_complex
+#define FFTX_DOUBLEREAL double
+#define FFTX_REALPART(z) z[0]
+#define FFTX_IMAGPART(z) z[1]
+#else // need these #defines here, or else #ifdef around checkOutputs.
+#define FFTX_DOUBLECOMPLEX std::complex<double>
+#define FFTX_DOUBLEREAL double
+#define FFTX_REALPART(z) z.real()
+#define FFTX_IMAGPART(z) z.imag()
+#endif
+
+static void setRandomData ( double *data, long arrsz)
+{
+  for ( int ind = 0; ind < arrsz; ind++)
+    {
+      data[ind] = ((double) rand()) / (double) (RAND_MAX/2);
+    }
+  return;
+}
+
+// Check that the buffers are identical (within roundoff)
+// outputFFTXPtr is the output buffer from the Spiral-generated transform
+// (result on GPU copied to host array outputFFTXPtr);
+// outputVendorPtr is the output buffer from the vendor transform
+// (result on GPU copied to host array outputVendorPtr).
+// arrsz is the size of each array
+static bool checkOutputs_R2C ( FFTX_DOUBLECOMPLEX *outputFFTXPtr,
+                               FFTX_DOUBLECOMPLEX *outputVendorPtr,
+                               long arrsz )
+{
+    bool correct = true;
+    double maxdelta = 0.0;
+
+    for ( int ind = 0; ind < arrsz; ind++ )
+      {
+        double sreal = FFTX_REALPART(outputFFTXPtr[ind]);
+        double simag = FFTX_IMAGPART(outputFFTXPtr[ind]);
+        double creal = FFTX_REALPART(outputVendorPtr[ind]);
+        double cimag = FFTX_IMAGPART(outputVendorPtr[ind]);
+
+        double diffreal = sreal - creal;
+        double diffimag = simag - cimag;
+        
+        bool elem_correct =
+          ( (abs(diffreal) < 1.e-7) && (abs(diffimag) < 1.e-7) );
+	updateMaxAbs(maxdelta, diffreal);
+	updateMaxAbs(maxdelta, diffimag);
+        correct &= elem_correct;
+      }
+    
+    // printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
+    fftx::OutStream() << "Correct: " << (correct ? "True" : "False") << "\t"
+                      << "Max delta = " << maxdelta << std::endl;
+    std::flush(fftx::OutStream());
+
+    return correct;
+}
+
+static bool checkOutputs_C2R ( FFTX_DOUBLEREAL *outputFFTXPtr,
+                               FFTX_DOUBLEREAL *outputVendorPtr,
+                               long arrsz )
+{
+    bool correct = true;
+    double maxdelta = 0.0;
+
+    for ( int ind = 0; ind < arrsz; ind++ )
+      {
+        FFTX_DOUBLEREAL s = outputFFTXPtr[ind];
+        FFTX_DOUBLEREAL c = outputVendorPtr[ind];
+
+        double deltar = s - c;
+        bool   elem_correct = ( abs(deltar) < 1e-7 );
+        updateMaxAbs(maxdelta, deltar);
+        correct &= elem_correct;
+    }
+    
+    // printf ( "Correct: %s\tMax delta = %E\n", (correct ? "True" : "False"), maxdelta );
+    fftx::OutStream() << "Correct: " << (correct ? "True" : "False") << "\t"
+                      << "Max delta = " << maxdelta << std::endl;
+    std::flush(fftx::OutStream());
+
+    return correct;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -166,253 +161,479 @@ int main(int argc, char* argv[])
             kk = atoi ( & argv[1][baz] );
             break;
         case 'h':
-            printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+            // printf ( "Usage: %s: [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]\n", argv[0] );
+            fftx::OutStream() << "Usage: " << argv[0]
+                              << ": [ -i iterations ] [ -s MMxNNxKK ] [ -h (print help message) ]"
+                              << std::endl;
             exit (0);
         default:
-            printf ( "%s: unknown argument: %s ... ignored\n", prog, argv[1] );
+            fftx::OutStream() << prog
+                              << ": unknown argument: " << argv[1]
+                              << " ... ignored" << std::endl;
         }
         argv++, argc--;
     }
+
+    fftx::OutStream() << std::scientific << std::uppercase;
+    
     int K_adj = (int) ( kk / 2 ) + 1;
-    std::cout << mm << " " << nn << " " << kk << std::endl;
+    fftx::OutStream() << mm << " " << nn << " " << kk << std::endl;
+    int status = 0;
     std::vector<int> sizes{mm,nn,kk};
+    std::vector<int> sizesTrunc{mm,nn,K_adj};
     fftx::box_t<3> domain ( point_t<3> ( { { 1, 1, 1 } } ),
                             point_t<3> ( { { mm, nn, kk } } ));
     fftx::box_t<3> outputd ( point_t<3> ( { { 1, 1, 1 } } ),
                             point_t<3> ( { { mm, nn, K_adj } } ));
 
-    fftx::array_t<3,double> inputHost(domain);
-    fftx::array_t<3,std::complex<double>> outputHost(outputd);
-    fftx::array_t<3,double> outputHost2(domain);
-    fftx::array_t<3,std::complex<double>> outDevfft1(outputd);
-    fftx::array_t<3,double> outDevfft2(domain);
+    fftx::array_t<3,double> realFFTXHostArray(domain);
+    fftx::array_t<3,double> realVendorHostArray(domain);
+    fftx::array_t<3,std::complex<double>> complexFFTXHostArray(outputd);
+    fftx::array_t<3,std::complex<double>> complexVendorHostArray(outputd);
 
-    double * dX, *dY, *dsym;
-    std::complex<double> * tempX;
+    size_t npts = domain.size();
+    size_t nptsTrunc = outputd.size();
 
-    if ( DEBUGOUT )std::cout << "allocating memory" << std::endl;
+    auto realFFTXHostPtr = realFFTXHostArray.m_data.local();
+    auto realVendorHostPtr = realVendorHostArray.m_data.local();
+    auto complexFFTXHostPtr = complexFFTXHostArray.m_data.local();
+    auto complexVendorHostPtr = complexVendorHostArray.m_data.local();
 
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    DEVICE_MALLOC(&dX, inputHost.m_domain.size() * sizeof(double));
-
-    DEVICE_MALLOC(&dY, outputHost2.m_domain.size() * sizeof(double));
-
-    DEVICE_MALLOC(&dsym,  outputHost.m_domain.size() * sizeof(double));
-
-    DEVICE_MALLOC(&tempX, mm * nn * K_adj * sizeof(std::complex<double>));
+    if ( FFTX_DEBUGOUT )fftx::OutStream() << "allocating memory" << std::endl;
+    FFTX_DEVICE_PTR realFFTXTfmPtr = fftxDeviceMallocForHostArray(realFFTXHostArray);
+    FFTX_DEVICE_PTR realVendorTfmPtr = fftxDeviceMallocForHostArray(realVendorHostArray);
+    FFTX_DEVICE_PTR complexFFTXTfmPtr = fftxDeviceMallocForHostArray(complexFFTXHostArray);
+    FFTX_DEVICE_PTR complexVendorTfmPtr = fftxDeviceMallocForHostArray(complexVendorHostArray);
+    FFTX_DEVICE_PTR symbolTfmPtr = (FFTX_DEVICE_PTR) NULL;
 #elif defined(FFTX_SYCL)
-    sycl::buffer<double> buf_Y(outputHost2.m_data.local(), outputHost2.m_domain.size());
-    sycl::buffer<double> buf_X(inputHost.m_data.local(), inputHost.m_domain.size());
-    sycl::buffer<double> buf_sym(inputHost.m_data.local(), inputHost.m_domain.size());
-    sycl::buffer<std::complex<double>> buf_tempX(outputHost.m_data.local(), outputHost.m_domain.size());
-#else
-    dX = (double *) inputHost.m_data.local();
-    dY = (double *) outputHost2.m_data.local();
-    tempX = new std::complex<double>[outputHost.m_domain.size()];
-    dsym = new double[outputHost2.m_domain.size()];
+    sycl::buffer<double> realFFTXTfmPtr(realFFTXHostPtr, npts);
+    sycl::buffer<double> realVendorTfmPtr(realVendorHostPtr, npts);
+    sycl::buffer<double> symbolTfmPtr((double*) NULL, 0);
+    // Use sycl::buffer on double because of problems if on complex.
+    sycl::buffer<double> complexFFTXTfmPtr((double*) complexFFTXHostPtr, nptsTrunc * 2);
+    sycl::buffer<double> complexVendorTfmPtr((double*) complexVendorHostPtr, nptsTrunc * 2);
+#else // CPU
+    double* realFFTXTfmPtr = (double *) realFFTXHostPtr;
+    double* complexFFTXTfmPtr = (double *) complexFFTXHostPtr;
+    double* symbolTfmPtr = (double *) NULL;
 #endif
-    if ( DEBUGOUT ) std::cout << "memory allocated" << std::endl;
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "memory allocated" << std::endl;
 
-    float *mddft_gpu = new float[iterations];
-    float *imddft_gpu = new float[iterations];
+    // Order within args for FFTX:  output, input, symbol.
 #if defined FFTX_CUDA
-    std::vector<void*> args{&tempX,&dX,&dsym};
+    std::vector<void*> argsR2C{&complexFFTXTfmPtr, &realFFTXTfmPtr, &symbolTfmPtr};
     std::string descrip = "NVIDIA GPU";                //  "CPU and GPU";
-    std::string devfft  = "cufft";
+    std::string vendorfft  = "cufft";
 #elif defined FFTX_HIP
-    std::vector<void*> args{tempX,dX,dsym};
+    std::vector<void*> argsR2C{complexFFTXTfmPtr, realFFTXTfmPtr, symbolTfmPtr};
     std::string descrip = "AMD GPU";                //  "CPU and GPU";
-    std::string devfft  = "rocfft";
+    std::string vendorfft  = "rocfft";
 #elif defined FFTX_SYCL
-    std::vector<void*> args{(void*)&(buf_tempX),(void*)&(buf_X),(void*)&(buf_sym)};
+    std::vector<void*> argsR2C{(void*)&(complexFFTXTfmPtr), (void*)&(realFFTXTfmPtr), (void*)&(symbolTfmPtr)};
     std::string descrip = "Intel GPU";                //  "CPU and GPU";
-    std::string devfft  = "mklfft";
-#else
-    std::vector<void*> args{(void*)tempX,(void*)dX,(void*)dsym};
+    std::string vendorfft  = "mklfft";
+#else // CPU
+    std::vector<void*> argsR2C{(void*)complexFFTXTfmPtr, (void*)realFFTXTfmPtr, (void*)symbolTfmPtr};
     std::string descrip = "CPU";                //  "CPU";
-    std::string devfft = "fftw";
-    //std::string devfft  = "rocfft";
+    std::string vendorfft = "FFTW";
 #endif
 
-    MDPRDFTProblem mdp(args, sizes, "mdprdft");
+#if defined (FFTX_CUDA) || defined(FFTX_HIP) || defined(FFTX_SYCL) || defined(FFTX_USE_FFTW)
+    // compare results of Spiral-RTC with vendor FFT or FFTW
+    bool check_output = true;
+#else
+    bool check_output = false;
+#endif
+
+    float *mdprdft_gpu = new float[iterations];
+    float *mdprdft_vendor_millisec = new float[iterations];
+    MDPRDFTProblem mdp(argsR2C, sizes, "mdprdft");
     
+    //  Set up a plan to run the transform using vendor FFT.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    //  Setup a plan to run the transform using cu or roc fft
-    DEVICE_FFT_HANDLE plan;
-    DEVICE_FFT_RESULT res;
-    DEVICE_FFT_TYPE   xfmtype = DEVICE_FFT_D2Z ;
-    DEVICE_EVENT_T custart, custop;
-    DEVICE_EVENT_CREATE ( &custart );
-    DEVICE_EVENT_CREATE ( &custop );
-    float *devmilliseconds = new float[iterations];
-    float *invdevmilliseconds = new float[iterations];
-    bool check_buff = true;                // compare results of spiral - RTC with device fft
+    FFTX_DEVICE_FFT_HANDLE planR2C;
+    FFTX_DEVICE_FFT_RESULT res;
+    FFTX_DEVICE_FFT_TYPE   xfmtypeR2C = FFTX_DEVICE_FFT_D2Z ;
+    FFTX_DEVICE_EVENT_T custart, custop;
+    FFTX_DEVICE_EVENT_CREATE ( &custart );
+    FFTX_DEVICE_EVENT_CREATE ( &custop );
     
-    res = DEVICE_FFT_PLAN3D ( &plan, mm, nn, kk, xfmtype );
-    if ( res != DEVICE_FFT_SUCCESS ) {
-        printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
-        check_buff = false;
-    }
+    res = FFTX_DEVICE_FFT_PLAN3D ( &planR2C, mm, nn, kk, xfmtypeR2C );
+    if ( res != FFTX_DEVICE_FFT_SUCCESS )
+      {
+        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
+                          << res << " ... skip buffer check" << std::endl;
+        check_output = false;
+        status++;
+      }
+#elif defined (FFTX_SYCL)
+    // Problems with using MKLFFT now.
+    sycl::device dev;
+    try
+      {
+	dev = sycl::device(sycl::gpu_selector_v);
+      }
+    catch (sycl::exception const &e)
+      {
+	fftx::ErrStream() << "You are running on a system without a GPU. For best results please use a GPU." << std::endl;
+	fftx::ErrStream() << "Program terminating." << std::endl;
+	exit(-1);
+	// dev = sycl::device(sycl::cpu_selector_v);
+      }
+    sycl::context ctx = sycl::context(dev);
+    sycl::property_list props{sycl::property::queue::enable_profiling()};
+    sycl::queue Q = sycl::queue(ctx, dev, props);
+
+    // Initialize SYCL queue
+    //	  sycl::queue Q(sycl::default_selector{});
+    auto sycl_device = Q.get_device();
+    auto sycl_context = Q.get_context();
+    fftx::OutStream() << "Running on: "
+                      << Q.get_device().get_info<sycl::info::device::name>()
+                      << std::endl;
+
+    auto realVendorPtr = sycl::malloc_shared< double >
+      (npts, sycl_device, sycl_context);
+    auto complexVendorPtr = sycl::malloc_shared< double >
+      (nptsTrunc * 2, sycl_device, sycl_context);
+
+    // Initialize 3D FFT descriptor
+    std::vector<std::int64_t> Nvec{mm, nn, kk};
+    std::vector<std::int64_t> fwd_strides = {0, nn*kk, kk, 1};
+    std::vector<std::int64_t> bwd_strides = {0, nn*K_adj, K_adj, 1};
+    oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
+                                 oneapi::mkl::dft::domain::REAL>
+      plan(Nvec);
+    plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+		   oneapi::mkl::dft::config_value::NOT_INPLACE);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, npts);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, nptsTrunc);
+    plan.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, fwd_strides);
+    plan.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, bwd_strides);
+    plan.commit(Q);
+#elif defined (FFTX_USE_FFTW)
+    fftw_plan planR2C = fftw_plan_dft_r2c_3d(mm, nn, kk,
+                                             realFFTXHostPtr,
+                                             (fftw_complex*) complexVendorHostPtr,
+                                             FFTW_ESTIMATE);
 #endif
 
-    double *hostinp = (double *) inputHost.m_data.local();
     for (int itn = 0; itn < iterations; itn++)
-    {
-        // setup random data for input buffer (Use different randomized data each iteration)
-        buildInputBuffer ( hostinp, sizes );
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY(dX, inputHost.m_data.local(),  inputHost.m_domain.size() * sizeof(double),
-                        MEM_COPY_HOST_TO_DEVICE);
-    #endif
-        if ( DEBUGOUT ) std::cout << "copied X\n";
+      {
+        // Fill input buffer with random data, different each iteration.
+	setRandomData( (double*) realFFTXHostPtr, npts);
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+        fftxCopyHostArrayToDevice(realFFTXTfmPtr, realFFTXHostArray);
+ 	if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied MDPRDFT input from host to device\n";
+#endif
         
+        // Run transform on GPU: input realFFTXTfmPtr, output complexFFTXTfmPtr.
         mdp.transform();
-        mddft_gpu[itn] = mdp.getTime();
+        mdprdft_gpu[itn] = mdp.getTime();
 
-    #if defined(FFTX_SYCL)		
-	{
-    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
-		sycl::host_accessor h_acc(buf_tempX);
-		std::cout << h_acc[0] << std::endl;
-	}
-	#endif
-
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputHost.m_data.local(), tempX,
-                            outputHost.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-        if ( check_buff ) {
-                DEVICE_EVENT_RECORD ( custart );
-                res = DEVICE_FFT_EXECD2Z ( plan,
-                                        (DEVICE_FFT_DOUBLEREAL *) dX,
-                                        (DEVICE_FFT_DOUBLECOMPLEX *) tempX
-                                        );
-                if ( res != DEVICE_FFT_SUCCESS) {
-                    printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
-                    check_buff = false;
-                    //  break;
-                }
-                DEVICE_EVENT_RECORD ( custop );
-                DEVICE_EVENT_SYNCHRONIZE ( custop );
-                DEVICE_EVENT_ELAPSED_TIME ( &devmilliseconds[itn], custart, custop );
-
-                DEVICE_MEM_COPY ( outDevfft1.m_data.local(), tempX,
-                                outDevfft1.m_domain.size() * sizeof(std::complex<double>), MEM_COPY_DEVICE_TO_HOST );
-                printf ( "cube = [ %d, %d, %d ]\tMDPRDFT (Forward)\t", mm, nn, kk );
-                checkOutputBuffers_fwd ( (DEVICE_FFT_DOUBLECOMPLEX *) outputHost.m_data.local(),
-                                    (DEVICE_FFT_DOUBLECOMPLEX *) outDevfft1.m_data.local(),
-                                    (long) outDevfft1.m_domain.size() );
-            }
-    #endif
-    }
-
-    // setup the inverse transform (we'll reuse the device fft plan already created)
-#if defined FFTX_CUDA
-    std::vector<void*> args1{&dY,&tempX,&dsym};
-#elif defined FFTX_HIP
-    std::vector<void*> args1{dY,tempX,dsym};
-#elif defined FFTX_SYCL
-    std::vector<void*> args1{(void*)&(buf_Y),(void*)&(buf_tempX),(void*)&(buf_sym)};	
-#else
-    std::vector<void*> args1{(void*)dY,(void*)tempX,(void*)dsym};
-#endif
-
-    IMDPRDFTProblem imdp("imdprdft");
-    imdp.setArgs(args1);
-    imdp.setSizes(sizes);
-
+        if ( check_output )
+          { //  Run the vendor FFT plan, or FFTW, on the same input data.
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    DEVICE_FFT_HANDLE plan2;     
-    DEVICE_FFT_TYPE xfmtype2 = DEVICE_FFT_Z2D ;
-    res = DEVICE_FFT_PLAN3D ( &plan2, mm, nn, kk, xfmtype2 );
-    if ( res != DEVICE_FFT_SUCCESS ) {
-        printf ( "Create DEVICE_FFT_PLAN3D failed with error code %d ... skip buffer check\n", res );
-        check_buff = false;
-    }
-#endif
+            // Copy output of FFTX R2C transform from device to host
+	    // in order to check it against cuFFT or rocFFT.
+            fftxCopyDeviceToHostArray(complexFFTXHostArray, complexFFTXTfmPtr);
 
-    std::vector<int> sizes2{mm,nn,K_adj};
-    std::complex<double> *hostinp_complex = (std::complex<double> *) outputHost.m_data.local();
-    for (int itn = 0; itn < iterations; itn++)
-    {
-        buildInputBuffer_complex((double*)hostinp_complex, sizes2);
-        symmetrizeHermitian(outputHost, outputHost2);
-    #if defined (FFTX_CUDA) || defined(FFTX_HIP)    
-        DEVICE_MEM_COPY (tempX, outputHost.m_data.local(), (  mm * nn * K_adj ) * sizeof(std::complex<double>), MEM_COPY_HOST_TO_DEVICE );
-    #endif
-
-        if ( DEBUGOUT ) std::cout << "copied tempX" << std::endl;
-        imdp.transform();
-        imddft_gpu[itn] = imdp.getTime();
-
-	#if defined (FFTX_SYCL)
-	{
-    std::cout << "MKLFFT comparison not implemented printing first output element" << std::endl;
-		sycl::host_accessor h_acc(buf_Y);
-		std::cout << h_acc[0] << std::endl;
-	}
-    #endif
-    
-	#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-        DEVICE_MEM_COPY ( outputHost2.m_data.local(), dY,
-                          outputHost2.m_domain.size() * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
-    //  Run the device fft plan on the same input data
-        if ( check_buff ) {
-            DEVICE_EVENT_RECORD ( custart );
-            res = DEVICE_FFT_EXECZ2D ( plan2,
-                                       (DEVICE_FFT_DOUBLECOMPLEX *) tempX,
-                                       (DEVICE_FFT_DOUBLEREAL *) dY);
-            if ( res != DEVICE_FFT_SUCCESS) {
-                printf ( "Launch DEVICE_FFT_EXEC failed with error code %d ... skip buffer check\n", res );
-                check_buff = false;
+            // Run cuFFT or rocFFT.
+            FFTX_DEVICE_EVENT_RECORD ( custart );
+            res = FFTX_DEVICE_FFT_EXECD2Z ( planR2C,
+                                            (FFTX_DEVICE_FFT_DOUBLEREAL *) realFFTXTfmPtr,
+                                            (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) complexVendorTfmPtr
+                                            );
+            if ( res != FFTX_DEVICE_FFT_SUCCESS)
+              {
+                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
+                                  << res << " ... skip buffer check"
+                                  << std::endl;
+                check_output = false;
+                status++;
                 //  break;
-            }
-            DEVICE_EVENT_RECORD ( custop );
-            DEVICE_EVENT_SYNCHRONIZE ( custop );
-            DEVICE_EVENT_ELAPSED_TIME ( &invdevmilliseconds[itn], custart, custop );
+              }
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &mdprdft_vendor_millisec[itn], custart, custop );
 
-            DEVICE_MEM_COPY ( outDevfft2.m_data.local(), dY,
-                              outDevfft2.m_domain.size() * sizeof(double), MEM_COPY_DEVICE_TO_HOST );
-            printf ( "cube = [ %d, %d, %d ]\tIMDPRDFT (Inverse)\t", mm, nn, kk );
-            checkOutputBuffers_inv ( (DEVICE_FFT_DOUBLEREAL *) outputHost2.m_data.local(),
-                                 (DEVICE_FFT_DOUBLEREAL *) outDevfft2.m_data.local(),
-                                 (long) outDevfft2.m_domain.size() );
-        }
-    #endif
-    }
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-    printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d:\nTrial #\tSpiral\trocfft\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );        //  , devfft.c_str() );
-    for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, mddft_gpu[itn], devmilliseconds[itn] );
-    }
+            fftxCopyDeviceToHostArray(complexVendorHostArray, complexVendorTfmPtr);
+#elif defined (FFTX_SYCL)
+            // Copy output of FFTX R2C transform from device to host
+	    // in order to check it against MKL FFT.
+            // Need both of these accessors, else errors can occur after first iteration.
+            sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
+            // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
+            sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
+	    for (int ind = 0; ind < nptsTrunc; ind++)
+	      {
+		complexFFTXHostPtr[ind] =
+		  std::complex(complexFFTXHostAcc[2*ind + 0],
+                               complexFFTXHostAcc[2*ind + 1]);
+	      }
 
-    printf ( "Times in milliseconds for %s on MDPRDFT (inverse) for %d trials of size %d %d %d:\nTrial #\tSpiral\trocfft\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2) );
-    for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\t%.7e\n", itn, imddft_gpu[itn], invdevmilliseconds[itn] );
-    }
-#else
-     printf ( "Times in milliseconds for %s on MDPRDFT (forward) for %d trials of size %d %d %d\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-    for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\n", itn, mddft_gpu[itn]);
-    }
+            // Copy input to use in MKL call.
+	    for (int ind = 0; ind < npts; ind++)
+	      {
+		realVendorPtr[ind] = realFFTXHostPtr[ind];
+	      }
+	
+	    auto start_time = std::chrono::high_resolution_clock::now();
+	    //  Run the vendor FFT plan on the same input data.
+	    // Perform forward transform on real array
+	    // oneapi::mkl::dft::compute_forward(plan, realVendorPtr, complexVendorPtr).wait();
+            sycl::event e = oneapi::mkl::dft::compute_forward(plan,
+                                                              realVendorPtr,
+                                                              complexVendorPtr);
+            Q.wait();
+	    auto end_time = std::chrono::high_resolution_clock::now();
+            uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+            uint64_t e_end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
+            uint64_t profile_nanosec = e_end - e_start;
+	    // std::chrono::duration<float, std::milli> duration = end_time - start_time;
+	    // mdprdft_vendor_millisec[itn] = duration.count();
+            mdprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
 
-    printf ( "Times in milliseconds for %s on MDPRDFT (inverse) for %d trials of size %d %d %d\n",
-             descrip.c_str(), iterations, sizes.at(0), sizes.at(1), sizes.at(2));
-    for (int itn = 0; itn < iterations; itn++) {
-        printf ( "%d\t%.7e\n", itn, imddft_gpu[itn]);
-    }
+            for (int ind = 0; ind < nptsTrunc; ind++)
+              {
+                complexVendorHostPtr[ind] =
+                  std::complex<double>(complexVendorPtr[2*ind + 0],
+                                       complexVendorPtr[2*ind + 1]);
+              }
+#elif defined(FFTX_USE_FFTW)
+            auto start = std::chrono::high_resolution_clock::now();
+            fftw_execute(planR2C);
+            auto stop = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float, std::milli> duration = stop - start;
+            mdprdft_vendor_millisec[itn] = duration.count();
 #endif
-    // for(int i = 0; i < outDevfft1.m_domain.size(); i++) {
-    //     std::cout << outputHost.m_data.local()[i] << " " << outDevfft1.m_data.local()[i] << std::endl;
-    // }
+            fftx::OutStream() << "cube = [ "
+                              << mm << ", " << nn << ", " << kk << " ]\t"
+                              << "MDPRDFT (Forward) \t";
+	    bool chk = checkOutputs_R2C ( (FFTX_DOUBLECOMPLEX *) complexFFTXHostPtr,
+                                          (FFTX_DOUBLECOMPLEX *) complexVendorHostPtr,
+                                          (long) nptsTrunc);
+            if (chk == false) status++;
+	  } // end check_output
+      } // end iteration
 
-    delete[] mddft_gpu;
-    delete[] imddft_gpu;
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on MDPRDFT (forward) for "
+                      << iterations << " trials of size "
+                      << sizes.at(0) << " "
+                      << sizes.at(1) << " "
+                      << sizes.at(2) << ":" << std::endl;
+    fftx::OutStream() << "Trial#    Spiral";
+    if (check_output)
+      {
+        fftx::OutStream() << "           " << vendorfft;
+      }
+    fftx::OutStream() << std::endl;
+    for (int itn = 0; itn < iterations; itn++)
+      {
+        fftx::OutStream() << std::setw(4) << (itn+1)
+                          << std::setw(17) << mdprdft_gpu[itn];
+        if (check_output)
+          {
+            fftx::OutStream() << std::setw(17) << mdprdft_vendor_millisec[itn];
+          }
+        fftx::OutStream() << std::endl;
+      }
 
-    printf("%s: All done, exiting\n", prog);
-  
-    return 0;
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(planR2C);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(planR2C);
+#endif
 
+    delete[] mdprdft_gpu;
+    delete[] mdprdft_vendor_millisec;
+
+    // Set up the inverse transform.
+    
+    // Order within args for FFTX:  output, input, symbol.
+#if defined FFTX_CUDA
+    std::vector<void*> argsC2R{&realFFTXTfmPtr, &complexFFTXTfmPtr, &symbolTfmPtr};
+#elif defined FFTX_HIP
+    std::vector<void*> argsC2R{realFFTXTfmPtr, complexFFTXTfmPtr, symbolTfmPtr};
+#elif defined FFTX_SYCL
+    std::vector<void*> argsC2R{(void*)&(realFFTXTfmPtr), (void*)&(complexFFTXTfmPtr), (void*)&(symbolTfmPtr)};	
+#else // CPU
+    std::vector<void*> argsC2R{(void*)realFFTXTfmPtr, (void*)complexFFTXTfmPtr, (void*)symbolTfmPtr};
+#endif
+
+    float *imdprdft_gpu = new float[iterations];
+    float *imdprdft_vendor_millisec = new float[iterations];
+    IMDPRDFTProblem imdp(argsC2R, sizes, "imdprdft");
+
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_HANDLE planC2R;     
+    FFTX_DEVICE_FFT_TYPE xfmtypeC2R = FFTX_DEVICE_FFT_Z2D ;
+    res = FFTX_DEVICE_FFT_PLAN3D ( &planC2R, mm, nn, kk, xfmtypeC2R );
+    if ( res != FFTX_DEVICE_FFT_SUCCESS )
+      {
+        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
+                          << res << " ... skip buffer check" << std::endl;
+        check_output = false;
+        status++;
+      }
+#elif defined FFTX_SYCL
+#elif defined (FFTX_USE_FFTW)
+    fftw_plan planC2R = fftw_plan_dft_c2r_3d(mm, nn, kk,
+                                             (fftw_complex*) complexFFTXHostPtr,
+                                             realVendorHostPtr,
+                                             FFTW_ESTIMATE);
+#endif
+
+    for (int itn = 0; itn < iterations; itn++)
+      {
+        // Fill input buffer with random data, different each iteration.
+        setRandomData( (double*) complexFFTXHostPtr, 2 * nptsTrunc);
+        symmetrizeHermitian(complexFFTXHostArray, realFFTXHostArray);
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)    
+        fftxCopyHostArrayToDevice(complexFFTXTfmPtr, complexFFTXHostArray);
+        if ( FFTX_DEBUGOUT ) fftx::OutStream() << "copied IMDPRDFT input from host to device" << std::endl;
+#endif
+
+        // Run transform on GPU: input complexFFTXTfmPtr, output realFFTXTfmPtr.
+        imdp.transform();
+        imdprdft_gpu[itn] = imdp.getTime();
+
+        if ( check_output )
+          { //  Run the vendor FFT plan, or FFTW, on the same input data.
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+            // Copy output of FFTX C2R transform from device to host
+	    // in order to check it against cuFFT or rocFFT.
+            fftxCopyDeviceToHostArray(realFFTXHostArray, realFFTXTfmPtr);
+
+            // Run cuFFT or rocFFT.
+	    FFTX_DEVICE_EVENT_RECORD ( custart );
+            res = FFTX_DEVICE_FFT_EXECZ2D ( planC2R,
+                                            (FFTX_DEVICE_FFT_DOUBLECOMPLEX *) complexFFTXTfmPtr,
+                                            (FFTX_DEVICE_FFT_DOUBLEREAL *) realVendorTfmPtr
+                                            );
+            if ( res != FFTX_DEVICE_FFT_SUCCESS)
+              {
+                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
+                                  << res << " ... skip buffer check"
+                                  << std::endl;
+                check_output = false;
+                status++;
+                //  break;
+              }
+            FFTX_DEVICE_EVENT_RECORD ( custop );
+            FFTX_DEVICE_EVENT_SYNCHRONIZE ( custop );
+            FFTX_DEVICE_EVENT_ELAPSED_TIME ( &imdprdft_vendor_millisec[itn], custart, custop );
+            
+            fftxCopyDeviceToHostArray(realVendorHostArray, realVendorTfmPtr);
+#elif defined (FFTX_SYCL)
+            // Copy output of FFTX C2R transform from device to host
+	    // in order to check it against MKL FFT.
+            // Need both of these accessors, else errors can occur after first iteration.
+            sycl::host_accessor realFFTXHostAcc(realFFTXTfmPtr);
+            // N.B. complexFFTXHostAcc is double* because complexFFTXTfmPtr is sycl::buffer<double>.
+            sycl::host_accessor complexFFTXHostAcc(complexFFTXTfmPtr);
+	    for (int ind = 0; ind < npts; ind++)
+	      {
+                realVendorPtr[ind] = realFFTXHostAcc[ind];
+	      }
+
+            // Copy input to use in MKL call.
+            for (int ind = 0; ind < nptsTrunc; ind++)
+              {
+                std::complex<double> v = complexFFTXHostPtr[ind];
+                complexVendorPtr[2*ind + 0] = FFTX_REALPART(v);
+                complexVendorPtr[2*ind + 1] = FFTX_IMAGPART(v);
+              }
+
+	    auto start_time = std::chrono::high_resolution_clock::now();
+	    // Run the vendor FFT plan on the same input data.
+	    // Perform backward transform on complex array
+	    // oneapi::mkl::dft::compute_backward(plan, complexVendorPtr, realVendorPtr).wait();
+            sycl::event e = oneapi::mkl::dft::compute_backward(plan,
+                                                               complexVendorPtr,
+                                                               realVendorPtr);
+            Q.wait();
+	    auto end_time = std::chrono::high_resolution_clock::now();
+            uint64_t e_start = e.get_profiling_info<sycl::info::event_profiling::command_start>();
+            uint64_t e_end = e.get_profiling_info<sycl::info::event_profiling::command_end>();
+            uint64_t profile_nanosec = e_end - e_start;
+	    // std::chrono::duration<float, std::milli> duration = end_time - start_time;
+	    // imdprdft_vendor_millisec[itn] = duration.count();
+            imdprdft_vendor_millisec[itn] = profile_nanosec * 1.e-6; // convert nanoseconds to milliseconds
+
+	    for (int ind = 0; ind < npts; ind++)
+	      {
+		realVendorHostPtr[ind] = realVendorPtr[ind];
+	      }
+#elif defined(FFTX_USE_FFTW)
+            auto start = std::chrono::high_resolution_clock::now();
+            fftw_execute(planC2R);
+            auto stop = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float, std::milli> duration = stop - start;
+            imdprdft_vendor_millisec[itn] = duration.count();
+#endif
+            fftx::OutStream() << "cube = [ "
+                              << mm << ", " << nn << ", " << kk << " ]\t"
+                              << "IMDPRDFT (Inverse)\t";
+	    bool chk = checkOutputs_C2R ((FFTX_DOUBLEREAL*) realFFTXHostPtr,
+                                         (FFTX_DOUBLEREAL*) realVendorHostPtr,
+                                         (long) npts );
+            if (chk == false) status++;
+	  } // end check_output
+      } // end iteration
+
+    fftx::OutStream() << "Times in milliseconds for " << descrip
+                      << " on MDPRDFT (inverse) for "
+                      << iterations << " trials of size "
+                      << sizes.at(0) << " "
+                      << sizes.at(1) << " "
+                      << sizes.at(2) << ":" << std::endl;
+    fftx::OutStream() << "Trial#    Spiral";
+    if (check_output)
+      {
+        fftx::OutStream() << "           " << vendorfft;
+      }
+    fftx::OutStream() << std::endl;
+    for (int itn = 0; itn < iterations; itn++)
+      {
+        fftx::OutStream() << std::setw(4) << (itn+1)
+                          << std::setw(17) << imdprdft_gpu[itn];
+        if (check_output)
+          {
+            fftx::OutStream() << std::setw(17) << imdprdft_vendor_millisec[itn];
+          }
+        fftx::OutStream() << std::endl;
+      }
+    
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    FFTX_DEVICE_FFT_DESTROY(planC2R);
+#elif defined(FFTX_SYCL)
+#elif defined(FFTX_USE_FFTW)
+    fftw_destroy_plan(planC2R);
+#endif
+
+    delete[] imdprdft_gpu;
+    delete[] imdprdft_vendor_millisec;
+    
+    // Clean up.
+#if defined (FFTX_CUDA) || defined(FFTX_HIP)
+    fftxDeviceFree(realFFTXTfmPtr);
+    fftxDeviceFree(realVendorTfmPtr);
+    fftxDeviceFree(complexFFTXTfmPtr);
+    fftxDeviceFree(complexVendorTfmPtr);
+#elif defined(FFTX_SYCL)
+    sycl::free(realVendorPtr, sycl_context);
+    sycl::free(complexVendorPtr, sycl_context);
+#else
+    // delete[] symbolTfmPtr;
+#endif
+
+    fftx::OutStream() << prog << ": All done, exiting with status "
+                      << status << std::endl;
+    std::flush(fftx::OutStream());
+
+    return status;
 }

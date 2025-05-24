@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2018-2022, Carnegie Mellon University
-## All rights reserved.
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
 ##
-## See LICENSE file for full information
+##  See LICENSE file for full information.
 ##
 
 cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
@@ -21,7 +21,7 @@ manage_add_subdir ( batch1ddft    TRUE      TRUE )
 manage_add_subdir ( batch1dprdft  TRUE      TRUE )
 manage_add_subdir ( mddft         TRUE      TRUE )
 manage_add_subdir ( mdprdft       TRUE      TRUE )
-
+manage_add_subdir ( hockneyconv   TRUE      TRUE )
 manage_add_subdir ( rconv         TRUE      TRUE )
 manage_add_subdir ( verify        TRUE      TRUE )
 
@@ -32,4 +32,13 @@ if ( ${MPI_FOUND} AND NOT ${_codegen} STREQUAL "SYCL")
     manage_add_subdir ( 3DDFT_mpi     FALSE     TRUE )
 else ()
     message ( STATUS "MPI NOT found: No MPI examples will be built" )
+endif ()
+
+##  Check if a Fortran compiler is available
+if ( Fortran_ENABLED )
+    message ( STATUS "Fortran compiler found: ${CMAKE_Fortran_COMPILER}; will build Fortran example" )
+    ##  Build the Fortran example
+    manage_add_subdir ( fortran       TRUE      TRUE )
+else ()
+    message ( STATUS "No Fortran compiler found.  Skipping Fortran example build." )
 endif ()

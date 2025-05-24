@@ -1,7 +1,11 @@
 #! python
 
-##  Copyright (c) 2018-2023, Carnegie Mellon University
-##  See LICENSE for details
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
 
 ##  This script reads a file of batch 1D specs (command line arg), that contains several size
 ##  specifications for batch 1D DFTs.  This script will:
@@ -91,29 +95,29 @@ def start_header_file ( type, script ):
         
     str = CodeBuilder ( f'#ifndef {script.file_stem}{type}{script.decor_platform}HEADER_INCLUDED' + '\n' )
     str.append ( f'#define {script.file_stem}{type}{script.decor_platform}HEADER_INCLUDED' + '\n\n' )
-    str.append ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '//  See LICENSE for details\n\n' )
+    str.append ( '//\n//  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '//  All rights reserved.\n//\n//  See LICENSE file for information.\n//\n\n' )
 
-    str.append ( '#include "fftx3.hpp"\n\n' )
+    str.append ( '#include "fftx.hpp"\n\n' )
 
-    str.append ( '#ifndef INITTRANSFORMFUNC\n' )
-    str.append ( '#define INITTRANSFORMFUNC\n' )
+    str.append ( '#ifndef FFTX_INITTRANSFORMFUNC\n' )
+    str.append ( '#define FFTX_INITTRANSFORMFUNC\n' )
     str.append ( 'typedef void ( * initTransformFunc ) ( void );\n' )
     str.append ( '#endif\n\n' )
 
-    str.append ( '#ifndef DESTROYTRANSFORMFUNC\n' )
-    str.append ( '#define DESTROYTRANSFORMFUNC\n' )
+    str.append ( '#ifndef FFTX_DESTROYTRANSFORMFUNC\n' )
+    str.append ( '#define FFTX_DESTROYTRANSFORMFUNC\n' )
     str.append ( 'typedef void ( * destroyTransformFunc ) ( void );\n' )
     str.append ( '#endif\n\n' )
 
-    str.append ( '#ifndef RUNTRANSFORMFUNC\n' )
-    str.append ( '#define RUNTRANSFORMFUNC\n' )
+    str.append ( '#ifndef FFTX_RUNTRANSFORMFUNC\n' )
+    str.append ( '#define FFTX_RUNTRANSFORMFUNC\n' )
 
     str.append ( 'typedef void ( * runTransformFunc ) ( double *output, double *input );\n' )
     str.append ( '#endif\n\n' )
 
-    str.append ( '#ifndef TRANSFORMTUPLE_T\n' )
-    str.append ( '#define TRANSFORMTUPLE_T\n' )
+    str.append ( '#ifndef FFTX_TRANSFORMTUPLE_T\n' )
+    str.append ( '#define FFTX_TRANSFORMTUPLE_T\n' )
     str.append ( 'typedef struct transformTuple {\n' )
     str.append ( '    initTransformFunc    initfp;\n' )
     str.append ( '    destroyTransformFunc destroyfp;\n' )
@@ -175,10 +179,11 @@ def library_api ( script ):
            {script.file_stem}{script.decor_platform}{QuerySizes | Tuple | Run}
     """
 
-    str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '//  See LICENSE for details\n\n' )
+    str = CodeBuilder ( '//\n//  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '//  All rights reserved.\n//\n//  See LICENSE file for information.\n//\n\n' )
 
-    str.append ( '#include <stdio.h>\n' )
+    # str.append ( '#include <stdio.h>\n' )
+    str.append ( '#include <iostream>\n' )
     str.append ( '#include <stdlib.h>\n' )
     str.append ( '#include <string.h>\n' )
     str.append ( f'#include "{script.file_stem}{script.decor_platform}decls.h"' + '\n' )
@@ -188,11 +193,12 @@ def library_api ( script ):
         str.append ( '#include <helper_cuda.h>\n\n' )
     elif script.args.platform == 'HIP':
         str.append ( '#include <hip/hip_runtime.h>\n\n' )
-        str.append ( '#define checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
-        str.append ( 'if (err != hipSuccess) {  printf("%s(%i) : %s: %s\\n", __FILE__, __LINE__, ' )
-        str.append ( '(str), hipGetErrorString(err) ); } }\n\n' )
+        str.append ( '#define FFTX_checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
+        # str.append ( 'if (err != hipSuccess) {  printf("%s(%i) : %s: %s\\n", __FILE__, __LINE__, ' )
+        # str.append ( '(str), hipGetErrorString(err) ); } }\n\n' )
+        str.append ( 'if (err != hipSuccess) {  fftx::ErrStream() << __FILE__ << "(" << __LINE__ << ") : " << str << ": " << hipGetErrorString(err) << std::endl; } }\n\n' )
     elif script.args.platform == 'SYCL':
-        str.append ( '#include <CL/sycl.hpp>\n\n' )
+        str.append ( '#include <sycl/sycl.hpp>\n\n' )
 
     str.append ( '//  Query the list of sizes available from the library; returns a pointer to an\n' )
     str.append ( '//  array of size <N+1>, each element is a struct of type fftx::point_t<4> specifying\n' )
@@ -296,7 +302,7 @@ def python_cuda_api ( script ):
         _memfree = 'cudaFree'
     elif script.args.platform == 'HIP' or script.args.platform == 'SYCL':
         _mmalloc = 'hipMalloc'
-        _errchk  = 'checkLastHipError ( "Error: " );'
+        _errchk  = 'FFTX_checkLastHipError ( "Error: " );'
         _mmemcpy = 'hipMemcpy'
         _cph2dev = 'hipMemcpyHostToDevice'
         _cpdev2h = 'hipMemcpyDeviceToHost'
@@ -395,10 +401,10 @@ def python_cuda_api ( script ):
 def create_metadata ( script, metadata ):
     "Create a compileable module to be added to the library that contains the metadata for the library"
 
-    str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '//  See LICENSE for details\n\n' )
+    str = CodeBuilder ( '//\n//  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '//  All rights reserved.\n//\n//  See LICENSE file for information.\n//\n\n' )
 
-    str.append ( '#include <stdio.h>\n' )
+    # str.append ( '#include <stdio.h>\n' )
     str.append ( '#include <stdlib.h>\n' )
     str.append ( '#include <string.h>\n\n' )
 
@@ -424,8 +430,8 @@ def create_metadata ( script, metadata ):
 def cmake_library ( script ):
     """Build the CMakeLists.txt file for the generated library"""
     
-    str = CodeBuilder ( '##\n## Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n' )
+    str = CodeBuilder ( '##\n##  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '##  All rights reserved.\n##\n##  See LICENSE file for full information.\n##\n\n' )
 
     str.append ( 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n' )
 

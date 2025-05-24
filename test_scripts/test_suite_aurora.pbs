@@ -1,0 +1,34 @@
+#!/bin/bash
+
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
+
+### This script runs test_suite.sh on aurora.
+###
+### Need these settings:
+### export SPIRAL_HOME=(home directory for SPIRAL)
+### export FFTX_HOME=(home directory for FFTX)
+###
+### Then to submit:
+### qsub -A (account name) -v "SPIRAL_HOME=$SPIRAL_HOME" -v "FFTX_HOME=$FFTX_HOME" test_suite_aurora.pbs
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -l filesystems=home
+#PBS -N test_suite_aurora
+#PBS -q debug
+
+module load cmake
+module load python
+export ONEAPI_DEVICE_SELECTOR=opencl:gpu
+
+echo "SPIRAL_HOME=$SPIRAL_HOME"
+echo "FFTX_HOME=$FFTX_HOME"
+
+cd $FFTX_HOME
+date
+bash test_suite.sh
+date
