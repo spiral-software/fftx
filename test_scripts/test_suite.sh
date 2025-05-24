@@ -21,7 +21,13 @@ time_test() {
     eval $1
     rc=$?
     end_time=`date +%s.%N`
-    runtime=$( echo "$end_time - $start_time" | bc -l )
+
+    ##  Windows [Mingw] doesn't have the basic calculator, "bc".  Try python instead:
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+        runtime=$(python -c "print(round($end_time - $start_time, 4))")
+    else
+        runtime=$( echo "$end_time - $start_time" | bc -l )
+    fi
     if [[ $rc = 0 ]]; then
         echo "PASSED $1 in $runtime sec"
     else
