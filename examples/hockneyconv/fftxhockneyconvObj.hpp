@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 static std::string hockneyconv_script = "transform := TFCall(\n\
         Compose([\n\
             ExtractBox(szcube, padcube),\n\

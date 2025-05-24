@@ -1,6 +1,13 @@
 #ifndef FFTX_mdprdft_PRECOMPILE_H
 #define FFTX_mdprdft_PRECOMPILE_H
 
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information
+//
+
 #include "fftxtransformer.precompile.hpp"
 
 /*

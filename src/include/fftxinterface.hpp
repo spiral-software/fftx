@@ -1,8 +1,10 @@
 #ifndef FFTX_MDDFT_INTERFACE_HEADER
 #define FFTX_MDDFT_INTERFACE_HEADER
 
-//  Copyright (c) 2018-2022, Carnegie Mellon University
-//  See LICENSE for details
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
 
 #include <cstdlib>
 #include <vector>
@@ -21,6 +23,7 @@
 
 #if defined(_WIN32) || defined (_WIN64)
   #include <io.h>
+  #include <direct.h>
   #define FFTX_POPEN _popen
   #define FFTX_PCLOSE _pclose
   // #define popen _popen

@@ -1,8 +1,8 @@
 ##
-## Copyright (c) 2018-2021, Carnegie Mellon University
-## All rights reserved.
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
 ##
-## See LICENSE file for full information
+##  See LICENSE file for full information.
 ##
 
 ## specify this only here, lower levels use CMAKE_MINIMUM_REQUIRED_VERSION that this sets

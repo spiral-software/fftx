@@ -1,6 +1,13 @@
 #ifndef FFTX_DEVICE_MACROS_HEADER
 #define FFTX_DEVICE_MACROS_HEADER
 
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 // Need this for ErrStream().
 #include "fftx.hpp"
 

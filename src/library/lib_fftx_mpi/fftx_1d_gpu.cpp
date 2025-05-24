@@ -2,6 +2,12 @@
 #include "fftxdevice_macros.h"
 #include "fftx_1d_gpu.h"
 
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+
 __global__
 void
 __embed(

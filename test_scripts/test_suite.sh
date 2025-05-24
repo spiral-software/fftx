@@ -1,5 +1,12 @@
 #!/bin/bash
 
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
+
 ##  Test suite for FFTX
 ##  To run: either: ./test_suite.sh or source test_suite.sh
 ##
@@ -31,9 +38,9 @@ run_tests() {
 
     ##  Determine executable name based on environment
     if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-        exen="./bin/${base}.exe"
+        exen="${FFTX_HOME}/bin/${base}.exe"
     else
-        exen="./bin/${base}"
+        exen="${FFTX_HOME}/bin/${base}"
     fi
 
     ## Set itnspec to "-i $itns" if itns is nonzero, otherwise blank

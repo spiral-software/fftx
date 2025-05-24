@@ -1,4 +1,12 @@
 #!/bin/bash
+
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
+
 ### Need these settings:
 ### export SBATCH_ACCOUNT=(your account name)
 ### export SPIRAL_HOME=(home directory for SPIRAL)

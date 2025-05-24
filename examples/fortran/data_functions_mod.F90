@@ -1,3 +1,10 @@
+!!
+!!  Copyright (c) 2018-2025, Carnegie Mellon University
+!!  All rights reserved.
+!!
+!!  See LICENSE file for full information.
+!!
+
 module data_functions_mod
   use problem_dimensions_mod
   use, intrinsic :: iso_c_binding

@@ -1,7 +1,9 @@
 #pragma once
 
 //  Copyright (c) 2018-2025, Carnegie Mellon University
-//  See LICENSE for details
+//   All rights reserved.
+//
+//  See LICENSE file for full information
 
 /*
  *  FFTX base types definitions: point_t, box_t, array_t, and global_ptr

@@ -1,4 +1,12 @@
 #!/bin/bash
+
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
+
 ### This script runs test_suite.sh on aurora.
 ###
 ### Need these settings:
