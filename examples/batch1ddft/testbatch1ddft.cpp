@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <math.h>
 #include "fftx.hpp"
 #include "fftxutilities.hpp"
@@ -20,7 +27,7 @@
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
-#include <oneapi/mkl/dfti.hpp>
+#include <oneapi/mkl/dft.hpp>
 #elif defined (FFTX_USE_FFTW)
 #include "fftw3.h"
 #endif
@@ -317,8 +324,8 @@ int main(int argc, char* argv[])
     // If we have specified sequential reads & strided writes, or vice versa,
     // then we need separate mkl::dft plans for compute_forward and
     // compute_backward, in order for the output ordering to be correct.
-    std::int64_t read_strides[] = {0, read_stride};
-    std::int64_t write_strides[] = {0, write_stride};
+    std::vector<std::int64_t> read_strides = {0, read_stride};
+    std::vector<std::int64_t> write_strides = {0, write_stride};
 
     // Initialize batch 1D FFT descriptor
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
@@ -328,7 +335,8 @@ int main(int argc, char* argv[])
     plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, read_dist);
     plan.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, write_strides);
     plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, write_dist);
-    plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
+    plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+		   oneapi::mkl::dft::config_value::NOT_INPLACE);
     plan.commit(Q);
 #elif defined (FFTX_USE_FFTW)
     fftw_plan plan = fftw_plan_many_dft(1, &N, B,
@@ -493,7 +501,8 @@ int main(int argc, char* argv[])
         planInv.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, write_dist);
         planInv.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES, read_strides);
         planInv.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, read_dist);
-        planInv.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
+        planInv.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+			  oneapi::mkl::dft::config_value::NOT_INPLACE);
         planInv.commit(Q);
       }
 #elif defined(FFTX_USE_FFTW)
@@ -655,7 +664,8 @@ int main(int argc, char* argv[])
 #endif
 
     // printf("%s: All done, exiting\n", prog);
-    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    fftx::OutStream() << prog << ": All done, exiting with status "
+                      << status << std::endl;
     std::flush(fftx::OutStream());
 
     return status;

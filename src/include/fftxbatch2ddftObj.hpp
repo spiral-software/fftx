@@ -1,4 +1,9 @@
 
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
+
 static std::string batch2ddft_script = "transform := let(\n\
          TFCall(TRC(TTensorI(TTensorI(DFT(N, sign), b, write, read), B, AVec, AVec)),\n\
             rec(fname := name, params := [])));";

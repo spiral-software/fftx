@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include "fftx.hpp"
 #include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
@@ -21,7 +28,7 @@
 #elif defined (FFTX_SYCL)
 // #include "mkl_dfti.h"
 // #include <sycl/sycl.hpp>
-#include <oneapi/mkl/dfti.hpp>
+#include <oneapi/mkl/dft.hpp>
 // #include <oneapi/mkl/vm.hpp>
 #elif defined (FFTX_USE_FFTW)
 #include "fftw3.h"
@@ -568,7 +575,8 @@ int main(int argc, char* argv[])
 #endif
 
     // printf("%s: All done, exiting\n", prog);
-    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    fftx::OutStream() << prog << ": All done, exiting with status "
+                      << status << std::endl;
     std::flush(fftx::OutStream());
 
     return status;

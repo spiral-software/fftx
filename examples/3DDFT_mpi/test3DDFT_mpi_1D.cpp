@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <mpi.h>
 #include <complex>
 #include <iostream>
@@ -145,6 +152,7 @@ double inputRealSymmetric(int i, int j, int l, int K, int N, int M)
 
 int main(int argc, char* argv[])
 {
+  char *prog = argv[0];
   int status = 0;
   
   MPI_Init(&argc, &argv);
@@ -1121,5 +1129,13 @@ int main(int argc, char* argv[])
   free(host_out);
 
   MPI_Finalize();
+
+  if (rank == root)
+    {
+      fftx::OutStream() << prog << ": All done, exiting with status "
+                        << status << std::endl;
+      std::flush(fftx::OutStream());
+    }
+  
   return status;
 }

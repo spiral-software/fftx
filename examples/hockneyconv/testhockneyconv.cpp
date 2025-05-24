@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include "fftx.hpp"
 #include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
@@ -286,7 +293,8 @@ nt help message) ]"
 
     delete[] hockneyconv_gpu;
 
-    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    fftx::OutStream() << prog << ": All done, exiting with status "
+                      << status << std::endl;
     std::flush(fftx::OutStream());
 
     return status;

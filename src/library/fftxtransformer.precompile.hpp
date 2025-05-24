@@ -1,10 +1,12 @@
 #ifndef FFTX_transformer_PRECOMPILE_H
 #define FFTX_transformer_PRECOMPILE_H
 
-// This is included in fftxdevice_macros.h
-//#ifdef FFTX_HIP
-//#include <hip/hip_runtime.h>
-//#endif
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information
+//
 
 #include "fftx.hpp"
 #include "fftxdevice_macros.h"

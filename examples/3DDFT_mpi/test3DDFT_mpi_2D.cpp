@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <mpi.h>
 #include <complex>
 #include <iostream>
@@ -11,6 +18,7 @@ using cx = std::complex<double>;
 
 int main(int argc, char* argv[])
 {
+  char *prog = argv[0];
   int status = 0;
 
   int ntrials = 3;
@@ -226,5 +234,13 @@ int main(int argc, char* argv[])
  FFTX_DEVICE_FREE(out_buffer);
  delete[] fftx_in;
  delete[] fftx_out;
+
+ if (commRank == 0)
+    {
+      fftx::OutStream() << prog << ": All done, exiting with status "
+                        << status << std::endl;
+      std::flush(fftx::OutStream());
+    }
+   
  return status;
 }

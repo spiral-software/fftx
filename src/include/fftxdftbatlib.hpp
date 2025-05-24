@@ -1,3 +1,9 @@
+
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
+
 using namespace fftx;
 
 static std::string dftbat_script = "ns := szns;\n\

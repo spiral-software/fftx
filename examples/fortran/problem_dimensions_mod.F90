@@ -1,3 +1,10 @@
+!!
+!!  Copyright (c) 2018-2025, Carnegie Mellon University
+!!  All rights reserved.
+!!
+!!  See LICENSE file for full information.
+!!
+
 module problem_dimensions_mod
   use, intrinsic :: iso_c_binding
   implicit none
@@ -27,6 +34,53 @@ module problem_dimensions_mod
 
 contains
 
+  !
+  ! call getDimsFromString(str, dims, ier)
+  ! with input
+  ! str: string of form MMxNNxKK
+  ! and output
+  ! dims: integer array containing MM, NN, KK
+  ! ier: error code, 0 if OK
+  ! 
+  subroutine getDimsFromString(str, dims, ier)
+    implicit none
+    character(len=32), intent(in) :: str
+    integer, intent(out) :: dims(3)
+    integer, intent(out) :: ier
+    integer :: posx, iostat
+    character(len=32) :: istr, rest
+
+    ier = 0
+    posx = index(str, 'x')
+    if (posx .lt. 2) then
+       ier = -1
+       return
+    else
+       istr = str(1:posx-1)
+       rest = str(posx+1:)
+       read (istr, *, iostat=iostat) dims(1)
+       if (iostat .ne. 0) then
+          ier = iostat
+          return
+       else
+          posx = index(rest, 'x')
+          istr = rest(1:posx-1)
+          rest = rest(posx+1:)
+          read (istr, *, iostat=iostat) dims(2)
+          if (iostat .ne. 0) then
+             ier = iostat
+             return
+          else
+             read (rest, *, iostat=iostat) dims(3)
+             if (iostat .ne. 0) then
+                ier = iostat
+                return
+             endif
+          endif
+       endif
+    endif
+  end subroutine getDimsFromString
+  
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
   !
   ! call lengthsAndOffsets(globlengths, isplit, ranklengths, rankoffsets)

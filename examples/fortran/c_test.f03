@@ -1,3 +1,10 @@
+!!
+!!  Copyright (c) 2018-2025, Carnegie Mellon University
+!!  All rights reserved.
+!!
+!!  See LICENSE file for full information.
+!!
+
   type, bind(C) :: mddft_holder
      type(C_PTR) :: dev_out, dev_in, dev_sym, problem
   end type mddft_holder

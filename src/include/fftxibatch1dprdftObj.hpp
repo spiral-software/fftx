@@ -1,3 +1,9 @@
+
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
+
 //read seq, write seq
 static std::string ibatch1dprdft_script_0x0 = "transform := let(\n\
          TFCall(TTensorI(IPRDFT(N, 1), B, write, read),\n\
@@ -20,6 +26,29 @@ static std::string ibatch1dprdft_script_1x1 = "transform := let(\n\
         Prm(fTensor(L(IPRDFT1(N, 1).dims()[2]/2 * B, B), fId(2))), \n\
     rec(fname := name, params := [])));";
 
+/**
+   Class for complex-to-real batched 1D FFT.
+
+   The specification allows both the input and the output to be
+   distributed in either
+   a sequential way
+   (full first array in the batch followed by full second array, etc.)
+   or a strided way
+   (first element of every array in the batch followed by second element 
+   of every array, etc.).
+
+   <tt>FFTXProblem::args</tt> must be set to a <tt>std::vector<void*></tt> of length 2, where
+   - <tt>args[0]</tt> is a pointer to a real output array of size the product of the batch size and FFT output length: this array size is <tt>sizes[0] * sizes[1]</tt>;
+   - <tt>args[1]</tt> is a pointer to a complex input array of size the product of the batch size and FFT input length: this array size is <tt>(sizes[0]+1)/2 * sizes[1]</tt>.
+
+   <tt>FFTXProblem::sizes</tt> must be set to a <tt>std::vector<int></tt> of length 4, where:
+   - <tt>sizes[0]</tt> is the output length of the FFT;
+   - <tt>sizes[1]</tt> is the batch size;
+   - <tt>sizes[2]</tt> is 0 if the input is sequential, 1 if the input is strided;
+   - <tt>sizes[3]</tt> is 0 if the output is sequential, 1 if the output is strided.
+
+   <tt>FFTXProblem::name</tt> must be set to <tt>"ib1prdft"</tt>.
+ */
 class IBATCH1DPRDFTProblem: public FFTXProblem {
 public:
     using FFTXProblem::FFTXProblem;

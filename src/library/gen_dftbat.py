@@ -1,7 +1,11 @@
 #! python
 
-##  Copyright (c) 2018-2023, Carnegie Mellon University
-##  See LICENSE for details
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
 
 ##  This script reads a file of batch 1D specs (command line arg), that contains several size
 ##  specifications for batch 1D DFTs.  This script will:
@@ -91,8 +95,8 @@ def start_header_file ( type, script ):
         
     str = CodeBuilder ( f'#ifndef {script.file_stem}{type}{script.decor_platform}HEADER_INCLUDED' + '\n' )
     str.append ( f'#define {script.file_stem}{type}{script.decor_platform}HEADER_INCLUDED' + '\n\n' )
-    str.append ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '//  See LICENSE for details\n\n' )
+    str.append ( '//\n//  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '//  All rights reserved.\n//\n//  See LICENSE file for information.\n//\n\n' )
 
     str.append ( '#include "fftx.hpp"\n\n' )
 
@@ -175,8 +179,8 @@ def library_api ( script ):
            {script.file_stem}{script.decor_platform}{QuerySizes | Tuple | Run}
     """
 
-    str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '//  See LICENSE for details\n\n' )
+    str = CodeBuilder ( '//\n//  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '//  All rights reserved.\n//\n//  See LICENSE file for information.\n//\n\n' )
 
     # str.append ( '#include <stdio.h>\n' )
     str.append ( '#include <iostream>\n' )
@@ -397,8 +401,8 @@ def python_cuda_api ( script ):
 def create_metadata ( script, metadata ):
     "Create a compileable module to be added to the library that contains the metadata for the library"
 
-    str = CodeBuilder ( '//  Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '//  See LICENSE for details\n\n' )
+    str = CodeBuilder ( '//\n//  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '//  All rights reserved.\n//\n//  See LICENSE file for information.\n//\n\n' )
 
     # str.append ( '#include <stdio.h>\n' )
     str.append ( '#include <stdlib.h>\n' )
@@ -426,8 +430,8 @@ def create_metadata ( script, metadata ):
 def cmake_library ( script ):
     """Build the CMakeLists.txt file for the generated library"""
     
-    str = CodeBuilder ( '##\n## Copyright (c) 2018-2023, Carnegie Mellon University\n' )
-    str.append ( '## All rights reserved.\n##\n## See LICENSE file for full information\n##\n\n' )
+    str = CodeBuilder ( '##\n##  Copyright (c) 2018-2025, Carnegie Mellon University\n' )
+    str.append ( '##  All rights reserved.\n##\n##  See LICENSE file for full information.\n##\n\n' )
 
     str.append ( 'cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )\n\n' )
 

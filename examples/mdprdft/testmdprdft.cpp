@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include "fftx.hpp"
 #include "fftxutilities.hpp"
 #include "fftxinterface.hpp"
@@ -19,7 +26,7 @@
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
 #include "fftxdevice_macros.h"
 #elif defined (FFTX_SYCL)
-#include <oneapi/mkl/dfti.hpp>
+#include <oneapi/mkl/dft.hpp>
 #elif defined (FFTX_USE_FFTW)
 #include "fftw3.h"
 #endif
@@ -293,12 +300,13 @@ int main(int argc, char* argv[])
 
     // Initialize 3D FFT descriptor
     std::vector<std::int64_t> Nvec{mm, nn, kk};
-    std::int64_t fwd_strides[] = {0, nn*kk, kk, 1};
-    std::int64_t bwd_strides[] = {0, nn*K_adj, K_adj, 1};
+    std::vector<std::int64_t> fwd_strides = {0, nn*kk, kk, 1};
+    std::vector<std::int64_t> bwd_strides = {0, nn*K_adj, K_adj, 1};
     oneapi::mkl::dft::descriptor<oneapi::mkl::dft::precision::DOUBLE,
                                  oneapi::mkl::dft::domain::REAL>
       plan(Nvec);
-    plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
+    plan.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+		   oneapi::mkl::dft::config_value::NOT_INPLACE);
     plan.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE, npts);
     plan.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE, nptsTrunc);
     plan.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES, fwd_strides);
@@ -623,7 +631,8 @@ int main(int argc, char* argv[])
     // delete[] symbolTfmPtr;
 #endif
 
-    fftx::OutStream() << prog << ": All done, exiting" << std::endl;
+    fftx::OutStream() << prog << ": All done, exiting with status "
+                      << status << std::endl;
     std::flush(fftx::OutStream());
 
     return status;

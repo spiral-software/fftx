@@ -1,3 +1,10 @@
+!!
+!!  Copyright (c) 2018-2025, Carnegie Mellon University
+!!  All rights reserved.
+!!
+!!  See LICENSE file for full information.
+!!
+
 module mpi_utils_mod
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
   use mpi

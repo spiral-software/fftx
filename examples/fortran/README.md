@@ -34,15 +34,21 @@ make HIP
 make SYCL
 make CPU
 ```
-In any case, the executable will be in `main`.
+In any case, the executable will be in `fortran_main`.
 
 ### To run in serial:
 
-The command arguments are the dimensions.
+Use command arguments `-s MMxNNxKK` for dimensions MMxNNxKK.
+An optional argument `-i itns` runs each test `itns` times; this defaults to 1.
 For example, to run convolution tests in serial on 32x40x48, do:
 ```
-./main 32 40 48
+./fortran_main -s 32x40x48
 ```
+You can get a help message via:
+```
+./fortran_main -h
+```
+
 
 So far, serial transforms work that are complex-to-complex forward
 (MDDFT) and inverse (IMDDFT),
@@ -59,7 +65,7 @@ Distributed transforms work on HIP and CUDA platforms only.
 
 To run convolution tests with 4 MPI ranks on 32x40x48, do one of:
 ```
-mpirun -np 4 ./main 32 40 48
+mpirun -np 4 ./fortran_main -s 32x40x48
 
-srun -n 4 ./main 32 40 48
+srun -n 4 ./fortran_main -s 32x40x48
 ```
