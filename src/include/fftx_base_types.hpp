@@ -314,8 +314,9 @@ namespace fftx
   };
 
 
-//     #ifdef FFTX_DOXYGEN
+#ifdef FFTX_DOXYGEN
     // FFTX_DOXYGEN should never be defined when compiling code; it's only for use with doxygen to generate doc
+    // The block below is processed by doxygen (to instantiate the templates) but is NOT emitted in the final docs
     
 /// \cond DOXYGEN_SHOULD_SKIP_THIS
     template struct point_t<3>;
@@ -323,7 +324,7 @@ namespace fftx
     template struct array_t<3, double>;
     template class global_ptr<double>;
 /// \endcond
-//     #endif
+#endif
 
 
 } // namespace fftx
