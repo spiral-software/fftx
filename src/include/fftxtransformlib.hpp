@@ -1,3 +1,9 @@
+
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
+
 #include "fftxmddftlib.hpp"
 #include "fftxmdprdftlib.hpp"
 #include "fftxbatch1ddftObj.hpp"

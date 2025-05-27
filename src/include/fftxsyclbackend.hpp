@@ -1,8 +1,10 @@
 #ifndef FFTX_MDDFT_SYCLBACKEND_HEADER
 #define FFTX_MDDFT_SYCLBACKEND_HEADER
 
-//  Copyright (c) 2018-2022, Carnegie Mellon University
-//  See LICENSE for details
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
 
 #include <sycl/sycl.hpp>
 #include <vector>

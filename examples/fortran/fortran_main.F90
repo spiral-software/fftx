@@ -1,3 +1,10 @@
+!!
+!!  Copyright (c) 2018-2025, Carnegie Mellon University
+!!  All rights reserved.
+!!
+!!  See LICENSE file for full information.
+!!
+
 PROGRAM FFTX_CONVOLUTION
   use mpi_utils_mod
 !  use problem_dimensions_mod, only : initProblemDimensions

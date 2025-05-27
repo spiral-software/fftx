@@ -1,6 +1,11 @@
 #ifndef FFTX_UTILITIES_HEADER
 #define FFTX_UTILITIES_HEADER
 
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
+
 /** \relates fftx::box_t
     Returns a box having the dimensions of the first argument,
     with its lower corner in each direction being 1

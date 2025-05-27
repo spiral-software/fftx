@@ -1,3 +1,9 @@
+
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
+
 // read seq, write seq
 static std::string batch1dprdft_script_0x0 = "transform := let(\n\
          TFCall(TTensorI(PRDFT(N, sign), B, APar, read),\n\

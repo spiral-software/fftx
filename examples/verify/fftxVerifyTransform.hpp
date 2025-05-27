@@ -1,6 +1,13 @@
 #ifndef FFTX_VERIFY_TRANSFORM_HEADER
 #define FFTX_VERIFY_TRANSFORM_HEADER
 
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #include <cmath> // Without this, abs returns zero!
 #include <random>
 

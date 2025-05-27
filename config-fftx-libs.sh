@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Copyright (c) 2018-2023, Carnegie Mellon University
+## Copyright (c) 2018-2025, Carnegie Mellon University
 ## All rights reserved.
 ##
 ## See LICENSE file for full information
@@ -160,7 +160,7 @@ rm -f options.cmake
 touch options.cmake
 
 echo "##" >> options.cmake
-echo "## Copyright (c) 2018-2023, Carnegie Mellon University" >> options.cmake
+echo "## Copyright (c) 2018-2025, Carnegie Mellon University" >> options.cmake
 echo "## All rights reserved." >> options.cmake
 echo "##" >> options.cmake
 echo "## See LICENSE file for full information" >> options.cmake

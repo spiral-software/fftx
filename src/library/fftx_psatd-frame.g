@@ -1,6 +1,9 @@
-
-##  Copyright (c) 2018-2022, Carnegie Mellon University
-##  See LICENSE for details
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information
+##
 
 ##  Script to generate code, will be driven by a size specification and will write the
 ##  CUDA/HIP code to a file.  The code will be compiled into a library for applications

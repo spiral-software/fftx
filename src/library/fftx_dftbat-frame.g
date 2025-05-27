@@ -1,5 +1,8 @@
-##  Copyright (c) 2018-2023, Carnegie Mellon University
-##  See LICENSE for details
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information
+##
 
 ##  batch of 1D complex DFTs
 

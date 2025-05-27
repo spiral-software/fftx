@@ -1,5 +1,11 @@
 #! python
 
+##
+##  Copyright (c) 2018-2025, Carnegie Mellon University
+##  All rights reserved.
+##
+##  See LICENSE file for full information.
+##
 ##  Validate FFTX built libraries against numpy computed versions of the transforms.
 ##  Exercise all the sizes in the library (read cube-sizes file) and call both forward and
 ##  inverse transforms.  Optionally, specify a single cube size to validate.

@@ -1,3 +1,10 @@
+//
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//  All rights reserved.
+//
+//  See LICENSE file for full information.
+//
+
 #ifndef FFTX_COMMON_UTIL_H
 #define FFTX_COMMON_UTIL_H
 

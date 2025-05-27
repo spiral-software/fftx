@@ -1,8 +1,10 @@
 #ifndef FFTX_MDDFT_HIPBACKEND_HEADER
 #define FFTX_MDDFT_HIPBACKEND_HEADER
 
-//  Copyright (c) 2018-2022, Carnegie Mellon University
-//  See LICENSE for details
+//  Copyright (c) 2018-2025, Carnegie Mellon University
+//   All rights reserved.
+//
+//  See LICENSE file for full information
 
 #include <hip/hiprtc.h>
 #include <hip/hip_runtime.h>
