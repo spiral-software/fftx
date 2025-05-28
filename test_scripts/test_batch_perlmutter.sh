@@ -30,5 +30,4 @@ export CPATH=$CUDATOOLKIT_HOME/../../math_libs/include
 module load openmpi
 module load python
 
-cd $FFTX_HOME
-source test_batch_script.sh
+source $FFTX_HOME/test_scripts/test_batch_script.sh

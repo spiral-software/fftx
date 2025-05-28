@@ -28,7 +28,6 @@ export ONEAPI_DEVICE_SELECTOR=opencl:gpu
 echo "SPIRAL_HOME=$SPIRAL_HOME"
 echo "FFTX_HOME=$FFTX_HOME"
 
-cd $FFTX_HOME
 date
-bash test_suite.sh
+bash $FFTX_HOME/test_scripts/test_suite.sh
 date
