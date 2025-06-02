@@ -7,11 +7,12 @@
 
 module mpi_utils_mod
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  use mpi, only : MPI_COMM_WORLD, MPI_COMM_SIZE, MPI_COMM_RANK, MPI_SUCCESS, &
+  use mpi_f08, only : MPI_COMM_WORLD, MPI_COMM_SIZE, MPI_COMM_RANK, &
+       MPI_SUCCESS, MPI_Status, &
        MPI_DOUBLE, MPI_DOUBLE_PRECISION, MPI_DOUBLE_COMPLEX, &
        MPI_MAX, MPI_SUM, &
-       MPI_INIT, MPI_FINALIZE, MPI_Wtime, &
-       MPI_Reduce, MPI_Bcast, MPI_Barrier, MPI_Allreduce, MPI_SendRecv_replace
+       MPI_INIT, MPI_FINALIZE, MPI_Wtime, MPI_Barrier, &
+       MPI_Reduce, MPI_Bcast, MPI_Allreduce, MPI_SendRecv_replace
 #endif
   use, intrinsic :: iso_c_binding
   implicit none
@@ -157,7 +158,7 @@ module mpi_utils_mod
       integer :: minx, miny, minz, maxx, maxy, maxz, lx, ly, lz
       integer :: ix, iy, iz, jx, jy, jz, npts, inext, iprev
       integer :: tagShiftLeft, tagShiftRight
-      integer, dimension(mpi_size) :: mpistatus
+      type(MPI_Status) :: mpistatus
       
       minx = lbound(arr, 1)
       miny = lbound(arr, 2)
@@ -225,7 +226,7 @@ module mpi_utils_mod
       integer :: minx, miny, minz, maxx, maxy, maxz, lx, ly, lz
       integer :: ix, iy, iz, jx, jy, jz, npts, inext, iprev
       integer :: tagShiftLeft, tagShiftRight
-      integer, dimension(mpi_size) :: mpistatus
+      type(MPI_Status) :: mpistatus
       
       minx = lbound(arr, 1)
       miny = lbound(arr, 2)
