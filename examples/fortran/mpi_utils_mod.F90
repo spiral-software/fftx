@@ -7,7 +7,11 @@
 
 module mpi_utils_mod
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  use mpi
+  use mpi, only : MPI_COMM_WORLD, MPI_COMM_SIZE, MPI_COMM_RANK, MPI_SUCCESS, &
+       MPI_DOUBLE, MPI_DOUBLE_PRECISION, MPI_DOUBLE_COMPLEX, &
+       MPI_MAX, MPI_SUM, &
+       MPI_INIT, MPI_FINALIZE, MPI_Wtime, &
+       MPI_Reduce, MPI_Bcast, MPI_Barrier, MPI_Allreduce, MPI_SendRecv_replace
 #endif
   use, intrinsic :: iso_c_binding
   implicit none

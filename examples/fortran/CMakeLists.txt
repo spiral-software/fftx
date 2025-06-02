@@ -36,12 +36,13 @@ set ( FORTRAN_SOURCES
 ##  The C++ file that needs to be compiled as part of the example
 set ( CPP_SOURCES test.cpp )
 
-##  Get around problem with MPI calls on different types.
 include ( CheckFortranCompilerFlag )
-check_fortran_compiler_flag ( "-fallow-argument-mismatch" _fallow-argument-mismatch )
-if ( _fallow-argument-mismatch )
-    set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch" )
-endif ()
+
+##  Get around problem with MPI calls on different types.
+###check_fortran_compiler_flag ( "-fallow-argument-mismatch" _fallow-argument-mismatch )
+###if ( _fallow-argument-mismatch )
+###    set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch" )
+###endif ()
 
 check_fortran_compiler_flag ( "-fPIC" _fPIC )
 if ( _fPIC )
