@@ -205,7 +205,7 @@ inline FFTX_DEVICE_PTR fftxDeviceMallocForHostArray(fftx::array_t<DIM, Thost>& a
   size_t npts = a_hostArray.m_domain.size();
   size_t bytes = npts * sizeof(Thost);
   FFTX_DEVICE_PTR devicePtr;
-  FFTX_DEVICE_MALLOC((void **)&devicePtr, bytes);
+  FFTX_DEVICE_ERROR_T status = FFTX_DEVICE_MALLOC((void **)&devicePtr, bytes);
   return devicePtr;
 }
 
