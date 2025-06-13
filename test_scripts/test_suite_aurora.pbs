@@ -14,7 +14,7 @@
 ### export FFTX_HOME=(home directory for FFTX)
 ###
 ### Then to submit:
-### qsub -A (account name) -v "SPIRAL_HOME=$SPIRAL_HOME" -v "FFTX_HOME=$FFTX_HOME" test_suite_aurora.pbs
+### qsub -A (account name) -v "SPIRAL_HOME=$SPIRAL_HOME" -v "FFTX_HOME=$FFTX_HOME" $FFTX_HOME/test_scripts/test_suite_aurora.pbs
 #PBS -l select=1
 #PBS -l walltime=00:20:00
 #PBS -l filesystems=home
