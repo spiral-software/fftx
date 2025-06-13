@@ -10,7 +10,7 @@ if [ -f "$SPIRAL_HOME/bin/spiral" ]; then
     source install_fftx.sh
     if [ -d "bin" ]; then
         echo "SUCCESS: FFTX installed at $FFTX_HOME"
-        source test_suite.sh > test_suite.out
+        source test_scripts/test_suite.sh > test_suite.out
     else
         echo "FAILED: FFTX not installed at $FFTX_HOME"
     fi
