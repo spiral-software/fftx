@@ -184,6 +184,8 @@ endif ()
 
 add_subdirectory ( CMakeIncludes )
 
+add_subdirectory ( test_scripts )
+
 ##  We will only build the documentation if the following conditions are satisfied:
 ##    FFTX_MAKE_DOCS is defined when cmake is invoked (e.g., cmake -DFFTX_MAKE_DOCS=True ..)
 ##    Sphinx is installed (also breathe & sphinx_rtd_theme)
