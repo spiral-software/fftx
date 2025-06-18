@@ -184,7 +184,11 @@ endif ()
 
 add_subdirectory ( CMakeIncludes )
 
-add_subdirectory ( test_scripts )
+install (
+    DIRECTORY test_scripts
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    USE_SOURCE_PERMISSIONS
+)
 
 ##  We will only build the documentation if the following conditions are satisfied:
 ##    FFTX_MAKE_DOCS is defined when cmake is invoked (e.g., cmake -DFFTX_MAKE_DOCS=True ..)
