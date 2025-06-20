@@ -30,7 +30,12 @@ project (FFTX_PROJECT
 ##  --------------------------------------------------------------------------------
 
 set ( Fortran_ENABLED FALSE )
-find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
+if ( WIN32 )
+    find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
+else ()
+    find_program ( FORTRAN_COMPILER NAMES ifx gfortran mpifort )
+endif ()
+
 if ( FORTRAN_COMPILER )
     message ( STATUS "Found Fortran compiler candidate: ${FORTRAN_COMPILER}" )
     ##  Tell CMake to use our candidate
