@@ -50,8 +50,9 @@ add_custom_command ( OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/README.rst
                      COMMAND pandoc --from=gfm --to=rst --output=${CMAKE_CURRENT_SOURCE_DIR}/README.rst ${FFTX_PROJECT_SOURCE_DIR}/README.md
                      COMMENT "Generate FFTX Readme in RST format" )
 
-##  Named target so we can run the job easily
+##  Named target so we can run the job easily; limit jobs to 1 (possible race conditions otherwise)
 add_custom_target ( Doxygen ALL DEPENDS ${DOXYGEN_INDEX_FILE} )
+set_property ( TARGET Doxygen PROPERTY JOB_POOL doc_pool )
 
 set ( SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR} )
 set ( SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx )
@@ -82,6 +83,7 @@ add_custom_command ( OUTPUT ${SPHINX_INDEX_FILE}
 ##  Named target so we can run the job easily
 add_custom_target ( Sphinx ALL DEPENDS ${SPHINX_INDEX_FILE}
                     COMMENT "Documentation is available in ${SPHINX_BUILD}" )
+set_property ( TARGET Sphinx PROPERTY JOB_POOL doc_pool )
 
 ##  include ( GNUInstallDirs )
 ##  install ( DIRECTORY ${SPHINX_BUILD}
