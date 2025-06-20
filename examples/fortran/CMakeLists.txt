@@ -12,8 +12,12 @@ cmake_minimum_required ( VERSION ${CMAKE_MINIMUM_REQUIRED_VERSION} )
 
 ##  ===== For most examples you should not need to modify anything ABOVE this line =====
 
-# Set the project name - usually the same as the folder name
+##  Set the project name - usually the same as the folder name
 project ( fortran ${_lang_add} Fortran )
+
+##  Put Fortran .mod files in a named directory, to help cmake better serialize
+set ( CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )
+file ( MAKE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY} )
 
 ##  Set suffix to F90 for Fortran files
 set ( _desired_suffix F90 )
@@ -59,9 +63,9 @@ message ( STATUS "_all_build_srcs: ${_all_build_srcs}" )
 
 ##  ===== For most examples you should not need to modify anything BELOW this line =====
 
-# Loop through the programs defined in BUILD_PROGS
+##  Loop through the programs defined in BUILD_PROGS
 foreach ( _prog ${BUILD_PROGS} )
-    # Specify Fortran as the language for Fortran source files
+    ##  Specify Fortran as the language for Fortran source files
     set_source_files_properties ( ${FORTRAN_SOURCES} PROPERTIES LANGUAGE Fortran )
 
     if ( ${_codegen} STREQUAL "HIP" )
@@ -70,10 +74,16 @@ foreach ( _prog ${BUILD_PROGS} )
         set_source_files_properties ( ${CPP_SOURCES} PROPERTIES LANGUAGE CUDA )
     endif ()
 
-    # Manage dependencies and add include directories/libraries for the program
+    ##  Manage dependencies and add include directories/libraries for the program
     manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
     add_includes_libs_to_target ( ${_prog} ${_stem} "${_prefixes}" )
     fort_add_mpi_decorations_to_target ( ${_prog} )
+
+    ##  Use JOB_POOL "fortran_pool" to ensure Fortran code building is limited to single job
+    set_property ( TARGET ${_prog} PROPERTY JOB_POOL_COMPILE fortran_pool )
+
+    ##  Tell cmake where .mod files are written to better manage Fortran dependencies
+    set_property ( TARGET ${_prog} PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY} )
 
     if ( WIN32 AND CMAKE_Fortran_COMPILER MATCHES "ifx" )
         target_link_libraries ( ${_prog} PRIVATE ucrt.lib msvcrt.lib vcruntime.lib oldnames.lib )
