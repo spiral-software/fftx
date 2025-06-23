@@ -30,7 +30,12 @@ project (FFTX_PROJECT
 ##  --------------------------------------------------------------------------------
 
 set ( Fortran_ENABLED FALSE )
-find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
+if ( WIN32 )
+    find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
+else ()
+    find_program ( FORTRAN_COMPILER NAMES ifx gfortran mpifort )
+endif ()
+
 if ( FORTRAN_COMPILER )
     message ( STATUS "Found Fortran compiler candidate: ${FORTRAN_COMPILER}" )
     ##  Tell CMake to use our candidate
@@ -92,6 +97,16 @@ if ( WIN32 AND CMAKE_Fortran_COMPILER MATCHES "ifx" )
     set ( FINDMPIFLAG )
 endif ()
 
+##  --------------------------------------------------------------------------------
+##  CMake doesn't know how to correctly sequence Fortran compiles when several
+##  modules may be compiled in parallel; errors can occur if a module uses the 
+##  output from another module but that module hasn't finished compiling yet.
+##  Force jobs to 1 when building Fortran code.  Ditto for building docs, force
+##  serialization.
+##  --------------------------------------------------------------------------------
+
+set_property ( GLOBAL PROPERTY JOB_POOLS fortran_pool=1 doc_pool=1 )
+
 ##  Prevent building directly into the source tree
 string (COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" DISALLOW_COMPILE_INPLACE)
 if ( DISALLOW_COMPILE_INPLACE )
@@ -102,16 +117,6 @@ if ( DISALLOW_COMPILE_INPLACE )
                  cmake ..
                  make | make install")
 endif ()
-
-# if ( MSVC )
-#     message ( STATUS "MSVC detected -- suppressing all warnings" )
-
-#     ##  Silence MSVC warnings (C/C++)
-#     add_compile_options ( /W0 /w /nologo )
-
-#     ##  Silence Intel ifx Fortran warnings
-#     set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} /warn:none /Qdiag-disable:remark /nologo" )
-# endif ()
 
 ##  NOTE: We use ADDL_COMPILE_FLAGS to hold additional ad-hoc compile time
 ##  flags.  Any child cmake lists should APPEND to the list (i.e., don't assume
@@ -183,6 +188,12 @@ else ()
 endif ()
 
 add_subdirectory ( CMakeIncludes )
+
+install (
+    DIRECTORY test_scripts
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    USE_SOURCE_PERMISSIONS
+)
 
 ##  We will only build the documentation if the following conditions are satisfied:
 ##    FFTX_MAKE_DOCS is defined when cmake is invoked (e.g., cmake -DFFTX_MAKE_DOCS=True ..)
