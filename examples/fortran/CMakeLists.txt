@@ -28,13 +28,13 @@ set ( BUILD_PROGS fortran_main )
 
 ##  List of Fortran source files required for the example
 set ( FORTRAN_SOURCES
-    math_constants_mod.F90
-    mpi_utils_mod.F90
     problem_dimensions_mod.F90
-    fft_mod.F90
+    math_constants_mod.F90
     data_functions_mod.F90
-    transform_tests_mod.F90
     convolution_mod.F90
+    fft_mod.F90
+    mpi_utils_mod.F90
+    transform_tests_mod.F90
 )
 
 ##  The C++ file that needs to be compiled as part of the example
@@ -50,12 +50,6 @@ endif ()
 check_fortran_compiler_flag ( "-fPIC" _fPIC )
 if ( _fPIC )
     set ( CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fPIC" )
-endif ()
-
-##  Get around SYCL problem linking C++ and Fortran code.
-if ( ${_codegen} STREQUAL "SYCL" )
-   string ( REPLACE "CMAKE_CXX_COMPILER" "CMAKE_Fortran_COMPILER" _new_link_executable ${CMAKE_CXX_LINK_EXECUTABLE} )
-   set ( CMAKE_CXX_LINK_EXECUTABLE "${_new_link_executable}" )
 endif ()
 
 list ( APPEND _all_build_srcs ${FORTRAN_SOURCES} ${CPP_SOURCES} )
@@ -78,7 +72,8 @@ foreach ( _prog ${BUILD_PROGS} )
     manage_deps_codegen ( ${_codegen} ${_stem} "${_prefixes}" )
     add_includes_libs_to_target ( ${_prog} ${_stem} "${_prefixes}" )
     fort_add_mpi_decorations_to_target ( ${_prog} )
-
+    set_target_properties ( ${_prog} PROPERTIES LINKER_LANGUAGE Fortran )
+    
     ##  Use JOB_POOL "fortran_pool" to ensure Fortran code building is limited to single job
     set_property ( TARGET ${_prog} PROPERTY JOB_POOL_COMPILE fortran_pool )
 
