@@ -29,11 +29,16 @@ project (FFTX_PROJECT
 ##  Do this *early* to avoid issues on Windows with Intel ifx...
 ##  --------------------------------------------------------------------------------
 
-set ( Fortran_ENABLED FALSE )
-if ( WIN32 )
-    find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
+if ( "X${CMAKE_Fortran_COMPILER}" STREQUAL "X" )
+    ##  Fortran Compiler not specified - try to find one 
+    set ( Fortran_ENABLED FALSE )
+    if ( WIN32 )
+        find_program ( FORTRAN_COMPILER NAMES ifx mpifort )   ##  gfortran )
+    else ()
+        find_program ( FORTRAN_COMPILER NAMES ifx gfortran mpifort )
+    endif ()
 else ()
-    find_program ( FORTRAN_COMPILER NAMES ifx gfortran mpifort )
+    set ( FORTRAN_COMPILER ${CMAKE_Fortran_COMPILER} )
 endif ()
 
 if ( FORTRAN_COMPILER )
