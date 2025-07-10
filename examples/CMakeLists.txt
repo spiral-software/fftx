@@ -35,10 +35,10 @@ else ()
 endif ()
 
 ##  Check if a Fortran compiler is available
-if ( Fortran_ENABLED )
+if ( Fortran_ENABLED AND ${MPI_FOUND} )
     message ( STATUS "Fortran compiler found: ${CMAKE_Fortran_COMPILER}; will build Fortran example" )
     ##  Build the Fortran example
     manage_add_subdir ( fortran       TRUE      TRUE )
 else ()
-    message ( STATUS "No Fortran compiler found.  Skipping Fortran example build." )
+    message ( STATUS "A Fortran compiler and MPI are required,  Skipping Fortran example build." )
 endif ()
