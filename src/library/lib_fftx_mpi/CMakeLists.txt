@@ -44,6 +44,7 @@ add_mpi_decorations_to_target ( ${_lib_name} )
 
 if ( ${_codegen} STREQUAL "CUDA" )
     set_property    ( TARGET ${_lib_name} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON )
+    target_link_directories ( ${_lib_name} PRIVATE ${CUDALINK_DIR} )
     target_link_libraries ( ${_lib_name} PRIVATE ${LIBS_FOR_CUDA} )
 endif ()
 
