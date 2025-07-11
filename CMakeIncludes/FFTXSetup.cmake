@@ -92,20 +92,38 @@ if ( ${_codegen} STREQUAL "CUDA" )
     ##  Provide a means to set/override the CUDA root (if not automatically found)
     set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
     find_package ( CUDAToolkit REQUIRED )
-    ##  Find the libraries: cufft culibos nvrtc
-    find_library ( CUDALIBS_DIR 
-        NAMES cufft culibos nvrtc
+    ##  Find the libraries: cufft culibos nvrtc, find them individually,
+    ##  they may be in different locations
+    find_library ( CUFFT_LIB_NAME NAMES cufft
+        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
+              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
+              /usr/local/cuda                   ##  Another [legacy] fallback
+    )
+    find_library ( CULIBOS_LIB_NAME NAMES culibos
+        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
+              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
+              /usr/local/cuda                   ##  Another [legacy] fallback
+    )
+    find_library ( NVRTC_LIB_NAME NAMES nvrtc
         HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
               ${CUDAToolkit_ROOT}/lib64         ##  Fallback
               /usr/local/cuda                   ##  Another [legacy] fallback
     )
 
-    if ( CUDALIBS_DIR )
+    if ( CUFFT_LIB_NAME AND CULIBOS_LIB_NAME AND NVRTC_LIB_NAME )
+        ##  All three libraries are found
         ##  Extract the directory name from the full path
-        get_filename_component ( CUDALINK_DIR ${CUDALIBS_DIR} DIRECTORY )
-        message ( STATUS "CUDA libraries exist in folder: ${CUDALINK_DIR}" )
+        set ( CUDALINK_DIR )
+        get_filename_component ( LDIR_NAME ${CUFFT_LIB_NAME} DIRECTORY )
+        list ( APPEND CUDALINK_DIR ${LDIR_NAME} )
+        get_filename_component ( LDIR_NAME ${CULIBOS_LIB_NAME} DIRECTORY )
+        list ( APPEND CUDALINK_DIR ${LDIR_NAME} )
+        get_filename_component ( LDIR_NAME ${NVRTC_LIB_NAME} DIRECTORY )
+        list ( APPEND CUDALINK_DIR ${LDIR_NAME} )
+        list ( REMOVE_DUPLICATES CUDALINK_DIR )
+        message ( STATUS "CUDA libraries exist in folder(s): ${CUDALINK_DIR}" )
     else ()
-        message ( FATAL_ERROR "CUDA library folder not found!" )
+        message ( FATAL_ERROR "Missing one or more required CUDA libraries!" )
     endif ()
 
     if (WIN32)
