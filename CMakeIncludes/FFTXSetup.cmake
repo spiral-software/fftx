@@ -88,65 +88,30 @@ endif ()
 ##  Default setting is false; only running on 64 bit machines.
 
 if ( ${_codegen} STREQUAL "CUDA" )
-    ##  Try finding CUDAToolkit and use the directory it reports for target building
-    ##  Provide a means to set/override the CUDA root (if not automatically found)
+    ##  Allow environment override of CUDA location
     set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
+
+    ##  Find CUDAToolkit
     find_package ( CUDAToolkit REQUIRED )
-    ##  NOTE: culibos is only required for static linking.  If FFTX needs to support static
-    ##        linking in future, uncomment the find..() and add it to the link dirs
-    ##  Find the libraries: cufft nvrtc, find them individually, they may be in different locations
-    find_library ( CUFFT_LIB_NAME NAMES cufft
-        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
-              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
-              /usr/local/cuda                   ##  Another [legacy] fallback
-    )
-    # if ( NOT WIN32 )
-    #     ##  culibos is not present on Windows
-    #     find_library ( CULIBOS_LIB_NAME NAMES culibos
-    #         HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
-    #               ${CUDAToolkit_ROOT}/lib64         ##  Fallback
-    #               /usr/local/cuda                   ##  Another [legacy] fallback
-    #     )
-    # endif ()
-    find_library ( NVRTC_LIB_NAME NAMES nvrtc
-        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
-              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
-              /usr/local/cuda                   ##  Another [legacy] fallback
-    )
 
-    if ( CUFFT_LIB_NAME AND NVRTC_LIB_NAME ) ##  AND ( CULIBOS_LIB_NAME OR WIN32 ) )
-        ##  All libraries are found
-        ##  Extract the directory names from the full paths
-        set ( CUDALINK_DIR )
-        get_filename_component ( LDIR_NAME ${CUFFT_LIB_NAME} DIRECTORY )
-        list ( APPEND CUDALINK_DIR ${LDIR_NAME} )
-        # if ( NOT WIN32 )
-        #     get_filename_component ( LDIR_NAME ${CULIBOS_LIB_NAME} DIRECTORY )
-        #     list ( APPEND CUDALINK_DIR ${LDIR_NAME} )
-        # endif ()
-        get_filename_component ( LDIR_NAME ${NVRTC_LIB_NAME} DIRECTORY )
-        list ( APPEND CUDALINK_DIR ${LDIR_NAME} )
-        list ( REMOVE_DUPLICATES CUDALINK_DIR )
-        message ( STATUS "CUDA libraries exist in folder(s): ${CUDALINK_DIR}" )
-    else ()
-        message ( FATAL_ERROR "Missing one or more required CUDA libraries!" )
-    endif ()
-
-    if (WIN32)
+    ##  Define compile flags and definitions
+    if ( WIN32 )
 	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
-	set ( LIBS_FOR_CUDA cufft cuda nvrtc )
 	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
 	set ( CMAKE_CUDA_ARCHITECTURES 52 )
     else ()
 	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
 	##  Don't use -dc (library code can't be relocatable)
 	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
-	set ( LIBS_FOR_CUDA cufft cuda nvrtc )  ##   culibos
 	set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
     endif ()
+
+    ##  Define link libraries using CMake targets — (don't need to set link dirs)
+    set ( LIBS_FOR_CUDA CUDA::cufft CUDA::cuda_driver CUDA::nvrtc )
+
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
-endif ()
+endif()
 
 if ( ${_codegen} STREQUAL "SYCL" )
     ##  Setup what we need to build for SYCL
