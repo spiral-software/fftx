@@ -16,6 +16,7 @@
 #include <tuple>
 #include <iomanip>
 #include <fcntl.h>
+#include <cstring>
 
 #include "fftxdevice_macros.h"
 #pragma once
@@ -137,7 +138,7 @@ inline void Executor::parseDataStructure(std::string input) {
                     {
                         if(words.size() < 5) {
                             int * data1 = new int[size];
-                            memset(data1, 0, size * sizeof(int));
+                            std::memset(data1, 0, size * sizeof(int));
                             data.push_back(data1);
                         }
                         else {
@@ -153,7 +154,7 @@ inline void Executor::parseDataStructure(std::string input) {
                     {
                         if(words.size() < 5) {
                             float * data1 = new float[size];
-                            memset(data1, 0, size * sizeof(float));
+                            std::memset(data1, 0, size * sizeof(float));
                             data.push_back(data1);
                         }
                         else {
@@ -169,7 +170,7 @@ inline void Executor::parseDataStructure(std::string input) {
                     {
                         if(words.size() < 5) {
                             double * data1 = new double[size];
-                            memset(data1, 0, size * sizeof(double));
+                            std::memset(data1, 0, size * sizeof(double));
                             data.push_back(data1);
                         }
                         else {
@@ -185,7 +186,7 @@ inline void Executor::parseDataStructure(std::string input) {
                     {
                         if(words.size() < 5) {
                             double * data1 = new double[size];
-                            memset(data1, 0, size * sizeof(double));
+                            std::memset(data1, 0, size * sizeof(double));
                             data.push_back(data1);
                         }
                         break;

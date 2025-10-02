@@ -75,7 +75,7 @@ if ( ${_codegen} STREQUAL "HIP" )
 	message ( STATUS "ROCM_PATH is defined: $ENV{ROCM_PATH}" )
 	include_directories ( $ENV{ROCM_PATH}/include/hipfft $ENV{ROCM_PATH}/include )
     endif ()
-    list ( APPEND LIBS_FOR_HIP hipfft rocfft )
+    list ( APPEND LIBS_FOR_HIP hipfft rocfft hiprtc )
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_HIP )
 endif ()
 
