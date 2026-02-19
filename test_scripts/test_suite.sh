@@ -7,7 +7,9 @@
 ##  See LICENSE file for full information.
 ##
 
-source "$(dirname "$0")/test_common_funcs.sh"
+# source "$(dirname "$0")/test_common_funcs.sh"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "${SCRIPT_DIR}/test_common_funcs.sh"
 
 ##  Test definitions
 run_tests "testbatch1ddft"      5   256x64 512x32 1024x16
