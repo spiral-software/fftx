@@ -88,41 +88,30 @@ endif ()
 ##  Default setting is false; only running on 64 bit machines.
 
 if ( ${_codegen} STREQUAL "CUDA" )
-    ##  Try finding CUDAToolkit and use the directory it reports for target building
-    ##  Provide a means to set/override the CUDA root (if not automatically found)
+    ##  Allow environment override of CUDA location
     set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
+
+    ##  Find CUDAToolkit
     find_package ( CUDAToolkit REQUIRED )
-    ##  Find the libraries: cufft culibos nvrtc
-    find_library ( CUDALIBS_DIR 
-        NAMES cufft culibos nvrtc
-        HINTS ${CUDAToolkit_LIBRARY_DIR}        ##  Library path from the found CUDAToolkit
-              ${CUDAToolkit_ROOT}/lib64         ##  Fallback
-              /usr/local/cuda                   ##  Another [legacy] fallback
-    )
 
-    if ( CUDALIBS_DIR )
-        ##  Extract the directory name from the full path
-        get_filename_component ( CUDALINK_DIR ${CUDALIBS_DIR} DIRECTORY )
-        message ( STATUS "CUDA libraries exist in folder: ${CUDALINK_DIR}" )
-    else ()
-        message ( FATAL_ERROR "CUDA library folder not found!" )
-    endif ()
-
-    if (WIN32)
+    ##  Define compile flags and definitions
+    if ( WIN32 )
 	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
-	set ( LIBS_FOR_CUDA cufft cuda nvrtc )
 	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
 	set ( CMAKE_CUDA_ARCHITECTURES 52 )
     else ()
 	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
 	##  Don't use -dc (library code can't be relocatable)
 	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
-	set ( LIBS_FOR_CUDA cufft culibos cuda nvrtc )
 	set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
     endif ()
+
+    ##  Define link libraries using CMake targets — (don't need to set link dirs)
+    set ( LIBS_FOR_CUDA CUDA::cufft CUDA::cuda_driver CUDA::nvrtc )
+
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
-endif ()
+endif()
 
 if ( ${_codegen} STREQUAL "SYCL" )
     ##  Setup what we need to build for SYCL
