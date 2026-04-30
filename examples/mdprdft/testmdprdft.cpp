@@ -262,7 +262,7 @@ int main(int argc, char* argv[])
     res = FFTX_DEVICE_FFT_PLAN3D ( &planR2C, mm, nn, kk, xfmtypeR2C );
     if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
-        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
+        fftx::ErrStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
         status++;
@@ -347,7 +347,7 @@ int main(int argc, char* argv[])
                                             );
             if ( res != FFTX_DEVICE_FFT_SUCCESS)
               {
-                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
+                fftx::ErrStream() << "Launch FFTX_DEVICE_FFT_EXECD2Z failed with error code "
                                   << res << " ... skip buffer check"
                                   << std::endl;
                 check_output = false;
@@ -474,7 +474,7 @@ int main(int argc, char* argv[])
     res = FFTX_DEVICE_FFT_PLAN3D ( &planC2R, mm, nn, kk, xfmtypeC2R );
     if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
-        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
+        fftx::ErrStream() << "Create FFTX_DEVICE_FFT_PLAN3D failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
         status++;
@@ -516,7 +516,7 @@ int main(int argc, char* argv[])
                                             );
             if ( res != FFTX_DEVICE_FFT_SUCCESS)
               {
-                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
+                fftx::ErrStream() << "Launch FFTX_DEVICE_FFT_EXECZ2D failed with error code "
                                   << res << " ... skip buffer check"
                                   << std::endl;
                 check_output = false;

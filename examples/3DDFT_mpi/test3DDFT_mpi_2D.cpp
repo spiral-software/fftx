@@ -99,13 +99,13 @@ int main(int argc, char* argv[])
   //allocate buffers
   FFTX_DEVICE_ERROR_T err = FFTX_DEVICE_MALLOC(&in_buffer, (Ko*Mi*Ni)/p * (is_complex ? sizeof(cx): sizeof(double))  * batch);
   if (err != FFTX_DEVICE_SUCCESS) {
-    fftx::OutStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
+    fftx::ErrStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
     exit(-1);
   }
 
   err = FFTX_DEVICE_MALLOC(&out_buffer, (Mo*No*Ko)/p * sizeof(cx) * batch);
   if (err != FFTX_DEVICE_SUCCESS) {
-    fftx::OutStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
+    fftx::ErrStream() << "FFTX_DEVICE_MALLOC failed\n" << std::endl;
     exit(-1);
   }
 
@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
 
   err = FFTX_DEVICE_MEM_COPY( in_buffer, fftx_in, (Ko*Mi*Ni)/p *  (is_complex ? sizeof(cx): sizeof(double)) * batch, FFTX_MEM_COPY_HOST_TO_DEVICE );
   if (err != FFTX_DEVICE_SUCCESS) {
-    fftx::OutStream() << "FFTX_DEVICE_MEM_COPY failed\n" << std::endl;
+    fftx::ErrStream() << "FFTX_DEVICE_MEM_COPY failed\n" << std::endl;
     exit(-1);
   }
 

@@ -357,7 +357,7 @@ int main(int argc, char* argv[])
                                      xfmtypeR2C, B); // type, batch
     if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
-        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN_MANY failed with error code "
+        fftx::ErrStream() << "Create FFTX_DEVICE_FFT_PLAN_MANY failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
         status++;
@@ -463,7 +463,7 @@ int main(int argc, char* argv[])
                                             );
             if ( res != FFTX_DEVICE_FFT_SUCCESS)
               {
-                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
+                fftx::ErrStream() << "Launch FFTX_DEVICE_FFT_EXECD2Z failed with error code "
                                   << res << " ... skip buffer check"
                                   << std::endl;
                 check_output = false;
@@ -594,7 +594,7 @@ int main(int argc, char* argv[])
                                       xfmtypeC2R, B); // type, batch
     if ( res != FFTX_DEVICE_FFT_SUCCESS )
       {
-        fftx::OutStream() << "Create FFTX_DEVICE_FFT_PLAN_MANY failed with error code "
+        fftx::ErrStream() << "Create FFTX_DEVICE_FFT_PLAN_MANY failed with error code "
                           << res << " ... skip buffer check" << std::endl;
         check_output = false;
         status++;
@@ -671,7 +671,7 @@ int main(int argc, char* argv[])
                                             );
             if ( res != FFTX_DEVICE_FFT_SUCCESS)
               {
-                fftx::OutStream() << "Launch FFTX_DEVICE_FFT_EXEC failed with error code "
+                fftx::ErrStream() << "Launch FFTX_DEVICE_FFT_EXECZ2D failed with error code "
                                   << res << " ... skip buffer check"
                                   << std::endl;
                 check_output = false;
