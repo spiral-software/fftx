@@ -441,7 +441,7 @@ def cmake_library ( script ):
     str.append ( 'set ( _lib_name ${_lib_root} PARENT_SCOPE )\n\n' )
 
     if script.args.platform == 'CUDA':
-        str.append ( 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n' )
+        str.append ( 'set ( CMAKE_CUDA_ARCHITECTURES native )\n\n' ) ## WAS 60 61 62 70 72 75 80
 
     str.append ( 'include ( SourceList.cmake )\n' )
     str.append ( 'list    ( APPEND _source_files ${_lib_root}_libentry' + script.file_suffix + ' )\n' )
