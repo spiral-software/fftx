@@ -35,7 +35,7 @@ if ( WIN32 )
     list ( APPEND ADDL_COMPILE_FLAGS -D_USE_MATH_DEFINES )
     set ( CMAKE_CUDA_ARCHITECTURES 52 )		##  60 61 62 70 72 75 80 )
 else ()
-    set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
+    set ( CMAKE_CUDA_ARCHITECTURES native ) ## WAS 60 61 62 70 72 75 80
 endif ()
 
 add_library                ( ${_lib_name} SHARED ${_source_files} )
