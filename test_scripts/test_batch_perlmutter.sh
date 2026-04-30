@@ -23,11 +23,15 @@
 #SBATCH --output=test_batch_perlmutter_out.%J
 #SBATCH --error=test_batch_perlmutter_err.%J
 
-module purge
-module load cmake cudatoolkit PrgEnv-gnu
-export LIBRARY_PATH=$CUDATOOLKIT_HOME/../../math_libs/lib64
-module load cray-mpich
-export CPATH=$CUDATOOLKIT_HOME/../../math_libs/include:$CRAY_MPICH_DIR/include
+### Should already have cmake, and these modules loaded: cudatoolkit, PrgEnv-gnu, cray-mpich.
+
+### Compile failure on default gcc-native/14, so load older version.
+module load gcc-native/13.2
+### Need to load this module to get Python 3
 module load python
+### Need this for #include <mpi.h>
+export CPATH=$CRAY_MPICH_DIR/include:$CPATH
+### Always need this
+export FFTX_HOME=$PWD
 
 source $FFTX_HOME/test_scripts/test_batch_script.sh

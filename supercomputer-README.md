@@ -4,12 +4,10 @@ compilation requires having the appropriate modules loaded.
 
 * #### On **perlmutter** system at National Energy Research Scientific Computing Center (NERSC):
 ```
-module purge
-module load cmake cudatoolkit PrgEnv-gnu
-export LIBRARY_PATH=$CUDATOOLKIT_HOME/../../math_libs/lib64
-module load cray-mpich
-export CPATH=$CUDATOOLKIT_HOME/../../math_libs/include:$CRAY_MPICH_DIR/include
+module load gcc-native/13.2
 module load python
+export CPATH=$CRAY_MPICH_DIR/include:$CPATH
+export MPICH_GPU_SUPPORT_ENABLED=0
 ```
 
 * #### On **frontier** system at Oak Ridge Leadership Computing Facility (OLCF):
