@@ -104,7 +104,7 @@ if ( ${_codegen} STREQUAL "CUDA" )
 	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
 	##  Don't use -dc (library code can't be relocatable)
 	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
-	set ( CMAKE_CUDA_ARCHITECTURES native ) ## WAS 60 61 62 70 72 75 80
+	set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
     endif ()
 
     ##  Define link libraries using CMake targets — (don't need to set link dirs)
