@@ -1,5 +1,5 @@
 #!/bin/bash
-git clone -b develop https://github.com/spiral-software/spiral-software.git ../spiral-software
+git clone -b develop https://github.com/petermcLBL/spiral-software.git ../spiral-software
 pushd ../spiral-software
   sed -i '1s/^/#define _GNU_SOURCE\n/' gap/src/system.c
   export SPIRAL_HOME=$PWD
