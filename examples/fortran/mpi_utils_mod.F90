@@ -6,18 +6,11 @@
 !!
 
 module mpi_utils_mod
-#if defined (FFTX_CUDA) || defined(FFTX_HIP)
-  use mpi_f08, only : MPI_COMM_WORLD, MPI_COMM_SIZE, MPI_COMM_RANK, &
-       MPI_SUCCESS, MPI_Status, &
-       MPI_DOUBLE, MPI_DOUBLE_PRECISION, MPI_DOUBLE_COMPLEX, &
-       MPI_MAX, MPI_SUM, &
-       MPI_INIT, MPI_FINALIZE, MPI_Wtime, MPI_Barrier, &
-       MPI_Reduce, MPI_Bcast, MPI_Allreduce, MPI_SendRecv_replace
-#endif
   use, intrinsic :: iso_c_binding
   implicit none
-
 #if defined (FFTX_CUDA) || defined(FFTX_HIP)
+  ! Before, I had "use mpi_f08" here, but that was too much trouble.
+  include 'mpif.h'
   ! MPI VARIABLES
   logical :: i_am_mpi_master
   integer mpi_rank, mpi_size, my_mpi_err
@@ -158,7 +151,7 @@ module mpi_utils_mod
       integer :: minx, miny, minz, maxx, maxy, maxz, lx, ly, lz
       integer :: ix, iy, iz, jx, jy, jz, npts, inext, iprev
       integer :: tagShiftLeft, tagShiftRight
-      type(MPI_Status) :: mpistatus
+      integer :: mpistatus(MPI_STATUS_SIZE)
       
       minx = lbound(arr, 1)
       miny = lbound(arr, 2)
@@ -226,7 +219,7 @@ module mpi_utils_mod
       integer :: minx, miny, minz, maxx, maxy, maxz, lx, ly, lz
       integer :: ix, iy, iz, jx, jy, jz, npts, inext, iprev
       integer :: tagShiftLeft, tagShiftRight
-      type(MPI_Status) :: mpistatus
+      integer :: mpistatus(MPI_STATUS_SIZE)
       
       minx = lbound(arr, 1)
       miny = lbound(arr, 2)
