@@ -87,6 +87,32 @@ endif ()
 ##  relocatable code doesn't work if multiple spiral files are included (name collisions)
 ##  Default setting is false; only running on 64 bit machines.
 
+# if ( ${_codegen} STREQUAL "CUDA" )
+#     ##  Allow environment override of CUDA location
+#     set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
+
+#     ##  Find CUDAToolkit
+#     find_package ( CUDAToolkit REQUIRED )
+
+#     ##  Define compile flags and definitions
+#     if ( WIN32 )
+# 	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
+# 	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
+# 	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
+# 	set ( CMAKE_CUDA_ARCHITECTURES 52 )
+#     else ()
+# 	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
+# 	##  Don't use -dc (library code can't be relocatable)
+# 	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
+# 	set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
+#     endif ()
+
+#     ##  Define link libraries using CMake targets — (don't need to set link dirs)
+#     set ( LIBS_FOR_CUDA CUDA::cufft CUDA::cuda_driver CUDA::nvrtc )
+
+#     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
+# endif()
+
 if ( ${_codegen} STREQUAL "CUDA" )
     ##  Allow environment override of CUDA location
     set ( CUDAToolkit_ROOT $ENV{CUDA_HOME} CACHE PATH "Path to CUDA Toolkit" )
@@ -94,22 +120,56 @@ if ( ${_codegen} STREQUAL "CUDA" )
     ##  Find CUDAToolkit
     find_package ( CUDAToolkit REQUIRED )
 
-    ##  Define compile flags and definitions
+    ##  Enable CUDA language now, so that version checking below will work.
+    enable_language ( CUDA )
+
+    ##  Define platform-specific compile flags
+    set ( GPU_COMPILE_DEFNS )           ## -Xptxas -v
     if ( WIN32 )
-	##  set ( CUDA_COMPILE_FLAGS -rdc=false )
-	set ( GPU_COMPILE_DEFNS )			## -Xptxas -v
-	list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
-	set ( CMAKE_CUDA_ARCHITECTURES 52 )
+        list ( APPEND ADDL_COMPILE_FLAGS -DWIN64 )
+    endif ()
+
+    ## Unified dynamic CUDA architecture policy
+    if ( NOT DEFINED CMAKE_CUDA_ARCHITECTURES )
+        
+        ##  1. Attempt to query for a native local GPU using nvidia-smi
+        find_program ( NVIDIA_SMI "nvidia-smi" )
+        if ( NVIDIA_SMI )
+            execute_process (
+                COMMAND ${NVIDIA_SMI} --query-gpu=compute_cap --format=csv,noheader,nounits
+                OUTPUT_VARIABLE GPU_COMPUTE_CAP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+        endif ()
+
+        ##  2. Evaluate the result of the hardware probe
+        if ( GPU_COMPUTE_CAP )
+            string ( REGEX MATCH "^[0-9]+" FIRST_CAP "${GPU_COMPUTE_CAP}" )
+            message ( STATUS "FFTX: Found local GPU (sm_${FIRST_CAP}). Optimizing for native target." )
+            set ( CMAKE_CUDA_ARCHITECTURES "${FIRST_CAP}" CACHE STRING "CUDA architectures" )
+        else ()
+            ##  3. Version-Safe Headless Fallback (WSL Laptop, Windows without GPU, or HPC Login Node)
+            message ( STATUS "FFTX: No local GPU detected. Evaluating version-safe defaults for compiler: ${CMAKE_CUDA_COMPILER_VERSION}" )
+            set ( FALLBACK_ARCHS "80" )         # Ampere is universally safe for CUDA 11 through 13+
+            ##  Hopper (sm_90) requires CUDA 11.8+
+            if ( CMAKE_CUDA_COMPILER_VERSION VERSION_GREATER_EQUAL "11.8" )
+                list ( APPEND FALLBACK_ARCHS "90" )
+            endif ()
+            ##  Blackwell (sm_120) requires CUDA 12.8 / 13.0+
+            if ( CMAKE_CUDA_COMPILER_VERSION VERSION_GREATER_EQUAL "12.8" )
+                list ( APPEND FALLBACK_ARCHS "120" )
+            endif ()
+
+            set ( CMAKE_CUDA_ARCHITECTURES "${FALLBACK_ARCHS}" CACHE STRING "CUDA architectures" )
+            message ( STATUS "FFTX: Selected safe headless target(s): ${CMAKE_CUDA_ARCHITECTURES}" )
+        endif ()
     else ()
-	##  set ( CUDA_COMPILE_FLAGS -m64 -rdc=false )
-	##  Don't use -dc (library code can't be relocatable)
-	set ( GPU_COMPILE_DEFNS )		## -Xptxas -v -dc
-	set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )
+        message ( STATUS "FFTX: Using user-specified CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}" )
     endif ()
 
     ##  Define link libraries using CMake targets — (don't need to set link dirs)
     set ( LIBS_FOR_CUDA CUDA::cufft CUDA::cuda_driver CUDA::nvrtc )
-
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_CUDA )
 endif()
 
