@@ -200,7 +200,7 @@ def library_api ( script ):
     str.append ( f'#include "{script.file_stem}{script.decor_platform}public.h"' + '\n\n' )
 
     if script.args.platform == 'CUDA':
-        str.append ( '#include <helper_cuda.h>\n\n' )
+        str.append ( '#include <cuda_runtime.h>\n\n' )
     elif script.args.platform == 'HIP':
         str.append ( '#include <hip/hip_runtime.h>\n\n' )
         str.append ( '#define FFTX_checkLastHipError(str)   { hipError_t err = hipGetLastError();   ' )
@@ -273,14 +273,14 @@ def library_api ( script ):
 
     str.append ( '    //  Call the init function\n' )
     str.append ( '    ( * wp->initfp )();\n' )
-    str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
+    ##  str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
 
     str.append ( '    ( * wp->runfp ) ( output, input, sym );\n' )
-    str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
+    ##  str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
 
     str.append ( '    //  Tear down / cleanup\n' )
     str.append ( '    ( * wp->destroyfp ) ();\n' )
-    str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
+    ##  str.append ( '    //  checkCudaErrors ( cudaGetLastError () );\n\n' )
 
     str.append ( '    return;\n' )
     str.append ( '}\n\n' )
@@ -315,7 +315,16 @@ def python_cuda_api ( script ):
 
     if script.args.platform == 'CUDA':
         _mmalloc = 'cudaMalloc'
-        _errchk  = 'checkCudaErrors ( cudaGetLastError () );'
+        _errchk  = (
+            '{\n'
+            '        cudaError_t __err = cudaGetLastError();\n'
+            '        if (__err != cudaSuccess) {\n'
+            '            fprintf(stderr, "CUDA Error in %s at line %d: %s\\n", __FILE__, __LINE__, cudaGetErrorString(__err));\n'
+            '            exit(-1);\n'
+            '        }\n'
+            '    }'
+        )
+        ##  _errchk  = 'checkCudaErrors ( cudaGetLastError () );'
         _mmemcpy = 'cudaMemcpy'
         _cph2dev = 'cudaMemcpyHostToDevice'
         _cpdev2h = 'cudaMemcpyDeviceToHost'
@@ -477,9 +486,6 @@ def cmake_library ( script ):
     str.append ( f'set ( _lib_root {script.file_stem}{moddecor} )' )
     str.append ( '\nset ( _lib_name ${_lib_root} )\n' )
     str.append ( 'set ( _lib_name ${_lib_root} PARENT_SCOPE )\n\n' )
-
-    if script.args.platform == 'CUDA':
-        str.append ( 'set ( CMAKE_CUDA_ARCHITECTURES 60 61 62 70 72 75 80 )\n\n' )
 
     str.append ( 'include ( SourceList.cmake )\n' )
     str.append ( 'list    ( APPEND _source_files ${_lib_root}_libentry' + script.file_suffix + ' )\n' )
