@@ -1,3 +1,90 @@
+## Release Notes for FFTX Version 1.3.1
+
+## Introduction
+
+This is a maintenance / support release for FFTX.
+
+## Supported Platforms
+
+FFTX is supported on Windows, Linux, and MacOS with CPU backend, and on AMD HIP, NVIDIA CUDA, and Intel SYCL with GPU backend.
+
+FFTX is configured using **cmake** and is expected to run on most UNIX-like systems.
+
+See the [**README**](./README.md) file for more information on how to build for a specific platform.
+
+## Get FFTX Version 1.3.1
+
+You can download the latest release from [spiral-software/fftx](https://github.com/spiral-software/fftx.git).
+
+## Change Summary
+
+The changes for this release fall in several areas and are primarily intended to make the
+build process more robust as well as to address issues uncovered with the use of more
+modern compilers and tool-chains.
+
+**1. Build System, CMake Modernization, and Dynamic CUDA Architecture Detection**
+
+* Implemented an automated `nvidia-smi` probe to detect the native local GPU compute
+  capability (e.g., `sm_80`, `sm_90`) and set `CMAKE_CUDA_ARCHITECTURES` accordingly. 
+* Implemented a version-safe fallback for headless builds (WSL, HPC login nodes, CI) based
+  on `CMAKE_CUDA_COMPILER_VERSION` (defaults to Ampere `80`, appends Hopper `90` on CUDA
+  11.8+, and Blackwell `120` on CUDA 12.8+).
+* Removed obsolete hardcoded architecture lists.
+* Added early `enable_language(CUDA)` invocation so compiler version checks work properly.
+* Migrated to CMake-provided imported targets for CUDA dependencies (e.g., `CUDA::cufft`) instead of
+  relying on legacy manual search directories and include path variables.
+* Updated CMake configuration to search for each CUDA library component independently.
+* Removed unnecessary dependency on `culibos`.
+* Resolved linker paths for the `mpi` library target when linking GPU-aware MPI components.
+
+**2. Fortran and Cross-Toolchain Interoperability**
+
+* Explicitly set Fortran linker language for Fortran targets, eliminating the need to toggle or swap linkers
+  when compiling with Intel SYCL or oneAPI toolchains. 
+* Honor user-specified Fortran compilers passed via the command line (e.g.,
+  `-DCMAKE_Fortran_COMPILER=...`) instead of allowing default overrides.
+* Prioritize `gfortran` over `mpifort` on non-Windows (`!WIN32`) platforms.
+* Ensure Fortran examples requiring MPI are only compiled when **both** a valid Fortran
+  compiler and MPI libraries are detected on the system. 
+
+**3. Test Harness and Build Reliability**
+
+* Introduced a lightweight `smoketest` runner for quick validation and CI sanity checks.
+* Retained and restructured the comprehensive test suite for full transform validation.
+* Updated `make install` to install the `test_scripts/` directory alongside binaries and libraries.
+* Serialized Fortran and documentation generation targets to prevent race conditions
+  during parallel builds (`make -j`). 
+
+**4. General Cleanup**
+
+* Removed dependency on `helper_cuda.h` (a sample header not in core CUDA releases).
+* Updated error reporting macros to report source file and line number when a CUDA runtime or FFT failure occurred.
+* Added `hiprtc` library when building for HIP and qualified `memset` calls as
+  `std::memset` (resolves build errors on newer ROCm/HIP releases, i.e., ROCm 7.0+). 
+
+## New Features
+
+None.
+
+## Examples
+
+* No new examples.
+
+## Bug Fixes
+
+* None.
+
+## Known Issues
+
+On the CPU backend, the `batch1ddft` and `batch1dprdft` examples work only in the read sequential, write sequential case, which is the default case `-r 0x0`.
+
+## License
+
+FFTX is open source software licensed under the terms of the Simplified BSD
+License (see the [**LICENSE**](./License.txt) file for the full text).
+
+----------------------------------------------------------------------------------------------------
+
 ## Release Notes for FFTX Version 1.3.0
 
 ### Introduction
@@ -14,7 +101,7 @@ See the [**README**](./README.md) file for more information on how to build for 
 
 ### Get FFTX Version 1.3.0
 
-You can download the lastest release from:
+You can download the latest release from:
 
 https://github.com/spiral-software/fftx.git
 
@@ -70,7 +157,7 @@ See the [**README**](./README.md) file for more information on how to build for 
 
 ### Get FFTX Version 1.1
 
-You can download the lastest release from:
+You can download the latest release from:
 
 https://github.com/spiral-software/fftx.git
 
@@ -128,7 +215,7 @@ See the [**README**](./README.md) file for more information on how to build for 
 
 ### Get FFTX Version 1.0.3
 
-You can download the lastest release from:
+You can download the latest release from:
 
 https://github.com/spiral-software/fftx.git
 
@@ -179,7 +266,7 @@ See the [**README**](./README.md) file for more information on how to build for 
 
 ### Get FFTX Version 1.0.1
 
-You can download the lastest release from:
+You can download the latest release from:
 
 https://github.com/spiral-software/fftx.git
 
@@ -236,7 +323,7 @@ See the [**README**](./README.md) file for more information on how to build for 
 
 ### Get FFTX Version 1.0.0
 
-You can download the lastest release from:
+You can download the latest release from:
 
 https://github.com/spiral-software/fftx.git
 
