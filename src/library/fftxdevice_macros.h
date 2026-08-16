@@ -83,10 +83,6 @@
 #include <cufft.h>
 #include "cuda_runtime.h"
 
-#if defined(__CUDACC__)
-#include "helper_cuda.h"
-#endif
-
 #define FFTX_DEVICE_SUCCESS cudaSuccess
 #define FFTX_DEVICE_EVENT_T cudaEvent_t
 #define FFTX_DEVICE_EVENT_CREATE cudaEventCreate
@@ -156,47 +152,57 @@
 #endif
 
 // Functions that are defined if and only if either CUDA or HIP.
-#if defined(__CUDACC__) || defined(FFTX_HIP)
+#if defined(__CUDACC__) || defined(FFTX_HIP) || defined(FFTX_CUDA)
 #include <iostream>
-inline void FFTX_DEVICE_CHECK_ERROR(FFTX_DEVICE_ERROR_T a_rc)
+
+inline void FFTX_DEVICE_CHECK_ERROR_Impl(FFTX_DEVICE_ERROR_T a_rc, const char* file, int line)
 {
-  // There does not appear to be a HIP analogue.
-#if defined(__CUDACC__)
-  checkCudaErrors(a_rc);
-#endif
   if (a_rc != FFTX_DEVICE_SUCCESS)
     {
-      fftx::ErrStream() << "Failure with code " << a_rc
-                        << " meaning " << FFTX_DEVICE_GET_ERROR_STRING(a_rc)
-                        << std::endl;
+        fftx::ErrStream() << "FFTX Device Failure in " << file << " at line " << line << "\n"
+                          << "Error code: " << a_rc 
+                          << " (meaning:" << FFTX_DEVICE_GET_ERROR_STRING(a_rc) << ")"
+                          << std::endl;
       exit(-1);
     }
 }
-// Example of use: FFTX_DEVICE_CHECK(FFTX_DEVICE_MEM_COPY(...), "memcpy at step 2");
-inline void FFTX_DEVICE_CHECK(FFTX_DEVICE_ERROR_T a_rc, const std::string& a_name)
+
+//  Example of use: FFTX_DEVICE_CHECK_ERROR(FFTX_DEVICE_MEM_COPY(...));
+//  Use this macro wrapper to capture the exact location of the call (macro expansion gives the file/line in the actual source file)
+#define FFTX_DEVICE_CHECK_ERROR(a_rc) \
+    FFTX_DEVICE_CHECK_ERROR_Impl((a_rc), __FILE__, __LINE__)
+
+
+inline void FFTX_DEVICE_CHECK_Impl(FFTX_DEVICE_ERROR_T a_rc, const std::string& a_name, const char* file, int line)
 {
    if (a_rc != FFTX_DEVICE_SUCCESS)
      {
-        fftx::ErrStream() << a_name << " failed with code " << a_rc
-                          << " meaning " << FFTX_DEVICE_GET_ERROR_STRING(a_rc)
-                          << std::endl;
+        fftx::ErrStream() << a_name << " error in " << file << " at line " << line << "\n"
+                        << "Error code: " << a_rc 
+                        << " (meaning:" << FFTX_DEVICE_GET_ERROR_STRING(a_rc) << ")"
+                        << std::endl;
         exit(-1);
      }
 }
-// Example of use: FFTX_DEVICE_FFT_CHECK(DEVICE_FFT_PLAN3D(...), "fftplan at step 3");
-inline void FFTX_DEVICE_FFT_CHECK(FFTX_DEVICE_FFT_RESULT a_rc, const std::string& a_name)
+
+// Example of use: FFTX_DEVICE_CHECK(FFTX_DEVICE_MEM_COPY(...), "memcpy at step 2");
+#define FFTX_DEVICE_CHECK(a_rc, a_name) \
+    FFTX_DEVICE_CHECK_Impl((a_rc), (a_name), __FILE__, __LINE__)
+
+
+inline void FFTX_DEVICE_FFT_CHECK_Impl(FFTX_DEVICE_FFT_RESULT a_rc, const std::string& a_name, const char* file, int line)
 {
    if (a_rc != FFTX_DEVICE_FFT_SUCCESS)
      {
-        // There does not appear to be a HIP analogue.
-        fftx::ErrStream() << a_name << " failed with code " << a_rc
-#if defined(__CUDACC__)
-                          << " meaning " << _cudaGetErrorEnum(a_rc)
-#endif
-                          << std::endl;
+        fftx::ErrStream() << a_name << " error in " << file << " at line " << line << "\n"
+                          << "Error code: " << a_rc  << std::endl;
         exit(-1);
      }
 }
+
+// Example of use: FFTX_DEVICE_FFT_CHECK(DEVICE_FFT_PLAN3D(...), "fftplan at step 3");
+#define FFTX_DEVICE_FFT_CHECK(a_rc, a_name) \
+    FFTX_DEVICE_FFT_CHECK_Impl((a_rc), (a_name), __FILE__, __LINE__)
 
 // For allocating an array on device that is same size as array.
 template<int DIM, typename Thost>
