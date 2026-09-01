@@ -261,11 +261,19 @@ inline void Executor::getVars() {
 }
 
 inline void Executor::compileProg() {
-    const char *opts[] = {"--relocatable-device-code=true","--gpu-architecture=compute_70"};
-    compileResult = nvrtcCompileProgram(prog, 
-    2, 
-    opts); 
-    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "compiled program\n";
+    FFTX_DEVICE_SAFE_CALL(cuInit(0));
+    FFTX_DEVICE_SAFE_CALL(cuDeviceGet(&cuDevice, 0));
+
+    int major = 0, minor = 0;
+    FFTX_DEVICE_SAFE_CALL(cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cuDevice));
+    FFTX_DEVICE_SAFE_CALL(cuDeviceGetAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cuDevice));
+
+    char archOpt[64];
+    snprintf(archOpt, sizeof(archOpt), "--gpu-architecture=compute_%d%d", major, minor);
+    const char *opts[] = {"--relocatable-device-code=true", archOpt};
+    compileResult = nvrtcCompileProgram(prog, 2, opts);
+
+    if ( FFTX_DEBUGOUT ) fftx::OutStream() << "compiled program with " << archOpt << "\n";
 }
 
 inline void Executor::getLogsAndPTX() {
