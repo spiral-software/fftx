@@ -69,13 +69,12 @@ if ( ${_codegen} STREQUAL "HIP" )
     # 	set ( CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE} )
     # endif ()
 
-    ##  Adjust include and library directories
-    ##  Need to add $ROCM_PATH for includes and libraries
-    if ( DEFINED ENV{ROCM_PATH} )
-	message ( STATUS "ROCM_PATH is defined: $ENV{ROCM_PATH}" )
-	include_directories ( $ENV{ROCM_PATH}/include/hipfft $ENV{ROCM_PATH}/include )
-    endif ()
-    list ( APPEND LIBS_FOR_HIP hipfft rocfft hiprtc )
+    find_package ( hipfft REQUIRED )
+    find_package ( rocfft REQUIRED )
+    find_package ( hiprtc REQUIRED )
+
+    ##  Define link libraries using CMake targets (don't need to set link or include dirs)
+    list ( APPEND LIBS_FOR_HIP hip::host hip::hipfft roc::rocfft hiprtc::hiprtc )
     list ( APPEND ADDL_COMPILE_FLAGS -DFFTX_HIP )
 endif ()
 
